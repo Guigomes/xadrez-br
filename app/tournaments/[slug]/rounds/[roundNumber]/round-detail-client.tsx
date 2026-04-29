@@ -1,18 +1,21 @@
 'use client';
 
 import { useRoundPairings } from '@/lib/hooks/use-tournament';
+import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { PairingsList } from '@/components/tournament/pairings-list';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface Props {
   roundId: string;
+  tournamentId: string;
   tournamentSlug: string;
   isOngoing: boolean;
 }
 
-export function RoundDetailClient({ roundId, tournamentSlug, isOngoing }: Props) {
+export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOngoing }: Props) {
   const { data: pairings, isLoading } = useRoundPairings(roundId);
+  const { data: followed } = useFollowedInTournament(tournamentId);
 
   if (isLoading) return <PageSpinner />;
 
@@ -34,7 +37,7 @@ export function RoundDetailClient({ roundId, tournamentSlug, isOngoing }: Props)
           Atualizando automaticamente a cada 15 segundos
         </p>
       )}
-      <PairingsList pairings={pairings} tournamentSlug={tournamentSlug} />
+      <PairingsList pairings={pairings} tournamentSlug={tournamentSlug} followedTpIds={followed?.tpIds} />
     </div>
   );
 }

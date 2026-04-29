@@ -86,7 +86,7 @@ export default async function RoundPage({ params }: Props) {
 
       {/* Pairings – client component for auto-refresh */}
       <div className="card p-4">
-        <RoundDetailClient roundId={round.id} tournamentSlug={slug} isOngoing={round.status === 'ongoing'} />
+        <RoundDetailClient roundId={round.id} tournamentId={tournament.id} tournamentSlug={slug} isOngoing={round.status === 'ongoing'} />
       </div>
     </div>
   );

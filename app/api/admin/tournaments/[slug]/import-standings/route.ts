@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/server';
-import { sendTournamentNotification } from '@/lib/push';
+import { sendTournamentNotification, notifyPlayerFollowers } from '@/lib/push';
 
 interface StandingRow {
   rank: number;
@@ -144,11 +144,29 @@ export async function POST(
   // Notify subscribers
   const { data: t } = await supabase.from('tournaments').select('name, slug').eq('id', tournament.id).single();
   if (t) {
+    const standingsUrl = `/tournaments/${t.slug}/standings`;
+
+    // Tournament-wide notification
     sendTournamentNotification(tournament.id, {
       title: t.name,
       body: `Classificação atualizada — ${matched.length} jogadores`,
-      url: `/tournaments/${t.slug}/standings`,
+      url: standingsUrl,
     }).catch(() => {});
+
+    // Per-player notifications for followed players
+    const notifyPlayers = matched.map(({ tournament_player_id, row }) => ({
+      tpId: tournament_player_id,
+      makePayload: (playerName: string) => {
+        const pts = Number.isInteger(row.points) ? String(row.points) : row.points.toFixed(1).replace('.', ',');
+        return {
+          title: t.name,
+          body: `${playerName}: ${row.rank}º lugar com ${pts} pts`,
+          url: standingsUrl,
+        };
+      },
+    }));
+
+    notifyPlayerFollowers(tournament.id, notifyPlayers).catch(() => {});
   }
 
   return NextResponse.json({

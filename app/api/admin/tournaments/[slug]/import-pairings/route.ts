@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/server';
-import { sendTournamentNotification } from '@/lib/push';
+import { sendTournamentNotification, notifyPlayerFollowers } from '@/lib/push';
 
 type GameResult = '1-0' | '0-1' | '1/2-1/2' | '*' | 'bye';
 
@@ -181,11 +181,50 @@ export async function POST(
   // Notify subscribers
   const { data: t } = await supabase.from('tournaments').select('name, slug').eq('id', tournament.id).single();
   if (t) {
+    const roundUrl = `/tournaments/${t.slug}/rounds/${roundNumber}`;
+
+    // Tournament-wide notification
     sendTournamentNotification(tournament.id, {
       title: t.name,
       body: `Rodada ${roundNumber} publicada — ${toInsert.length} emparceiramentos`,
-      url: `/tournaments/${t.slug}/rounds/${roundNumber}`,
+      url: roundUrl,
     }).catch(() => {});
+
+    // Per-player notifications for followed players
+    const inserted = toInsert as Array<{ white_tp_id: string; black_tp_id: string | null; is_bye: boolean }>;
+
+    // Fetch names for all tp_ids involved
+    const allTpIds = [...new Set(inserted.flatMap((p) => [p.white_tp_id, p.black_tp_id].filter(Boolean) as string[]))];
+    const { data: tpNames } = await supabase
+      .from('tournament_players')
+      .select('id, players(full_name)')
+      .in('id', allTpIds);
+    const nameMap = new Map((tpNames ?? []).map((tp) => [tp.id, (tp as any).players?.full_name ?? '']));
+
+    const notifyPlayers = inserted.flatMap((p) => {
+      const entries = [];
+      if (p.white_tp_id) entries.push({
+        tpId: p.white_tp_id,
+        makePayload: (_name: string) => ({
+          title: t.name,
+          body: p.is_bye
+            ? `R${roundNumber}: ${nameMap.get(p.white_tp_id)} recebe BYE`
+            : `R${roundNumber}: ${nameMap.get(p.white_tp_id)} (Brancas) × ${nameMap.get(p.black_tp_id!) ?? '?'}`,
+          url: roundUrl,
+        }),
+      });
+      if (p.black_tp_id) entries.push({
+        tpId: p.black_tp_id,
+        makePayload: (_name: string) => ({
+          title: t.name,
+          body: `R${roundNumber}: ${nameMap.get(p.black_tp_id!)} (Pretas) × ${nameMap.get(p.white_tp_id)}`,
+          url: roundUrl,
+        }),
+      });
+      return entries;
+    });
+
+    notifyPlayerFollowers(tournament.id, notifyPlayers).catch(() => {});
   }
 
   return NextResponse.json({ roundNumber, imported: toInsert.length, unmatched: unmatched.length, unmatchedPlayers: unmatched });

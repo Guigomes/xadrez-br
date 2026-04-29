@@ -84,6 +84,36 @@ export function useSignOut() {
   });
 }
 
+export function useFollowedInTournament(tournamentId: string) {
+  const { user } = useUser();
+  return useQuery({
+    queryKey: ['followed-in-tournament', user?.id, tournamentId],
+    enabled: !!user && !!tournamentId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      if (!user) return { playerIds: new Set<string>(), tpIds: new Set<string>() };
+
+      const { data: follows } = await supabase
+        .from('player_follows')
+        .select('player_id')
+        .eq('user_id', user.id)
+        .eq('tournament_id', tournamentId);
+
+      const playerIds = new Set<string>((follows ?? []).map((f) => f.player_id));
+      if (!playerIds.size) return { playerIds, tpIds: new Set<string>() };
+
+      const { data: tps } = await supabase
+        .from('tournament_players')
+        .select('id')
+        .eq('tournament_id', tournamentId)
+        .in('player_id', [...playerIds]);
+
+      const tpIds = new Set<string>((tps ?? []).map((tp) => tp.id));
+      return { playerIds, tpIds };
+    },
+  });
+}
+
 export function usePlayerFollow(playerId: string, tournamentId?: string) {
   const { user } = useUser();
   const qc = useQueryClient();

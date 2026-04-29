@@ -2,6 +2,7 @@
 
 import { use, useState } from 'react';
 import { useTournament, useTournamentStandings } from '@/lib/hooks/use-tournament';
+import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { StandingsTable } from '@/components/tournament/standings-table';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -16,6 +17,7 @@ export default function StandingsPage({ params }: Props) {
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(
     tournament?.id ?? ''
   );
+  const { data: followed } = useFollowedInTournament(tournament?.id ?? '');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const isLoading = loadingTournament || (!!tournament && loadingStandings);
@@ -101,7 +103,7 @@ export default function StandingsPage({ params }: Props) {
           </div>
         </div>
 
-        <StandingsTable standings={displayed} tournamentSlug={slug} />
+        <StandingsTable standings={displayed} tournamentSlug={slug} followedPlayerIds={followed?.playerIds} />
       </div>
     </div>
   );
