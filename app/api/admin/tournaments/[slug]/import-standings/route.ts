@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/server';
+import { sendTournamentNotification } from '@/lib/push';
 
 interface StandingRow {
   rank: number;
@@ -138,6 +139,16 @@ export async function POST(
         sonneborn_berger: row.sonnebornBerger,
       })
       .eq('id', tournament_player_id);
+  }
+
+  // Notify subscribers
+  const { data: t } = await supabase.from('tournaments').select('name, slug').eq('id', tournament.id).single();
+  if (t) {
+    sendTournamentNotification(tournament.id, {
+      title: t.name,
+      body: `Classificação atualizada — ${matched.length} jogadores`,
+      url: `/tournaments/${t.slug}/standings`,
+    }).catch(() => {});
   }
 
   return NextResponse.json({

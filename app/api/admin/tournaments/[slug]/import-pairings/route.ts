@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/server';
+import { sendTournamentNotification } from '@/lib/push';
 
 type GameResult = '1-0' | '0-1' | '1/2-1/2' | '*' | 'bye';
 
@@ -175,6 +176,16 @@ export async function POST(
   // Mark round as ongoing if it was pending
   if (round.status === 'pending') {
     await supabase.from('rounds').update({ status: 'ongoing' }).eq('id', round.id);
+  }
+
+  // Notify subscribers
+  const { data: t } = await supabase.from('tournaments').select('name, slug').eq('id', tournament.id).single();
+  if (t) {
+    sendTournamentNotification(tournament.id, {
+      title: t.name,
+      body: `Rodada ${roundNumber} publicada — ${toInsert.length} emparceiramentos`,
+      url: `/tournaments/${t.slug}/rounds/${roundNumber}`,
+    }).catch(() => {});
   }
 
   return NextResponse.json({ roundNumber, imported: toInsert.length, unmatched: unmatched.length, unmatchedPlayers: unmatched });

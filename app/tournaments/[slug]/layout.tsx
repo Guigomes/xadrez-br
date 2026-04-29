@@ -4,6 +4,7 @@ import { TournamentTabs } from '@/components/tournament/tournament-tabs';
 import { SaveLastTournament } from '@/components/tournament/save-last-tournament';
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
+import { NotifyButton } from '@/components/tournament/notify-button';
 import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 import type { Metadata } from 'next';
@@ -87,7 +88,10 @@ export default async function TournamentLayout({ children, params }: Props) {
                 {tournament.venue ? `${tournament.venue} · ` : ''}{tournament.city}, {tournament.state}
               </p>
             </div>
-            <ShareButton title={tournament.name} />
+            <div className="flex items-center gap-2 shrink-0">
+              <NotifyButton tournamentId={tournament.id} tournamentSlug={slug} />
+              <ShareButton title={tournament.name} />
+            </div>
           </div>
 
           {/* Meta row */}
