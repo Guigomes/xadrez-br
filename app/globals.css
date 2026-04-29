@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+  }
+
+  * {
+    @apply border-gray-200 dark:border-gray-800;
+  }
+
+  body {
+    @apply bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+}
+
+@layer components {
+  .container-app {
+    @apply mx-auto w-full max-w-5xl px-4 sm:px-6;
+  }
+
+  /* Card */
+  .card {
+    @apply rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900;
+  }
+
+  /* Score badge */
+  .score-badge {
+    @apply inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-md text-sm font-semibold tabular-nums;
+  }
+
+  /* Chessboard repeating pattern overlay */
+  .chess-pattern {
+    background-image: repeating-conic-gradient(
+      rgba(255, 255, 255, 0.07) 0% 25%,
+      transparent 0% 50%
+    );
+    background-size: 48px 48px;
+  }
+}

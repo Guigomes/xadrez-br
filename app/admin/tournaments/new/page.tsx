@@ -1,0 +1,49 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { TournamentForm } from '@/components/tournament/tournament-form';
+import { slugify } from '@/lib/utils/chess';
+import type { TournamentFormValues } from '@/types/database';
+import { useState } from 'react';
+import { useUser } from '@/lib/hooks/use-auth';
+
+export default function NewTournamentPage() {
+  const router = useRouter();
+  const { user } = useUser();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(values: TournamentFormValues) {
+    if (!user) return;
+    setLoading(true);
+    setError('');
+    try {
+      const supabase = createClient();
+      const slug = slugify(values.name) + '-' + values.start_date.replace(/-/g, '');
+      const { data, error: err } = await supabase
+        .from('tournaments')
+        .insert({ ...values, slug, created_by: user.id })
+        .select()
+        .single();
+      if (err) throw err;
+      router.push(`/admin/tournaments/${data.slug}/edit`);
+    } catch (err: any) {
+      setError(err.message ?? 'Erro ao criar torneio.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Novo torneio</h1>
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      )}
+      <TournamentForm onSubmit={handleSubmit} loading={loading} submitLabel="Criar torneio" />
+    </div>
+  );
+}
