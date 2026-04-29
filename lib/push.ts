@@ -1,16 +1,16 @@
 import webpush from 'web-push';
 import { createClient } from '@/lib/supabase/server';
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
 export async function sendTournamentNotification(
   tournamentId: string,
   payload: { title: string; body: string; url?: string }
 ) {
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL!,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!
+  );
+
   const supabase = await createClient();
   const { data: subs } = await supabase
     .from('push_subscriptions')
