@@ -1,3 +1,7 @@
+# temp/scratch files
+*.xlsx
+read_excel.js
+
 # dependencies
 /node_modules
 /.pnp
