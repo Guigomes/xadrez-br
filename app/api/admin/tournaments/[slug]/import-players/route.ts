@@ -149,7 +149,15 @@ export async function POST(
       if (p.fideId) {
         const { data: match } = await supabase
           .from('players').select('id').eq('fide_id', p.fideId).limit(1).maybeSingle();
-        if (match?.id) { playerId = match.id; reused++; }
+        if (match?.id) {
+          playerId = match.id;
+          reused++;
+          if (p.city || p.ratingStd || p.federation) {
+            await supabase.from('players').update({
+              city: p.city, rating_std: p.ratingStd, federation: p.federation,
+            }).eq('id', match.id);
+          }
+        }
       }
 
       // Find player by name
