@@ -49,7 +49,7 @@ export default async function ParticipantsPage({ params }: Props) {
               <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Jogador</th>
               <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Categoria</th>
               <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Rating</th>
-              <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Estado</th>
+              <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Escola/Município</th>
             </tr>
           </thead>
           <tbody>
@@ -77,8 +77,8 @@ export default async function ParticipantsPage({ params }: Props) {
                 <td className="py-3 px-3 text-center tabular-nums text-gray-700 dark:text-gray-300">
                   {(tp.player as any)?.rating_std ?? '–'}
                 </td>
-                <td className="py-3 px-3 text-center text-gray-500 dark:text-gray-400">
-                  {(tp.player as any)?.state ?? '–'}
+                <td className="py-3 px-3 text-gray-500 dark:text-gray-400">
+                  {(tp.player as any)?.city || (tp.player as any)?.state || '–'}
                 </td>
               </tr>
             ))}
@@ -101,7 +101,7 @@ export default async function ParticipantsPage({ params }: Props) {
               <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{(tp.player as any)?.full_name}</p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {(tp.category as any)?.name ? `${(tp.category as any).name} · ` : ''}
-                {(tp.player as any)?.state ?? ''}
+                {(tp.player as any)?.city || (tp.player as any)?.state || ''}
                 {(tp.player as any)?.rating_std ? ` · ${(tp.player as any).rating_std}` : ''}
               </p>
             </div>
