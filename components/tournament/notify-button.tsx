@@ -31,11 +31,10 @@ export function NotifyButton({ tournamentId }: Props) {
       setStatus('denied');
       return;
     }
-    // Race against a timeout so the button never hangs if SW fails
-    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
-    Promise.race([navigator.serviceWorker.ready, timeout]).then((reg) => {
-      if (!reg) return; // timed out
-      (reg as ServiceWorkerRegistration).pushManager.getSubscription().then((sub) => {
+    // Use getRegistration instead of .ready to avoid hanging forever
+    navigator.serviceWorker.getRegistration().then((reg) => {
+      if (!reg) return; // SW not yet registered — stays idle
+      reg.pushManager.getSubscription().then((sub) => {
         if (sub) setStatus('subscribed');
       });
     });
@@ -46,10 +45,7 @@ export function NotifyButton({ tournamentId }: Props) {
     setErrorMsg('');
 
     try {
-      const reg = await Promise.race([
-        navigator.serviceWorker.ready,
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Service worker timeout')), 8000)),
-      ]);
+      const reg = await navigator.serviceWorker.ready;
 
       if (status === 'subscribed') {
         const sub = await reg.pushManager.getSubscription();
