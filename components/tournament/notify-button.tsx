@@ -7,10 +7,20 @@ interface Props {
   tournamentSlug: string;
 }
 
-type Status = 'idle' | 'loading' | 'subscribed' | 'denied' | 'unsupported';
+type Status = 'idle' | 'loading' | 'subscribed' | 'denied' | 'unsupported' | 'error';
 
-export function NotifyButton({ tournamentId, tournamentSlug }: Props) {
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+  return output;
+}
+
+export function NotifyButton({ tournamentId }: Props) {
   const [status, setStatus] = useState<Status>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -21,48 +31,63 @@ export function NotifyButton({ tournamentId, tournamentSlug }: Props) {
       setStatus('denied');
       return;
     }
-    // Check if already subscribed
-    navigator.serviceWorker.ready.then((reg) =>
-      reg.pushManager.getSubscription().then((sub) => {
+    // Race against a timeout so the button never hangs if SW fails
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+    Promise.race([navigator.serviceWorker.ready, timeout]).then((reg) => {
+      if (!reg) return; // timed out
+      (reg as ServiceWorkerRegistration).pushManager.getSubscription().then((sub) => {
         if (sub) setStatus('subscribed');
-      })
-    );
+      });
+    });
   }, []);
 
   async function toggle() {
     setStatus('loading');
-    const reg = await navigator.serviceWorker.ready;
-
-    if (status === 'subscribed') {
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) {
-        await sub.unsubscribe();
-        await fetch('/api/push/subscribe', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ endpoint: sub.endpoint }),
-        });
-      }
-      setStatus('idle');
-      return;
-    }
-
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') { setStatus('denied'); return; }
+    setErrorMsg('');
 
     try {
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Service worker timeout')), 8000)),
+      ]);
+
+      if (status === 'subscribed') {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await sub.unsubscribe();
+          await fetch('/api/push/subscribe', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          });
+        }
+        setStatus('idle');
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') { setStatus('denied'); return; }
+
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) throw new Error('VAPID key not configured');
+
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
-      await fetch('/api/push/subscribe', {
+
+      const res = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscription: sub.toJSON(), tournamentId }),
       });
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Erro ao salvar subscrição');
+
       setStatus('subscribed');
-    } catch {
-      setStatus('idle');
+    } catch (err: any) {
+      console.error('[NotifyButton]', err);
+      setErrorMsg(err?.message ?? 'Erro desconhecido');
+      setStatus('error');
     }
   }
 
@@ -70,34 +95,43 @@ export function NotifyButton({ tournamentId, tournamentSlug }: Props) {
 
   const label =
     status === 'subscribed' ? 'Notificações ativas' :
-    status === 'denied'     ? 'Notificações bloqueadas' :
-    status === 'loading'    ? '...' :
+    status === 'denied'     ? 'Bloqueado pelo navegador' :
+    status === 'loading'    ? 'Aguarde...' :
+    status === 'error'      ? 'Erro – tentar novamente' :
     'Ativar notificações';
 
-  const icon = status === 'subscribed' ? (
-    // Bell with slash
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-    </svg>
-  ) : (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-    </svg>
-  );
-
   return (
-    <button
-      onClick={toggle}
-      disabled={status === 'loading' || status === 'denied'}
-      title={label}
-      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50
-        ${status === 'subscribed'
-          ? 'bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800'
-          : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-        }`}
-    >
-      {icon}
-      <span className="hidden sm:inline">{label}</span>
-    </button>
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={status === 'error' ? () => setStatus('idle') : toggle}
+        disabled={status === 'loading' || status === 'denied'}
+        title={status === 'error' ? errorMsg : label}
+        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50
+          ${status === 'subscribed'
+            ? 'bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800'
+            : status === 'error'
+            ? 'border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30'
+            : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+          }`}
+      >
+        {status === 'subscribed' ? (
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+        ) : status === 'error' ? (
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ) : (
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+        )}
+        <span className="hidden sm:inline">{label}</span>
+      </button>
+      {status === 'error' && errorMsg && (
+        <p className="text-xs text-red-500 dark:text-red-400 max-w-[200px] text-right">{errorMsg}</p>
+      )}
+    </div>
   );
 }
