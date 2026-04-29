@@ -191,7 +191,7 @@ export async function POST(
     }).catch(() => {});
 
     // Per-player notifications for followed players
-    const inserted = toInsert as Array<{ white_tp_id: string; black_tp_id: string | null; is_bye: boolean }>;
+    const inserted = toInsert as Array<{ white_tp_id: string; black_tp_id: string | null; board_number: number | null; is_bye: boolean }>;
 
     // Fetch names for all tp_ids involved
     const allTpIds = [...new Set(inserted.flatMap((p) => [p.white_tp_id, p.black_tp_id].filter(Boolean) as string[]))];
@@ -203,13 +203,14 @@ export async function POST(
 
     const notifyPlayers = inserted.flatMap((p) => {
       const entries = [];
+      const board = p.board_number ? ` · Tabuleiro ${p.board_number}` : '';
       if (p.white_tp_id) entries.push({
         tpId: p.white_tp_id,
         makePayload: (_name: string) => ({
           title: t.name,
           body: p.is_bye
-            ? `R${roundNumber}: ${nameMap.get(p.white_tp_id)} recebe BYE`
-            : `R${roundNumber}: ${nameMap.get(p.white_tp_id)} (Brancas) × ${nameMap.get(p.black_tp_id!) ?? '?'}`,
+            ? `Rodada ${roundNumber}: ${nameMap.get(p.white_tp_id)} recebe BYE`
+            : `Rodada ${roundNumber}${board}: ${nameMap.get(p.white_tp_id)} (Brancas) × ${nameMap.get(p.black_tp_id!) ?? '?'}`,
           url: roundUrl,
         }),
       });
@@ -217,7 +218,7 @@ export async function POST(
         tpId: p.black_tp_id,
         makePayload: (_name: string) => ({
           title: t.name,
-          body: `R${roundNumber}: ${nameMap.get(p.black_tp_id!)} (Pretas) × ${nameMap.get(p.white_tp_id)}`,
+          body: `Rodada ${roundNumber}${board}: ${nameMap.get(p.black_tp_id!)} (Pretas) × ${nameMap.get(p.white_tp_id)}`,
           url: roundUrl,
         }),
       });

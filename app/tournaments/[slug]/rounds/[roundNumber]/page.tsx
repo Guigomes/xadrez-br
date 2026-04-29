@@ -67,7 +67,7 @@ export default async function RoundPage({ params }: Props) {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              R{rn - 1}
+              Rodada {rn - 1}
             </Link>
           )}
           {rn < tournament.rounds_count && (
@@ -75,7 +75,7 @@ export default async function RoundPage({ params }: Props) {
               href={`/tournaments/${slug}/rounds/${rn + 1}`}
               className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              R{rn + 1}
+              Rodada {rn + 1}
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>

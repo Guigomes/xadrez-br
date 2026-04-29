@@ -153,8 +153,8 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
       className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
     >
       {/* Round number */}
-      <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-5 text-center shrink-0">
-        R{row.round_number}
+      <span className="text-xs font-bold text-gray-400 dark:text-gray-500 shrink-0">
+        Rodada {row.round_number}
       </span>
 
       {/* Color indicator */}
