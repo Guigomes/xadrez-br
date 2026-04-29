@@ -45,7 +45,24 @@ export function NotifyButton({ tournamentId }: Props) {
     setErrorMsg('');
 
     try {
-      const reg = await navigator.serviceWorker.ready;
+      // Ensure SW is registered (next-pwa registers automatically, but may not be active yet)
+      let reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        reg = await navigator.serviceWorker.register('/sw.js');
+      }
+      // Wait for it to become active, with a timeout
+      if (!reg.active) {
+        await Promise.race([
+          new Promise<void>((resolve) => {
+            const sw = reg!.installing ?? reg!.waiting;
+            if (!sw) { resolve(); return; }
+            sw.addEventListener('statechange', function handler() {
+              if (sw.state === 'activated') { sw.removeEventListener('statechange', handler); resolve(); }
+            });
+          }),
+          new Promise<void>((_, reject) => setTimeout(() => reject(new Error('Service worker não ativou. Tente recarregar a página.')), 10000)),
+        ]);
+      }
 
       if (status === 'subscribed') {
         const sub = await reg.pushManager.getSubscription();
