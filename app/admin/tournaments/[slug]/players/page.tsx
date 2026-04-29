@@ -4,93 +4,11 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useTournament, useTournamentPlayers, useAddTournamentPlayer } from '@/lib/hooks/use-tournament';
 import { usePlayerSearch, useCreatePlayer } from '@/lib/hooks/use-player';
-import { createClient } from '@/lib/supabase/client';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { formatScore } from '@/lib/utils/chess';
 import type { Player, PlayerFormValues } from '@/types/database';
-
-interface ImportedParticipant {
-  fullName: string;
-  fideId?: string;
-  federation?: string;
-  ratingStd?: number;
-  initialRanking?: number;
-  type?: string;
-  city?: string;
-}
-
-function normalizeText(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
-function findColumnIndex(headers: string[], aliases: string[]) {
-  const normalizedAliases = aliases.map(normalizeText);
-  return headers.findIndex((header) => normalizedAliases.includes(normalizeText(header)));
-}
-
-function parseChessResultsRows(rows: unknown[][]): ImportedParticipant[] {
-  const asStrings = rows.map((row) => row.map((cell) => String(cell ?? '').trim()));
-  const headerRowIndex = asStrings.findIndex((row) =>
-    row.some((cell) => normalizeText(cell) === 'nome')
-    && row.some((cell) => normalizeText(cell) === 'id fide')
-  );
-
-  if (headerRowIndex < 0) {
-    throw new Error('Cabeçalho do padrão Chess-Results não encontrado no arquivo.');
-  }
-
-  const headers = asStrings[headerRowIndex];
-  const numberIdx = findColumnIndex(headers, ['nº.', 'nº', 'no.', 'no', 'num', 'numero']);
-  const nameIdx = findColumnIndex(headers, ['nome']);
-  const fideIdx = findColumnIndex(headers, ['id fide']);
-  const fedIdx = findColumnIndex(headers, ['fed']);
-  const eloIdx = findColumnIndex(headers, ['elo']);
-  const typeIdx = findColumnIndex(headers, ['tipo']);
-  const cityIdx = findColumnIndex(headers, ['clube/cidade', 'clube / cidade', 'clube cidade']);
-
-  if (nameIdx < 0) {
-    throw new Error('Coluna "Nome" não encontrada no arquivo.');
-  }
-
-  const participants: ImportedParticipant[] = [];
-
-  for (const row of asStrings.slice(headerRowIndex + 1)) {
-    const fullName = (row[nameIdx] ?? '').trim();
-    if (!fullName) continue;
-
-    const normalizedName = normalizeText(fullName);
-    if (normalizedName.startsWith('encontrara todos os detalhes')) break;
-    if (normalizedName.includes('chess-results')) continue;
-
-    const fideIdRaw = fideIdx >= 0 ? (row[fideIdx] ?? '').trim() : '';
-    const ratingRaw = eloIdx >= 0 ? (row[eloIdx] ?? '').trim() : '';
-    const rankingRaw = numberIdx >= 0 ? (row[numberIdx] ?? '').trim() : '';
-    const typeRaw = typeIdx >= 0 ? (row[typeIdx] ?? '').trim() : '';
-    const cityRaw = cityIdx >= 0 ? (row[cityIdx] ?? '').trim() : '';
-
-    const ratingStd = Number.parseInt(ratingRaw, 10);
-    const initialRanking = Number.parseInt(rankingRaw, 10);
-
-    participants.push({
-      fullName,
-      fideId: fideIdRaw || undefined,
-      federation: fedIdx >= 0 ? ((row[fedIdx] ?? '').trim() || undefined) : undefined,
-      ratingStd: Number.isFinite(ratingStd) && ratingStd > 0 ? ratingStd : undefined,
-      initialRanking: Number.isFinite(initialRanking) && initialRanking > 0 ? initialRanking : undefined,
-      type: typeRaw || undefined,
-      city: cityRaw || undefined,
-    });
-  }
-
-  return participants;
-}
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -110,6 +28,7 @@ export default function AdminPlayersPage({ params }: Props) {
   const [newPlayer, setNewPlayer] = useState<Partial<PlayerFormValues>>({});
   const [importing, setImporting] = useState(false);
   const [importReport, setImportReport] = useState('');
+  const [importUrl, setImportUrl] = useState('');
   const [error, setError] = useState('');
 
   if (isLoading) return <PageSpinner />;
@@ -137,172 +56,27 @@ export default function AdminPlayersPage({ params }: Props) {
     }
   }
 
-  async function handleImportSpreadsheet(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !tournament) return;
-
+  async function handleImportUrl() {
+    if (!importUrl.trim() || !tournament) return;
     setError('');
     setImportReport('');
     setImporting(true);
-
     try {
-      const XLSX = await import('xlsx');
-      const fileBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(fileBuffer, { type: 'array' });
-      const firstSheetName = workbook.SheetNames[0];
-
-      if (!firstSheetName) {
-        throw new Error('Planilha sem abas.');
-      }
-
-      const firstSheet = workbook.Sheets[firstSheetName];
-      const rawRows = XLSX.utils.sheet_to_json(firstSheet, {
-        header: 1,
-        raw: false,
-        defval: '',
-      }) as unknown[][];
-
-      const participants = parseChessResultsRows(rawRows);
-      if (!participants.length) {
-        throw new Error('Nenhum participante válido encontrado no arquivo.');
-      }
-
-      const supabase = createClient();
-      const tournamentPlayerIds = new Set(
-        (tPlayers ?? []).map((tp) => (tp as any).player?.id).filter(Boolean)
-      );
-
-      const { data: categoryRows } = await supabase
-        .from('tournament_categories')
-        .select('id, name')
-        .eq('tournament_id', tournament.id);
-
-      const categoryMap = new Map<string, string>();
-      for (const row of categoryRows ?? []) {
-        categoryMap.set(normalizeText(row.name), row.id);
-      }
-
-      let added = 0;
-      let created = 0;
-      let reused = 0;
-      let skipped = 0;
-      let failed = 0;
-
-      for (const participant of participants) {
-        try {
-          let playerId: string | null = null;
-          let categoryId: string | undefined;
-
-          if (participant.type) {
-            const normalizedType = normalizeText(participant.type);
-            const existingCategoryId = categoryMap.get(normalizedType);
-
-            if (existingCategoryId) {
-              categoryId = existingCategoryId;
-            } else {
-              const { data: createdCategory, error: categoryErr } = await supabase
-                .from('tournament_categories')
-                .insert({ tournament_id: tournament.id, name: participant.type })
-                .select('id, name')
-                .single();
-
-              if (categoryErr) throw categoryErr;
-              categoryId = createdCategory.id;
-              categoryMap.set(normalizedType, createdCategory.id);
-            }
-          }
-
-          if (participant.fideId) {
-            const { data: fideMatch } = await supabase
-              .from('players')
-              .select('id')
-              .eq('fide_id', participant.fideId)
-              .limit(1)
-              .maybeSingle();
-
-            if (fideMatch?.id) {
-              playerId = fideMatch.id;
-              reused += 1;
-            }
-          }
-
-          if (!playerId) {
-            const { data: nameMatches } = await supabase
-              .from('players')
-              .select('id, full_name')
-              .ilike('full_name', participant.fullName)
-              .limit(10);
-
-            const exactNameMatch = nameMatches?.find(
-              (match) => normalizeText(match.full_name) === normalizeText(participant.fullName)
-            );
-
-            if (exactNameMatch?.id) {
-              playerId = exactNameMatch.id;
-              reused += 1;
-
-              if (participant.fideId || participant.city || participant.ratingStd) {
-                await supabase
-                  .from('players')
-                  .update({
-                    fide_id: participant.fideId,
-                    city: participant.city,
-                    rating_std: participant.ratingStd,
-                    federation: participant.federation,
-                  })
-                  .eq('id', exactNameMatch.id);
-              }
-            }
-          }
-
-          if (!playerId) {
-            const createdPlayer = await createPlayer.mutateAsync({
-              full_name: participant.fullName,
-              fide_id: participant.fideId,
-              federation: participant.federation ?? 'BRA',
-              rating_std: participant.ratingStd,
-              city: participant.city,
-            });
-            playerId = createdPlayer.id;
-            created += 1;
-          }
-
-          if (!playerId) {
-            failed += 1;
-            continue;
-          }
-
-          if (tournamentPlayerIds.has(playerId)) {
-            skipped += 1;
-            continue;
-          }
-
-          await addPlayer.mutateAsync({
-            player_id: playerId,
-            initial_ranking: participant.initialRanking,
-            category_id: categoryId,
-          });
-
-          tournamentPlayerIds.add(playerId);
-          added += 1;
-        } catch (importErr: any) {
-          const message = String(importErr?.message ?? '');
-          if (message.includes('duplicate key') || message.includes('unique')) {
-            skipped += 1;
-          } else {
-            failed += 1;
-          }
-        }
-      }
-
+      const res = await fetch(`/api/admin/tournaments/${slug}/import-players`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao importar.');
       setImportReport(
-        `Importação concluída: ${added} adicionados, ${created} novos cadastros, ${reused} já existentes, ${skipped} ignorados, ${failed} falhas.`
+        `Importação concluída: ${data.added} adicionados, ${data.created} novos cadastros, ${data.reused} já existentes, ${data.skipped} ignorados, ${data.failed} falhas.`
       );
+      setImportUrl('');
     } catch (err: any) {
-      setError(err.message ?? 'Erro ao importar planilha.');
+      setError(err.message ?? 'Erro ao importar.');
     } finally {
       setImporting(false);
-      e.target.value = '';
     }
   }
 
@@ -333,20 +107,23 @@ export default function AdminPlayersPage({ params }: Props) {
         </p>
       )}
 
+      {/* Import by URL */}
       <div className="card p-4 mb-4">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Importar participantes por planilha</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Importar participantes por link</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-          Envie um arquivo `.xlsx` no padrão Chess-Results (Ranking inicial). Os jogadores serão cadastrados e vinculados ao torneio.
+          Cole o link de download do Chess-Results (padrão de ranking inicial). Os jogadores serão cadastrados e vinculados ao torneio.
         </p>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <input
-            type="file"
-            accept=".xlsx"
-            onChange={handleImportSpreadsheet}
+        <div className="flex gap-2">
+          <Input
+            placeholder="https://chess-results.com/..."
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
             disabled={importing}
-            className="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-700"
+            onKeyDown={(e) => e.key === 'Enter' && handleImportUrl()}
           />
-          {importing && <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">Importando...</Badge>}
+          <Button onClick={handleImportUrl} loading={importing} disabled={!importUrl.trim()}>
+            Importar
+          </Button>
         </div>
       </div>
 
