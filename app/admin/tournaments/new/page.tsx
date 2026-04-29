@@ -27,7 +27,7 @@ export default function NewTournamentPage() {
         .select()
         .single();
       if (err) throw err;
-      router.push(`/admin/tournaments/${data.slug}/edit`);
+      router.push('/admin');
     } catch (err: any) {
       setError(err.message ?? 'Erro ao criar torneio.');
     } finally {
