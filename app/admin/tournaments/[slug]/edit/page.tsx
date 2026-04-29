@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTournament, useUpdateTournament } from '@/lib/hooks/use-tournament';
+import { useTournament, useUpdateTournament, useDeleteTournament } from '@/lib/hooks/use-tournament';
 import { TournamentForm } from '@/components/tournament/tournament-form';
 import { PageSpinner } from '@/components/ui/spinner';
 import { createClient } from '@/lib/supabase/client';
@@ -18,7 +18,9 @@ export default function EditTournamentPage({ params }: Props) {
   const router = useRouter();
   const { data: tournament, isLoading } = useTournament(slug);
   const updateTournament = useUpdateTournament(tournament?.id ?? '');
+  const deleteTournament = useDeleteTournament(slug);
   const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p className="text-red-500">Torneio não encontrado.</p>;
@@ -30,6 +32,16 @@ export default function EditTournamentPage({ params }: Props) {
       router.push('/admin');
     } catch (err: any) {
       setError(err.message ?? 'Erro ao salvar.');
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteTournament.mutateAsync();
+      router.push('/admin');
+    } catch (err: any) {
+      setError(err.message ?? 'Erro ao excluir.');
+      setConfirmDelete(false);
     }
   }
 
@@ -98,6 +110,39 @@ export default function EditTournamentPage({ params }: Props) {
         loading={updateTournament.isPending}
         submitLabel="Salvar alterações"
       />
+
+      {/* Danger zone */}
+      <div className="mt-8 rounded-lg border border-red-200 dark:border-red-900/60 p-4">
+        <p className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Zona de perigo</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          Excluir o torneio remove permanentemente todos os participantes, rodadas e resultados.
+        </p>
+        {confirmDelete ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-red-700 dark:text-red-400">Tem certeza? Esta ação não pode ser desfeita.</span>
+            <button
+              onClick={handleDelete}
+              disabled={deleteTournament.isPending}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleteTournament.isPending ? 'Excluindo...' : 'Confirmar exclusão'}
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+          >
+            Excluir torneio
+          </button>
+        )}
+      </div>
     </div>
   );
 }

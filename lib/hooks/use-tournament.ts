@@ -269,6 +269,23 @@ export function useUpdatePairingResult(tournamentId: string) {
   });
 }
 
+export function useDeleteTournament(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/admin/tournaments/${slug}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? 'Erro ao excluir.');
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tournamentKeys.lists() });
+      qc.removeQueries({ queryKey: tournamentKeys.detail(slug) });
+    },
+  });
+}
+
 export function useAddTournamentPlayer(tournamentId: string) {
   const qc = useQueryClient();
   return useMutation({
