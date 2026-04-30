@@ -4,6 +4,7 @@ import { use, useState } from 'react';
 import { useTournament, useTournamentStandings, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { StandingsTable } from '@/components/tournament/standings-table';
+import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -90,8 +91,9 @@ export default function StandingsPage({ params }: Props) {
                   );
                 })()}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Desempate 1: Buchholz · Desempate 2: BH Corte 1 · Desempate 3: Sonneborn-Berger
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5">
+                Desempate 1 · Desempate 2 · Desempate 3
+                <TiebreakLegendButton />
               </p>
             </div>
 
