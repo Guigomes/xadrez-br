@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { isLocallyFollowed, toggleLocalFollow, getLocalFollowedPlayerIds } from '@/lib/utils/local-follows';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '@/types/database';
 
@@ -89,21 +90,35 @@ export function useSignOut() {
 }
 
 export function useFollowedInTournament(tournamentId: string) {
-  const { user } = useUser();
+  const { user, loading } = useUser();
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (user) return;
+    const handler = () =>
+      qc.invalidateQueries({ queryKey: ['followed-in-tournament', 'local', tournamentId] });
+    window.addEventListener('xbr:follows:changed', handler);
+    return () => window.removeEventListener('xbr:follows:changed', handler);
+  }, [user, tournamentId, qc]);
+
   return useQuery({
-    queryKey: ['followed-in-tournament', user?.id, tournamentId],
-    enabled: !!user && !!tournamentId,
+    queryKey: ['followed-in-tournament', user?.id ?? 'local', tournamentId],
+    enabled: !loading && !!tournamentId,
     staleTime: 30_000,
     queryFn: async () => {
-      if (!user) return { playerIds: new Set<string>(), tpIds: new Set<string>() };
+      let playerIds: Set<string>;
 
-      const { data: follows } = await getClient()
-        .from('player_follows')
-        .select('player_id')
-        .eq('user_id', user.id)
-        .eq('tournament_id', tournamentId);
+      if (user) {
+        const { data: follows } = await getClient()
+          .from('player_follows')
+          .select('player_id')
+          .eq('user_id', user.id)
+          .eq('tournament_id', tournamentId);
+        playerIds = new Set<string>((follows ?? []).map((f) => f.player_id));
+      } else {
+        playerIds = getLocalFollowedPlayerIds(tournamentId);
+      }
 
-      const playerIds = new Set<string>((follows ?? []).map((f) => f.player_id));
       if (!playerIds.size) return { playerIds, tpIds: new Set<string>() };
 
       const { data: tps } = await getClient()
@@ -122,7 +137,12 @@ export function usePlayerFollow(playerId: string, tournamentId?: string) {
   const { user } = useUser();
   const qc = useQueryClient();
 
-  const { data: isFollowing } = useQuery({
+  const [localFollowing, setLocalFollowing] = useState(false);
+  useEffect(() => {
+    setLocalFollowing(isLocallyFollowed(playerId, tournamentId ?? null));
+  }, [playerId, tournamentId]);
+
+  const { data: dbFollowing } = useQuery({
     queryKey: ['follow', user?.id, playerId, tournamentId],
     queryFn: async () => {
       if (!user) return false;
@@ -139,9 +159,15 @@ export function usePlayerFollow(playerId: string, tournamentId?: string) {
     enabled: !!user,
   });
 
+  const isFollowing = user ? (dbFollowing ?? false) : localFollowing;
+
   const toggleFollow = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error('Not authenticated');
+      if (!user) {
+        const next = toggleLocalFollow(playerId, tournamentId ?? null);
+        setLocalFollowing(next);
+        return;
+      }
       if (isFollowing) {
         const query = getClient()
           .from('player_follows')
@@ -160,9 +186,11 @@ export function usePlayerFollow(playerId: string, tournamentId?: string) {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['follow', user?.id, playerId, tournamentId] });
+      if (user) {
+        qc.invalidateQueries({ queryKey: ['follow', user?.id, playerId, tournamentId] });
+      }
     },
   });
 
-  return { isFollowing: isFollowing ?? false, toggleFollow, user };
+  return { isFollowing, toggleFollow, user };
 }

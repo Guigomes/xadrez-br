@@ -164,20 +164,14 @@ export default function PlayerTournamentPage({ params }: Props) {
         {/* Actions */}
         <div className="flex gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 mt-3">
           <ShareButton title={`${displayName} – ${tournament.name}`} />
-          {user ? (
-            <Button
-              variant={isFollowing ? 'secondary' : 'primary'}
-              size="sm"
-              onClick={() => toggleFollow.mutate()}
-              loading={toggleFollow.isPending}
-            >
-              {isFollowing ? '★ Seguindo' : '☆ Acompanhar'}
-            </Button>
-          ) : (
-            <Link href="/login">
-              <Button variant="secondary" size="sm">☆ Acompanhar</Button>
-            </Link>
-          )}
+          <Button
+            variant={isFollowing ? 'secondary' : 'primary'}
+            size="sm"
+            onClick={() => toggleFollow.mutate()}
+            loading={toggleFollow.isPending}
+          >
+            {isFollowing ? '★ Seguindo' : '☆ Acompanhar'}
+          </Button>
         </div>
       </div>
 
