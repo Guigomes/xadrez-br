@@ -88,9 +88,7 @@ export default async function TournamentLayout({ children, params }: Props) {
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
               {tournament.name}
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {[tournament.venue, `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}
-            </p>
+            
           </div>
 
           <TournamentTabs slug={slug} roundsCount={tournament.rounds_count} status={tournament.status} currentRoundNumber={currentRoundNumber} />

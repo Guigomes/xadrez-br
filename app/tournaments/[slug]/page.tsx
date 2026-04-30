@@ -34,6 +34,9 @@ export default async function TournamentOverviewPage({ params }: Props) {
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Meta info — only shown on the overview page */}
       <div className="lg:col-span-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-2">
+        {(tournament.venue || tournament.city) && (
+          <span>📍 {[tournament.venue, `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}</span>
+        )}
         <span>📅 {formatDateRange(tournament.start_date, tournament.end_date)}</span>
         {tournament.registration_start_date && (
           <span>📝 Inscrições: {formatDateRange(tournament.registration_start_date, tournament.registration_end_date)}</span>
