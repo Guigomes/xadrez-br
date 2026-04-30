@@ -91,7 +91,7 @@ export default function StandingsPage({ params }: Props) {
                 })()}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Desempates: Buchholz → BH Corte 1 → Sonneborn-Berger
+                Desempate 1: Buchholz · Desempate 2: BH Corte 1 · Desempate 3: Sonneborn-Berger
               </p>
             </div>
 
