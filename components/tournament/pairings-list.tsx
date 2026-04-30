@@ -142,17 +142,17 @@ function PlayerLink({
 
   const content = (
     <>
-      <div className={`flex items-center gap-1.5 ${alignRight ? 'justify-end' : ''}`}>
+      <div className={`flex items-center justify-center gap-1.5`}>
         {followed && !alignRight && <span className="text-brand-500 text-xs">★</span>}
         {color === 'white'
           ? <WhitePawn className="h-4 w-3 shrink-0" />
           : <BlackPawn className="h-4 w-3 shrink-0" />
         }
-        <span className={`text-sm leading-tight ${nameClass}`}>{name}</span>
+        <span className={`text-xs leading-tight ${nameClass}`}>{name}</span>
         {isWinner && <span className="text-xs">🏆</span>}
         {followed && alignRight && <span className="text-brand-500 text-xs">★</span>}
       </div>
-      <p className={`text-xs mt-0.5 ${alignRight ? 'text-right' : ''} ${isLoser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400'}`}>
+      <p className={`text-xs mt-0.5 text-center ${isLoser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400'}`}>
         {rating ? `Rating ${rating}` : 'Sem rating'}
         {score !== null && ` · ${formatScore(score)} pts`}
       </p>
