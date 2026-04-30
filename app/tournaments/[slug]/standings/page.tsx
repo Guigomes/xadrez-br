@@ -92,7 +92,7 @@ export default function StandingsPage({ params }: Props) {
                 })()}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5">
-                Desempate 1 · Desempate 2 · Desempate 3
+                Critérios de desempate: Buchholz · BH Corte 1 · Sonneborn-Berger
                 <TiebreakLegendButton />
               </p>
             </div>

@@ -87,7 +87,7 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds }:
             <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{row.full_name}</p>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
-            Desemp 1: {formatTiebreak(row.buchholz)} · Desemp 2: {formatTiebreak(row.buchholz_cut1)}
+            BH: {formatTiebreak(row.buchholz)} · BH-1: {formatTiebreak(row.buchholz_cut1)} · SB: {formatTiebreak(row.sonneborn_berger)}
             {row.rating_std && ` · ${row.rating_std}`}
           </p>
         </div>
