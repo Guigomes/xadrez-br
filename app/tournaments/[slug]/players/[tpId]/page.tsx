@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import React, { use } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { useTournament, useTournamentStandings, usePlayerHistory } from '@/lib/hooks/use-tournament';
@@ -204,16 +204,59 @@ export default function PlayerTournamentPage({ params }: Props) {
 
 function TiebreakRow({ info, value }: { info: { label: string; short: string; description: string }; value: string }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-center gap-3">
       <div className="w-12 shrink-0 text-right">
         <span className="text-base font-bold text-gray-900 dark:text-gray-100 tabular-nums">{value}</span>
         <span className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide">{info.short}</span>
       </div>
-      <div className="flex-1 min-w-0 pt-0.5">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight">{info.label}</p>
-        <p className="text-xs text-gray-400 mt-0.5 leading-snug">{info.description}</p>
+      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight">{info.label}</span>
+        <TiebreakInfoButton info={info} />
       </div>
     </div>
+  );
+}
+
+function TiebreakInfoButton({ info }: { info: { label: string; short: string; description: string } }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold text-gray-400 border border-gray-300 dark:border-gray-600 hover:text-gray-600 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-400 leading-none shrink-0 transition-colors"
+        aria-label={`Saiba mais sobre ${info.label}`}
+      >
+        ?
+      </button>
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-gray-100">{info.label}</p>
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{info.short}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none mt-0.5 transition-colors"
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{info.description}</p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
