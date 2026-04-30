@@ -207,8 +207,9 @@ function TiebreakRow({ info, value }: { info: { label: string; short: string; de
     <div className="flex items-center gap-3">
       <div className="w-12 shrink-0 text-right">
         <span className="text-base font-bold text-gray-900 dark:text-gray-100 tabular-nums">{value}</span>
+        <span className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide">{info.short}</span>
       </div>
-      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{info.short}</span>
+      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight">{info.label}</span>
     </div>
   );
 }

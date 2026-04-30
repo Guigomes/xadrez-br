@@ -64,7 +64,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
               </Link>
             </div>
             <div className="space-y-2">
-              {(topStandings ?? []).slice(0, 5).map((row: any) => (
+              {(topStandings ?? []).map((row: any) => (
                 <Link
                   key={row.tp_id}
                   href={`/tournaments/${slug}/players/${row.tp_id}`}
