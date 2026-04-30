@@ -6,19 +6,23 @@ import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '@/types/database';
 
-const supabase = createClient();
+let _client: ReturnType<typeof createClient> | null = null;
+function getClient() {
+  if (!_client) _client = createClient();
+  return _client;
+}
 
 export function useUser() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    getClient().auth.getUser().then(({ data }) => {
       setUser(data.user);
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = getClient().auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 
@@ -34,7 +38,7 @@ export function useProfile() {
     queryKey: ['profile', user?.id],
     queryFn: async (): Promise<UserProfile | null> => {
       if (!user) return null;
-      const { data, error } = await supabase
+      const { data, error } = await getClient()
         .from('user_profiles')
         .select('*')
         .eq('id', user.id)
@@ -50,7 +54,7 @@ export function useProfile() {
 export function useSignIn() {
   return useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await getClient().auth.signInWithPassword({ email, password });
       if (error) throw error;
       return data;
     },
@@ -60,7 +64,7 @@ export function useSignIn() {
 export function useSignUp() {
   return useMutation({
     mutationFn: async ({ email, password, fullName }: { email: string; password: string; fullName: string }) => {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await getClient().auth.signUp({
         email,
         password,
         options: { data: { full_name: fullName } },
@@ -75,7 +79,7 @@ export function useSignOut() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await getClient().auth.signOut();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -93,7 +97,7 @@ export function useFollowedInTournament(tournamentId: string) {
     queryFn: async () => {
       if (!user) return { playerIds: new Set<string>(), tpIds: new Set<string>() };
 
-      const { data: follows } = await supabase
+      const { data: follows } = await getClient()
         .from('player_follows')
         .select('player_id')
         .eq('user_id', user.id)
@@ -102,7 +106,7 @@ export function useFollowedInTournament(tournamentId: string) {
       const playerIds = new Set<string>((follows ?? []).map((f) => f.player_id));
       if (!playerIds.size) return { playerIds, tpIds: new Set<string>() };
 
-      const { data: tps } = await supabase
+      const { data: tps } = await getClient()
         .from('tournament_players')
         .select('id')
         .eq('tournament_id', tournamentId)
@@ -122,7 +126,7 @@ export function usePlayerFollow(playerId: string, tournamentId?: string) {
     queryKey: ['follow', user?.id, playerId, tournamentId],
     queryFn: async () => {
       if (!user) return false;
-      const query = supabase
+      const query = getClient()
         .from('player_follows')
         .select('id')
         .eq('user_id', user.id)
@@ -139,7 +143,7 @@ export function usePlayerFollow(playerId: string, tournamentId?: string) {
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
       if (isFollowing) {
-        const query = supabase
+        const query = getClient()
           .from('player_follows')
           .delete()
           .eq('user_id', user.id)
@@ -149,7 +153,7 @@ export function usePlayerFollow(playerId: string, tournamentId?: string) {
         const { error } = await query;
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { error } = await getClient()
           .from('player_follows')
           .insert({ user_id: user.id, player_id: playerId, tournament_id: tournamentId ?? null });
         if (error) throw error;
