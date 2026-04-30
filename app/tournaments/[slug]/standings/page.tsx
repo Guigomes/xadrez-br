@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useTournament, useTournamentStandings } from '@/lib/hooks/use-tournament';
+import { useTournament, useTournamentStandings, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { StandingsTable } from '@/components/tournament/standings-table';
 import { PageSpinner } from '@/components/ui/spinner';
@@ -17,6 +17,7 @@ export default function StandingsPage({ params }: Props) {
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(
     tournament?.id ?? ''
   );
+  const { data: rounds } = useTournamentRounds(tournament?.id ?? '');
   const { data: followed } = useFollowedInTournament(tournament?.id ?? '');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -50,6 +51,17 @@ export default function StandingsPage({ params }: Props) {
 
   const isOngoing = tournament?.status === 'ongoing';
 
+  // Most recent round with any status
+  const latestRound = rounds?.length
+    ? rounds.reduce((a, b) => (b.round_number > a.round_number ? b : a))
+    : null;
+
+  const roundStatusLabel: Record<string, { label: string; className: string }> = {
+    pending:  { label: 'Aguardando',  className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
+    ongoing:  { label: 'Em andamento', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' },
+    finished: { label: 'Encerrada',   className: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' },
+  };
+
   return (
     <div>
       {isOngoing && (
@@ -63,11 +75,21 @@ export default function StandingsPage({ params }: Props) {
         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                {selectedCategory === 'all' ? 'Classificação geral' : selectedCategory}
-                {' · '}
-                {displayed.length} jogador{displayed.length !== 1 ? 'es' : ''}
-              </h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+                  {selectedCategory === 'all' ? 'Classificação geral' : selectedCategory}
+                  {' · '}
+                  {displayed.length} jogador{displayed.length !== 1 ? 'es' : ''}
+                </h2>
+                {latestRound && (() => {
+                  const s = roundStatusLabel[latestRound.status] ?? roundStatusLabel.pending;
+                  return (
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${s.className}`}>
+                      Rodada {latestRound.round_number} · {s.label}
+                    </span>
+                  );
+                })()}
+              </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 Desempates: Buchholz → BH Corte 1 → Sonneborn-Berger
               </p>

@@ -2,12 +2,13 @@
 
 import { use } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { useTournament, useTournamentStandings, usePlayerHistory } from '@/lib/hooks/use-tournament';
 import { usePlayerFollow } from '@/lib/hooks/use-auth';
+import { createClient } from '@/lib/supabase/client';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
-import { Tooltip } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { formatScore, formatTiebreak, resultBadgeColor, resultLabel, TIEBREAK_INFO } from '@/lib/utils/chess';
 import type { PlayerHistoryRow } from '@/types/database';
@@ -21,14 +22,51 @@ export default function PlayerTournamentPage({ params }: Props) {
   const { data: tournament } = useTournament(slug);
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(tournament?.id ?? '');
   const playerRow = standings?.find((s) => s.tp_id === tpId);
+
+  // Fallback: fetch basic player info directly when standings don't exist yet
+  const { data: tpBasic, isLoading: loadingTpBasic } = useQuery({
+    queryKey: ['tp-basic', tpId],
+    enabled: !loadingStandings && !playerRow,
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('tournament_players')
+        .select('player_id, initial_ranking, players(full_name, rating_std, state), tournament_categories(name)')
+        .eq('id', tpId)
+        .single();
+      return data;
+    },
+    staleTime: Infinity,
+  });
+
+  const playerId = playerRow?.player_id ?? (tpBasic?.player_id as string | undefined);
   const { data: history, isLoading: loadingHistory } = usePlayerHistory(tournament?.id ?? '', tpId);
-  const { isFollowing, toggleFollow, user } = usePlayerFollow(playerRow?.player_id ?? '', tournament?.id);
+  const { isFollowing, toggleFollow, user } = usePlayerFollow(playerId ?? '', tournament?.id);
 
-  if (loadingStandings || !tournament || !playerRow) return <PageSpinner />;
+  const { data: playerProfile } = useQuery({
+    queryKey: ['player-profile', playerId],
+    enabled: !!playerId,
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('players')
+        .select('fide_id, cbx_id')
+        .eq('id', playerId!)
+        .single();
+      return data;
+    },
+    staleTime: Infinity,
+  });
 
-  const w = playerRow.wins ?? 0;
-  const d = playerRow.draws ?? 0;
-  const l = playerRow.losses ?? 0;
+  if (!tournament || loadingStandings || (!playerRow && loadingTpBasic)) return <PageSpinner />;
+
+  // Build a display object from standings (if available) or fallback to tp basic info
+  const tp = tpBasic as { player_id: string; initial_ranking: number | null; players: { full_name: string; rating_std: number | null; state: string | null } | null; tournament_categories: { name: string } | null } | null | undefined;
+  const displayName = playerRow?.full_name ?? (tp?.players as { full_name: string } | null)?.full_name ?? '';
+  const displayRating = playerRow?.rating_std ?? (tp?.players as { rating_std: number | null } | null)?.rating_std ?? null;
+  const displayState = playerRow?.state ?? (tp?.players as { state: string | null } | null)?.state ?? null;
+  const displayCategory = playerRow?.category_name ?? (tp?.tournament_categories as { name: string } | null)?.name ?? null;
+  const displayRank = playerRow?.rank ?? null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -38,62 +76,94 @@ export default function PlayerTournamentPage({ params }: Props) {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold
-                ${playerRow.rank === 1 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-                ${playerRow.rank === 2 ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' : ''}
-                ${playerRow.rank === 3 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
-                ${(playerRow.rank ?? 0) > 3 ? 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400' : ''}
+                ${displayRank === 1 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
+                ${displayRank === 2 ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' : ''}
+                ${displayRank === 3 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
+                ${(displayRank ?? 0) > 3 ? 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400' : ''}
+                ${displayRank === null ? 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400' : ''}
               `}>
-                {playerRow.rank ?? '–'}
+                {displayRank ?? '–'}
               </span>
-              <span className="text-xs text-gray-400">de {standings?.length}</span>
+              {standings?.length ? <span className="text-xs text-gray-400">de {standings.length}</span> : null}
             </div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{playerRow.full_name}</h1>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {playerRow.state && <span className="text-xs text-gray-500">{playerRow.state}</span>}
-              {playerRow.rating_std && (
-                <span className="text-xs text-gray-500">Rating {playerRow.rating_std}</span>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{displayName}</h1>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+              {displayState && <span className="text-xs text-gray-500">{displayState}</span>}
+              {displayRating && (
+                <span className="text-xs text-gray-500">Rating {displayRating}</span>
               )}
-              {playerRow.category_name && (
+              {displayCategory && (
                 <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300 text-xs">
-                  {playerRow.category_name}
+                  {displayCategory}
                 </Badge>
               )}
             </div>
+            {(playerProfile?.fide_id || playerProfile?.cbx_id) && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                {playerProfile.fide_id && (
+                  <a
+                    href={`https://ratings.fide.com/profile/${playerProfile.fide_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"
+                  >
+                    FIDE #{playerProfile.fide_id}
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                  </a>
+                )}
+                {playerProfile.cbx_id && (
+                  <a
+                    href={`https://www.cbx.org.br/enxadristas/?id=${playerProfile.cbx_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"
+                  >
+                    CBX #{playerProfile.cbx_id}
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <span className="text-3xl font-bold text-brand-600 dark:text-brand-400 tabular-nums">
-              {formatScore(playerRow.points)}
-            </span>
-            <span className="text-xs text-gray-400">pontos</span>
-          </div>
+          {playerRow && (
+            <div className="flex flex-col items-end gap-2">
+              <span className="text-3xl font-bold text-brand-600 dark:text-brand-400 tabular-nums">
+                {formatScore(playerRow.points)}
+              </span>
+              <span className="text-xs text-gray-400">pontos</span>
+            </div>
+          )}
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3 py-3 border-t border-gray-100 dark:border-gray-800 text-center">
-          <div>
-            <p className="text-lg font-bold text-green-600 dark:text-green-400">{w}</p>
-            <p className="text-xs text-gray-500">Vitórias</p>
-          </div>
-          <div>
-            <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{d}</p>
-            <p className="text-xs text-gray-500">Empates</p>
-          </div>
-          <div>
-            <p className="text-lg font-bold text-red-500 dark:text-red-400">{l}</p>
-            <p className="text-xs text-gray-500">Derrotas</p>
-          </div>
-        </div>
+        {/* Stats row — only when standings exist */}
+        {playerRow && (
+          <>
+            <div className="grid grid-cols-3 gap-3 py-3 border-t border-gray-100 dark:border-gray-800 text-center">
+              <div>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400">{playerRow.wins ?? 0}</p>
+                <p className="text-xs text-gray-500">Vitórias</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{playerRow.draws ?? 0}</p>
+                <p className="text-xs text-gray-500">Empates</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-red-500 dark:text-red-400">{playerRow.losses ?? 0}</p>
+                <p className="text-xs text-gray-500">Derrotas</p>
+              </div>
+            </div>
 
-        {/* Tiebreaks */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-          <TiebreakCell label={TIEBREAK_INFO.buchholz.label} short={TIEBREAK_INFO.buchholz.short} value={formatTiebreak(playerRow.buchholz)} desc={TIEBREAK_INFO.buchholz.description} />
-          <TiebreakCell label={TIEBREAK_INFO.buchholz_cut1.label} short={TIEBREAK_INFO.buchholz_cut1.short} value={formatTiebreak(playerRow.buchholz_cut1)} desc={TIEBREAK_INFO.buchholz_cut1.description} />
-          <TiebreakCell label={TIEBREAK_INFO.sonneborn_berger.label} short={TIEBREAK_INFO.sonneborn_berger.short} value={formatTiebreak(playerRow.sonneborn_berger)} desc={TIEBREAK_INFO.sonneborn_berger.description} />
-        </div>
+            <div className="flex flex-col gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <TiebreakRow info={TIEBREAK_INFO.buchholz} value={formatTiebreak(playerRow.buchholz)} />
+              <TiebreakRow info={TIEBREAK_INFO.buchholz_cut1} value={formatTiebreak(playerRow.buchholz_cut1)} />
+              <TiebreakRow info={TIEBREAK_INFO.sonneborn_berger} value={formatTiebreak(playerRow.sonneborn_berger)} />
+            </div>
+          </>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 mt-3">
-          <ShareButton title={`${playerRow.full_name} – ${tournament.name}`} />
+          <ShareButton title={`${displayName} – ${tournament.name}`} />
           {user ? (
             <Button
               variant={isFollowing ? 'secondary' : 'primary'}
@@ -132,14 +202,18 @@ export default function PlayerTournamentPage({ params }: Props) {
   );
 }
 
-function TiebreakCell({ label, short, value, desc }: { label: string; short: string; value: string; desc: string }) {
+function TiebreakRow({ info, value }: { info: { label: string; short: string; description: string }; value: string }) {
   return (
-    <Tooltip content={desc}>
-      <div className="text-center cursor-help">
-        <p className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">{value}</p>
-        <p className="text-xs text-gray-400 border-b border-dashed border-gray-300 dark:border-gray-600 inline-block">{short}</p>
+    <div className="flex items-start gap-3">
+      <div className="w-12 shrink-0 text-right">
+        <span className="text-base font-bold text-gray-900 dark:text-gray-100 tabular-nums">{value}</span>
+        <span className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide">{info.short}</span>
       </div>
-    </Tooltip>
+      <div className="flex-1 min-w-0 pt-0.5">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight">{info.label}</p>
+        <p className="text-xs text-gray-400 mt-0.5 leading-snug">{info.description}</p>
+      </div>
+    </div>
   );
 }
 

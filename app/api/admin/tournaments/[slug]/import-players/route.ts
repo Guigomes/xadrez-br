@@ -42,7 +42,10 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
 
   const participants: ImportedParticipant[] = [];
   for (const row of asStr.slice(headerIdx + 1)) {
-    const fullName = row[nameIdx] ?? '';
+    const rawName = row[nameIdx] ?? '';
+    const fullName = rawName.includes(',')
+      ? rawName.split(',').map((s: string) => s.trim()).filter(Boolean).reverse().join(' ')
+      : rawName;
     if (!fullName) continue;
     if (normalize(fullName).startsWith('encontrara todos os detalhes')) break;
     if (normalize(fullName).includes('chess-results')) continue;

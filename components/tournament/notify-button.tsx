@@ -18,6 +18,39 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output;
 }
 
+// Registers /push-sw.js (minimal, no workbox) and waits for it to activate.
+async function getPushRegistration(): Promise<ServiceWorkerRegistration> {
+  const reg = await navigator.serviceWorker.register('/push-sw.js');
+
+  // If already active (e.g. returning visit), return immediately
+  if (reg.active) return reg;
+
+  // Wait for activation with proper statechange handling
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Service worker não ativou. Recarregue a página e tente novamente.')),
+      15000
+    );
+    const done = (ok: boolean, msg?: string) => {
+      clearTimeout(timer);
+      if (ok) resolve(reg);
+      else reject(new Error(msg ?? 'Service worker falhou ao instalar.'));
+    };
+    const watch = (sw: ServiceWorker) => {
+      // Check current state before adding listener (handles fast activation)
+      if (sw.state === 'activated') return done(true);
+      if (sw.state === 'redundant') return done(false);
+      sw.addEventListener('statechange', function h() {
+        if (sw.state === 'activated') { sw.removeEventListener('statechange', h); done(true); }
+        else if (sw.state === 'redundant') { sw.removeEventListener('statechange', h); done(false); }
+      });
+    };
+    if (reg.installing) watch(reg.installing);
+    else if (reg.waiting) watch(reg.waiting);
+    else done(false, 'Service worker não encontrado.');
+  });
+}
+
 export function NotifyButton({ tournamentId }: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -31,9 +64,8 @@ export function NotifyButton({ tournamentId }: Props) {
       setStatus('denied');
       return;
     }
-    // Use getRegistration instead of .ready to avoid hanging forever
-    navigator.serviceWorker.getRegistration().then((reg) => {
-      if (!reg) return; // SW not yet registered — stays idle
+    navigator.serviceWorker.getRegistration('/push-sw.js').then((reg) => {
+      if (!reg) return;
       reg.pushManager.getSubscription().then((sub) => {
         if (sub) setStatus('subscribed');
       });
@@ -45,34 +77,18 @@ export function NotifyButton({ tournamentId }: Props) {
     setErrorMsg('');
 
     try {
-      // Ensure SW is registered (next-pwa registers automatically, but may not be active yet)
-      let reg = await navigator.serviceWorker.getRegistration();
-      if (!reg) {
-        reg = await navigator.serviceWorker.register('/sw.js');
-      }
-      // Wait for it to become active, with a timeout
-      if (!reg.active) {
-        await Promise.race([
-          new Promise<void>((resolve) => {
-            const sw = reg!.installing ?? reg!.waiting;
-            if (!sw) { resolve(); return; }
-            sw.addEventListener('statechange', function handler() {
-              if (sw.state === 'activated') { sw.removeEventListener('statechange', handler); resolve(); }
-            });
-          }),
-          new Promise<void>((_, reject) => setTimeout(() => reject(new Error('Service worker não ativou. Tente recarregar a página.')), 10000)),
-        ]);
-      }
-
       if (status === 'subscribed') {
-        const sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          await sub.unsubscribe();
-          await fetch('/api/push/subscribe', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: sub.endpoint }),
-          });
+        const reg = await navigator.serviceWorker.getRegistration('/push-sw.js');
+        if (reg) {
+          const sub = await reg.pushManager.getSubscription();
+          if (sub) {
+            await sub.unsubscribe();
+            await fetch('/api/push/subscribe', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ endpoint: sub.endpoint }),
+            });
+          }
         }
         setStatus('idle');
         return;
@@ -81,8 +97,10 @@ export function NotifyButton({ tournamentId }: Props) {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') { setStatus('denied'); return; }
 
+      const reg = await getPushRegistration();
+
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidKey) throw new Error('VAPID key not configured');
+      if (!vapidKey) throw new Error('VAPID key não configurada');
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,

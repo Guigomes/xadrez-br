@@ -105,13 +105,21 @@ export async function POST(
   if (tournament.created_by !== user.id)
     return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 });
 
-  const formData = await request.formData();
-  const file = formData.get('file') as File | null;
-  if (!file) return NextResponse.json({ error: 'Arquivo não enviado.' }, { status: 400 });
+  const { url } = await request.json();
+  if (!url || typeof url !== 'string') return NextResponse.json({ error: 'URL inválida.' }, { status: 400 });
+
+  let fileBuffer: ArrayBuffer;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    fileBuffer = await res.arrayBuffer();
+  } catch (err) {
+    return NextResponse.json({ error: `Erro ao baixar o arquivo: ${(err as Error).message}` }, { status: 422 });
+  }
 
   let parsed: ParsedFile;
   try {
-    parsed = parseExcel(await file.arrayBuffer());
+    parsed = parseExcel(fileBuffer);
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 422 });
   }
@@ -183,17 +191,8 @@ export async function POST(
   if (t) {
     const roundUrl = `/tournaments/${t.slug}/rounds/${roundNumber}`;
 
-    // Tournament-wide notification
-    sendTournamentNotification(tournament.id, {
-      title: t.name,
-      body: `Rodada ${roundNumber} publicada — ${toInsert.length} emparceiramentos`,
-      url: roundUrl,
-    }).catch(() => {});
-
-    // Per-player notifications for followed players
     const inserted = toInsert as Array<{ white_tp_id: string; black_tp_id: string | null; board_number: number | null; is_bye: boolean }>;
 
-    // Fetch names for all tp_ids involved
     const allTpIds = [...new Set(inserted.flatMap((p) => [p.white_tp_id, p.black_tp_id].filter(Boolean) as string[]))];
     const { data: tpNames } = await supabase
       .from('tournament_players')
@@ -225,7 +224,15 @@ export async function POST(
       return entries;
     });
 
-    notifyPlayerFollowers(tournament.id, notifyPlayers).catch(() => {});
+    await Promise.all([
+      sendTournamentNotification(tournament.id, {
+        title: t.name,
+        body: `Rodada ${roundNumber} publicada — ${toInsert.length} emparceiramentos`,
+        url: roundUrl,
+      }).catch((e) => console.error('[push] tournament notification error:', e)),
+      notifyPlayerFollowers(tournament.id, notifyPlayers)
+        .catch((e) => console.error('[push] player followers error:', e)),
+    ]);
   }
 
   return NextResponse.json({ roundNumber, imported: toInsert.length, unmatched: unmatched.length, unmatchedPlayers: unmatched });

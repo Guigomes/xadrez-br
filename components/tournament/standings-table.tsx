@@ -125,7 +125,9 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds }:
         <tbody>
           {followed.map((row) => <DesktopRow key={row.tp_id} row={row} highlighted />)}
           {hasFollowed && followed.length > 0 && rest.length > 0 && (
-            <tr><td colSpan={7} className="py-1 bg-gray-50 dark:bg-gray-900/50" /></tr>
+            <tr><td colSpan={7} className="py-3 bg-gray-50 dark:bg-gray-900/50">
+              <div className="border-t-2 border-dashed border-gray-300 dark:border-gray-700 mx-2" />
+            </td></tr>
           )}
           {rest.map((row) => <DesktopRow key={row.tp_id} row={row} />)}
         </tbody>
@@ -135,7 +137,9 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds }:
       <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800/60">
         {followed.map((row) => <MobileRow key={row.tp_id} row={row} highlighted />)}
         {hasFollowed && followed.length > 0 && rest.length > 0 && (
-          <div className="h-1 bg-gray-50 dark:bg-gray-900/50" />
+          <div className="py-3 bg-gray-50 dark:bg-gray-900/50">
+            <div className="border-t-2 border-dashed border-gray-300 dark:border-gray-700 mx-3" />
+          </div>
         )}
         {rest.map((row) => <MobileRow key={row.tp_id} row={row} />)}
       </div>

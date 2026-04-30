@@ -73,15 +73,21 @@ export async function POST(
   if (tournament.created_by !== user.id)
     return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 });
 
-  // Parse file
-  const formData = await request.formData();
-  const file = formData.get('file') as File | null;
-  if (!file) return NextResponse.json({ error: 'Arquivo não enviado.' }, { status: 400 });
+  const { url } = await request.json();
+  if (!url || typeof url !== 'string') return NextResponse.json({ error: 'URL inválida.' }, { status: 400 });
+
+  let fileBuffer: ArrayBuffer;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    fileBuffer = await res.arrayBuffer();
+  } catch (err) {
+    return NextResponse.json({ error: `Erro ao baixar o arquivo: ${(err as Error).message}` }, { status: 422 });
+  }
 
   let rows: StandingRow[];
   try {
-    const buffer = await file.arrayBuffer();
-    rows = parseExcel(buffer);
+    rows = parseExcel(fileBuffer);
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 422 });
   }
@@ -127,6 +133,20 @@ export async function POST(
 
   if (standingsError) return NextResponse.json({ error: standingsError.message }, { status: 500 });
 
+  // Close the most recent ongoing round automatically
+  const { data: ongoingRound } = await supabase
+    .from('rounds')
+    .select('id, round_number')
+    .eq('tournament_id', tournament.id)
+    .eq('status', 'ongoing')
+    .order('round_number', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (ongoingRound) {
+    await supabase.from('rounds').update({ status: 'finished' }).eq('id', ongoingRound.id);
+  }
+
   // Sync tournament_players scores and rankings
   for (const { tournament_player_id, row } of matched) {
     await supabase
@@ -146,14 +166,6 @@ export async function POST(
   if (t) {
     const standingsUrl = `/tournaments/${t.slug}/standings`;
 
-    // Tournament-wide notification
-    sendTournamentNotification(tournament.id, {
-      title: t.name,
-      body: `Classificação atualizada — ${matched.length} jogadores`,
-      url: standingsUrl,
-    }).catch(() => {});
-
-    // Per-player notifications for followed players
     const notifyPlayers = matched.map(({ tournament_player_id, row }) => ({
       tpId: tournament_player_id,
       makePayload: (playerName: string) => {
@@ -166,7 +178,15 @@ export async function POST(
       },
     }));
 
-    notifyPlayerFollowers(tournament.id, notifyPlayers).catch(() => {});
+    await Promise.all([
+      sendTournamentNotification(tournament.id, {
+        title: t.name,
+        body: `Classificação atualizada — ${matched.length} jogadores`,
+        url: standingsUrl,
+      }).catch((e) => console.error('[push] standings tournament error:', e)),
+      notifyPlayerFollowers(tournament.id, notifyPlayers)
+        .catch((e) => console.error('[push] standings player followers error:', e)),
+    ]);
   }
 
   return NextResponse.json({

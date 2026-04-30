@@ -113,7 +113,9 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds }: Pairin
     <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
       {followed.map((p) => <PairingRow key={p.pairing_id} pairing={p} highlighted />)}
       {hasFollowed && followed.length > 0 && rest.length > 0 && (
-        <div className="h-1" />
+        <div className="py-3 bg-gray-50 dark:bg-gray-900/50">
+          <div className="border-t-2 border-dashed border-gray-300 dark:border-gray-700 mx-3" />
+        </div>
       )}
       {rest.map((p) => <PairingRow key={p.pairing_id} pairing={p} />)}
     </div>

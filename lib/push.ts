@@ -1,16 +1,20 @@
 import webpush from 'web-push';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
+
+type AdminClient = ReturnType<typeof createAdminClient>;
 
 function initVapid() {
+  const email = process.env.VAPID_EMAIL!;
+  const subject = email.startsWith('mailto:') ? email : `mailto:${email}`;
   webpush.setVapidDetails(
-    process.env.VAPID_EMAIL!,
+    subject,
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
     process.env.VAPID_PRIVATE_KEY!
   );
 }
 
 async function sendToSubscriptions(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  admin: AdminClient,
   subs: { endpoint: string; p256dh: string; auth: string }[],
   payload: object
 ) {
@@ -20,39 +24,45 @@ async function sendToSubscriptions(
     subs.map((sub) =>
       webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        message
+        message,
+        { urgency: 'high', TTL: 300 }
       )
     )
   );
-  const stale = results
-    .map((r, i) => ({ r, endpoint: subs[i].endpoint }))
-    .filter(({ r }) => r.status === 'rejected' && [410, 404].includes((r.reason as any)?.statusCode))
-    .map(({ endpoint }) => endpoint);
+  const stale: string[] = [];
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      console.log(`[push] sent ok to ${subs[i].endpoint.slice(0, 60)}`);
+    } else {
+      const code = (r.reason as any)?.statusCode;
+      console.error(`[push] failed (${code}):`, r.reason?.message ?? r.reason);
+      if ([410, 404].includes(code)) stale.push(subs[i].endpoint);
+    }
+  });
   if (stale.length) {
-    await supabase.from('push_subscriptions').delete().in('endpoint', stale);
+    await admin.from('push_subscriptions').delete().in('endpoint', stale);
   }
 }
 
-// Notify all subscribers of a tournament (no user filter)
+// Notify all subscribers of a tournament regardless of user_id
 export async function sendTournamentNotification(
   tournamentId: string,
   payload: { title: string; body: string; url?: string }
 ) {
   initVapid();
-  const supabase = await createClient();
-  const { data: subs } = await supabase
+  const admin = createAdminClient();
+  const { data: subs, error } = await admin
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
-    .eq('tournament_id', tournamentId)
-    .is('user_id', null); // tournament-wide subs have no user_id
+    .eq('tournament_id', tournamentId);
 
-  await sendToSubscriptions(supabase, subs ?? [], payload);
+  console.log(`[push] tournament ${tournamentId}: ${subs?.length ?? 0} subs, error=${error?.message}`);
+  await sendToSubscriptions(admin, subs ?? [], payload);
 }
 
 // Notify users who follow specific players (by tp_id) in a tournament
 export async function notifyPlayerFollowers(
   tournamentId: string,
-  // Array of { tpId, makePayload } — payload is personalised per player
   players: Array<{
     tpId: string;
     makePayload: (playerName: string) => { title: string; body: string; url?: string };
@@ -60,12 +70,11 @@ export async function notifyPlayerFollowers(
 ) {
   if (!players.length) return;
   initVapid();
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
   const tpIds = players.map((p) => p.tpId);
 
-  // Get player_id + name for each tp_id
-  const { data: tps } = await supabase
+  const { data: tps } = await admin
     .from('tournament_players')
     .select('id, player_id, players(full_name)')
     .eq('tournament_id', tournamentId)
@@ -75,8 +84,7 @@ export async function notifyPlayerFollowers(
 
   const playerIds = tps.map((tp) => tp.player_id);
 
-  // Find all followers of these players in this tournament
-  const { data: follows } = await supabase
+  const { data: follows } = await admin
     .from('player_follows')
     .select('user_id, player_id')
     .eq('tournament_id', tournamentId)
@@ -86,15 +94,13 @@ export async function notifyPlayerFollowers(
 
   const userIds = [...new Set(follows.map((f) => f.user_id))];
 
-  // Get push subscriptions for these users
-  const { data: subs } = await supabase
+  const { data: subs } = await admin
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth, user_id')
     .in('user_id', userIds);
 
   if (!subs?.length) return;
 
-  // Build maps
   const tpToPlayer = new Map(tps.map((tp) => [
     tp.id,
     { playerId: tp.player_id, name: (tp as any).players?.full_name ?? '' },
@@ -110,13 +116,12 @@ export async function notifyPlayerFollowers(
     userToSubs.get(s.user_id)!.push(s);
   });
 
-  // Send notifications grouped by player
   for (const player of players) {
     const tp = tpToPlayer.get(player.tpId);
     if (!tp) continue;
     const payload = player.makePayload(tp.name);
-    const userIds = playerToUsers.get(tp.playerId) ?? [];
-    const subsForPlayers = userIds.flatMap((uid) => userToSubs.get(uid) ?? []);
-    await sendToSubscriptions(supabase, subsForPlayers, payload);
+    const uids = playerToUsers.get(tp.playerId) ?? [];
+    const subsForPlayer = uids.flatMap((uid) => userToSubs.get(uid) ?? []);
+    await sendToSubscriptions(admin, subsForPlayer, payload);
   }
 }
