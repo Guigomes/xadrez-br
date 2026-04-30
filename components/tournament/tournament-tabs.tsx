@@ -21,8 +21,8 @@ export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentT
     ? [
         { href: `${base}/rounds/${currentRoundNumber}`, label: 'Rodada atual', icon: '⚡' },
         { href: `${base}/standings`,                    label: 'Classificação', icon: '📊' },
-        { href: `${base}/rounds`,                       label: 'Rodadas',       icon: '📋' },
         { href: `${base}/participants`,                 label: 'Participantes', icon: '👥' },
+        { href: base,                                   label: 'Visão geral',   icon: '🏆' },
       ]
     : [
         { href: base,                   label: 'Visão geral',   icon: '🏆' },

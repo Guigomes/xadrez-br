@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { ROUND_STATUS_LABELS, ROUND_STATUS_COLORS, formatScore } from '@/lib/utils/chess';
@@ -29,10 +29,6 @@ export default async function TournamentOverviewPage({ params }: Props) {
 
   const completedRounds = (rounds ?? []).filter((r) => r.status === 'finished').length;
   const currentRound = (rounds ?? []).find((r) => r.status === 'ongoing');
-
-  if (tournament.status === 'ongoing' && currentRound) {
-    redirect(`/tournaments/${slug}/rounds/${currentRound.round_number}`);
-  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
