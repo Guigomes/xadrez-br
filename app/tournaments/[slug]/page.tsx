@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { ROUND_STATUS_LABELS, ROUND_STATUS_COLORS, formatScore } from '@/lib/utils/chess';
+import { formatDateRange } from '@/lib/utils/date';
 import { Badge } from '@/components/ui/badge';
 
 interface Props {
@@ -35,6 +36,17 @@ export default async function TournamentOverviewPage({ params }: Props) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
+      {/* Meta info — only shown on the overview page */}
+      <div className="lg:col-span-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-2">
+        <span>📅 {formatDateRange(tournament.start_date, tournament.end_date)}</span>
+        {tournament.registration_start_date && (
+          <span>📝 Inscrições: {formatDateRange(tournament.registration_start_date, tournament.registration_end_date)}</span>
+        )}
+        <span>⏱ {tournament.time_control}</span>
+        <span>🔄 {tournament.rounds_count} rodadas</span>
+        {tournament.organizer_name && <span>👤 {tournament.organizer_name}</span>}
+        {tournament.chief_arbiter && <span>⚖️ {tournament.chief_arbiter}</span>}
+      </div>
       {/* Left column */}
       <div className="lg:col-span-2 space-y-6">
         {/* Current round highlight */}

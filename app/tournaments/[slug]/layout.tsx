@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { NotifyButton } from '@/components/tournament/notify-button';
 import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS } from '@/lib/utils/chess';
-import { formatDateRange } from '@/lib/utils/date';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -92,20 +91,6 @@ export default async function TournamentLayout({ children, params }: Props) {
               <NotifyButton tournamentId={tournament.id} tournamentSlug={slug} />
               <ShareButton title={tournament.name} />
             </div>
-          </div>
-
-          {/* Meta row */}
-          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mt-3 mb-4">
-            <span>📅 {formatDateRange(tournament.start_date, tournament.end_date)}</span>
-            {tournament.registration_start_date && (
-              <span>
-                📝 Inscrições: {formatDateRange(tournament.registration_start_date, tournament.registration_end_date)}
-              </span>
-            )}
-            <span>⏱ {tournament.time_control}</span>
-            <span>🔄 {tournament.rounds_count} rodadas</span>
-            {tournament.organizer_name && <span>👤 {tournament.organizer_name}</span>}
-            {tournament.chief_arbiter && <span>⚖️ {tournament.chief_arbiter}</span>}
           </div>
 
           <TournamentTabs slug={slug} roundsCount={tournament.rounds_count} status={tournament.status} currentRoundNumber={currentRoundNumber} />
