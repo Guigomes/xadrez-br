@@ -1,8 +1,9 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
-import { Tooltip } from '@/components/ui/tooltip';
-import { formatScore, formatTiebreak, TIEBREAK_INFO } from '@/lib/utils/chess';
+import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
+import { formatScore, formatTiebreak } from '@/lib/utils/chess';
 import type { StandingRow } from '@/types/database';
 
 interface StandingsTableProps {
@@ -86,7 +87,7 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds }:
             <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{row.full_name}</p>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
-            BH: {formatTiebreak(row.buchholz)} · SB: {formatTiebreak(row.sonneborn_berger)}
+            Desemp 1: {formatTiebreak(row.buchholz)} · Desemp 2: {formatTiebreak(row.buchholz_cut1)}
             {row.rating_std && ` · ${row.rating_std}`}
           </p>
         </div>
@@ -103,14 +104,10 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds }:
         <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 w-10">#</th>
         <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Jogador</th>
         <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Pts</th>
+        <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">D1</th>
+        <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">D2</th>
         <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">
-          <Tooltip content={TIEBREAK_INFO.buchholz.description}><span className="cursor-help border-b border-dashed border-gray-400">{TIEBREAK_INFO.buchholz.short}</span></Tooltip>
-        </th>
-        <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">
-          <Tooltip content={TIEBREAK_INFO.buchholz_cut1.description}><span className="cursor-help border-b border-dashed border-gray-400">{TIEBREAK_INFO.buchholz_cut1.short}</span></Tooltip>
-        </th>
-        <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">
-          <Tooltip content={TIEBREAK_INFO.sonneborn_berger.description}><span className="cursor-help border-b border-dashed border-gray-400">{TIEBREAK_INFO.sonneborn_berger.short}</span></Tooltip>
+          <span className="inline-flex items-center gap-1">D3 <TiebreakLegendButton /></span>
         </th>
         <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Rating</th>
       </tr>
