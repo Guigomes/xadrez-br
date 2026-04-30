@@ -85,7 +85,7 @@ export default async function TournamentLayout({ children, params }: Props) {
                 {tournament.name}
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {tournament.venue ? `${tournament.venue} · ` : ''}{tournament.city}, {tournament.state}
+                {[tournament.venue, `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">

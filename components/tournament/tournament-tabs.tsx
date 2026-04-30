@@ -36,9 +36,7 @@ export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentT
       {tabs.map((tab) => {
         const isActive = tab.href === base
           ? pathname === base
-          : tab.label === 'Rodada atual'
-          ? pathname === tab.href
-          : pathname.startsWith(tab.href);
+          : pathname === tab.href || (tab.label !== 'Rodadas' && pathname.startsWith(tab.href + '/'));
         return (
           <Link
             key={tab.href}
