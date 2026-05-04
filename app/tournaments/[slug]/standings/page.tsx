@@ -5,6 +5,7 @@ import { useTournament, useTournamentStandings, useTournamentRounds } from '@/li
 import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { StandingsTable } from '@/components/tournament/standings-table';
 import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
+import { AdBanner } from '@/components/ui/ad-banner';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -129,6 +130,7 @@ export default function StandingsPage({ params }: Props) {
 
         <StandingsTable standings={displayed} tournamentSlug={slug} followedPlayerIds={followed?.playerIds} />
       </div>
+      <AdBanner slot="1234567890" format="horizontal" className="h-16 mt-2" />
     </div>
   );
 }

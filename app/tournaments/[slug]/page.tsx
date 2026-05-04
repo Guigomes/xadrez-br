@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ROUND_STATUS_LABELS, ROUND_STATUS_COLORS, formatScore } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 import { Badge } from '@/components/ui/badge';
+import { AdBanner } from '@/components/ui/ad-banner';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -46,6 +47,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
         {tournament.organizer_name && <span>👤 {tournament.organizer_name}</span>}
         {tournament.chief_arbiter && <span>⚖️ {tournament.chief_arbiter}</span>}
       </div>
+      <AdBanner slot="0987654321" format="horizontal" className="lg:col-span-3 h-16" />
       {/* Left column */}
       <div className="lg:col-span-2 space-y-6">
         {/* Current round highlight */}
