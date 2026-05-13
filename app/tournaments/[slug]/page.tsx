@@ -21,9 +21,10 @@ export default async function TournamentOverviewPage({ params }: Props) {
 
   if (!tournament) notFound();
 
-  const [{ data: rounds }, { data: categories }, { data: topStandings }] = await Promise.all([
+  const [{ data: rounds }, { data: categories }, { data: pairingGroups }, { data: topStandings }] = await Promise.all([
     supabase.from('rounds').select('*').eq('tournament_id', tournament.id).order('round_number'),
     supabase.from('tournament_categories').select('*').eq('tournament_id', tournament.id),
+    supabase.from('pairing_groups').select('id, name').eq('tournament_id', tournament.id).order('sort_order'),
     supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id }),
   ]);
 
@@ -145,8 +146,26 @@ export default async function TournamentOverviewPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Categories */}
-        {(categories?.length ?? 0) > 0 && (
+        {/* Pairing groups — if tournament uses multiple groups, show them as navigation links */}
+        {(pairingGroups?.length ?? 0) > 1 ? (
+          <div className="card p-4">
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Grupos de emparelhamento</h2>
+            <div className="flex flex-col gap-1.5">
+              {(pairingGroups ?? []).map((g) => (
+                <Link
+                  key={g.id}
+                  href={`/tournaments/${slug}/participants?group=${g.id}`}
+                  className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
+                >
+                  <span>{g.name}</span>
+                  <svg className="h-4 w-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : (categories?.length ?? 0) > 0 && (
           <div className="card p-4">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Categorias</h2>
             <div className="flex flex-wrap gap-2">
