@@ -145,6 +145,19 @@ export interface PlayerFollow {
   created_at: string;
 }
 
+export interface TournamentImport {
+  id: string;
+  tournament_id: string;
+  base_url: string;
+  pairing_group_name: string | null;
+  enabled: boolean;
+  last_run_at: string | null;
+  last_status: 'success' | 'error' | null;
+  last_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ============================================================
 // RPC / Join return types
 // ============================================================

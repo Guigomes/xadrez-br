@@ -19,6 +19,13 @@ const nextConfig = {
       },
     ],
   },
+
+  webpack(config) {
+    // Disable symlink resolution — prevents EISDIR readlink errors on Windows
+    // when directory names contain special characters like [slug]
+    config.resolve.symlinks = false;
+    return config;
+  },
 };
 
 module.exports = withPWA(nextConfig);
