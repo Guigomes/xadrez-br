@@ -21,15 +21,30 @@ export default async function TournamentOverviewPage({ params }: Props) {
 
   if (!tournament) notFound();
 
-  const [{ data: rounds }, { data: categories }, { data: pairingGroups }, { data: topStandings }] = await Promise.all([
+  const isActive = tournament.status === 'ongoing' || tournament.status === 'finished';
+
+  const [{ data: rounds }, { data: categories }, { data: pairingGroups }, { data: topStandings }, { count: participantCount }] = await Promise.all([
     supabase.from('rounds').select('*').eq('tournament_id', tournament.id).order('round_number'),
     supabase.from('tournament_categories').select('*').eq('tournament_id', tournament.id),
     supabase.from('pairing_groups').select('id, name').eq('tournament_id', tournament.id).order('sort_order'),
-    supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id }),
+    // Only call standings RPC when the tournament is active; for upcoming/registration it's expensive and unused
+    isActive
+      ? supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id })
+      : Promise.resolve({ data: null, error: null }),
+    // Count participants (cheap, used in the pre-tournament card when no groups)
+    supabase.from('tournament_players').select('id', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
   ]);
 
   const completedRounds = (rounds ?? []).filter((r) => r.status === 'finished').length;
   const currentRound = (rounds ?? []).find((r) => r.status === 'ongoing');
+
+  // Only show standings when the tournament is underway or finished AND has real scores
+  const hasRealStandings =
+    (tournament.status === 'ongoing' || tournament.status === 'finished') &&
+    (topStandings ?? []).some((r: any) => (r.points ?? 0) > 0);
+
+  const groups = pairingGroups ?? [];
+  const hasGroups = groups.length > 0;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -70,8 +85,8 @@ export default async function TournamentOverviewPage({ params }: Props) {
           </Link>
         )}
 
-        {/* Top standings preview */}
-        {(topStandings?.length ?? 0) > 0 && (
+        {/* Top standings preview — only when tournament is running and has real scores */}
+        {hasRealStandings && (
           <div className="card p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">Classificação parcial</h2>
@@ -100,6 +115,51 @@ export default async function TournamentOverviewPage({ params }: Props) {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Before tournament starts: show participants / group cards */}
+        {!hasRealStandings && !currentRound && hasGroups && (
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Participantes por grupo</h2>
+              <Link href={`/tournaments/${slug}/participants`} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
+                Ver todos
+              </Link>
+            </div>
+            <div className="flex flex-col gap-1">
+              {groups.map((g) => (
+                <Link
+                  key={g.id}
+                  href={`/tournaments/${slug}/participants?group=${g.id}`}
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
+                >
+                  <span>{g.name}</span>
+                  <svg className="h-4 w-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Before tournament starts without groups: simple participants link */}
+        {!hasRealStandings && !currentRound && !hasGroups && (participantCount ?? 0) > 0 && (
+          <Link
+            href={`/tournaments/${slug}/participants`}
+            className="card p-4 flex items-center justify-between gap-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">👥</span>
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-gray-100">Participantes</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{participantCount} inscritos</p>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         )}
 
         {/* Description */}
@@ -146,19 +206,19 @@ export default async function TournamentOverviewPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Pairing groups — if tournament uses multiple groups, show them as navigation links */}
-        {(pairingGroups?.length ?? 0) > 1 ? (
+        {/* Pairing groups in sidebar — show when any group exists */}
+        {hasGroups ? (
           <div className="card p-4">
-            <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Grupos de emparelhamento</h2>
-            <div className="flex flex-col gap-1.5">
-              {(pairingGroups ?? []).map((g) => (
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Grupos</h2>
+            <div className="flex flex-col gap-1">
+              {groups.map((g) => (
                 <Link
                   key={g.id}
                   href={`/tournaments/${slug}/participants?group=${g.id}`}
                   className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
                 >
                   <span>{g.name}</span>
-                  <svg className="h-4 w-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-4 w-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </Link>
