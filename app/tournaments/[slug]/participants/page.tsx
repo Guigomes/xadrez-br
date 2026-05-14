@@ -33,18 +33,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
   const groups = pairingGroups ?? [];
   const hasGroups = groups.length > 1;
 
-  // If a group is selected, get the category IDs belonging to it
-  let categoryIdsForGroup: string[] | null = null;
-  if (hasGroups && selectedGroupId) {
-    const { data: groupCats } = await supabase
-      .from('tournament_categories')
-      .select('id')
-      .eq('tournament_id', tournament.id)
-      .eq('pairing_group_id', selectedGroupId);
-    categoryIdsForGroup = (groupCats ?? []).map((c) => c.id as string);
-  }
-
-  // Build the players query
+  // Build the players query — filter by pairing_group_id directly
   let query = supabase
     .from('tournament_players')
     .select(`
@@ -55,13 +44,8 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
     .eq('tournament_id', tournament.id)
     .order('initial_ranking', { ascending: true, nullsFirst: false });
 
-  if (categoryIdsForGroup !== null) {
-    if (categoryIdsForGroup.length === 0) {
-      // Group exists but has no categories — return empty
-      query = query.in('category_id', ['__none__']);
-    } else {
-      query = query.in('category_id', categoryIdsForGroup);
-    }
+  if (hasGroups && selectedGroupId) {
+    query = query.eq('pairing_group_id', selectedGroupId);
   }
 
   const { data: players } = await query;
