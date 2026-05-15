@@ -1,3 +1,4 @@
+import type React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
@@ -43,7 +44,13 @@ export default async function TournamentOverviewPage({ params }: Props) {
     (tournament.status === 'ongoing' || tournament.status === 'finished') &&
     (topStandings ?? []).some((r: any) => (r.points ?? 0) > 0);
 
-  const groups = pairingGroups ?? [];
+  // Sort groups by the age number in their name (SUB7 < SUB9 < SUB11 …),
+  // then alphabetically within the same number (FEM < MASC < MISTO).
+  const groups = [...(pairingGroups ?? [])].sort((a, b) => {
+    const nA = parseInt(a.name.match(/\d+/)?.[0] ?? '999', 10);
+    const nB = parseInt(b.name.match(/\d+/)?.[0] ?? '999', 10);
+    return nA !== nB ? nA - nB : a.name.localeCompare(b.name);
+  });
   const hasGroups = groups.length > 0;
 
   return (
@@ -164,9 +171,11 @@ export default async function TournamentOverviewPage({ params }: Props) {
 
         {/* Description */}
         {tournament.description && (
-          <div className="card p-4">
+          <div className="card p-4 overflow-hidden">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Sobre o torneio</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{tournament.description}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed break-words">
+              <DescriptionText text={tournament.description} />
+            </p>
           </div>
         )}
       </div>
@@ -253,9 +262,39 @@ export default async function TournamentOverviewPage({ params }: Props) {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-0.5 min-w-0">
       <span className="text-xs text-gray-400 dark:text-gray-500">{label}</span>
-      <span className="text-gray-800 dark:text-gray-200">{value}</span>
+      <span className="text-gray-800 dark:text-gray-200 break-words">{value}</span>
     </div>
   );
+}
+
+/** Renders plain text, turning http(s) URLs into styled clickable links. */
+function DescriptionText({ text }: { text: string }) {
+  const URL_RE = /https?:\/\/[^\s]+/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = URL_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const url = match[0];
+    parts.push(
+      <a
+        key={match.index}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-brand-600 hover:underline dark:text-brand-400 break-all"
+      >
+        {url}
+      </a>,
+    );
+    lastIndex = match.index + url.length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+
+  return <>{parts}</>;
 }

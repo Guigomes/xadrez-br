@@ -30,8 +30,12 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
     .eq('tournament_id', tournament.id)
     .order('sort_order', { ascending: true });
 
-  const groups = pairingGroups ?? [];
-  const hasGroups = groups.length > 1;
+  const groups = [...(pairingGroups ?? [])].sort((a, b) => {
+    const nA = parseInt(a.name.match(/\d+/)?.[0] ?? '999', 10);
+    const nB = parseInt(b.name.match(/\d+/)?.[0] ?? '999', 10);
+    return nA !== nB ? nA - nB : a.name.localeCompare(b.name);
+  });
+  const hasGroups = groups.length > 0;
 
   // Build the players query — filter by pairing_group_id directly
   let query = supabase
