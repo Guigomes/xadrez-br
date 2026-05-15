@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { NotifyButton } from '@/components/tournament/notify-button';
 import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS } from '@/lib/utils/chess';
+import { RelativeTime } from '@/components/ui/relative-time';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -35,6 +36,16 @@ export default async function TournamentLayout({ children, params }: Props) {
     .single();
 
   if (!tournament) notFound();
+
+  // Last sync time from tournament_imports (if this tournament is auto-imported)
+  const { data: lastImport } = await supabase
+    .from('tournament_imports')
+    .select('last_run_at, last_status')
+    .eq('tournament_id', tournament.id)
+    .not('last_run_at', 'is', null)
+    .order('last_run_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   let currentRoundNumber: number | null = null;
   if (tournament.status === 'ongoing') {
@@ -88,7 +99,18 @@ export default async function TournamentLayout({ children, params }: Props) {
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
               {tournament.name}
             </h1>
-            
+            {lastImport?.last_run_at && (
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                {lastImport.last_status === 'error' ? (
+                  <span className="text-red-400">⚠ Sincronização com erro</span>
+                ) : (
+                  <>
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400" />
+                    Sincronizado <RelativeTime iso={lastImport.last_run_at} />
+                  </>
+                )}
+              </p>
+            )}
           </div>
 
           <TournamentTabs slug={slug} roundsCount={tournament.rounds_count} status={tournament.status} currentRoundNumber={currentRoundNumber} />
