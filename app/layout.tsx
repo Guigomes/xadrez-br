@@ -11,21 +11,21 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' });
 
 export const metadata: Metadata = {
   title: {
-    default: 'XadrezBR – Torneios de Xadrez',
-    template: '%s | XadrezBR',
+    default: 'Torneios Xadrez BR',
+    template: '%s | Torneios Xadrez BR',
   },
   description: 'Acompanhe torneios de xadrez, resultados, classificações e o desempenho dos jogadores em tempo real.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'XadrezBR',
+    title: 'Torneios Xadrez BR',
   },
   formatDetection: { telephone: false },
   openGraph: {
     type: 'website',
-    siteName: 'XadrezBR',
-    title: 'XadrezBR – Torneios de Xadrez',
+    siteName: 'Torneios Xadrez BR',
+    title: 'Torneios Xadrez BR',
     description: 'Acompanhe torneios de xadrez, resultados e classificações.',
   },
 };
