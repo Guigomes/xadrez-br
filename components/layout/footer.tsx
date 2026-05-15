@@ -6,7 +6,7 @@ export function Footer() {
       <div className="container-app py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-2">
           <span className="text-lg">♟</span>
-          <span>XadrezBR © {new Date().getFullYear()}</span>
+          <span>Torneios Xadrez BR © {new Date().getFullYear()}</span>
         </div>
         <div className="flex gap-4">
           <Link href="/tournaments" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">

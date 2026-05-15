@@ -1,6 +1,6 @@
 {
-  "name": "XadrezBR – Torneios de Xadrez",
-  "short_name": "XadrezBR",
+  "name": "Torneios Xadrez BR",
+  "short_name": "Torneios Xadrez BR",
   "description": "Acompanhe torneios de xadrez, resultados e classificações em tempo real.",
   "start_url": "/",
   "display": "standalone",

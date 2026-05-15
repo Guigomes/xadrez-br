@@ -29,7 +29,7 @@ export function Header() {
               <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h4a1 1 0 001-1v-3h2v3a1 1 0 001 1h4a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
             </svg>
           </span>
-          <span className="hidden sm:inline tracking-tight">XadrezBR</span>
+          <span className="hidden sm:inline tracking-tight">Torneios Xadrez BR</span>
         </Link>
 
         {/* Desktop nav */}

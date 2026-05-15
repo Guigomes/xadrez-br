@@ -43,7 +43,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <span className="text-4xl">♟</span>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">XadrezBR</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">Torneios Xadrez BR</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {mode === 'signin' ? 'Acesso para organizadores' : 'Criar conta de organizador'}
           </p>
