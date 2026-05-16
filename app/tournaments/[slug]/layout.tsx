@@ -5,7 +5,7 @@ import { SaveLastTournament } from '@/components/tournament/save-last-tournament
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { NotifyButton } from '@/components/tournament/notify-button';
-import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS } from '@/lib/utils/chess';
+import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS, registrationLabel } from '@/lib/utils/chess';
 import { RelativeTime } from '@/components/ui/relative-time';
 import type { Metadata } from 'next';
 
@@ -83,7 +83,9 @@ export default async function TournamentLayout({ children, params }: Props) {
                   {tournament.status === 'ongoing' && (
                     <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                   )}
-                  {TOURNAMENT_STATUS_LABELS[tournament.status]}
+                  {tournament.status === 'registration'
+                    ? registrationLabel(tournament.registration_end_date)
+                    : TOURNAMENT_STATUS_LABELS[tournament.status]}
                 </Badge>
                 {tournament.tournament_type === 'swiss' && (
                   <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
