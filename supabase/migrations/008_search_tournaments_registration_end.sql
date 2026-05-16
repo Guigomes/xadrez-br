@@ -1,6 +1,8 @@
 -- Add registration_end_date to search_tournaments so the UI can show
 -- "Inscrições encerradas" when the registration period has passed.
 
+drop function search_tournaments(text, text, tournament_status, integer, integer);
+
 create or replace function search_tournaments(
   p_query  text    default null,
   p_state  text    default null,
