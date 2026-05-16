@@ -51,6 +51,13 @@ export const TOURNAMENT_STATUS_LABELS: Record<TournamentStatus, string> = {
   cancelled:    'Cancelado',
 };
 
+export function registrationLabel(registrationEndDate: string | null | undefined): string {
+  if (registrationEndDate && new Date(registrationEndDate) < new Date()) {
+    return 'Inscrições encerradas';
+  }
+  return 'Inscrições abertas';
+}
+
 export const TOURNAMENT_STATUS_COLORS: Record<TournamentStatus, string> = {
   draft:        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
   registration: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',

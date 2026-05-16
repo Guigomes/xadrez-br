@@ -176,6 +176,7 @@ export interface TournamentListItem {
   organizer_name: string;
   time_control: string;
   player_count: number;
+  registration_end_date: string | null;
 }
 
 export interface StandingRow {
