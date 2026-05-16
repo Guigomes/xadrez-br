@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS } from '@/lib/utils/chess';
+import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS, registrationLabel } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 import type { TournamentListItem } from '@/types/database';
 
@@ -30,7 +30,9 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
             {isOngoing && (
               <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
             )}
-            {TOURNAMENT_STATUS_LABELS[tournament.status]}
+            {tournament.status === 'registration'
+            ? registrationLabel(tournament.registration_end_date)
+            : TOURNAMENT_STATUS_LABELS[tournament.status]}
           </Badge>
         </div>
       </div>
