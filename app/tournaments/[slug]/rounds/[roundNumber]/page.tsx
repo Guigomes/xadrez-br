@@ -8,6 +8,7 @@ import type { Metadata } from 'next';
 
 interface Props {
   params: Promise<{ slug: string; roundNumber: string }>;
+  searchParams: Promise<{ group?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -32,8 +33,9 @@ function aggregateStatus(rounds: RoundRow[]): RoundRow['status'] {
   return 'pending';
 }
 
-export default async function RoundPage({ params }: Props) {
+export default async function RoundPage({ params, searchParams }: Props) {
   const { slug, roundNumber } = await params;
+  const { group: groupParam } = await searchParams;
   const supabase = await createClient();
 
   const { data: tournament } = await supabase
@@ -88,6 +90,22 @@ export default async function RoundPage({ params }: Props) {
   const headerStatus = aggregateStatus(rounds);
   const isMultiGroup = sections.length > 1 || sections.some((s) => s.groupName);
 
+  // Pick which group's pairings to render. ?group=<id> wins when it matches a
+  // known group; otherwise default to the first group so users don't get a
+  // wall of every section by default (most follow only one or two groups).
+  const selectedGroupId = isMultiGroup
+    ? (groupParam && sections.some((s) => s.groupId === groupParam)
+        ? groupParam
+        : sections[0]?.groupId ?? null)
+    : null;
+
+  const visibleSections = isMultiGroup
+    ? sections.filter((s) => s.groupId === selectedGroupId)
+    : sections;
+
+  // Preserved query string for prev/next nav so the chosen group sticks.
+  const qs = selectedGroupId ? `?group=${selectedGroupId}` : '';
+
   return (
     <div>
       {/* Round header */}
@@ -107,11 +125,11 @@ export default async function RoundPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Previous / Next navigation */}
+        {/* Previous / Next navigation — preserves the selected group */}
         <div className="flex gap-2">
           {rn > 1 && (
             <Link
-              href={`/tournaments/${slug}/rounds/${rn - 1}`}
+              href={`/tournaments/${slug}/rounds/${rn - 1}${qs}`}
               className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -122,7 +140,7 @@ export default async function RoundPage({ params }: Props) {
           )}
           {rn < tournament.rounds_count && (
             <Link
-              href={`/tournaments/${slug}/rounds/${rn + 1}`}
+              href={`/tournaments/${slug}/rounds/${rn + 1}${qs}`}
               className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Rodada {rn + 1}
@@ -134,11 +152,30 @@ export default async function RoundPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Pairings: one section per pairing group (or a single section for
+      {/* Group filter pills — same UX as the standings tab. */}
+      {isMultiGroup && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {sections.map((s) => (
+            <Link
+              key={s.groupId}
+              href={`/tournaments/${slug}/rounds/${rn}?group=${s.groupId}`}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                s.groupId === selectedGroupId
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+              }`}
+            >
+              {s.groupName}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Pairings for the selected group (or the single section for
           single-group tournaments). The client component handles its own
           auto-refresh while the round is ongoing. */}
       <div className="space-y-4">
-        {sections.map((s) => (
+        {visibleSections.map((s) => (
           <div key={s.roundId} className="card p-4">
             {isMultiGroup && s.groupName && (
               <div className="mb-3 flex items-center justify-between gap-2">
