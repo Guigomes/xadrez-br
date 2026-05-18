@@ -197,6 +197,8 @@ export interface StandingRow {
   sonneborn_berger: number | null;
   performance_rating: number | null;
   category_name: string | null;
+  pairing_group_id: string | null;
+  pairing_group_name: string | null;
   tp_id: string;
   player_status: PlayerTournamentStatus;
 }
