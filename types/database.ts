@@ -170,13 +170,13 @@ export interface TournamentListItem {
   state: string;
   start_date: string;
   end_date: string | null;
+  registration_end_date: string | null;
   status: TournamentStatus;
   tournament_type: TournamentType;
   rounds_count: number;
   organizer_name: string;
   time_control: string;
   player_count: number;
-  registration_end_date: string | null;
 }
 
 export interface StandingRow {

@@ -5,7 +5,7 @@ import { SaveLastTournament } from '@/components/tournament/save-last-tournament
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { NotifyButton } from '@/components/tournament/notify-button';
-import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS } from '@/lib/utils/chess';
+import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { RelativeTime } from '@/components/ui/relative-time';
 import type { Metadata } from 'next';
 
@@ -79,11 +79,11 @@ export default async function TournamentLayout({ children, params }: Props) {
           <div className="min-w-0 mb-1">
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge className={TOURNAMENT_STATUS_COLORS[tournament.status]}>
+                <Badge className={getTournamentStatusColor(tournament.status, tournament.registration_end_date)}>
                   {tournament.status === 'ongoing' && (
                     <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                   )}
-                  {TOURNAMENT_STATUS_LABELS[tournament.status]}
+                  {getTournamentStatusLabel(tournament.status, tournament.registration_end_date)}
                 </Badge>
                 {tournament.tournament_type === 'swiss' && (
                   <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">

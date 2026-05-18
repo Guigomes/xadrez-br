@@ -57,7 +57,7 @@ export function usePlayerTournaments(playerId: string) {
         .from('tournament_players')
         .select(`
           *,
-          tournament:tournaments(id, slug, name, status, start_date, end_date, city, state)
+          tournament:tournaments(id, slug, name, status, start_date, end_date, registration_end_date, city, state)
         `)
         .eq('player_id', playerId)
         .order('created_at', { ascending: false });

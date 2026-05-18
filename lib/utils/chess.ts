@@ -51,13 +51,6 @@ export const TOURNAMENT_STATUS_LABELS: Record<TournamentStatus, string> = {
   cancelled:    'Cancelado',
 };
 
-export function registrationLabel(registrationEndDate: string | null | undefined): string {
-  if (registrationEndDate && new Date(registrationEndDate) < new Date()) {
-    return 'Inscrições encerradas';
-  }
-  return 'Inscrições abertas';
-}
-
 export const TOURNAMENT_STATUS_COLORS: Record<TournamentStatus, string> = {
   draft:        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
   registration: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
@@ -65,6 +58,41 @@ export const TOURNAMENT_STATUS_COLORS: Record<TournamentStatus, string> = {
   finished:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   cancelled:    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 };
+
+const REGISTRATION_CLOSED_LABEL = 'Inscrições encerradas';
+const REGISTRATION_CLOSED_COLOR =
+  'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+
+function todayInSaoPaulo(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
+
+export function isRegistrationClosed(
+  status: TournamentStatus,
+  registrationEndDate: string | null | undefined,
+): boolean {
+  if (status !== 'registration' || !registrationEndDate) return false;
+  return registrationEndDate < todayInSaoPaulo();
+}
+
+export function getTournamentStatusLabel(
+  status: TournamentStatus,
+  registrationEndDate: string | null | undefined,
+): string {
+  if (isRegistrationClosed(status, registrationEndDate)) return REGISTRATION_CLOSED_LABEL;
+  return TOURNAMENT_STATUS_LABELS[status];
+}
+
+export function getTournamentStatusColor(
+  status: TournamentStatus,
+  registrationEndDate: string | null | undefined,
+): string {
+  if (isRegistrationClosed(status, registrationEndDate)) return REGISTRATION_CLOSED_COLOR;
+  return TOURNAMENT_STATUS_COLORS[status];
+}
 
 // ============================================================
 // Round status helpers
