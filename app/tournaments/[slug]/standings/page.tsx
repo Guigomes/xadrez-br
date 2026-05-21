@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useTournament, useTournamentStandings, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { StandingsTable } from '@/components/tournament/standings-table';
@@ -12,6 +12,15 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+// Sort pairing-group names by their numeric prefix (SUB7 < SUB9 < SUB11), then
+// alphabetically — matches the order used in the overview/rounds pages.
+function compareGroupNames(a: string, b: string): number {
+  const na = parseInt(a.match(/\d+/)?.[0] ?? '999', 10);
+  const nb = parseInt(b.match(/\d+/)?.[0] ?? '999', 10);
+  if (na !== nb) return na - nb;
+  return a.localeCompare(b);
+}
+
 export default function StandingsPage({ params }: Props) {
   const { slug } = use(params);
   const { data: tournament, isLoading: loadingTournament } = useTournament(slug);
@@ -20,9 +29,38 @@ export default function StandingsPage({ params }: Props) {
   );
   const { data: rounds } = useTournamentRounds(tournament?.id ?? '');
   const { data: followed } = useFollowedInTournament(tournament?.id ?? '');
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const isLoading = loadingTournament || (!!tournament && loadingStandings);
+
+  // Pairing groups present in the standings (multi-group tournament). One
+  // entry per distinct pairing_group_id, ordered by name.
+  const pairingGroups = (() => {
+    const seen = new Map<string, string>();
+    for (const r of standings ?? []) {
+      if (r.pairing_group_id && r.pairing_group_name && !seen.has(r.pairing_group_id)) {
+        seen.set(r.pairing_group_id, r.pairing_group_name);
+      }
+    }
+    return Array.from(seen.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => compareGroupNames(a.name, b.name));
+  })();
+  const hasGroups = pairingGroups.length > 0;
+
+  // Default to the first group once standings load. Done in an effect so the
+  // selection sticks across refetches but resets if the groups list changes.
+  useEffect(() => {
+    if (!hasGroups) {
+      if (selectedGroupId !== null) setSelectedGroupId(null);
+      return;
+    }
+    if (!selectedGroupId || !pairingGroups.some((g) => g.id === selectedGroupId)) {
+      setSelectedGroupId(pairingGroups[0].id);
+    }
+  }, [hasGroups, pairingGroups.map((g) => g.id).join('|'), selectedGroupId]);
 
   if (isLoading) return <PageSpinner />;
 
@@ -36,26 +74,47 @@ export default function StandingsPage({ params }: Props) {
     );
   }
 
-  // Collect unique categories preserving order of first appearance
-  const categories = Array.from(
-    new Set(standings.map((r) => r.category_name).filter(Boolean) as string[])
-  );
+  // Categories are only used when the tournament has no pairing groups —
+  // mixing both filters in the same UI is more confusing than helpful.
+  const categories = hasGroups
+    ? []
+    : Array.from(
+        new Set((standings ?? []).map((r) => r.category_name).filter(Boolean) as string[]),
+      );
   const hasCategories = categories.length > 1;
 
-  // Filter and re-rank within category when a category is selected
-  const displayed =
-    selectedCategory === 'all'
+  const displayed = hasGroups
+    ? (standings ?? []).filter((r) => r.pairing_group_id === selectedGroupId)
+    : selectedCategory === 'all'
       ? standings
       : standings
           .filter((r) => r.category_name === selectedCategory)
           .map((r, i) => ({ ...r, rank: (i + 1) as number }));
 
+  const heading = hasGroups
+    ? (pairingGroups.find((g) => g.id === selectedGroupId)?.name ?? 'Grupo')
+    : selectedCategory === 'all'
+      ? 'Classificação geral'
+      : selectedCategory;
+
   const isOngoing = tournament?.status === 'ongoing';
 
-  // Most recent round with any status
-  const latestRound = rounds?.length
-    ? rounds.reduce((a, b) => (b.round_number > a.round_number ? b : a))
-    : null;
+  // For the round status pill: with multi-group there are multiple rows per
+  // round_number; pick the highest-numbered round and aggregate the status.
+  type RS = 'pending' | 'ongoing' | 'finished';
+  const latestRound = (() => {
+    if (!rounds?.length) return null;
+    const maxNumber = rounds.reduce((m, r) => Math.max(m, r.round_number), 0);
+    const statuses = rounds
+      .filter((r) => r.round_number === maxNumber)
+      .map((r) => r.status as RS);
+    const aggregate: RS = statuses.every((s) => s === 'finished')
+      ? 'finished'
+      : statuses.some((s) => s === 'ongoing')
+        ? 'ongoing'
+        : 'pending';
+    return { round_number: maxNumber, status: aggregate };
+  })();
 
   const roundStatusLabel: Record<string, { label: string; className: string }> = {
     pending:  { label: 'Aguardando',  className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
@@ -78,7 +137,7 @@ export default function StandingsPage({ params }: Props) {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                  {selectedCategory === 'all' ? 'Classificação geral' : selectedCategory}
+                  {heading}
                   {' · '}
                   {displayed.length} jogador{displayed.length !== 1 ? 'es' : ''}
                 </h2>
@@ -97,7 +156,23 @@ export default function StandingsPage({ params }: Props) {
               </p>
             </div>
 
-            {hasCategories && (
+            {hasGroups ? (
+              <div className="flex flex-wrap gap-1.5">
+                {pairingGroups.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setSelectedGroupId(g.id)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      selectedGroupId === g.id
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+              </div>
+            ) : hasCategories ? (
               <div className="flex flex-wrap gap-1.5">
                 <button
                   onClick={() => setSelectedCategory('all')}
@@ -123,7 +198,7 @@ export default function StandingsPage({ params }: Props) {
                   </button>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 

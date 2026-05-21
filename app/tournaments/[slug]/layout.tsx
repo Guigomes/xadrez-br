@@ -49,13 +49,17 @@ export default async function TournamentLayout({ children, params }: Props) {
 
   let currentRoundNumber: number | null = null;
   if (tournament.status === 'ongoing') {
+    // Multi-group tournaments have one rounds row per pairing group, so several
+    // rounds can be ongoing simultaneously — .order + .limit(1) avoids the
+    // "multiple rows" error that .maybeSingle() throws on its own.
     const { data: ongoingRound } = await supabase
       .from('rounds')
       .select('round_number')
       .eq('tournament_id', tournament.id)
       .eq('status', 'ongoing')
+      .order('round_number')
+      .limit(1)
       .maybeSingle();
-    // Fall back to the last round if none is explicitly ongoing
     if (ongoingRound) {
       currentRoundNumber = ongoingRound.round_number;
     } else {
@@ -79,7 +83,7 @@ export default async function TournamentLayout({ children, params }: Props) {
           <div className="min-w-0 mb-1">
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge className={TOURNAMENT_STATUS_COLORS[tournament.status]}>
+                <Badge className={getTournamentStatusColor(tournament.status, tournament.registration_end_date)}>
                   {tournament.status === 'ongoing' && (
                     <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                   )}

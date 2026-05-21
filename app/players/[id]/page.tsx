@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ui/share-button';
 import { EmptyState } from '@/components/ui/empty-state';
-import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS, formatScore } from '@/lib/utils/chess';
+import { getTournamentStatusColor, getTournamentStatusLabel, formatScore } from '@/lib/utils/chess';
 import { formatDate } from '@/lib/utils/date';
 
 interface Props {
@@ -101,8 +101,8 @@ export default function PlayerProfilePage({ params }: Props) {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <Badge className={TOURNAMENT_STATUS_COLORS[t.status as keyof typeof TOURNAMENT_STATUS_COLORS]}>
-                    {TOURNAMENT_STATUS_LABELS[t.status as keyof typeof TOURNAMENT_STATUS_LABELS]}
+                  <Badge className={getTournamentStatusColor(t.status, t.registration_end_date)}>
+                    {getTournamentStatusLabel(t.status, t.registration_end_date)}
                   </Badge>
                   {tp.current_rank && (
                     <span className="text-xs text-gray-500">{tp.current_rank}º · {formatScore(tp.current_score)} pts</span>

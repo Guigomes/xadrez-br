@@ -36,8 +36,29 @@ export default async function TournamentOverviewPage({ params }: Props) {
     supabase.from('tournament_players').select('id', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
   ]);
 
-  const completedRounds = (rounds ?? []).filter((r) => r.status === 'finished').length;
-  const currentRound = (rounds ?? []).find((r) => r.status === 'ongoing');
+  // Dedupe by round_number so multi-group tournaments don't count each group's
+  // round separately (10 groups × 6 rounds would otherwise look like 60).
+  // A round is "completed" only when every group has finished it.
+  type RS = 'pending' | 'ongoing' | 'finished';
+  const roundsByNumber = new Map<number, RS[]>();
+  for (const r of rounds ?? []) {
+    const list = roundsByNumber.get(r.round_number) ?? [];
+    list.push(r.status as RS);
+    roundsByNumber.set(r.round_number, list);
+  }
+  const aggregatedRounds = Array.from(roundsByNumber.entries())
+    .map(([n, statuses]) => ({
+      round_number: n,
+      status: (statuses.every((s) => s === 'finished')
+        ? 'finished'
+        : statuses.some((s) => s === 'ongoing')
+          ? 'ongoing'
+          : 'pending') as RS,
+    }))
+    .sort((a, b) => a.round_number - b.round_number);
+
+  const completedRounds = aggregatedRounds.filter((r) => r.status === 'finished').length;
+  const currentRound = aggregatedRounds.find((r) => r.status === 'ongoing');
 
   // Only show standings when the tournament is underway or finished AND has real scores
   const hasRealStandings =
@@ -188,9 +209,9 @@ export default async function TournamentOverviewPage({ params }: Props) {
             Rodadas ({completedRounds}/{tournament.rounds_count})
           </h2>
           <div className="flex flex-wrap gap-2">
-            {(rounds ?? []).map((round) => (
+            {aggregatedRounds.map((round) => (
               <Link
-                key={round.id}
+                key={round.round_number}
                 href={`/tournaments/${slug}/rounds/${round.round_number}`}
                 className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold transition-colors
                   ${ROUND_STATUS_COLORS[round.status]}

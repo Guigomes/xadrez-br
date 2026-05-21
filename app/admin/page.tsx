@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
-import { TOURNAMENT_STATUS_COLORS, TOURNAMENT_STATUS_LABELS } from '@/lib/utils/chess';
+import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 
 export default async function AdminDashboard() {
@@ -10,7 +10,7 @@ export default async function AdminDashboard() {
 
   const { data: tournaments } = await supabase
     .from('tournaments')
-    .select('id, slug, name, status, start_date, end_date, rounds_count, is_public, city, state')
+    .select('id, slug, name, status, start_date, end_date, registration_end_date, rounds_count, is_public, city, state')
     .eq('created_by', user!.id)
     .order('created_at', { ascending: false });
 
@@ -58,7 +58,7 @@ export default async function AdminDashboard() {
             <div key={t.id} className="card p-4 flex flex-col gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <Badge className={TOURNAMENT_STATUS_COLORS[t.status]}>{TOURNAMENT_STATUS_LABELS[t.status]}</Badge>
+                  <Badge className={getTournamentStatusColor(t.status, t.registration_end_date)}>{getTournamentStatusLabel(t.status, t.registration_end_date)}</Badge>
                   {!t.is_public && <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Rascunho</Badge>}
                 </div>
                 <p className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
