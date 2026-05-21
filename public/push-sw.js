@@ -1,9 +1,13 @@
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
-// Required for PWA installability on mobile browsers
+// Only intercept GET requests — POST/PUT/DELETE go straight to network.
+// Handles network errors gracefully so Chrome always gets a valid response.
 self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request));
+  if (event.request.method !== 'GET') return;
+  event.respondWith(
+    fetch(event.request).catch(() => new Response('', { status: 503, statusText: 'Offline' }))
+  );
 });
 
 self.addEventListener('push', (event) => {
@@ -14,8 +18,8 @@ self.addEventListener('push', (event) => {
   const title = data.title ?? 'Torneios Xadrez BR';
   const options = {
     body: data.body ?? '',
-    icon: '/icons/pawn-192.png',
-    badge: '/icons/pawn-192.png',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-72x72.png',
     data: { url: data.url ?? '/' },
   };
 
