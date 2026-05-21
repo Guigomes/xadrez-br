@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Torneios Xadrez BR',
+    title: 'Torneios BR',
   },
   formatDetection: { telephone: false },
   openGraph: {
