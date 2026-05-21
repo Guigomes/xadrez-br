@@ -1,11 +1,9 @@
 /** @type {import('next').NextConfig} */
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-  register: true,
-  skipWaiting: true,
-});
 
+// next-pwa is intentionally disabled: the app uses push-sw.js as its sole
+// service worker. Having next-pwa generate and register a Workbox sw.js in
+// production created a competing registration that caused stale manifest/icon
+// caching (showing "T" fallback) and broke the PWA install prompt on Android.
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -21,11 +19,9 @@ const nextConfig = {
   },
 
   webpack(config) {
-    // Disable symlink resolution — prevents EISDIR readlink errors on Windows
-    // when directory names contain special characters like [slug]
     config.resolve.symlinks = false;
     return config;
   },
 };
 
-module.exports = withPWA(nextConfig);
+module.exports = nextConfig;
