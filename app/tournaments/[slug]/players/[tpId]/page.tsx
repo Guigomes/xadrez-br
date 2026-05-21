@@ -23,10 +23,12 @@ export default function PlayerTournamentPage({ params }: Props) {
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(tournament?.id ?? '');
   const playerRow = standings?.find((s) => s.tp_id === tpId);
 
-  // Fallback: fetch basic player info directly when standings don't exist yet
+  // Fallback: fetch basic player info directly when standings don't exist yet.
+  // Enabled as soon as playerRow is missing — not gated on loadingStandings — so
+  // we always have a name to show while standings are still loading.
   const { data: tpBasic, isLoading: loadingTpBasic } = useQuery({
     queryKey: ['tp-basic', tpId],
-    enabled: !loadingStandings && !playerRow,
+    enabled: !playerRow,
     queryFn: async () => {
       const supabase = createClient();
       const { data } = await supabase
@@ -58,7 +60,8 @@ export default function PlayerTournamentPage({ params }: Props) {
     staleTime: Infinity,
   });
 
-  if (!tournament || loadingStandings || (!playerRow && loadingTpBasic)) return <PageSpinner />;
+  // Block only until we have a name to show. Stats section handles its own skeleton.
+  if (!tournament || (!playerRow && loadingTpBasic)) return <PageSpinner />;
 
   // Build a display object from standings (if available) or fallback to tp basic info
   const tp = tpBasic as { player_id: string; initial_ranking: number | null; players: { full_name: string; rating_std: number | null; state: string | null } | null; tournament_categories: { name: string } | null } | null | undefined;
@@ -125,18 +128,42 @@ export default function PlayerTournamentPage({ params }: Props) {
               </div>
             )}
           </div>
-          {playerRow && (
+          {playerRow ? (
             <div className="flex flex-col items-end gap-2">
               <span className="text-3xl font-bold text-brand-600 dark:text-brand-400 tabular-nums">
                 {formatScore(playerRow.points)}
               </span>
               <span className="text-xs text-gray-400">pontos</span>
             </div>
-          )}
+          ) : loadingStandings ? (
+            <div className="flex flex-col items-end gap-2 animate-pulse">
+              <div className="h-9 w-10 rounded bg-gray-200 dark:bg-gray-700" />
+              <div className="h-3 w-10 rounded bg-gray-100 dark:bg-gray-800" />
+            </div>
+          ) : null}
         </div>
 
-        {/* Stats row — only when standings exist */}
-        {playerRow && (
+        {/* Stats row — skeleton while standings load, real data once available */}
+        {loadingStandings && !playerRow ? (
+          <div className="border-t border-gray-100 dark:border-gray-800 pt-3 animate-pulse">
+            <div className="grid grid-cols-3 gap-3 pb-3 text-center">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div className="h-6 w-8 rounded bg-gray-200 dark:bg-gray-700" />
+                  <div className="h-3 w-12 rounded bg-gray-100 dark:bg-gray-800" />
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-3 border-t border-gray-100 dark:border-gray-800 pt-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-12 h-8 rounded bg-gray-200 dark:bg-gray-700 shrink-0" />
+                  <div className="h-4 w-32 rounded bg-gray-100 dark:bg-gray-800" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : playerRow ? (
           <>
             <div className="grid grid-cols-3 gap-3 py-3 border-t border-gray-100 dark:border-gray-800 text-center">
               <div>
@@ -159,7 +186,7 @@ export default function PlayerTournamentPage({ params }: Props) {
               <TiebreakRow info={TIEBREAK_INFO.sonneborn_berger} value={formatTiebreak(playerRow.sonneborn_berger)} />
             </div>
           </>
-        )}
+        ) : null}
 
         {/* Actions */}
         <div className="flex gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 mt-3">
