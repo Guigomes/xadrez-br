@@ -163,19 +163,33 @@ export default function PlayerTournamentPage({ params }: Props) {
               ))}
             </div>
           </div>
-        ) : playerRow ? (
-          <>
+        ) : playerRow ? (() => {
+          // Derive wins/draws/losses from history instead of stale recalculation data
+          const finishedGames = (history as PlayerHistoryRow[] | undefined)?.filter(
+            (r) => r.result !== '*' && !r.is_bye,
+          ) ?? [];
+          const wins   = finishedGames.filter((r) =>
+            (r.result === '1-0' && r.color === 'white') ||
+            (r.result === '0-1' && r.color === 'black'),
+          ).length;
+          const draws  = finishedGames.filter((r) => r.result === '1/2-1/2').length;
+          const losses = finishedGames.filter((r) =>
+            (r.result === '1-0' && r.color === 'black') ||
+            (r.result === '0-1' && r.color === 'white'),
+          ).length;
+          return (
+            <>
             <div className="grid grid-cols-3 gap-3 py-3 border-t border-gray-100 dark:border-gray-800 text-center">
               <div>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">{playerRow.wins ?? 0}</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400">{wins}</p>
                 <p className="text-xs text-gray-500">Vitórias</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{playerRow.draws ?? 0}</p>
+                <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{draws}</p>
                 <p className="text-xs text-gray-500">Empates</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-red-500 dark:text-red-400">{playerRow.losses ?? 0}</p>
+                <p className="text-lg font-bold text-red-500 dark:text-red-400">{losses}</p>
                 <p className="text-xs text-gray-500">Derrotas</p>
               </div>
             </div>
@@ -185,8 +199,9 @@ export default function PlayerTournamentPage({ params }: Props) {
               <TiebreakRow info={TIEBREAK_INFO.buchholz_cut1} value={formatTiebreak(playerRow.buchholz_cut1)} />
               <TiebreakRow info={TIEBREAK_INFO.sonneborn_berger} value={formatTiebreak(playerRow.sonneborn_berger)} />
             </div>
-          </>
-        ) : null}
+            </>
+          );
+        })() : null}
 
         {/* Actions */}
         <div className="flex gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 mt-3">
