@@ -8,6 +8,7 @@ export type TournamentType = 'swiss' | 'round_robin' | 'knockout' | 'other';
 export type RoundStatus = 'pending' | 'ongoing' | 'finished';
 export type GameResult = '1-0' | '0-1' | '1/2-1/2' | '*' | 'bye' | 'forfeit_white' | 'forfeit_black' | 'double_forfeit';
 export type PlayerTournamentStatus = 'active' | 'withdrawn' | 'absent';
+export type RegistrationStatus = 'pending' | 'approved' | 'rejected';
 
 // ============================================================
 // Row types (raw DB rows)
@@ -154,6 +155,30 @@ export interface TournamentImport {
   last_run_at: string | null;
   last_status: 'success' | 'error' | null;
   last_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TournamentRegistration {
+  id: string;
+  tournament_id: string;
+  pairing_group_id: string | null;
+  full_name: string;
+  birth_year: number | null;
+  city: string | null;
+  federation: string;
+  fide_id: string | null;
+  cbx_id: string | null;
+  rating_std: number | null;
+  email: string | null;
+  phone: string | null;
+  payment_receipt_path: string | null;
+  status: RegistrationStatus;
+  player_id: string | null;
+  tournament_player_id: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejected_reason: string | null;
   created_at: string;
   updated_at: string;
 }
