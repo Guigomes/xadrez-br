@@ -34,7 +34,7 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
   const nameIdx = colIndex(headers, ['nome', 'name']);
   const fideIdx = colIndex(headers, ['id fide', 'fide id', 'fideid', 'fide-id']);
   const fedIdx  = colIndex(headers, ['fed', 'federation']);
-  const eloIdx  = colIndex(headers, ['elo', 'rtg', 'rating', 'elon', 'elof']);
+  const eloIdx  = colIndex(headers, ['elo', 'eloi', 'elon', 'elof', 'rtg', 'rtgi', 'rtgn', 'rating', 'ratingi', 'ratingn']);
   const typeIdx = colIndex(headers, ['tipo', 'type', 'title']);
   const cityIdx = colIndex(headers, ['clube/cidade', 'clube / cidade', 'clube cidade', 'club/city', 'club']);
 
