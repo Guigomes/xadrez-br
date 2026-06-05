@@ -189,7 +189,16 @@ export async function POST(
       }
 
       if (!playerId) { failed++; continue; }
-      if (existingPlayerIds.has(playerId)) { skipped++; continue; }
+
+      if (existingPlayerIds.has(playerId)) {
+        // Update ranking and category in case they changed on reimport
+        await supabase.from('tournament_players').update({
+          initial_ranking: p.initialRanking ?? null,
+          category_id: categoryId ?? null,
+        }).eq('tournament_id', tournament.id).eq('player_id', playerId);
+        skipped++;
+        continue;
+      }
 
       await supabase.from('tournament_players').insert({
         tournament_id: tournament.id,
