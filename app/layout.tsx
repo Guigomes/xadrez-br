@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   },
   description: 'Acompanhe torneios de xadrez, resultados, classificações e o desempenho dos jogadores em tempo real.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icons/icon-192x192.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

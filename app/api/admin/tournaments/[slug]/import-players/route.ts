@@ -25,18 +25,18 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
   const asStr = rows.map((row) => row.map((c) => String(c ?? '').trim()));
 
   const headerIdx = asStr.findIndex(
-    (row) => row.some((c) => normalize(c) === 'nome') && row.some((c) => normalize(c) === 'id fide')
+    (row) => row.some((c) => normalize(c) === 'nome' || normalize(c) === 'name')
   );
-  if (headerIdx < 0) throw new Error('Cabeçalho do padrão Chess-Results não encontrado.');
+  if (headerIdx < 0) throw new Error('Cabeçalho do padrão Chess-Results não encontrado (coluna "Nome" ausente).');
 
   const headers = asStr[headerIdx];
   const numIdx  = colIndex(headers, ['nº.', 'nº', 'no.', 'no', 'num', 'numero']);
-  const nameIdx = colIndex(headers, ['nome']);
-  const fideIdx = colIndex(headers, ['id fide']);
-  const fedIdx  = colIndex(headers, ['fed']);
-  const eloIdx  = colIndex(headers, ['elo']);
-  const typeIdx = colIndex(headers, ['tipo']);
-  const cityIdx = colIndex(headers, ['clube/cidade', 'clube / cidade', 'clube cidade']);
+  const nameIdx = colIndex(headers, ['nome', 'name']);
+  const fideIdx = colIndex(headers, ['id fide', 'fide id', 'fideid', 'fide-id']);
+  const fedIdx  = colIndex(headers, ['fed', 'federation']);
+  const eloIdx  = colIndex(headers, ['elo', 'eloi', 'elon', 'elof', 'rtg', 'rtgi', 'rtgn', 'rating', 'ratingi', 'ratingn']);
+  const typeIdx = colIndex(headers, ['tipo', 'type', 'title']);
+  const cityIdx = colIndex(headers, ['clube/cidade', 'clube / cidade', 'clube cidade', 'club/city', 'club']);
 
   if (nameIdx < 0) throw new Error('Coluna "Nome" não encontrada.');
 
@@ -189,7 +189,16 @@ export async function POST(
       }
 
       if (!playerId) { failed++; continue; }
-      if (existingPlayerIds.has(playerId)) { skipped++; continue; }
+
+      if (existingPlayerIds.has(playerId)) {
+        // Update ranking and category in case they changed on reimport
+        await supabase.from('tournament_players').update({
+          initial_ranking: p.initialRanking ?? null,
+          category_id: categoryId ?? null,
+        }).eq('tournament_id', tournament.id).eq('player_id', playerId);
+        skipped++;
+        continue;
+      }
 
       await supabase.from('tournament_players').insert({
         tournament_id: tournament.id,

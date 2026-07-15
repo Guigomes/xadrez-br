@@ -60,8 +60,23 @@ export default async function RoundPage({ params, searchParams }: Props) {
   const rounds = (roundsRaw ?? []) as RoundRow[];
   if (rounds.length === 0) notFound();
 
+  // Infer effective status from pairings: a round marked 'ongoing' with zero
+  // pending results ('*') is effectively finished — handles stale DB state.
+  const roundIds = rounds.map((r) => r.id);
+  const { data: pendingPairings } = await supabase
+    .from('pairings')
+    .select('round_id')
+    .in('round_id', roundIds)
+    .eq('result', '*');
+  const pendingRoundIds = new Set((pendingPairings ?? []).map((p: any) => p.round_id as string));
+
+  const effectiveRounds: RoundRow[] = rounds.map((r) => ({
+    ...r,
+    status: r.status === 'ongoing' && !pendingRoundIds.has(r.id) ? 'finished' : r.status,
+  }));
+
   // Resolve pairing-group names so we can label each section.
-  const groupIds = rounds.map((r) => r.pairing_group_id).filter((id): id is string => !!id);
+  const groupIds = effectiveRounds.map((r) => r.pairing_group_id).filter((id): id is string => !!id);
   let groups: GroupRow[] = [];
   if (groupIds.length > 0) {
     const { data } = await supabase
@@ -73,7 +88,7 @@ export default async function RoundPage({ params, searchParams }: Props) {
   const groupName = new Map(groups.map((g) => [g.id, g.name]));
 
   // Sort by the same age-aware order used in the overview: SUB7 < SUB9 < ...
-  const sections = rounds
+  const sections = effectiveRounds
     .map((r) => ({
       roundId: r.id,
       status: r.status,
@@ -87,7 +102,7 @@ export default async function RoundPage({ params, searchParams }: Props) {
       return (a.groupName ?? '').localeCompare(b.groupName ?? '');
     });
 
-  const headerStatus = aggregateStatus(rounds);
+  const headerStatus = aggregateStatus(effectiveRounds);
   const isMultiGroup = sections.length > 1 || sections.some((s) => s.groupName);
 
   // Pick which group's pairings to render. ?group=<id> wins when it matches a

@@ -34,7 +34,7 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
       {isOngoing && (
         <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 flex items-center gap-1.5">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-          Atualizando automaticamente a cada 15 segundos
+          Atualizando automaticamente a cada 1 minuto
         </p>
       )}
       <PairingsList pairings={pairings} tournamentSlug={tournamentSlug} followedTpIds={followed?.tpIds} />

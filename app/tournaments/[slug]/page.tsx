@@ -1,8 +1,8 @@
 import type React from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { ROUND_STATUS_LABELS, ROUND_STATUS_COLORS, formatScore } from '@/lib/utils/chess';
+import { ROUND_STATUS_LABELS, ROUND_STATUS_COLORS } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 import { Badge } from '@/components/ui/badge';
 
@@ -22,17 +22,10 @@ export default async function TournamentOverviewPage({ params }: Props) {
 
   if (!tournament) notFound();
 
-  const isActive = tournament.status === 'ongoing' || tournament.status === 'finished';
-
-  const [{ data: rounds }, { data: categories }, { data: pairingGroups }, { data: topStandings }, { count: participantCount }] = await Promise.all([
+  const [{ data: rounds }, { data: categories }, { data: pairingGroups }, { count: participantCount }] = await Promise.all([
     supabase.from('rounds').select('*').eq('tournament_id', tournament.id).order('round_number'),
     supabase.from('tournament_categories').select('*').eq('tournament_id', tournament.id),
     supabase.from('pairing_groups').select('id, name').eq('tournament_id', tournament.id).order('sort_order'),
-    // Only call standings RPC when the tournament is active; for upcoming/registration it's expensive and unused
-    isActive
-      ? supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id })
-      : Promise.resolve({ data: null, error: null }),
-    // Count participants (cheap, used in the pre-tournament card when no groups)
     supabase.from('tournament_players').select('id', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
   ]);
 
@@ -60,10 +53,9 @@ export default async function TournamentOverviewPage({ params }: Props) {
   const completedRounds = aggregatedRounds.filter((r) => r.status === 'finished').length;
   const currentRound = aggregatedRounds.find((r) => r.status === 'ongoing');
 
-  // Only show standings when the tournament is underway or finished AND has real scores
-  const hasRealStandings =
-    (tournament.status === 'ongoing' || tournament.status === 'finished') &&
-    (topStandings ?? []).some((r: any) => (r.points ?? 0) > 0);
+  if (tournament.status === 'ongoing' && currentRound) {
+    redirect(`/tournaments/${slug}/rounds/${currentRound.round_number}`);
+  }
 
   // Sort groups by the age number in their name (SUB7 < SUB9 < SUB11 …),
   // then alphabetically within the same number (FEM < MASC < MISTO).
@@ -113,40 +105,8 @@ export default async function TournamentOverviewPage({ params }: Props) {
           </Link>
         )}
 
-        {/* Top standings preview — only when tournament is running and has real scores */}
-        {hasRealStandings && (
-          <div className="card p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Classificação parcial</h2>
-              <Link href={`/tournaments/${slug}/standings`} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
-                Ver completa
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {(topStandings ?? []).map((row: any) => (
-                <Link
-                  key={row.tp_id}
-                  href={`/tournaments/${slug}/players/${row.tp_id}`}
-                  className="flex items-center gap-3 py-1.5 hover:opacity-80 transition-opacity"
-                >
-                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold shrink-0
-                    ${row.rank === 1 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-                    ${row.rank === 2 ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' : ''}
-                    ${row.rank === 3 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
-                    ${(row.rank ?? 0) > 3 ? 'text-gray-400' : ''}
-                  `}>
-                    {row.rank}
-                  </span>
-                  <span className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{row.full_name}</span>
-                  <span className="text-sm font-bold text-brand-600 dark:text-brand-400 tabular-nums">{formatScore(row.points)}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Before tournament starts: show participants / group cards */}
-        {!hasRealStandings && !currentRound && hasGroups && (
+        {!currentRound && hasGroups && (
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">Participantes por grupo</h2>
@@ -172,7 +132,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
         )}
 
         {/* Before tournament starts without groups: simple participants link */}
-        {!hasRealStandings && !currentRound && !hasGroups && (participantCount ?? 0) > 0 && (
+        {!currentRound && !hasGroups && (participantCount ?? 0) > 0 && (
           <Link
             href={`/tournaments/${slug}/participants`}
             className="card p-4 flex items-center justify-between gap-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors group"

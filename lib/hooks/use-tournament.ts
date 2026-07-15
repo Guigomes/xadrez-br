@@ -147,8 +147,8 @@ export function useRoundPairings(roundId: string) {
       if (error) throw error;
       return data ?? [];
     },
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }
 
@@ -164,8 +164,8 @@ export function usePlayerHistory(tournamentId: string, tpId: string) {
       if (error) throw error;
       return data ?? [];
     },
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }
 
