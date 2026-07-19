@@ -5,7 +5,9 @@
 export type UserRole = 'admin' | 'organizer' | 'arbiter' | 'public_user';
 export type TournamentStatus = 'draft' | 'registration' | 'ongoing' | 'finished' | 'cancelled';
 export type TournamentType = 'swiss' | 'round_robin' | 'knockout' | 'other';
-export type RoundStatus = 'pending' | 'ongoing' | 'finished';
+export type RoundStatus = 'draft' | 'pending' | 'ongoing' | 'finished';
+export type ByeKind = 'pairing' | 'requested_half' | 'requested_zero' | 'late_entry';
+export type StaffRole = 'organizer' | 'arbiter';
 export type GameResult = '1-0' | '0-1' | '1/2-1/2' | '*' | 'bye' | 'forfeit_white' | 'forfeit_black' | 'double_forfeit';
 export type PlayerTournamentStatus = 'active' | 'withdrawn' | 'absent';
 export type RegistrationStatus = 'pending' | 'approved' | 'rejected';
@@ -112,8 +114,38 @@ export interface TournamentPlayer {
   direct_encounter: number | null;
   performance_rating: number | null;
   status: PlayerTournamentStatus;
+  joined_at_round: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface TournamentStaff {
+  id: string;
+  tournament_id: string;
+  user_id: string;
+  role: StaffRole;
+  invited_by: string | null;
+  created_at: string;
+}
+
+export interface RequestedBye {
+  id: string;
+  tournament_id: string;
+  tp_id: string;
+  round_number: number;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  tournament_id: string;
+  actor: string | null;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  payload: Record<string, unknown> | null;
+  created_at: string;
 }
 
 export interface Round {
@@ -137,6 +169,8 @@ export interface Pairing {
   white_points: number | null;
   black_points: number | null;
   is_bye: boolean;
+  bye_kind: ByeKind | null;
+  manual_override: boolean;
   created_at: string;
   updated_at: string;
 }
