@@ -336,6 +336,10 @@ export interface TournamentFormValues {
   registration_end_date?: string;
   rounds_count: number;
   is_public: boolean;
+  mode: TournamentMode;
+  initial_color: InitialColor;
+  rating_kind: RatingKind;
+  requested_bye_score: number;
 }
 
 export interface PlayerFormValues {

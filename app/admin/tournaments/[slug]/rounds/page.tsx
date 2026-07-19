@@ -20,6 +20,7 @@ import type { GameResult, RoundPairingRow } from '@/types/database';
 import { createClient } from '@/lib/supabase/client';
 import { ImportStandings } from '@/components/admin/import-standings';
 import { ImportPairings } from '@/components/admin/import-pairings';
+import { NativeRounds } from '@/components/admin/native-rounds';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -40,6 +41,36 @@ export default function AdminRoundsPage({ params }: Props) {
 
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p>Torneio não encontrado.</p>;
+
+  // Torneio nativo: fluxo de pareamento próprio (F4) no lugar das importações.
+  if ((tournament as any).mode === 'native') {
+    return (
+      <div className="max-w-3xl">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{tournament.name}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Rodadas e pareamento</p>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href={`/admin/tournaments/${slug}/players`}
+              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Jogadores
+            </Link>
+            <Link
+              href={`/tournaments/${slug}`}
+              target="_blank"
+              className="rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-sm font-medium text-brand-600 dark:text-brand-400"
+            >
+              Ver público
+            </Link>
+          </div>
+        </div>
+        <NativeRounds tournament={tournament} />
+      </div>
+    );
+  }
 
   const nextRoundNumber = (rounds?.length ?? 0) + 1;
   const canCreateRound = nextRoundNumber <= tournament.rounds_count;

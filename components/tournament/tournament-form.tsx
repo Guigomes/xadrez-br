@@ -25,6 +25,10 @@ const schema = z.object({
   registration_end_date:   z.string().optional(),
   rounds_count:    z.coerce.number().int().min(1).max(20),
   is_public:       z.boolean(),
+  mode:            z.enum(['native', 'imported']),
+  initial_color:   z.enum(['white1', 'black1']),
+  rating_kind:     z.enum(['std', 'rpd', 'blz']),
+  requested_bye_score: z.coerce.number(),
 }).superRefine((values, ctx) => {
   if (values.registration_start_date && values.registration_end_date
     && values.registration_end_date < values.registration_start_date) {
@@ -59,6 +63,10 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       tournament_type: 'swiss',
       rounds_count: 7,
       is_public: false,
+      mode: 'native',
+      initial_color: 'white1',
+      rating_kind: 'std',
+      requested_bye_score: 0.5,
       ...defaultValues,
     },
   });
@@ -156,6 +164,36 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             />
           </div>
         </div>
+      </div>
+
+      {/* Native pairing config */}
+      <div className="card p-5 space-y-4">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Gerenciamento</h2>
+        <Select
+          label="Modo do torneio *"
+          {...register('mode')}
+        >
+          <option value="native">Nativo — pareamento suíço gerado aqui</option>
+          <option value="imported">Importado — sincronizado do chess-results</option>
+        </Select>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Select label="Cor do nº 1 (sorteio)" {...register('initial_color')}>
+            <option value="white1">Brancas</option>
+            <option value="black1">Pretas</option>
+          </Select>
+          <Select label="Rating para seed" {...register('rating_kind')}>
+            <option value="std">Clássico</option>
+            <option value="rpd">Rápido</option>
+            <option value="blz">Blitz</option>
+          </Select>
+          <Select label="Bye solicitado vale" {...register('requested_bye_score')}>
+            <option value="0.5">½ ponto</option>
+            <option value="0">0 pontos</option>
+          </Select>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Essas opções só se aplicam a torneios nativos e podem ser editadas até a 1ª rodada ser publicada.
+        </p>
       </div>
 
       {/* Visibility */}

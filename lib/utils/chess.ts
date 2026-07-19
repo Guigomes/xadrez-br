@@ -99,12 +99,14 @@ export function getTournamentStatusColor(
 // ============================================================
 
 export const ROUND_STATUS_LABELS: Record<RoundStatus, string> = {
+  draft:    'Rascunho',
   pending:  'Aguardando',
   ongoing:  'Em andamento',
   finished: 'Finalizada',
 };
 
 export const ROUND_STATUS_COLORS: Record<RoundStatus, string> = {
+  draft:    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
   pending:  'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
   ongoing:  'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   finished: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
