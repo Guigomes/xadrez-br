@@ -1,0 +1,9 @@
+bbpPairings upstream: https://github.com/BieremaBoyzProgramming/bbpPairings
+commit: 7dca5c007148505a3dd35ed37b6e7581b7937a3e (master, shallow clone 2026-07-19)
+emsdk: 6.0.3 (releases-9074aa513b501925adb1361e208932ad32a29a5f)
+build: scripts/build-bbppairings.sh
+flags: -std=c++20 -O2 -Isrc -fexceptions -sMODULARIZE=1 -sEXPORT_ES6=1
+       -sENVIRONMENT=node -sEXPORTED_RUNTIME_METHODS=callMain,FS
+       -sINVOKE_RUN=0 -sEXIT_RUNTIME=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8388608
+ATENÇÃO: -fexceptions é obrigatório — sem ele, qualquer erro de validação
+do TRF vira abort() em vez de exit code 3.

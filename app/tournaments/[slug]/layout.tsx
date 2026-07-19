@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { TournamentTabs } from '@/components/tournament/tournament-tabs';
 import { SaveLastTournament } from '@/components/tournament/save-last-tournament';
@@ -138,6 +139,14 @@ export default async function TournamentLayout({ children, params }: Props) {
                   </>
                 )}
               </p>
+            )}
+            {effectiveStatus === 'registration' && (
+              <Link
+                href={`/tournaments/${slug}/register`}
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 transition-colors"
+              >
+                📝 Inscrever-se no torneio
+              </Link>
             )}
           </div>
 

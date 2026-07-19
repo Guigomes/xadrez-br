@@ -47,3 +47,6 @@ public/sw.js.map
 public/workbox-*.js.map
 
 .vercel
+
+# claude worktrees
+.claude/worktrees/

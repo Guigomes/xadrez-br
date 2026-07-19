@@ -68,6 +68,12 @@ export default async function AdminDashboard() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Link
+                  href={`/admin/tournaments/${t.slug}/registrations`}
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Inscrições
+                </Link>
+                <Link
                   href={`/admin/tournaments/${t.slug}/players`}
                   className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
