@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { tournamentKeys } from './use-tournament';
 import type { Round, PairingGroup } from '@/types/database';
 
 const supabase = createClient();
@@ -38,10 +39,11 @@ function useInvalidate(tournamentId: string, groupId: string) {
   const qc = useQueryClient();
   return () => {
     qc.invalidateQueries({ queryKey: ['group-rounds', groupId] });
-    qc.invalidateQueries({ queryKey: ['rounds', tournamentId] });
     qc.invalidateQueries({ queryKey: ['pairing-groups', tournamentId] });
-    qc.invalidateQueries({ queryKey: ['tournament-players', tournamentId] });
-    qc.invalidateQueries({ queryKey: ['standings', tournamentId] });
+    qc.invalidateQueries({ queryKey: ['pairings'] });
+    qc.invalidateQueries({ queryKey: tournamentKeys.rounds(tournamentId) });
+    qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) });
+    qc.invalidateQueries({ queryKey: tournamentKeys.standings(tournamentId) });
   };
 }
 
@@ -99,6 +101,37 @@ export function useRoundTransition(tournamentId: string, groupId: string) {
     mutationFn: async ({ action, roundId }: { action: 'publish' | 'finish' | 'reopen'; roundId: string }) =>
       roundRpc(`${action}_round` as any)(roundId),
     onSuccess: invalidate,
+  });
+}
+
+export function useDraftWarnings(tournamentSlug: string, roundId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['draft-warnings', roundId],
+    enabled: enabled && !!roundId,
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/tournaments/${tournamentSlug}/rounds/${roundId}/warnings`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Falha ao calcular avisos');
+      return body.warnings as Array<{ code: string; board?: number | null; gap?: number }>;
+    },
+  });
+}
+
+export function useSwapDraft(tournamentId: string, groupId: string, roundId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidate(tournamentId, groupId);
+  return useMutation({
+    mutationFn: async (moves: Array<{ pairing_id: string; white_tp: string; black_tp: string | null }>) => {
+      const { error } = await supabase.rpc('swap_draft_players', {
+        p_round_id: roundId, p_moves: moves,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['pairings', roundId] });
+      qc.invalidateQueries({ queryKey: ['draft-warnings', roundId] });
+    },
   });
 }
 

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup, useGenerateSeeds,
   useGenerateRound, useRoundTransition, useSetResult,
+  useSwapDraft, useDraftWarnings,
 } from '@/lib/hooks/use-native-rounds';
 import { useRoundPairings, useTournamentPlayers } from '@/lib/hooks/use-tournament';
 import { Button } from '@/components/ui/button';
@@ -227,30 +228,105 @@ function RoundCard({
   );
 }
 
+const WARNING_LABELS: Record<string, string> = {
+  REMATCH: 'Confronto repetido',
+  COLOR_STREAK: '3ª cor seguida',
+  COLOR_IMBALANCE: 'Cores desequilibradas',
+  SCORE_GAP: 'Diferença de pontos > 1',
+  SECOND_PAIRING_BYE: '2º bye de pareamento',
+  MANUAL_OVERRIDE: 'Mesa alterada à mão',
+};
+
 function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; groupId: string; round: Round }) {
   const { data: pairings, isLoading } = useRoundPairings(round.id);
   const setResult = useSetResult(tournament.id, groupId);
+  const swap = useSwapDraft(tournament.id, groupId, round.id);
+  const isDraft = round.status === 'draft';
+  const { data: warnings } = useDraftWarnings(tournament.slug, round.id, isDraft);
+  const [selected, setSelected] = useState<{ pairingId: string; side: 'w' | 'b' } | null>(null);
   const [error, setError] = useState('');
 
   if (isLoading) return <PageSpinner />;
   if (!pairings?.length) return <p className="text-sm text-gray-500">Sem mesas.</p>;
 
+  async function handleSeatClick(p: any, side: 'w' | 'b') {
+    if (!selected) { setSelected({ pairingId: p.pairing_id, side }); return; }
+    if (selected.pairingId === p.pairing_id && selected.side === side) { setSelected(null); return; }
+    const p1 = pairings!.find((x: any) => x.pairing_id === selected.pairingId)!;
+    const p2 = p;
+    const get = (x: any, s: 'w' | 'b') => (s === 'w' ? x.white_tp_id : x.black_tp_id);
+    const tp1 = get(p1, selected.side);
+    const tp2 = get(p2, side);
+    const setSeat = (x: any, s: 'w' | 'b', tp: string) =>
+      s === 'w' ? { white: tp, black: x.black_tp_id } : { white: x.white_tp_id, black: tp };
+
+    let moves: Array<{ pairing_id: string; white_tp: string; black_tp: string | null }>;
+    if (p1.pairing_id === p2.pairing_id) {
+      moves = [{ pairing_id: p1.pairing_id, white_tp: tp2, black_tp: tp1 }];
+    } else {
+      const n1 = setSeat(p1, selected.side, tp2);
+      const n2 = setSeat(p2, side, tp1);
+      moves = [
+        { pairing_id: p1.pairing_id, white_tp: n1.white, black_tp: n1.black },
+        { pairing_id: p2.pairing_id, white_tp: n2.white, black_tp: n2.black },
+      ];
+    }
+    setSelected(null);
+    setError('');
+    try { await swap.mutateAsync(moves); } catch (e: any) { setError(e.message); }
+  }
+
+  const Seat = ({ p, side, name }: { p: any; side: 'w' | 'b'; name: string | null }) => {
+    if (!isDraft || !name) {
+      return <span className="text-gray-900 dark:text-gray-100">{name ?? 'BYE'}</span>;
+    }
+    const isSel = selected?.pairingId === p.pairing_id && selected?.side === side;
+    return (
+      <button
+        onClick={() => handleSeatClick(p, side)}
+        disabled={swap.isPending}
+        className={`rounded px-1.5 py-0.5 transition-colors ${
+          isSel
+            ? 'bg-brand-600 text-white'
+            : 'text-gray-900 dark:text-gray-100 hover:bg-brand-100 dark:hover:bg-brand-900/40'
+        }`}
+        title="Clique em dois assentos para trocar os jogadores"
+      >
+        {name}
+      </button>
+    );
+  };
+
   return (
     <div className="space-y-2">
+      {isDraft && (
+        <div className="rounded-lg bg-purple-50 dark:bg-purple-950/30 px-3 py-2 text-xs text-purple-700 dark:text-purple-300">
+          Modo edição: clique em dois jogadores para trocá-los de lugar.
+          {(warnings?.length ?? 0) > 0 && (
+            <span className="block mt-1 space-x-2">
+              {warnings!.map((w: any, i) => (
+                <Badge key={i} className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                  {w.board != null ? `Mesa ${w.board}: ` : ''}{WARNING_LABELS[w.code] ?? w.code}
+                </Badge>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       {pairings.map((p: any) => (
         <div key={p.pairing_id} className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm flex-wrap">
-          <div className="min-w-0">
+          <div className="min-w-0 flex items-center flex-wrap gap-y-1">
             <span className="text-gray-400 mr-2">{p.board_number ?? '—'}</span>
-            <span className="text-gray-900 dark:text-gray-100">{p.white_name}</span>
+            <Seat p={p} side="w" name={p.white_name} />
             <span className="text-gray-400 mx-1.5">×</span>
-            <span className="text-gray-900 dark:text-gray-100">{p.black_name ?? 'BYE'}</span>
+            <Seat p={p} side="b" name={p.black_name} />
           </div>
           {p.is_bye ? (
             <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
               Bye ({p.white_points ?? 0})
             </Badge>
-          ) : round.status === 'draft' ? (
+          ) : isDraft ? (
             <span className="text-xs text-gray-400">rascunho</span>
           ) : (
             <select
