@@ -127,6 +127,21 @@ Notas:
 
 ### 3.3 Migration B — consolidação grupos × categorias (RF-2)
 
+> **EMENDA (2026-07-19, implementação da F1):** o NOT NULL global em
+> `pairing_group_id` foi substituído por **trigger que exige grupo apenas em
+> torneios `mode='native'`** (`enforce_native_pairing_group`, migration 015).
+> Motivos descobertos na implementação: (1) o cron-import insere
+> `tournament_players`/`rounds` com grupo NULL em importados de grupo único —
+> NOT NULL global quebraria o worker antes da F11; (2) backfill de grupo
+> "Único" em torneios importados mudaria a UI pública deles (cards de grupo
+> passariam a aparecer). Consequências: o backfill do bloco abaixo não foi
+> executado, o índice parcial `rounds_unique_no_group` (007) permanece, e o
+> caso "partição NULL" do `recalculate_standings` (010) continua necessário
+> para importados. Para nativos, a semântica do design vale integralmente.
+> F1 aplicada nas migrations 013–015 (numeração sequencial mantida; a
+> sugestão de timestamps da §3.1 não foi adotada — o fluxo de aplicação é
+> manual/roteirizado e a ordenação numérica basta).
+
 ```sql
 -- 1. Sexo do jogador (exigido pelo TRF e pela categoria Feminino)
 alter table players add column sex char(1) check (sex in ('m','w'));

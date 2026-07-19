@@ -9,6 +9,11 @@ export type RoundStatus = 'pending' | 'ongoing' | 'finished';
 export type GameResult = '1-0' | '0-1' | '1/2-1/2' | '*' | 'bye' | 'forfeit_white' | 'forfeit_black' | 'double_forfeit';
 export type PlayerTournamentStatus = 'active' | 'withdrawn' | 'absent';
 export type RegistrationStatus = 'pending' | 'approved' | 'rejected';
+export type TournamentMode = 'native' | 'imported';
+export type InitialColor = 'white1' | 'black1';
+export type RatingKind = 'std' | 'rpd' | 'blz';
+export type TiebreakKey = 'buchholz' | 'buchholz_cut1' | 'sonneborn_berger' | 'wins' | 'progressive';
+export type PlayerSex = 'm' | 'w';
 
 // ============================================================
 // Row types (raw DB rows)
@@ -33,6 +38,7 @@ export interface Player {
   state: string | null;
   city: string | null;
   birth_year: number | null;
+  sex: PlayerSex | null;
   rating_std: number | null;
   rating_rpd: number | null;
   rating_blz: number | null;
@@ -61,7 +67,22 @@ export interface Tournament {
   status: TournamentStatus;
   is_public: boolean;
   banner_url: string | null;
+  mode: TournamentMode;
+  requested_bye_score: number;
+  initial_color: InitialColor;
+  rating_kind: RatingKind;
+  tiebreak_order: TiebreakKey[];
   created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PairingGroup {
+  id: string;
+  tournament_id: string;
+  name: string;
+  sort_order: number;
+  rounds_count: number | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,5 +1,5 @@
 -- ============================================================
--- Chess Viewer - Migration 011: Fix standings calculation
+-- Chess Viewer - Migration 012: Fix standings calculation (renumerada; era a 2ª "011")
 -- ============================================================
 -- recalculate_standings filtered by r.status = 'finished', which
 -- excluded rounds that had all results entered but whose status
