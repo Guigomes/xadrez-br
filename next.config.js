@@ -9,6 +9,14 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
+  // A rota de pareamento carrega o glue/wasm do bbpPairings do filesystem em
+  // runtime (import dinâmico com webpackIgnore) — o tracing precisa incluí-los.
+  outputFileTracingIncludes: {
+    '/api/admin/tournaments/[slug]/groups/[groupId]/rounds/generate': [
+      './lib/pairing/wasm/**',
+    ],
+  },
+
   images: {
     remotePatterns: [
       {
