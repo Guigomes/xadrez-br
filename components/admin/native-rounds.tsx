@@ -211,9 +211,17 @@ function RoundCard({
               </>
             )}
             {round.status === 'ongoing' && (
-              <Button size="sm" loading={busy} onClick={() => onAction('finish')}>
-                Encerrar rodada
-              </Button>
+              <>
+                <a
+                  href={`/admin/tournaments/${tournament.slug}/rounds/${round.id}/results`}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 h-8 text-sm font-medium text-white hover:bg-brand-700"
+                >
+                  📱 Painel de resultados
+                </a>
+                <Button size="sm" loading={busy} onClick={() => onAction('finish')}>
+                  Encerrar rodada
+                </Button>
+              </>
             )}
             {round.status === 'finished' && canReopen && (
               <Button size="sm" variant="secondary" loading={busy} onClick={() => onAction('reopen')}>
