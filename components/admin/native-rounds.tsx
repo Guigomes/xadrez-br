@@ -164,6 +164,24 @@ function GroupPanel({
           ♟ Gerar rodada {(lastRound?.round_number ?? 0) + 1} de {groupRoundsCount}
         </Button>
       )}
+
+      {finishedCount > 0 && (
+        <div className="flex gap-2 flex-wrap pt-2 border-t border-gray-100 dark:border-gray-800">
+          <a
+            href={`/api/admin/tournaments/${tournament.slug}/groups/${groupId}/export/trf`}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-9 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            ⬇️ Exportar TRF (homologação)
+          </a>
+          <a
+            href={`/tournaments/${tournament.slug}/standings/print`}
+            target="_blank"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-9 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            🖨️ Imprimir classificação
+          </a>
+        </div>
+      )}
       {seededCount === 0 && (
         <p className="text-xs text-amber-600 dark:text-amber-400">
           Gere o ranking inicial antes de parear a primeira rodada.
@@ -227,6 +245,15 @@ function RoundCard({
               <Button size="sm" variant="secondary" loading={busy} onClick={() => onAction('reopen')}>
                 Reabrir rodada
               </Button>
+            )}
+            {round.status !== 'draft' && (
+              <a
+                href={`/tournaments/${tournament.slug}/rounds/${round.round_number}/print`}
+                target="_blank"
+                className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-8 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                🖨️ Imprimir mesas
+              </a>
             )}
           </div>
           <RoundBoards tournament={tournament} groupId={groupId} round={round} />

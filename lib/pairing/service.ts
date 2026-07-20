@@ -1,7 +1,10 @@
 // Orquestra a geração de rodada: carrega estado do grupo no Supabase,
 // serializa TRF(bx), roda a engine e grava o rascunho via RPC save_round_draft.
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { serializeForPairing, type TrfState, type TrfPlayer, type TrfGame } from './trf/serialize';
+import {
+  serializeForPairing, serializeForExport,
+  type TrfState, type TrfPlayer, type TrfGame, type TrfExportState, type TrfExportPlayer,
+} from './trf/serialize';
 import { parseEngineOutput } from './trf/parse-output';
 import { runDutchPairing } from './engine';
 
@@ -143,4 +146,93 @@ export async function generateRoundDraft(
   if (rpcErr) throw new GenerateError('SAVE_FAILED', rpcErr.message);
 
   return { roundId: roundId as string, roundNumber: target, boards };
+}
+
+/**
+ * Gera o TRF completo de um grupo para homologação (RF-9 / F10).
+ * Inclui todas as rodadas finalizadas, ranking final e cabeçalhos FIDE.
+ */
+export async function exportGroupTrf(
+  supabase: SupabaseClient,
+  tournamentSlug: string,
+  groupId: string,
+): Promise<{ filename: string; trf: string }> {
+  const { data: t } = await supabase
+    .from('tournaments').select('*').eq('slug', tournamentSlug).single();
+  if (!t) throw new GenerateError('NOT_FOUND', 'Torneio não encontrado');
+
+  const { data: group } = await supabase
+    .from('pairing_groups').select('*').eq('id', groupId).eq('tournament_id', t.id).single();
+  if (!group) throw new GenerateError('NOT_FOUND', 'Grupo não encontrado');
+
+  const { data: rounds } = await supabase
+    .from('rounds').select('id, round_number, status')
+    .eq('pairing_group_id', groupId).order('round_number');
+  const finished = (rounds ?? []).filter((r) => r.status === 'finished');
+  const lastRound = finished.length ? Math.max(...finished.map((r) => r.round_number)) : 0;
+  const finishedIds = finished.map((r) => r.id);
+  const numberById = new Map((rounds ?? []).map((r) => [r.id, r.round_number]));
+
+  const { data: tps } = await supabase
+    .from('tournament_players')
+    .select('id, initial_ranking, status, joined_at_round, players(full_name, sex, fide_id, birth_year, federation, rating_std, rating_rpd, rating_blz)')
+    .eq('pairing_group_id', groupId);
+  if (!tps?.length) throw new GenerateError('NO_PLAYERS', 'Grupo sem jogadores');
+
+  const { data: standings } = await supabase
+    .from('standings').select('tournament_player_id, rank').eq('tournament_id', t.id);
+  const rankByTp = new Map((standings ?? []).map((s: any) => [s.tournament_player_id, s.rank]));
+
+  const players: TrfExportPlayer[] = tps.map((tp: any) => ({
+    tpId: tp.id,
+    startno: tp.initial_ranking ?? 0,
+    fullName: tp.players.full_name,
+    sex: tp.players.sex,
+    rating: tp.players[`rating_${t.rating_kind}`] ?? null,
+    federation: tp.players.federation,
+    fideId: tp.players.fide_id,
+    birthYear: tp.players.birth_year,
+    status: tp.status,
+    joinedAtRound: tp.joined_at_round ?? 1,
+    rank: rankByTp.get(tp.id) ?? null,
+  }));
+  if (players.some((p) => !p.startno)) {
+    throw new GenerateError('NO_RANKING', 'Jogadores sem ranking inicial — gere o seed do grupo.');
+  }
+
+  let games: TrfGame[] = [];
+  if (finishedIds.length) {
+    const { data: pairings } = await supabase
+      .from('pairings')
+      .select('round_id, white_tp_id, black_tp_id, result, is_bye, bye_kind, white_points, black_points')
+      .in('round_id', finishedIds);
+    games = (pairings ?? []).map((p: any) => ({
+      roundNumber: numberById.get(p.round_id)!,
+      whiteTpId: p.white_tp_id,
+      blackTpId: p.black_tp_id,
+      result: p.result,
+      isBye: p.is_bye,
+      byeKind: p.bye_kind,
+      whitePoints: p.white_points,
+      blackPoints: p.black_points,
+    }));
+  }
+
+  const state: TrfExportState = {
+    tournamentName: `${t.name} - ${group.name}`,
+    city: t.city,
+    federation: 'BRA',
+    startDate: t.start_date,
+    endDate: t.end_date,
+    chiefArbiter: t.chief_arbiter,
+    timeControl: t.time_control,
+    roundsTotal: group.rounds_count ?? t.rounds_count,
+    initialColor: t.initial_color,
+    lastRound,
+    players,
+    games,
+  };
+
+  const slug = `${tournamentSlug}-${group.name}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+  return { filename: `${slug}.trf`, trf: serializeForExport(state) };
 }
