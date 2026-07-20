@@ -780,6 +780,64 @@ necessário).
 
 ---
 
+## 16. Staff e atribuição de mesas (RF-10, adicionado 2026-07-19)
+
+### 16.1 Modelo de dados (Migration G)
+
+```sql
+create table pairing_arbiters (
+  id             uuid primary key default uuid_generate_v4(),
+  tournament_id  uuid not null references tournaments(id) on delete cascade,
+  pairing_id     uuid not null references pairings(id) on delete cascade,
+  user_id        uuid not null references auth.users(id) on delete cascade,
+  assigned_by    uuid references auth.users(id),  -- null = auto-atribuição
+  created_at     timestamptz not null default now(),
+  unique (pairing_id)          -- no máximo 1 árbitro por mesa
+);
+-- RLS: staff lê; escrita SÓ via RPCs (regras de negócio não cabem em policy).
+```
+
+A atribuição referencia o **pairing** (mesa da rodada), não o número físico da
+mesa — por isso não persiste entre rodadas. Atalho "copiar da rodada anterior"
+fica como melhoria futura.
+
+### 16.2 RPCs
+
+```sql
+assign_board_arbiter(p_pairing_id uuid, p_user_id uuid)
+-- organizador: atribui qualquer árbitro/organizador do staff a qualquer mesa
+--   (sobrescreve atribuição existente);
+-- árbitro: só p_user_id = auth.uid() e só se a mesa NÃO tem árbitro.
+-- valida que p_user_id pertence ao staff (ou é owner) e grava audit_log.
+
+unassign_board_arbiter(p_pairing_id uuid)
+-- só o árbitro atribuído ou um organizador. Audit.
+
+-- set_pairing_result (020) ganha a checagem:
+--   se a mesa tem árbitro atribuído e auth.uid() não é ele nem organizador
+--   → exception 'BOARD_ASSIGNED: mesa de outro árbitro'.
+```
+
+### 16.3 UI
+
+- **/admin/tournaments/[slug]/staff**: gestão do staff — adicionar por e-mail
+  (lookup em `user_profiles`; sem conta → orientar a criar), papel
+  organizer/arbiter, remover. Visível só para organizadores.
+- **Painel de resultados (F6)**: cada mesa mostra o árbitro atribuído (badge).
+  Sem árbitro → botão "Assumir mesa" (auto-atribuição). Minha mesa →
+  "Liberar". Organizador → select para atribuir/trocar/limpar qualquer mesa.
+  Botões de resultado desabilitados quando a mesa é de outro árbitro (com
+  aviso), exceto para organizadores.
+- Matriz de permissão (§3.6) ganha a linha: "Lançar resultado em mesa
+  atribuída a outro árbitro: owner ✅ · organizer ✅ · arbiter ❌".
+
+### 16.4 Fase
+
+Entra no plano como **F12** (depende de F2/F6). A gestão de staff que estava
+diluída em F11 move-se para cá.
+
+---
+
 ## Apêndice A — Exemplo trabalhado de TRF(bx) (modo `for_pairing`)
 
 Cenário: grupo "Absoluto" de um torneio de **5 rodadas** (`XXR 5`), cor do

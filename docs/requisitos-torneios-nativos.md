@@ -128,6 +128,19 @@ gerar rascunho → revisar/ajustar → publicar → lançar resultados → fecha
 
 ---
 
+### RF-10 — Perfis de staff e atribuição de mesas *(adicionado em 2026-07-19)*
+- O organizador pode **adicionar outros organizadores** e **atribuir árbitros**
+  ao torneio (papéis por torneio, tabela `tournament_staff`).
+- O organizador pode definir **qual árbitro atende cada mesa** de uma rodada.
+- O árbitro pode **assumir mesas por conta própria**, desde que a mesa ainda
+  não tenha árbitro atribuído.
+- Uma mesa atribuída só pode ser **liberada pelo próprio árbitro atribuído ou
+  por um organizador**.
+- O **resultado de uma mesa com árbitro atribuído** só pode ser lançado por
+  esse árbitro ou por um organizador; mesas sem atribuição seguem a regra
+  atual (qualquer staff).
+- Escopo da atribuição: por mesa **da rodada** (não persiste entre rodadas).
+
 ## 5. Requisitos Não Funcionais
 
 - **Corretude**: pareamento validado contra a suíte de testes do bbpPairings;
