@@ -8,6 +8,28 @@ export type RegistrationRow = TournamentRegistration & {
   pairing_groups: { name: string } | null;
 };
 
+/** Próxima rodada de entrada por grupo (F8): maior rodada não-rascunho + 1. */
+export function useNextRoundByGroup(tournamentId: string) {
+  return useQuery({
+    queryKey: ['next-round-by-group', tournamentId],
+    enabled: !!tournamentId,
+    queryFn: async (): Promise<Map<string, number>> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('rounds').select('pairing_group_id, round_number')
+        .eq('tournament_id', tournamentId).neq('status', 'draft');
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const r of data ?? []) {
+        const cur = map.get(r.pairing_group_id) ?? 0;
+        if (r.round_number > cur) map.set(r.pairing_group_id, r.round_number);
+      }
+      for (const [k, v] of map) map.set(k, v + 1);
+      return map;
+    },
+  });
+}
+
 export function useRegistrations(tournamentId: string) {
   return useQuery({
     queryKey: ['registrations', tournamentId],

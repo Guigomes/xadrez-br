@@ -71,6 +71,38 @@ export function useGenerateSeeds(tournamentId: string, groupId: string) {
   });
 }
 
+export function useRequestedByes(tournamentId: string, roundNumber: number) {
+  return useQuery({
+    queryKey: ['requested-byes', tournamentId, roundNumber],
+    enabled: !!tournamentId && roundNumber > 0,
+    queryFn: async (): Promise<Set<string>> => {
+      const { data, error } = await supabase
+        .from('requested_byes').select('tp_id')
+        .eq('tournament_id', tournamentId).eq('round_number', roundNumber);
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.tp_id));
+    },
+  });
+}
+
+export function useToggleRequestedBye(tournamentId: string, roundNumber: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tpId, requested }: { tpId: string; requested: boolean }) => {
+      if (requested) {
+        const { error } = await supabase.from('requested_byes')
+          .insert({ tournament_id: tournamentId, tp_id: tpId, round_number: roundNumber });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('requested_byes')
+          .delete().eq('tp_id', tpId).eq('round_number', roundNumber);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['requested-byes', tournamentId, roundNumber] }),
+  });
+}
+
 export function useGenerateRound(tournamentSlug: string, tournamentId: string, groupId: string) {
   const invalidate = useInvalidate(tournamentId, groupId);
   return useMutation({

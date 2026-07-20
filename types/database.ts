@@ -285,6 +285,7 @@ export interface StandingRow {
   buchholz: number | null;
   buchholz_cut1: number | null;
   sonneborn_berger: number | null;
+  progressive: number | null;
   performance_rating: number | null;
   category_name: string | null;
   pairing_group_id: string | null;
@@ -350,6 +351,7 @@ export interface TournamentFormValues {
   initial_color: InitialColor;
   rating_kind: RatingKind;
   requested_bye_score: number;
+  tiebreak_order: TiebreakKey[];
 }
 
 export interface PlayerFormValues {

@@ -6,8 +6,9 @@ import { z } from 'zod';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { TiebreakOrderPicker } from '@/components/tournament/tiebreak-order-picker';
 import { BR_STATES, slugify } from '@/lib/utils/chess';
-import type { TournamentFormValues, Tournament } from '@/types/database';
+import type { TournamentFormValues, Tournament, TiebreakKey } from '@/types/database';
 
 const schema = z.object({
   name:            z.string().min(3, 'Nome muito curto'),
@@ -29,6 +30,7 @@ const schema = z.object({
   initial_color:   z.enum(['white1', 'black1']),
   rating_kind:     z.enum(['std', 'rpd', 'blz']),
   requested_bye_score: z.coerce.number(),
+  tiebreak_order: z.array(z.enum(['buchholz', 'buchholz_cut1', 'sonneborn_berger', 'wins', 'progressive'])),
 }).superRefine((values, ctx) => {
   if (values.registration_start_date && values.registration_end_date
     && values.registration_end_date < values.registration_start_date) {
@@ -57,7 +59,7 @@ interface Props {
 }
 
 export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar' }: Props) {
-  const { register, handleSubmit, formState: { errors } } = useForm<TournamentFormValues>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TournamentFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       tournament_type: 'swiss',
@@ -67,6 +69,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       initial_color: 'white1',
       rating_kind: 'std',
       requested_bye_score: 0.5,
+      tiebreak_order: ['buchholz', 'buchholz_cut1', 'sonneborn_berger'],
       ...defaultValues,
     },
   });
@@ -194,6 +197,10 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
         <p className="text-xs text-gray-500 dark:text-gray-400">
           Essas opções só se aplicam a torneios nativos e podem ser editadas até a 1ª rodada ser publicada.
         </p>
+        <TiebreakOrderPicker
+          value={watch('tiebreak_order') as TiebreakKey[]}
+          onChange={(v) => setValue('tiebreak_order', v, { shouldDirty: true })}
+        />
       </div>
 
       {/* Visibility */}

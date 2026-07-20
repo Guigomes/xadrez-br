@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup, useGenerateSeeds,
   useGenerateRound, useRoundTransition, useSetResult,
-  useSwapDraft, useDraftWarnings,
+  useSwapDraft, useDraftWarnings, useRequestedByes, useToggleRequestedBye,
 } from '@/lib/hooks/use-native-rounds';
 import { useRoundPairings, useTournamentPlayers } from '@/lib/hooks/use-tournament';
 import { Button } from '@/components/ui/button';
@@ -98,12 +98,20 @@ function GroupPanel({
   const transition = useRoundTransition(tournament.id, groupId);
   const [openRoundId, setOpenRoundId] = useState<string | null>(null);
 
+  // Hooks precisam rodar antes de qualquer early return (regra dos hooks) —
+  // nextRoundNumber é calculado com dados possivelmente ainda undefined.
+  const lastRoundPre = rounds?.[rounds.length - 1];
+  const nextRoundNumberPre = (lastRoundPre?.round_number ?? 0) + 1;
+  const byes = useRequestedByes(tournament.id, nextRoundNumberPre);
+  const toggleBye = useToggleRequestedBye(tournament.id, nextRoundNumberPre);
+
   if (isLoading) return <PageSpinner />;
 
   const groupPlayers = (tPlayers ?? []).filter((p: any) => p.pairing_group_id === groupId);
   const seededCount = groupPlayers.filter((p: any) => p.initial_ranking != null).length;
   const lastRound = rounds?.[rounds.length - 1];
   const finishedCount = (rounds ?? []).filter((r) => r.status === 'finished').length;
+  const nextRoundNumber = (lastRound?.round_number ?? 0) + 1;
   const canGenerate =
     seededCount > 0 &&
     finishedCount < groupRoundsCount &&
@@ -157,11 +165,43 @@ function GroupPanel({
       </div>
 
       {canGenerate && (
+        <div className="card p-4 space-y-2">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Ausências na rodada {nextRoundNumber}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Marque quem não vai jogar esta rodada — recebe bye ({tournament.requested_bye_score === 0.5 ? '½ ponto' : '0 pontos'}) e não entra no pareamento.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {groupPlayers
+              .filter((p: any) => p.status === 'active' && (p.joined_at_round ?? 1) <= nextRoundNumber)
+              .map((p: any) => {
+                const requested = byes.data?.has(p.id) ?? false;
+                return (
+                  <button
+                    key={p.id}
+                    disabled={toggleBye.isPending}
+                    onClick={() => run(() => toggleBye.mutateAsync({ tpId: p.id, requested: !requested }))}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      requested
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {requested ? '🚫 ' : ''}{p.player?.full_name ?? p.player_id}
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {canGenerate && (
         <Button
           loading={generate.isPending}
           onClick={() => run(() => generate.mutateAsync(undefined))}
         >
-          ♟ Gerar rodada {(lastRound?.round_number ?? 0) + 1} de {groupRoundsCount}
+          ♟ Gerar rodada {nextRoundNumber} de {groupRoundsCount}
         </Button>
       )}
 

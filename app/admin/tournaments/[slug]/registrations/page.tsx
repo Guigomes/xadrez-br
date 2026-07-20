@@ -8,6 +8,7 @@ import {
   useRegistrations,
   useApproveRegistration,
   useRejectRegistration,
+  useNextRoundByGroup,
   openReceipt,
   type RegistrationRow,
 } from '@/lib/hooks/use-registrations';
@@ -38,6 +39,7 @@ export default function AdminRegistrationsPage({ params }: Props) {
   const { user } = useUser();
   const { data: tournament, isLoading } = useTournament(slug);
   const { data: registrations, isLoading: loadingRegs } = useRegistrations(tournament?.id ?? '');
+  const { data: nextRoundByGroup } = useNextRoundByGroup(tournament?.id ?? '');
   const approve = useApproveRegistration(tournament?.id ?? '');
   const reject = useRejectRegistration(tournament?.id ?? '');
 
@@ -116,6 +118,13 @@ export default function AdminRegistrationsPage({ params }: Props) {
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}
+        </p>
+      )}
+
+      {tournament.status === 'ongoing' && (
+        <p className="mb-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          ⏱ Torneio em andamento — inscrições aprovadas agora entram como <strong>entrada tardia</strong>:
+          o jogador recebe bye (0 pontos) nas rodadas já disputadas do grupo.
         </p>
       )}
 
@@ -200,6 +209,11 @@ export default function AdminRegistrationsPage({ params }: Props) {
                   )}
                   {r.status === 'pending' && (
                     <>
+                      {tournament.status === 'ongoing' && r.pairing_group_id && (
+                        <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                          entra na rodada {nextRoundByGroup?.get(r.pairing_group_id) ?? '?'}
+                        </span>
+                      )}
                       <Button
                         size="sm"
                         loading={actingId === r.id && approve.isPending}
