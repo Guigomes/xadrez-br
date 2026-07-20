@@ -139,7 +139,9 @@ gerar rascunho → revisar/ajustar → publicar → lançar resultados → fecha
 - O **resultado de uma mesa com árbitro atribuído** só pode ser lançado por
   esse árbitro ou por um organizador; mesas sem atribuição seguem a regra
   atual (qualquer staff).
-- Escopo da atribuição: por mesa **da rodada** (não persiste entre rodadas).
+- Escopo da atribuição: por **número de mesa**, **persistente entre rodadas**
+  — o árbitro da mesa 3 segue na mesa 3 em todas as rodadas até que a
+  atribuição seja alterada explicitamente.
 
 ## 5. Requisitos Não Funcionais
 

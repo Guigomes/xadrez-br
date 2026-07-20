@@ -7,6 +7,10 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useTournament, useRoundPairings } from '@/lib/hooks/use-tournament';
 import { useSetResult, useRoundTransition } from '@/lib/hooks/use-native-rounds';
+import {
+  useMyTournamentRole, useStaff, useBoardArbiters, useAssignBoard, useUnassignBoard,
+} from '@/lib/hooks/use-staff';
+import { useUser } from '@/lib/hooks/use-auth';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +44,22 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
   const { data: pairings, isLoading: loadingPairings } = useRoundPairings(roundId);
   const setResult = useSetResult(tournament?.id ?? '', round?.pairing_group_id ?? '');
   const transition = useRoundTransition(tournament?.id ?? '', round?.pairing_group_id ?? '');
+  const { user } = useUser();
+  const { data: myRole } = useMyTournamentRole(tournament?.id ?? '');
+  const { data: staff } = useStaff(tournament?.id ?? '');
+  const groupId = round?.pairing_group_id ?? '';
+  const { data: boardArbiters } = useBoardArbiters(groupId);
+  const assignBoard = useAssignBoard(groupId);
+  const unassignBoard = useUnassignBoard(groupId);
+
+  const arbiterByBoard = useMemo(
+    () => new Map((boardArbiters ?? []).map((b) => [b.board_number, b.user_id])),
+    [boardArbiters],
+  );
+  const staffName = (userId: string) =>
+    staff?.find((s) => s.user_id === userId)?.full_name
+    ?? staff?.find((s) => s.user_id === userId)?.email
+    ?? (userId === tournament?.created_by ? 'Organizador' : 'Árbitro');
   const [error, setError] = useState('');
   const [showWoFor, setShowWoFor] = useState<string | null>(null);
   const boardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -109,15 +129,60 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
       <div className="space-y-3">
         {games.map((p: any) => {
           const pending = p.result === '*';
+          const assignedTo = p.board_number != null ? arbiterByBoard.get(p.board_number) : undefined;
+          const isMine = assignedTo === user?.id;
+          const locked = !!assignedTo && !isMine && myRole !== 'organizer';
           return (
             <div
               key={p.pairing_id}
               ref={(el) => { boardRefs.current[p.pairing_id] = el; }}
               className={`card p-4 ${pending ? '' : 'opacity-70'}`}
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-400">MESA {p.board_number}</span>
-                {!pending && (
+                <span className="flex items-center gap-1.5">
+                  {assignedTo ? (
+                    <>
+                      <Badge className={isMine
+                        ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}>
+                        ⚖️ {isMine ? 'Sua mesa' : staffName(assignedTo)}
+                      </Badge>
+                      {(isMine || myRole === 'organizer') && p.board_number != null && (
+                        <button
+                          onClick={() => unassignBoard.mutate(p.board_number)}
+                          disabled={unassignBoard.isPending}
+                          className="text-xs text-gray-400 hover:text-red-500"
+                        >
+                          liberar
+                        </button>
+                      )}
+                    </>
+                  ) : p.board_number != null && myRole ? (
+                    <button
+                      onClick={() => assignBoard.mutate({ boardNumber: p.board_number, userId: user!.id })}
+                      disabled={assignBoard.isPending || !user}
+                      className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline"
+                    >
+                      Assumir mesa
+                    </button>
+                  ) : null}
+                  {myRole === 'organizer' && p.board_number != null && (staff?.length ?? 0) > 0 && (
+                    <select
+                      className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-1.5 py-0.5 text-xs"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) assignBoard.mutate({ boardNumber: p.board_number, userId: e.target.value });
+                      }}
+                    >
+                      <option value="">atribuir…</option>
+                      {staff!.map((s) => (
+                        <option key={s.user_id} value={s.user_id}>{s.full_name || s.email}</option>
+                      ))}
+                    </select>
+                  )}
+                </span>
+                {!pending && !locked && (
                   <button
                     onClick={() => setShowWoFor(showWoFor === p.pairing_id ? null : p.pairing_id)}
                     className="text-xs text-brand-600 dark:text-brand-400"
@@ -126,13 +191,18 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                   </button>
                 )}
               </div>
+              {locked && pending && (
+                <p className="mb-2 text-xs text-amber-600 dark:text-amber-400">
+                  Mesa atendida por {staffName(assignedTo!)} — só ele(a) ou um organizador lança o resultado.
+                </p>
+              )}
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-3 text-sm">
                 <span className="font-medium text-gray-900 dark:text-gray-100 text-right truncate">{p.white_name}</span>
                 <span className="text-gray-400 text-xs">×</span>
                 <span className="font-medium text-gray-900 dark:text-gray-100 truncate">{p.black_name}</span>
               </div>
 
-              {(pending || showWoFor === p.pairing_id) && round.status !== 'draft' ? (
+              {(pending || showWoFor === p.pairing_id) && round.status !== 'draft' && !locked ? (
                 <>
                   <div className="grid grid-cols-3 gap-2">
                     {MAIN.map((r) => (

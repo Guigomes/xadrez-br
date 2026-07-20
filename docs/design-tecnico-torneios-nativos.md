@@ -785,21 +785,22 @@ necessário).
 ### 16.1 Modelo de dados (Migration G)
 
 ```sql
-create table pairing_arbiters (
-  id             uuid primary key default uuid_generate_v4(),
-  tournament_id  uuid not null references tournaments(id) on delete cascade,
-  pairing_id     uuid not null references pairings(id) on delete cascade,
-  user_id        uuid not null references auth.users(id) on delete cascade,
-  assigned_by    uuid references auth.users(id),  -- null = auto-atribuição
-  created_at     timestamptz not null default now(),
-  unique (pairing_id)          -- no máximo 1 árbitro por mesa
+create table board_arbiters (
+  id                uuid primary key default uuid_generate_v4(),
+  tournament_id     uuid not null references tournaments(id) on delete cascade,
+  pairing_group_id  uuid not null references pairing_groups(id) on delete cascade,
+  board_number      smallint not null,
+  user_id           uuid not null references auth.users(id) on delete cascade,
+  assigned_by       uuid references auth.users(id),  -- null = auto-atribuição
+  created_at        timestamptz not null default now(),
+  unique (pairing_group_id, board_number)   -- no máximo 1 árbitro por mesa
 );
 -- RLS: staff lê; escrita SÓ via RPCs (regras de negócio não cabem em policy).
 ```
 
-A atribuição referencia o **pairing** (mesa da rodada), não o número físico da
-mesa — por isso não persiste entre rodadas. Atalho "copiar da rodada anterior"
-fica como melhoria futura.
+**Decisão do usuário (2026-07-19):** a atribuição é pelo **número da mesa**
+dentro do grupo e **persiste entre rodadas** — o árbitro da mesa 3 continua
+nela em todas as rodadas até comando explícito de troca/liberação.
 
 ### 16.2 RPCs
 

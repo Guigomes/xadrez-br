@@ -128,6 +128,16 @@ export interface TournamentStaff {
   created_at: string;
 }
 
+export interface BoardArbiter {
+  id: string;
+  tournament_id: string;
+  pairing_group_id: string;
+  board_number: number;
+  user_id: string;
+  assigned_by: string | null;
+  created_at: string;
+}
+
 export interface RequestedBye {
   id: string;
   tournament_id: string;

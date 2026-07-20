@@ -53,6 +53,12 @@ export default function AdminRoundsPage({ params }: Props) {
           </div>
           <div className="flex gap-2">
             <Link
+              href={`/admin/tournaments/${slug}/staff`}
+              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Equipe
+            </Link>
+            <Link
               href={`/admin/tournaments/${slug}/history`}
               className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
