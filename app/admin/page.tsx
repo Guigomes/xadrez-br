@@ -8,6 +8,10 @@ export default async function AdminDashboard() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  const { data: profile } = await supabase
+    .from('user_profiles').select('role').eq('id', user!.id).single();
+  const isAdmin = profile?.role === 'admin';
+
   const { data: tournaments } = await supabase
     .from('tournaments')
     .select('id, slug, name, status, start_date, end_date, registration_end_date, rounds_count, is_public, city, state')
@@ -19,6 +23,14 @@ export default async function AdminDashboard() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Meus torneios</h1>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Link
+              href="/admin/dev"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              🛠 Dev
+            </Link>
+          )}
           <Link
             href="/admin/stats"
             className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
