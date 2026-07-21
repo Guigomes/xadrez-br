@@ -31,6 +31,8 @@ const schema = z.object({
   rating_kind:     z.enum(['std', 'rpd', 'blz']),
   requested_bye_score: z.coerce.number(),
   tiebreak_order: z.array(z.enum(['buchholz', 'buchholz_cut1', 'sonneborn_berger', 'wins', 'progressive'])),
+  require_payment_receipt: z.boolean(),
+  registration_fee_text: z.string().optional(),
 }).superRefine((values, ctx) => {
   if (values.registration_start_date && values.registration_end_date
     && values.registration_end_date < values.registration_start_date) {
@@ -70,6 +72,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       rating_kind: 'std',
       requested_bye_score: 0.5,
       tiebreak_order: ['buchholz', 'buchholz_cut1', 'sonneborn_berger'],
+      require_payment_receipt: false,
       ...defaultValues,
     },
   });
@@ -166,6 +169,25 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
               {...register('registration_end_date')}
             />
           </div>
+          <Input
+            label="Valor da inscrição"
+            placeholder='Ex: R$50 (Absoluto) / R$30 (Sub-14) — deixe em branco se for gratuito'
+            className="mt-3"
+            {...register('registration_fee_text')}
+          />
+          <label className="flex items-center gap-3 cursor-pointer mt-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              {...register('require_payment_receipt')}
+            />
+            <div>
+              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Exigir comprovante de pagamento</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Se marcado, a inscrição só é aceita com o comprovante anexado.
+              </p>
+            </div>
+          </label>
         </div>
       </div>
 

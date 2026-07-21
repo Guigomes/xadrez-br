@@ -74,6 +74,8 @@ export interface Tournament {
   initial_color: InitialColor;
   rating_kind: RatingKind;
   tiebreak_order: TiebreakKey[];
+  require_payment_receipt: boolean;
+  registration_fee_text: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -231,6 +233,8 @@ export interface TournamentRegistration {
   full_name: string;
   birth_year: number | null;
   city: string | null;
+  state: string | null;
+  club_or_school: string | null;
   federation: string;
   fide_id: string | null;
   cbx_id: string | null;
@@ -352,6 +356,8 @@ export interface TournamentFormValues {
   rating_kind: RatingKind;
   requested_bye_score: number;
   tiebreak_order: TiebreakKey[];
+  require_payment_receipt: boolean;
+  registration_fee_text?: string;
 }
 
 export interface PlayerFormValues {

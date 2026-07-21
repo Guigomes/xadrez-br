@@ -66,6 +66,8 @@ export default async function RegisterPage({ params }: Props) {
           tournamentId={tournament.id}
           tournamentSlug={slug}
           groups={groups ?? []}
+          requirePaymentReceipt={tournament.require_payment_receipt}
+          registrationFeeText={tournament.registration_fee_text}
         />
       ) : (
         <div className="card p-6 text-center space-y-3">

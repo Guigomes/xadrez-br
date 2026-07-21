@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { BR_STATES } from '@/lib/utils/chess';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
@@ -21,11 +22,11 @@ const schema = z.object({
   birth_year: z.preprocess(emptyToUndef,
     z.coerce.number().int().min(1900, 'Ano inválido').max(CURRENT_YEAR, 'Ano inválido').optional()),
   city:       z.string().optional(),
+  state:      z.string().optional(),
+  club_or_school: z.string().optional(),
   federation: z.string().length(3, 'Use a sigla de 3 letras (ex: BRA)').default('BRA'),
   fide_id:    z.string().regex(/^\d*$/, 'Apenas números').optional(),
   cbx_id:     z.string().regex(/^\d*$/, 'Apenas números').optional(),
-  rating_std: z.preprocess(emptyToUndef,
-    z.coerce.number().int().min(0).max(3500, 'Rating inválido').optional()),
   email:      z.string().email('E-mail inválido').optional().or(z.literal('')),
   phone:      z.string().optional(),
   pairing_group_id: z.string().optional(),
@@ -37,9 +38,14 @@ interface Props {
   tournamentId: string;
   tournamentSlug: string;
   groups: { id: string; name: string }[];
+  requirePaymentReceipt?: boolean;
+  registrationFeeText?: string | null;
 }
 
-export function RegistrationForm({ tournamentId, tournamentSlug, groups }: Props) {
+export function RegistrationForm({
+  tournamentId, tournamentSlug, groups,
+  requirePaymentReceipt = false, registrationFeeText,
+}: Props) {
   const [receipt, setReceipt] = useState<File | null>(null);
   const [receiptError, setReceiptError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -75,6 +81,10 @@ export function RegistrationForm({ tournamentId, tournamentSlug, groups }: Props
       setError('Selecione o grupo em que deseja jogar.');
       return;
     }
+    if (requirePaymentReceipt && !receipt) {
+      setError('Este torneio exige o comprovante de pagamento para concluir a inscrição.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
@@ -97,10 +107,11 @@ export function RegistrationForm({ tournamentId, tournamentSlug, groups }: Props
         full_name: values.full_name.trim(),
         birth_year: values.birth_year ?? null,
         city: values.city?.trim() || null,
+        state: values.state || null,
+        club_or_school: values.club_or_school?.trim() || null,
         federation: values.federation.toUpperCase(),
         fide_id: values.fide_id || null,
         cbx_id: values.cbx_id || null,
-        rating_std: values.rating_std ?? null,
         email: values.email || null,
         phone: values.phone?.trim() || null,
         payment_receipt_path,
@@ -108,6 +119,9 @@ export function RegistrationForm({ tournamentId, tournamentSlug, groups }: Props
       if (insErr) {
         if (insErr.message.includes('row-level security')) {
           throw new Error('As inscrições não estão abertas para este torneio.');
+        }
+        if (insErr.message.includes('PAYMENT_RECEIPT_REQUIRED')) {
+          throw new Error('Este torneio exige o comprovante de pagamento para concluir a inscrição.');
         }
         throw insErr;
       }
@@ -155,6 +169,13 @@ export function RegistrationForm({ tournamentId, tournamentSlug, groups }: Props
           <Input label="Ano de nascimento" type="number" inputMode="numeric" placeholder="2010" {...register('birth_year')} error={errors.birth_year?.message} />
           <Input label="Cidade" placeholder="Sua cidade" {...register('city')} error={errors.city?.message} />
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Select label="UF" {...register('state')} defaultValue="">
+            <option value="">Selecione…</option>
+            {BR_STATES.map((s) => <option key={s.uf} value={s.uf}>{s.uf} — {s.name}</option>)}
+          </Select>
+          <Input label="Escola / clube de xadrez" placeholder="Opcional" {...register('club_or_school')} error={errors.club_or_school?.message} />
+        </div>
         {groups.length > 1 && (
           <Select label="Grupo *" {...register('pairing_group_id')} error={errors.pairing_group_id?.message} defaultValue="">
             <option value="" disabled>Selecione o grupo…</option>
@@ -166,14 +187,13 @@ export function RegistrationForm({ tournamentId, tournamentSlug, groups }: Props
       </div>
 
       <div className="card p-5 space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Ratings e registros</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Registros</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-          Preencha se tiver — ajuda a organização a confirmar seu rating.
+          Preencha se tiver — a organização confirma seu rating a partir do ID.
         </p>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Input label="ID CBX" inputMode="numeric" {...register('cbx_id')} error={errors.cbx_id?.message} />
           <Input label="ID FIDE" inputMode="numeric" {...register('fide_id')} error={errors.fide_id?.message} />
-          <Input label="Rating" type="number" inputMode="numeric" placeholder="1500" {...register('rating_std')} error={errors.rating_std?.message} />
         </div>
         <Input label="Federação" maxLength={3} {...register('federation')} error={errors.federation?.message} hint="Sigla de 3 letras. Padrão: BRA" />
       </div>
@@ -190,9 +210,18 @@ export function RegistrationForm({ tournamentId, tournamentSlug, groups }: Props
       </div>
 
       <div className="card p-5 space-y-3">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Comprovante de pagamento</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+          Comprovante de pagamento{requirePaymentReceipt && ' *'}
+        </h2>
+        {registrationFeeText && (
+          <p className="text-sm text-gray-700 dark:text-gray-300 -mt-1">
+            💰 Valor da inscrição: <strong>{registrationFeeText}</strong>
+          </p>
+        )}
         <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
-          Se o torneio exige taxa de inscrição, anexe o comprovante (JPG, PNG ou PDF, até 5 MB).
+          {requirePaymentReceipt
+            ? 'Obrigatório para esta inscrição — anexe o comprovante (JPG, PNG ou PDF, até 5 MB).'
+            : 'Se o torneio exige taxa de inscrição, anexe o comprovante (JPG, PNG ou PDF, até 5 MB).'}
         </p>
         <input
           type="file"

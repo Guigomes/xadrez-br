@@ -176,7 +176,8 @@ export default function AdminRegistrationsPage({ params }: Props) {
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 space-x-3">
                     {r.birth_year && <span>🎂 {r.birth_year}</span>}
-                    {r.city && <span>📍 {r.city}</span>}
+                    {(r.city || r.state) && <span>📍 {[r.city, r.state].filter(Boolean).join('/')}</span>}
+                    {r.club_or_school && <span>🏫 {r.club_or_school}</span>}
                     {r.rating_std != null && <span>♟ Rating {r.rating_std}</span>}
                     {r.cbx_id && <span>CBX {r.cbx_id}</span>}
                     {r.fide_id && <span>FIDE {r.fide_id}</span>}
