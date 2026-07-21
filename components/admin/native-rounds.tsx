@@ -164,14 +164,16 @@ function GroupPanel({
         ))}
       </div>
 
-      {canGenerate && (
-        <div className="card p-4 space-y-2">
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            Ausências na rodada {nextRoundNumber}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Marque quem não vai jogar esta rodada — recebe bye ({tournament.requested_bye_score === 0.5 ? '½ ponto' : '0 pontos'}) e não entra no pareamento.
-          </p>
+      {finishedCount < groupRoundsCount && (
+        <div className="card p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Ausências na rodada {nextRoundNumber}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Marque quem não vai jogar esta rodada — recebe bye ({tournament.requested_bye_score === 0.5 ? '½ ponto' : '0 pontos'}) e não entra no pareamento.
+            </p>
+          </div>
           <div className="flex flex-wrap gap-2">
             {groupPlayers
               .filter((p: any) => p.status === 'active' && (p.joined_at_round ?? 1) <= nextRoundNumber)
@@ -180,9 +182,9 @@ function GroupPanel({
                 return (
                   <button
                     key={p.id}
-                    disabled={toggleBye.isPending}
+                    disabled={toggleBye.isPending || !canGenerate}
                     onClick={() => run(() => toggleBye.mutateAsync({ tpId: p.id, requested: !requested }))}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${
                       requested
                         ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
                         : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -193,16 +195,24 @@ function GroupPanel({
                 );
               })}
           </div>
-        </div>
-      )}
 
-      {canGenerate && (
-        <Button
-          loading={generate.isPending}
-          onClick={() => run(() => generate.mutateAsync(undefined))}
-        >
-          ♟ Gerar rodada {nextRoundNumber} de {groupRoundsCount}
-        </Button>
+          <Button
+            loading={generate.isPending}
+            disabled={!canGenerate}
+            onClick={() => run(() => generate.mutateAsync(undefined))}
+          >
+            ♟ Gerar rodada {nextRoundNumber} de {groupRoundsCount}
+          </Button>
+          {!canGenerate && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              {seededCount === 0
+                ? '⚠ Gere o ranking inicial acima antes de parear a primeira rodada.'
+                : lastRound && lastRound.status !== 'finished'
+                  ? `⚠ Encerre a rodada ${lastRound.round_number} antes de gerar a próxima.`
+                  : '⚠ Ainda não é possível gerar esta rodada.'}
+            </p>
+          )}
+        </div>
       )}
 
       {finishedCount > 0 && (

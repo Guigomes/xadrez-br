@@ -289,7 +289,7 @@ export function useDeleteTournament(slug: string) {
 export function useAddTournamentPlayer(tournamentId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { player_id: string; category_id?: string; initial_ranking?: number }) => {
+    mutationFn: async (payload: { player_id: string; category_id?: string; initial_ranking?: number; pairing_group_id?: string }) => {
       const { data, error } = await supabase
         .from('tournament_players')
         .insert({ tournament_id: tournamentId, ...payload, current_score: 0 })
@@ -297,6 +297,21 @@ export function useAddTournamentPlayer(tournamentId: string) {
         .single();
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) }),
+  });
+}
+
+/** Corrige um tournament_player sem grupo (ex.: adicionado antes de o torneio virar nativo). */
+export function useAssignPlayerGroup(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tpId, groupId }: { tpId: string; groupId: string }) => {
+      const { error } = await supabase
+        .from('tournament_players')
+        .update({ pairing_group_id: groupId })
+        .eq('id', tpId);
+      if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) }),
   });

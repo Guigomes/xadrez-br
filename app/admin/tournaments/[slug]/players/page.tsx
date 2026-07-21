@@ -2,10 +2,12 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import { useTournament, useTournamentPlayers, useAddTournamentPlayer } from '@/lib/hooks/use-tournament';
+import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup } from '@/lib/hooks/use-tournament';
 import { usePlayerSearch, useCreatePlayer } from '@/lib/hooks/use-player';
+import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { formatScore } from '@/lib/utils/chess';
 import type { Player, PlayerFormValues } from '@/types/database';
@@ -19,13 +21,18 @@ export default function AdminPlayersPage({ params }: Props) {
   const { data: tournament, isLoading } = useTournament(slug);
   const { data: tPlayers, isLoading: loadingPlayers } = useTournamentPlayers(tournament?.id ?? '');
   const addPlayer = useAddTournamentPlayer(tournament?.id ?? '');
+  const assignGroup = useAssignPlayerGroup(tournament?.id ?? '');
   const createPlayer = useCreatePlayer();
+  const isNative = tournament?.mode === 'native';
+  const { data: groups } = useGroups(isNative ? tournament!.id : '');
+  const createGroup = useCreateDefaultGroup(tournament?.id ?? '');
 
   const [search, setSearch] = useState('');
   const [showNewForm, setShowNewForm] = useState(false);
   const { data: searchResults } = usePlayerSearch(search);
 
   const [newPlayer, setNewPlayer] = useState<Partial<PlayerFormValues>>({});
+  const [groupId, setGroupId] = useState('');
   const [importing, setImporting] = useState(false);
   const [importReport, setImportReport] = useState('');
   const [importUrl, setImportUrl] = useState('');
@@ -34,9 +41,15 @@ export default function AdminPlayersPage({ params }: Props) {
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p>Torneio não encontrado.</p>;
 
+  // Torneio nativo com grupos exige grupo ao adicionar (o banco recusa sem isso).
+  const needsGroup = isNative && (groups?.length ?? 0) > 0;
+  const groupReady = !isNative || !!groupId;
+
   async function handleAddExisting(player: Player) {
+    if (needsGroup && !groupId) { setError('Selecione o grupo antes de adicionar.'); return; }
+    setError('');
     try {
-      await addPlayer.mutateAsync({ player_id: player.id });
+      await addPlayer.mutateAsync({ player_id: player.id, pairing_group_id: groupId || undefined });
       setSearch('');
     } catch (err: any) {
       setError(err.message);
@@ -45,12 +58,22 @@ export default function AdminPlayersPage({ params }: Props) {
 
   async function handleCreateAndAdd(e: React.FormEvent) {
     e.preventDefault();
+    if (needsGroup && !groupId) { setError('Selecione o grupo antes de adicionar.'); return; }
     setError('');
     try {
       const p = await createPlayer.mutateAsync(newPlayer as PlayerFormValues);
-      await addPlayer.mutateAsync({ player_id: p.id });
+      await addPlayer.mutateAsync({ player_id: p.id, pairing_group_id: groupId || undefined });
       setNewPlayer({});
       setShowNewForm(false);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }
+
+  async function handleAssignGroup(tpId: string, gId: string) {
+    setError('');
+    try {
+      await assignGroup.mutateAsync({ tpId, groupId: gId });
     } catch (err: any) {
       setError(err.message);
     }
@@ -127,6 +150,27 @@ export default function AdminPlayersPage({ params }: Props) {
         </div>
       </div>
 
+      {/* Native tournament: pairing group is required before adding anyone */}
+      {isNative && (
+        <div className="card p-4 mb-4">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Grupo de pareamento</h2>
+          {!groups?.length ? (
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum grupo ainda.</p>
+              <Button size="sm" variant="secondary" loading={createGroup.isPending}
+                onClick={() => createGroup.mutate('Único')}>
+                Criar grupo &quot;Único&quot;
+              </Button>
+            </div>
+          ) : (
+            <Select label="Adicionar novos participantes ao grupo *" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+              <option value="">Selecione…</option>
+              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </Select>
+          )}
+        </div>
+      )}
+
       {/* Search existing players */}
       <div className="card p-4 mb-4">
         <div className="flex items-center justify-between gap-3 mb-3">
@@ -148,7 +192,8 @@ export default function AdminPlayersPage({ params }: Props) {
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{player.full_name}</p>
                   <p className="text-xs text-gray-400">{player.state} {player.rating_std ? `· ${player.rating_std}` : ''}</p>
                 </div>
-                <Button size="sm" onClick={() => handleAddExisting(player)} loading={addPlayer.isPending}>
+                <Button size="sm" onClick={() => handleAddExisting(player)} loading={addPlayer.isPending}
+                  disabled={needsGroup && !groupId}>
                   Adicionar
                 </Button>
               </div>
@@ -171,7 +216,9 @@ export default function AdminPlayersPage({ params }: Props) {
             <Input label="ID FIDE" value={newPlayer.fide_id ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, fide_id: e.target.value }))} />
           </div>
           <div className="flex gap-2">
-            <Button type="submit" loading={createPlayer.isPending || addPlayer.isPending}>Cadastrar e adicionar</Button>
+            <Button type="submit" loading={createPlayer.isPending || addPlayer.isPending} disabled={needsGroup && !groupId}>
+              Cadastrar e adicionar
+            </Button>
             <Button type="button" variant="ghost" onClick={() => setShowNewForm(false)}>Cancelar</Button>
           </div>
         </form>
@@ -188,25 +235,43 @@ export default function AdminPlayersPage({ params }: Props) {
           <div className="py-8 flex justify-center"><PageSpinner /></div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
-            {tPlayers?.map((tp, i) => (
-              <div key={tp.id} className="flex items-center gap-3 px-4 py-3">
-                <span className="text-xs text-gray-400 w-5 text-center">{tp.initial_ranking ?? i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                    {(tp as any).player?.full_name}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {(tp as any).category?.name && `${(tp as any).category.name} · `}
-                    {(tp as any).player?.city ?? (tp as any).player?.state ?? ''}
-                    {(tp as any).player?.rating_std ? ` · ${(tp as any).player.rating_std}` : ''}
-                    {(tp as any).player?.fide_id ? ` · FIDE ${(tp as any).player.fide_id}` : ''}
-                  </p>
+            {tPlayers?.map((tp, i) => {
+              const tpAny = tp as any;
+              const missingGroup = isNative && !tpAny.pairing_group_id && (groups?.length ?? 0) > 0;
+              return (
+                <div key={tp.id} className="flex items-center gap-3 px-4 py-3">
+                  <span className="text-xs text-gray-400 w-5 text-center">{tp.initial_ranking ?? i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {tpAny.player?.full_name}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {tpAny.category?.name && `${tpAny.category.name} · `}
+                      {tpAny.player?.city ?? tpAny.player?.state ?? ''}
+                      {tpAny.player?.rating_std ? ` · ${tpAny.player.rating_std}` : ''}
+                      {tpAny.player?.fide_id ? ` · FIDE ${tpAny.player.fide_id}` : ''}
+                    </p>
+                    {missingGroup && (
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-xs text-amber-600 dark:text-amber-400">⚠ sem grupo — não será pareado</span>
+                        <select
+                          className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-1.5 py-0.5 text-xs"
+                          defaultValue=""
+                          disabled={assignGroup.isPending}
+                          onChange={(e) => e.target.value && handleAssignGroup(tp.id, e.target.value)}
+                        >
+                          <option value="" disabled>Atribuir grupo…</option>
+                          {groups!.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums">
+                    {formatScore(tp.current_score)}
+                  </span>
                 </div>
-                <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums">
-                  {formatScore(tp.current_score)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
