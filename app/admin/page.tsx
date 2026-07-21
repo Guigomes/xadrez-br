@@ -20,9 +20,9 @@ export default async function AdminDashboard() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Meus torneios</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isAdmin && (
             <Link
               href="/admin/dev"
@@ -71,7 +71,9 @@ export default async function AdminDashboard() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <Badge className={getTournamentStatusColor(t.status, t.registration_end_date)}>{getTournamentStatusLabel(t.status, t.registration_end_date)}</Badge>
-                  {!t.is_public && <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Rascunho</Badge>}
+                  {!t.is_public && t.status !== 'draft' && (
+                    <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Privado</Badge>
+                  )}
                 </div>
                 <p className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
