@@ -2,12 +2,13 @@
 
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useTournament, useUpdateTournament, useDeleteTournament } from '@/lib/hooks/use-tournament';
+import { useTournament, useUpdateTournament, useDeleteTournament, tournamentKeys } from '@/lib/hooks/use-tournament';
 import { TournamentForm } from '@/components/tournament/tournament-form';
 import { PageSpinner } from '@/components/ui/spinner';
 import { createClient } from '@/lib/supabase/client';
-import type { TournamentFormValues } from '@/types/database';
+import type { TournamentFormValues, TournamentStatus } from '@/types/database';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -16,11 +17,14 @@ interface Props {
 export default function EditTournamentPage({ params }: Props) {
   const { slug } = use(params);
   const router = useRouter();
+  const qc = useQueryClient();
   const { data: tournament, isLoading } = useTournament(slug);
   const updateTournament = useUpdateTournament(tournament?.id ?? '');
   const deleteTournament = useDeleteTournament(slug);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [statusSaving, setStatusSaving] = useState<TournamentStatus | null>(null);
+  const [statusSaved, setStatusSaved] = useState(false);
 
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p className="text-red-500">Torneio não encontrado.</p>;
@@ -45,10 +49,23 @@ export default function EditTournamentPage({ params }: Props) {
     }
   }
 
-  async function handleStatusChange(newStatus: 'registration' | 'ongoing' | 'finished' | 'cancelled') {
-    const supabase = createClient();
-    await supabase.from('tournaments').update({ status: newStatus }).eq('id', tournament!.id);
-    router.refresh();
+  async function handleStatusChange(newStatus: TournamentStatus) {
+    setError('');
+    setStatusSaved(false);
+    setStatusSaving(newStatus);
+    try {
+      const supabase = createClient();
+      const { error: updErr } = await supabase
+        .from('tournaments').update({ status: newStatus }).eq('id', tournament!.id);
+      if (updErr) throw updErr;
+      await qc.invalidateQueries({ queryKey: tournamentKeys.detail(slug) });
+      setStatusSaved(true);
+      setTimeout(() => setStatusSaved(false), 2500);
+    } catch (err: any) {
+      setError(err.message ?? 'Erro ao atualizar status.');
+    } finally {
+      setStatusSaving(null);
+    }
   }
 
   return (
@@ -86,21 +103,38 @@ export default function EditTournamentPage({ params }: Props) {
 
       {/* Status controls */}
       <div className="card p-4 mb-6">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Status do torneio</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Status do torneio</p>
+          {statusSaved && (
+            <span className="text-xs font-medium text-green-600 dark:text-green-400 animate-pulse">
+              ✓ Salvo
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
-          {(['registration', 'ongoing', 'finished', 'cancelled'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => handleStatusChange(s)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors
-                ${tournament.status === s
-                  ? 'bg-brand-600 text-white'
-                  : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-            >
-              {{ registration: 'Inscrições', ongoing: 'Em andamento', finished: 'Encerrado', cancelled: 'Cancelado' }[s]}
-            </button>
-          ))}
+          {(['registration', 'ongoing', 'finished', 'cancelled'] as const).map((s) => {
+            const isSaving = statusSaving === s;
+            return (
+              <button
+                key={s}
+                onClick={() => handleStatusChange(s)}
+                disabled={!!statusSaving}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed
+                  ${tournament.status === s
+                    ? 'bg-brand-600 text-white'
+                    : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50'
+                  }`}
+              >
+                {isSaving && (
+                  <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                )}
+                {{ registration: 'Inscrições', ongoing: 'Em andamento', finished: 'Encerrado', cancelled: 'Cancelado' }[s]}
+              </button>
+            );
+          })}
         </div>
       </div>
 

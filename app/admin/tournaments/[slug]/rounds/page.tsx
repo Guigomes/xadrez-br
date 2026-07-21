@@ -99,11 +99,15 @@ export default function AdminRoundsPage({ params }: Props) {
 
   async function handleTournamentStatus(newStatus: 'ongoing' | 'finished') {
     setStatusLoading(true);
+    setError('');
     try {
       const supabase = createClient();
-      await supabase.from('tournaments').update({ status: newStatus }).eq('id', tournament!.id);
+      const { error: updErr } = await supabase
+        .from('tournaments').update({ status: newStatus }).eq('id', tournament!.id);
+      if (updErr) throw updErr;
       window.location.reload();
-    } finally {
+    } catch (err: any) {
+      setError(err.message ?? 'Erro ao atualizar status do torneio.');
       setStatusLoading(false);
     }
   }
