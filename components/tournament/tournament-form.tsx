@@ -191,16 +191,11 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
         </div>
       </div>
 
-      {/* Native pairing config */}
+      {/* Native pairing config — o modo do torneio (nativo/importado) é
+          implícito: toda criação é nativa. "Importado" existe só para uso
+          interno (painel de desenvolvedor), fora deste formulário. */}
       <div className="card p-5 space-y-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Gerenciamento</h2>
-        <Select
-          label="Modo do torneio *"
-          {...register('mode')}
-        >
-          <option value="native">Nativo — pareamento suíço gerado aqui</option>
-          <option value="imported">Importado — sincronizado do chess-results</option>
-        </Select>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Select label="Cor do nº 1 (sorteio)" {...register('initial_color')}>
             <option value="white1">Brancas</option>
@@ -217,7 +212,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           </Select>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Essas opções só se aplicam a torneios nativos e podem ser editadas até a 1ª rodada ser publicada.
+          Podem ser editadas até a 1ª rodada ser publicada.
         </p>
         <TiebreakOrderPicker
           value={watch('tiebreak_order') as TiebreakKey[]}

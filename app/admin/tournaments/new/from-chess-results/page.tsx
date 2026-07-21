@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useUser } from '@/lib/hooks/use-auth';
+import { useUser, useProfile } from '@/lib/hooks/use-auth';
 import { createClient } from '@/lib/supabase/client';
 import { slugify } from '@/lib/utils/chess';
 import { TournamentForm } from '@/components/tournament/tournament-form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PageSpinner } from '@/components/ui/spinner';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { TournamentFormValues } from '@/types/database';
 import type { ChessResultsPreview } from '@/app/api/admin/chess-results-preview/route';
 
@@ -18,6 +19,7 @@ type Step = 'url' | 'preview' | 'saving';
 export default function NewFromChessResultsPage() {
   const router = useRouter();
   const { user } = useUser();
+  const { data: profile, isLoading: loadingProfile } = useProfile();
 
   const [step, setStep] = useState<Step>('url');
   const [url, setUrl] = useState('');
@@ -52,9 +54,11 @@ export default function NewFromChessResultsPage() {
       const supabase = createClient();
       const slug = slugify(values.name) + '-' + values.start_date.replace(/-/g, '');
 
+      // Único lugar do sistema que cria torneios mode='imported' — exclusivo
+      // do painel de desenvolvedor (torneio importado do chess-results).
       const { data: tournament, error: tErr } = await supabase
         .from('tournaments')
-        .insert({ ...values, slug, created_by: user.id })
+        .insert({ ...values, mode: 'imported', slug, created_by: user.id })
         .select()
         .single();
       if (tErr) throw tErr;
@@ -88,6 +92,13 @@ export default function NewFromChessResultsPage() {
     is_public: false,
   } : {};
 
+  if (loadingProfile) return <PageSpinner />;
+  if (profile?.role !== 'admin') {
+    return (
+      <EmptyState icon="🔒" title="Acesso restrito"
+        description="Criar torneio por importação do chess-results é exclusivo do painel de desenvolvedor." />
+    );
+  }
   if (step === 'saving') return <PageSpinner />;
 
   return (

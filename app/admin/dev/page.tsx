@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useProfile } from '@/lib/hooks/use-auth';
 import { useAllTournaments, useTestPlayersCount, useGenerateTestPlayers, useCleanupTestPlayers } from '@/lib/hooks/use-dev-panel';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
@@ -126,6 +127,19 @@ function DevPanel() {
             → Ir para as rodadas deste torneio
           </a>
         )}
+      </div>
+
+      <div className="card p-5 space-y-2 mb-4">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Torneio importado (chess-results)</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Torneios comuns são sempre nativos. O modo &quot;importado&quot; é exclusivo daqui.
+        </p>
+        <Link
+          href="/admin/tournaments/new/from-chess-results"
+          className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          → Criar torneio importado do chess-results
+        </Link>
       </div>
 
       <div className="card p-5 space-y-3">
