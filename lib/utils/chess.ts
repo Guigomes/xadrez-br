@@ -55,7 +55,10 @@ export const TOURNAMENT_STATUS_COLORS: Record<TournamentStatus, string> = {
   draft:        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
   registration: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
   ongoing:      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  finished:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  // purple-100 é visualmente quase branco (lightness alta demais pra esse
+  // hue) — some contra o fundo do card ao lado de gray-100/green-100 nos
+  // outros badges. purple-200 mantém a paleta mas com peso visual igual.
+  finished:     'bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200',
   cancelled:    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 };
 

@@ -67,53 +67,22 @@ export default async function AdminDashboard() {
       ) : (
         <div className="space-y-3">
           {tournaments.map((t) => (
-            <div key={t.id} className="card p-4 flex flex-col gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <Badge className={getTournamentStatusColor(t.status, t.registration_end_date)}>{getTournamentStatusLabel(t.status, t.registration_end_date)}</Badge>
-                  {!t.is_public && t.status !== 'draft' && (
-                    <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Privado</Badge>
-                  )}
-                </div>
-                <p className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {t.city}, {t.state} · {formatDateRange(t.start_date, t.end_date)} · {t.rounds_count} rodadas
-                </p>
+            <Link
+              key={t.id}
+              href={`/admin/tournaments/${t.slug}/edit`}
+              className="card p-4 flex flex-col gap-1 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+            >
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <Badge className={getTournamentStatusColor(t.status, t.registration_end_date)}>{getTournamentStatusLabel(t.status, t.registration_end_date)}</Badge>
+                {!t.is_public && t.status !== 'draft' && (
+                  <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Privado</Badge>
+                )}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/admin/tournaments/${t.slug}/registrations`}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  Inscrições
-                </Link>
-                <Link
-                  href={`/admin/tournaments/${t.slug}/players`}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  Participantes
-                </Link>
-                <Link
-                  href={`/admin/tournaments/${t.slug}/rounds`}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  Rodadas
-                </Link>
-                <Link
-                  href={`/admin/tournaments/${t.slug}/edit`}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  Editar
-                </Link>
-                <Link
-                  href={`/tournaments/${t.slug}`}
-                  target="_blank"
-                  className="rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-xs font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-100 transition-colors"
-                >
-                  Ver
-                </Link>
-              </div>
-            </div>
+              <p className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t.city}, {t.state} · {formatDateRange(t.start_date, t.end_date)} · {t.rounds_count} rodadas
+              </p>
+            </Link>
           ))}
         </div>
       )}
