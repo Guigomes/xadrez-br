@@ -64,15 +64,33 @@ export function useSignIn() {
 
 export function useSignUp() {
   return useMutation({
-    mutationFn: async ({ email, password, fullName }: { email: string; password: string; fullName: string }) => {
+    mutationFn: async ({ email, password, fullName, isOrganizer, isArbiter }: {
+      email: string; password: string; fullName: string;
+      isOrganizer: boolean; isArbiter: boolean;
+    }) => {
       const { data, error } = await getClient().auth.signUp({
         email,
         password,
-        options: { data: { full_name: fullName } },
+        options: { data: { full_name: fullName, is_organizer: isOrganizer, is_arbiter: isArbiter } },
       });
       if (error) throw error;
       return data;
     },
+  });
+}
+
+/** Autoatendimento: usuário ajusta suas próprias capacidades (organizador/
+ * árbitro) a qualquer momento — elas coexistem, não são mutuamente exclusivas. */
+export function useUpdateMyCapabilities() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ isOrganizer, isArbiter }: { isOrganizer: boolean; isArbiter: boolean }) => {
+      const { error } = await getClient().rpc('set_my_capabilities', {
+        p_is_organizer: isOrganizer, p_is_arbiter: isArbiter,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),
   });
 }
 

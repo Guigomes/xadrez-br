@@ -13,6 +13,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [wantsOrganizer, setWantsOrganizer] = useState(true);
+  const [wantsArbiter, setWantsArbiter] = useState(false);
   const [error, setError] = useState('');
 
   const signIn = useSignIn();
@@ -26,7 +28,10 @@ export default function LoginPage() {
         await signIn.mutateAsync({ email, password });
         router.push('/admin');
       } else {
-        await signUp.mutateAsync({ email, password, fullName: name });
+        await signUp.mutateAsync({
+          email, password, fullName: name,
+          isOrganizer: wantsOrganizer, isArbiter: wantsArbiter,
+        });
         setError('');
         alert('Verifique seu email para confirmar o cadastro.');
         setMode('signin');
@@ -52,14 +57,42 @@ export default function LoginPage() {
         <div className="card p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
-              <Input
-                label="Nome completo"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoComplete="name"
-              />
+              <>
+                <Input
+                  label="Nome completo"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  autoComplete="name"
+                />
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    O que você quer fazer aqui? (pode marcar as duas)
+                  </p>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={wantsOrganizer}
+                      onChange={(e) => setWantsOrganizer(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Organizar torneios</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={wantsArbiter}
+                      onChange={(e) => setWantsArbiter(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Arbitrar torneios</span>
+                  </label>
+                  <p className="text-xs text-gray-400">
+                    Dá pra ajustar depois em &quot;Minha conta&quot;. Inscrever-se para jogar não exige nada disso.
+                  </p>
+                </div>
+              </>
             )}
             <Input
               label="Email"

@@ -74,6 +74,13 @@ export function Header() {
                   >
                     Painel do organizador
                   </Link>
+                  <Link
+                    href="/account"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Minha conta
+                  </Link>
                   <hr className="my-1 border-gray-200 dark:border-gray-800" />
                   <button
                     onClick={() => { signOut.mutate(); setMenuOpen(false); }}
@@ -123,13 +130,22 @@ export function Header() {
             </Link>
           ))}
           {user && (
-            <Link
-              href="/admin"
-              className="block py-2 text-sm font-medium text-brand-600 dark:text-brand-400"
-              onClick={() => setMenuOpen(false)}
-            >
-              Painel do organizador
-            </Link>
+            <>
+              <Link
+                href="/admin"
+                className="block py-2 text-sm font-medium text-brand-600 dark:text-brand-400"
+                onClick={() => setMenuOpen(false)}
+              >
+                Painel do organizador
+              </Link>
+              <Link
+                href="/account"
+                className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+                onClick={() => setMenuOpen(false)}
+              >
+                Minha conta
+              </Link>
+            </>
           )}
         </div>
       )}
