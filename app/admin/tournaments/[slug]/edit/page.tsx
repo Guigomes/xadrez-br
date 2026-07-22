@@ -112,7 +112,7 @@ export default function EditTournamentPage({ params }: Props) {
                 disabled={!prevStatus || !!statusSaving}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                {statusSaving === prevStatus && <Spinner />}
+                {!!statusSaving && statusSaving === prevStatus && <Spinner />}
                 ← Voltar
               </button>
 
@@ -125,7 +125,7 @@ export default function EditTournamentPage({ params }: Props) {
                 disabled={!nextStatus || !!statusSaving}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                {statusSaving === nextStatus && <Spinner />}
+                {!!statusSaving && statusSaving === nextStatus && <Spinner />}
                 Avançar →
               </button>
             </div>

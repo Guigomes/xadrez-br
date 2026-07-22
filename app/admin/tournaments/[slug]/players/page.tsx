@@ -36,6 +36,7 @@ export default function AdminPlayersPage({ params }: Props) {
   const [importReport, setImportReport] = useState('');
   const [importUrl, setImportUrl] = useState('');
   const [error, setError] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
 
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p>Torneio não encontrado.</p>;
@@ -103,6 +104,19 @@ export default function AdminPlayersPage({ params }: Props) {
   }
 
   const existingIds = new Set(tPlayers?.map((tp) => (tp as any).player?.id));
+  const registrationPath = `/tournaments/${slug}/register`;
+  const registrationUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${registrationPath}` : registrationPath;
+
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(registrationUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      setError('Não foi possível copiar automaticamente — selecione e copie o link manualmente.');
+    }
+  }
 
   return (
     <div className="max-w-2xl">
@@ -116,25 +130,46 @@ export default function AdminPlayersPage({ params }: Props) {
         </p>
       )}
 
-      {/* Import by URL */}
-      <div className="card p-4 mb-4">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Importar participantes por link</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-          Cole o link de download do Chess-Results (padrão de ranking inicial). Os jogadores serão cadastrados e vinculados ao torneio.
-        </p>
-        <div className="flex gap-2">
-          <Input
-            placeholder="https://chess-results.com/..."
-            value={importUrl}
-            onChange={(e) => setImportUrl(e.target.value)}
-            disabled={importing}
-            onKeyDown={(e) => e.key === 'Enter' && handleImportUrl()}
-          />
-          <Button onClick={handleImportUrl} loading={importing} disabled={!importUrl.trim()}>
-            Importar
-          </Button>
+      {isNative ? (
+        /* Link de inscrição — o organizador compartilha com os jogadores */
+        <div className="card p-4 mb-4">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Link de inscrição</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Compartilhe este link com os jogadores para eles se inscreverem sozinhos.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              readOnly
+              value={registrationUrl}
+              onClick={(e) => e.currentTarget.select()}
+              className="flex-1"
+            />
+            <Button variant="secondary" onClick={handleCopyLink}>
+              {linkCopied ? '✓ Copiado' : 'Copiar'}
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Import by URL (chess-results) — só para torneios importados */
+        <div className="card p-4 mb-4">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Importar participantes por link</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Cole o link de download do Chess-Results (padrão de ranking inicial). Os jogadores serão cadastrados e vinculados ao torneio.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="https://chess-results.com/..."
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              disabled={importing}
+              onKeyDown={(e) => e.key === 'Enter' && handleImportUrl()}
+            />
+            <Button onClick={handleImportUrl} loading={importing} disabled={!importUrl.trim()}>
+              Importar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Native tournament: pairing group is required before adding anyone */}
       {isNative && (
