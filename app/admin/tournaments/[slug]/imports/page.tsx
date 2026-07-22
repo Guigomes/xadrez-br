@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useTournament } from '@/lib/hooks/use-tournament';
 import { createClient } from '@/lib/supabase/client';
 import { PageSpinner } from '@/components/ui/spinner';
@@ -130,22 +129,9 @@ export default function AdminImportsPage({ params }: Props) {
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-start justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-            {tournament.name}
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Importações automáticas (chess-results)
-          </p>
-        </div>
-        <Link
-          href={`/admin/tournaments/${slug}/edit`}
-          className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-        >
-          Voltar ao torneio
-        </Link>
-      </div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        Importações automáticas (chess-results)
+      </p>
 
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">

@@ -92,27 +92,16 @@ export default function AdminRegistrationsPage({ params }: Props) {
   return (
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{tournament.name}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Inscrições {pendingCount > 0 && `· ${pendingCount} pendente${pendingCount > 1 ? 's' : ''}`}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href={`/admin/tournaments/${slug}/players`}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Jogadores
-          </Link>
-          <Link
-            href={`/tournaments/${slug}/register`}
-            target="_blank"
-            className="rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-sm font-medium text-brand-600 dark:text-brand-400"
-          >
-            Ver formulário público
-          </Link>
-        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Inscrições {pendingCount > 0 && `· ${pendingCount} pendente${pendingCount > 1 ? 's' : ''}`}
+        </p>
+        <Link
+          href={`/tournaments/${slug}/register`}
+          target="_blank"
+          className="rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-sm font-medium text-brand-600 dark:text-brand-400"
+        >
+          Ver formulário público
+        </Link>
       </div>
 
       {error && (

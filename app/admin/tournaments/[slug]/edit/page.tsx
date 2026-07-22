@@ -3,16 +3,19 @@
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import Link from 'next/link';
 import { useTournament, useUpdateTournament, useDeleteTournament, tournamentKeys } from '@/lib/hooks/use-tournament';
 import { TournamentForm } from '@/components/tournament/tournament-form';
 import { PageSpinner } from '@/components/ui/spinner';
+import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/client';
+import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import type { TournamentFormValues, TournamentStatus } from '@/types/database';
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
+
+const STATUS_SEQUENCE: TournamentStatus[] = ['draft', 'registration', 'ongoing', 'finished'];
 
 export default function EditTournamentPage({ params }: Props) {
   const { slug } = use(params);
@@ -68,46 +71,16 @@ export default function EditTournamentPage({ params }: Props) {
     }
   }
 
+  const isCancelled = tournament.status === 'cancelled';
+  const currentIndex = STATUS_SEQUENCE.indexOf(tournament.status);
+  const prevStatus = currentIndex > 0 ? STATUS_SEQUENCE[currentIndex - 1] : null;
+  const nextStatus = currentIndex >= 0 && currentIndex < STATUS_SEQUENCE.length - 1
+    ? STATUS_SEQUENCE[currentIndex + 1] : null;
+
   return (
     <div className="max-w-2xl">
-      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Editar torneio</h1>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/admin/tournaments/${slug}/registrations`}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Inscrições
-          </Link>
-          <Link
-            href={`/admin/tournaments/${slug}/players`}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Participantes
-          </Link>
-          <Link
-            href={`/admin/tournaments/${slug}/rounds`}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Rodadas
-          </Link>
-          <Link
-            href={`/admin/tournaments/${slug}/imports`}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Importações
-          </Link>
-          <Link
-            href={`/tournaments/${slug}`}
-            target="_blank"
-            className="rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-sm font-medium text-brand-600 dark:text-brand-400"
-          >
-            Ver público
-          </Link>
-        </div>
-      </div>
-
-      {/* Status controls */}
+      {/* Status control — avança/volta na sequência draft → inscrições →
+          em andamento → encerrado. Cancelar é uma ação à parte. */}
       <div className="card p-4 mb-6">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Status do torneio</p>
@@ -117,31 +90,54 @@ export default function EditTournamentPage({ params }: Props) {
             </span>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {(['registration', 'ongoing', 'finished', 'cancelled'] as const).map((s) => {
-            const isSaving = statusSaving === s;
-            return (
+
+        {isCancelled ? (
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <Badge className={getTournamentStatusColor(tournament.status, tournament.registration_end_date)}>
+              {getTournamentStatusLabel(tournament.status, tournament.registration_end_date)}
+            </Badge>
+            <button
+              onClick={() => handleStatusChange('draft')}
+              disabled={!!statusSaving}
+              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+            >
+              Reativar torneio
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-3">
               <button
-                key={s}
-                onClick={() => handleStatusChange(s)}
-                disabled={!!statusSaving}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed
-                  ${tournament.status === s
-                    ? 'bg-brand-600 text-white'
-                    : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50'
-                  }`}
+                onClick={() => prevStatus && handleStatusChange(prevStatus)}
+                disabled={!prevStatus || !!statusSaving}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                {isSaving && (
-                  <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                )}
-                {{ registration: 'Inscrições', ongoing: 'Em andamento', finished: 'Encerrado', cancelled: 'Cancelado' }[s]}
+                {statusSaving === prevStatus && <Spinner />}
+                ← Voltar
               </button>
-            );
-          })}
-        </div>
+
+              <Badge className={getTournamentStatusColor(tournament.status, tournament.registration_end_date)}>
+                {getTournamentStatusLabel(tournament.status, tournament.registration_end_date)}
+              </Badge>
+
+              <button
+                onClick={() => nextStatus && handleStatusChange(nextStatus)}
+                disabled={!nextStatus || !!statusSaving}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {statusSaving === nextStatus && <Spinner />}
+                Avançar →
+              </button>
+            </div>
+            <button
+              onClick={() => handleStatusChange('cancelled')}
+              disabled={!!statusSaving}
+              className="mt-3 text-xs text-red-500 dark:text-red-400 hover:underline disabled:opacity-50"
+            >
+              Cancelar torneio
+            </button>
+          </>
+        )}
       </div>
 
       {error && (
@@ -190,5 +186,14 @@ export default function EditTournamentPage({ params }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
   );
 }

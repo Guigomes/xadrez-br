@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState } from 'react';
-import Link from 'next/link';
 import { useTournament } from '@/lib/hooks/use-tournament';
 import { useStaff, useAddStaff, useRemoveStaff, useMyTournamentRole } from '@/lib/hooks/use-staff';
 import { PageSpinner } from '@/components/ui/spinner';
@@ -44,18 +43,7 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{tournament.name}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Equipe do torneio</p>
-        </div>
-        <Link
-          href={`/admin/tournaments/${slug}/rounds`}
-          className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-        >
-          ← Rodadas
-        </Link>
-      </div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Equipe do torneio</p>
 
       {isOrganizer && (
         <form onSubmit={handleAdd} className="card p-4 mb-6 space-y-3">

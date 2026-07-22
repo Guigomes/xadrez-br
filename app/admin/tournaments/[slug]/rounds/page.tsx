@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState } from 'react';
-import Link from 'next/link';
 import {
   useTournament,
   useTournamentRounds,
@@ -46,39 +45,7 @@ export default function AdminRoundsPage({ params }: Props) {
   if ((tournament as any).mode === 'native') {
     return (
       <div className="max-w-3xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{tournament.name}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Rodadas e pareamento</p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href={`/admin/tournaments/${slug}/staff`}
-              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              Equipe
-            </Link>
-            <Link
-              href={`/admin/tournaments/${slug}/history`}
-              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              Histórico
-            </Link>
-            <Link
-              href={`/admin/tournaments/${slug}/players`}
-              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              Jogadores
-            </Link>
-            <Link
-              href={`/tournaments/${slug}`}
-              target="_blank"
-              className="rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-sm font-medium text-brand-600 dark:text-brand-400"
-            >
-              Ver público
-            </Link>
-          </div>
-        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Rodadas e pareamento</p>
         <NativeRounds tournament={tournament} />
       </div>
     );
@@ -123,27 +90,7 @@ export default function AdminRoundsPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{tournament.name}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Gerenciar rodadas</p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href={`/admin/tournaments/${slug}/players`}
-            className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Jogadores
-          </Link>
-          <Link
-            href={`/tournaments/${slug}`}
-            target="_blank"
-            className="rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-sm font-medium text-brand-600 dark:text-brand-400"
-          >
-            Ver público
-          </Link>
-        </div>
-      </div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Gerenciar rodadas</p>
 
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
