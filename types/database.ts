@@ -29,6 +29,14 @@ export interface UserProfile {
   is_organizer: boolean;
   is_arbiter: boolean;
   is_participant: boolean;
+  birth_year: number | null;
+  city: string | null;
+  state: string | null;
+  club_or_school: string | null;
+  federation: string;
+  fide_id: string | null;
+  cbx_id: string | null;
+  phone: string | null;
   avatar_url: string | null;
   created_at: string;
   updated_at: string;

@@ -104,6 +104,32 @@ export function useUpdateMyCapabilities() {
   });
 }
 
+/** Dados usados para pré-preencher uma inscrição futura (só faz sentido com is_participant). */
+export function useUpdateMyParticipantData() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      birthYear: number | null; city: string; state: string; clubOrSchool: string;
+      federation: string; fideId: string; cbxId: string; phone: string;
+    }) => {
+      const { data: { user } } = await getClient().auth.getUser();
+      if (!user) throw new Error('Não autenticado.');
+      const { error } = await getClient().from('user_profiles').update({
+        birth_year: data.birthYear,
+        city: data.city.trim() || null,
+        state: data.state || null,
+        club_or_school: data.clubOrSchool.trim() || null,
+        federation: (data.federation || 'BRA').toUpperCase(),
+        fide_id: data.fideId || null,
+        cbx_id: data.cbxId || null,
+        phone: data.phone.trim() || null,
+      }).eq('id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),
+  });
+}
+
 export function useSignOut() {
   const qc = useQueryClient();
   return useMutation({

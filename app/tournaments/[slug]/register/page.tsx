@@ -42,6 +42,17 @@ export default async function RegisterPage({ params }: Props) {
     .eq('tournament_id', tournament.id)
     .order('sort_order');
 
+  const { data: { user } } = await supabase.auth.getUser();
+  let autofill = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('is_participant, full_name, email, birth_year, city, state, club_or_school, federation, fide_id, cbx_id, phone')
+      .eq('id', user.id)
+      .single();
+    if (profile?.is_participant) autofill = profile;
+  }
+
   const today = todayISO();
   const beforeWindow =
     tournament.registration_start_date && today < tournament.registration_start_date;
@@ -68,6 +79,8 @@ export default async function RegisterPage({ params }: Props) {
           groups={groups ?? []}
           requirePaymentReceipt={tournament.require_payment_receipt}
           registrationFeeText={tournament.registration_fee_text}
+          autofill={autofill}
+          saveAutofillOnSubmit={!!autofill}
         />
       ) : (
         <div className="card p-6 text-center space-y-3">

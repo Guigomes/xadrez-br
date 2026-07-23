@@ -34,17 +34,35 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+interface AutofillData {
+  full_name: string;
+  email: string | null;
+  birth_year: number | null;
+  city: string | null;
+  state: string | null;
+  club_or_school: string | null;
+  federation: string;
+  fide_id: string | null;
+  cbx_id: string | null;
+  phone: string | null;
+}
+
 interface Props {
   tournamentId: string;
   tournamentSlug: string;
   groups: { id: string; name: string }[];
   requirePaymentReceipt?: boolean;
   registrationFeeText?: string | null;
+  /** Dados do perfil de quem está logado e marcou "participante" — usados para pré-preencher o formulário. */
+  autofill?: AutofillData | null;
+  /** Se true, a inscrição enviada é salva de volta no perfil para alimentar o autopreenchimento da próxima vez. */
+  saveAutofillOnSubmit?: boolean;
 }
 
 export function RegistrationForm({
   tournamentId, tournamentSlug, groups,
   requirePaymentReceipt = false, registrationFeeText,
+  autofill, saveAutofillOnSubmit = false,
 }: Props) {
   const [receipt, setReceipt] = useState<File | null>(null);
   const [receiptError, setReceiptError] = useState('');
@@ -55,7 +73,16 @@ export function RegistrationForm({
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      federation: 'BRA',
+      full_name: autofill?.full_name || '',
+      birth_year: autofill?.birth_year ?? undefined,
+      city: autofill?.city || '',
+      state: autofill?.state || '',
+      club_or_school: autofill?.club_or_school || '',
+      federation: autofill?.federation || 'BRA',
+      fide_id: autofill?.fide_id || '',
+      cbx_id: autofill?.cbx_id || '',
+      email: autofill?.email || '',
+      phone: autofill?.phone || '',
       pairing_group_id: groups.length === 1 ? groups[0].id : undefined,
     },
   });
@@ -125,6 +152,30 @@ export function RegistrationForm({
         }
         throw insErr;
       }
+
+      if (saveAutofillOnSubmit) {
+        // Melhor esforço: a inscrição já foi enviada com sucesso, então uma
+        // falha aqui não deve impedir a confirmação nem virar erro pro usuário.
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('user_profiles').update({
+              full_name: values.full_name.trim(),
+              birth_year: values.birth_year ?? null,
+              city: values.city?.trim() || null,
+              state: values.state || null,
+              club_or_school: values.club_or_school?.trim() || null,
+              federation: values.federation.toUpperCase(),
+              fide_id: values.fide_id || null,
+              cbx_id: values.cbx_id || null,
+              phone: values.phone?.trim() || null,
+            }).eq('id', user.id);
+          }
+        } catch {
+          // ignora — a inscrição em si já foi confirmada
+        }
+      }
+
       setSubmitted(true);
     } catch (err: any) {
       setError(err.message ?? 'Erro ao enviar inscrição.');

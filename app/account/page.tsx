@@ -2,15 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useProfile, useUpdateMyCapabilities } from '@/lib/hooks/use-auth';
+import {
+  useUser, useProfile, useUpdateMyCapabilities, useUpdateMyParticipantData,
+} from '@/lib/hooks/use-auth';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { BR_STATES } from '@/lib/utils/chess';
 
 export default function AccountPage() {
   const router = useRouter();
   const { user, loading: loadingUser } = useUser();
   const { data: profile, isLoading: loadingProfile } = useProfile();
   const updateCapabilities = useUpdateMyCapabilities();
+  const updateParticipantData = useUpdateMyParticipantData();
 
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isArbiter, setIsArbiter] = useState(false);
@@ -18,11 +24,28 @@ export default function AccountPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
+  const [birthYear, setBirthYear] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [clubOrSchool, setClubOrSchool] = useState('');
+  const [federation, setFederation] = useState('BRA');
+  const [fideId, setFideId] = useState('');
+  const [cbxId, setCbxId] = useState('');
+  const [phone, setPhone] = useState('');
+
   useEffect(() => {
     if (profile) {
       setIsOrganizer(profile.is_organizer);
       setIsArbiter(profile.is_arbiter);
       setIsParticipant(profile.is_participant);
+      setBirthYear(profile.birth_year ? String(profile.birth_year) : '');
+      setCity(profile.city ?? '');
+      setState(profile.state ?? '');
+      setClubOrSchool(profile.club_or_school ?? '');
+      setFederation(profile.federation || 'BRA');
+      setFideId(profile.fide_id ?? '');
+      setCbxId(profile.cbx_id ?? '');
+      setPhone(profile.phone ?? '');
     }
   }, [profile]);
 
@@ -41,6 +64,12 @@ export default function AccountPage() {
     }
     try {
       await updateCapabilities.mutateAsync({ isOrganizer, isArbiter, isParticipant });
+      if (isParticipant) {
+        await updateParticipantData.mutateAsync({
+          birthYear: birthYear ? Number(birthYear) : null,
+          city, state, clubOrSchool, federation, fideId, cbxId, phone,
+        });
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: any) {
@@ -114,7 +143,10 @@ export default function AccountPage() {
         )}
 
         <div className="flex items-center gap-3">
-          <Button onClick={handleSave} loading={updateCapabilities.isPending}>
+          <Button
+            onClick={handleSave}
+            loading={updateCapabilities.isPending || updateParticipantData.isPending}
+          >
             Salvar
           </Button>
           {saved && (
@@ -124,6 +156,79 @@ export default function AccountPage() {
           )}
         </div>
       </div>
+
+      {isParticipant && (
+        <div className="card p-5 space-y-4 mt-4">
+          <div>
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Dados para inscrição automática
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Preencha aqui, ou deixe em branco e complete na primeira inscrição — a partir daí fica
+              salvo pra ser reaproveitado nos próximos torneios. Salva junto com o botão acima.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Ano de nascimento"
+              type="number"
+              inputMode="numeric"
+              placeholder="2010"
+              value={birthYear}
+              onChange={(e) => setBirthYear(e.target.value)}
+            />
+            <Input
+              label="Cidade"
+              placeholder="Sua cidade"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Select label="UF" value={state} onChange={(e) => setState(e.target.value)}>
+              <option value="">Selecione…</option>
+              {BR_STATES.map((s) => <option key={s.uf} value={s.uf}>{s.uf} — {s.name}</option>)}
+            </Select>
+            <Input
+              label="Escola / clube de xadrez"
+              placeholder="Opcional"
+              value={clubOrSchool}
+              onChange={(e) => setClubOrSchool(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="ID CBX"
+              inputMode="numeric"
+              value={cbxId}
+              onChange={(e) => setCbxId(e.target.value)}
+            />
+            <Input
+              label="ID FIDE"
+              inputMode="numeric"
+              value={fideId}
+              onChange={(e) => setFideId(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Federação"
+              maxLength={3}
+              value={federation}
+              onChange={(e) => setFederation(e.target.value)}
+              hint="Sigla de 3 letras. Padrão: BRA"
+            />
+            <Input
+              label="Telefone / WhatsApp"
+              type="tel"
+              placeholder="(11) 99999-9999"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
