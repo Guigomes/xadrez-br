@@ -9,8 +9,9 @@ export default async function AdminDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: profile } = await supabase
-    .from('user_profiles').select('role').eq('id', user!.id).single();
+    .from('user_profiles').select('role, is_organizer').eq('id', user!.id).single();
   const isAdmin = profile?.role === 'admin';
+  const canCreateTournament = isAdmin || !!profile?.is_organizer;
 
   const { data: tournaments } = await supabase
     .from('tournaments')
@@ -40,15 +41,17 @@ export default async function AdminDashboard() {
             </svg>
             Estatísticas
           </Link>
-          <Link
-            href="/admin/tournaments/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Novo torneio
-          </Link>
+          {canCreateTournament && (
+            <Link
+              href="/admin/tournaments/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Novo torneio
+            </Link>
+          )}
         </div>
       </div>
 
@@ -56,13 +59,19 @@ export default async function AdminDashboard() {
         <div className="card p-10 text-center">
           <p className="text-4xl mb-3">♟</p>
           <p className="font-semibold text-gray-700 dark:text-gray-300 mb-1">Nenhum torneio criado</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Crie seu primeiro torneio para começar.</p>
-          <Link
-            href="/admin/tournaments/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
-            Criar torneio
-          </Link>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            {canCreateTournament
+              ? 'Crie seu primeiro torneio para começar.'
+              : 'Você aparece aqui quando for adicionado à equipe de um torneio, ou ative "Organizador" em Minha conta para criar o seu.'}
+          </p>
+          {canCreateTournament && (
+            <Link
+              href="/admin/tournaments/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+            >
+              Criar torneio
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

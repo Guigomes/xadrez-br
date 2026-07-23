@@ -1,18 +1,29 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { TournamentForm } from '@/components/tournament/tournament-form';
+import { PageSpinner } from '@/components/ui/spinner';
 import { slugify } from '@/lib/utils/chess';
 import type { TournamentFormValues } from '@/types/database';
 import { useState } from 'react';
-import { useUser } from '@/lib/hooks/use-auth';
+import { useUser, useProfile } from '@/lib/hooks/use-auth';
 
 export default function NewTournamentPage() {
   const router = useRouter();
   const { user } = useUser();
+  const { data: profile, isLoading: loadingProfile } = useProfile();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const canCreate = profile?.role === 'admin' || !!profile?.is_organizer;
+
+  useEffect(() => {
+    if (!loadingProfile && profile && !canCreate) router.replace('/admin');
+  }, [loadingProfile, profile, canCreate, router]);
+
+  if (loadingProfile || !profile || !canCreate) return <PageSpinner />;
 
   async function handleSubmit(values: TournamentFormValues) {
     if (!user) return;
