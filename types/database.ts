@@ -28,6 +28,7 @@ export interface UserProfile {
   role: UserRole;
   is_organizer: boolean;
   is_arbiter: boolean;
+  is_participant: boolean;
   avatar_url: string | null;
   created_at: string;
   updated_at: string;

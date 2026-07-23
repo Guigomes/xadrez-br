@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [wantsOrganizer, setWantsOrganizer] = useState(true);
   const [wantsArbiter, setWantsArbiter] = useState(false);
+  const [wantsParticipant, setWantsParticipant] = useState(false);
   const [error, setError] = useState('');
 
   const signIn = useSignIn();
@@ -28,9 +29,13 @@ export default function LoginPage() {
         await signIn.mutateAsync({ email, password });
         router.push('/admin');
       } else {
+        if (!wantsOrganizer && !wantsArbiter && !wantsParticipant) {
+          setError('Marque pelo menos uma opção: organizar, arbitrar ou participar.');
+          return;
+        }
         await signUp.mutateAsync({
           email, password, fullName: name,
-          isOrganizer: wantsOrganizer, isArbiter: wantsArbiter,
+          isOrganizer: wantsOrganizer, isArbiter: wantsArbiter, isParticipant: wantsParticipant,
         });
         setError('');
         alert('Verifique seu email para confirmar o cadastro.');
@@ -68,7 +73,7 @@ export default function LoginPage() {
                 />
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    O que você quer fazer aqui? (pode marcar as duas)
+                    O que você quer fazer aqui? (marque pelo menos uma)
                   </p>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -88,8 +93,20 @@ export default function LoginPage() {
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">Arbitrar torneios</span>
                   </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={wantsParticipant}
+                      onChange={(e) => setWantsParticipant(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Participar de torneios</span>
+                  </label>
                   <p className="text-xs text-gray-400">
-                    Dá pra ajustar depois em &quot;Minha conta&quot;. Inscrever-se para jogar não exige nada disso.
+                    Não é preciso estar cadastrado para jogar — a inscrição em torneios é aberta a
+                    qualquer pessoa. Marcar &quot;participar&quot; só serve para ter seus dados
+                    reaproveitados e a inscrição preenchida automaticamente num próximo torneio.
+                    Dá pra ajustar tudo isso depois em &quot;Minha conta&quot;.
                   </p>
                 </div>
               </>

@@ -64,14 +64,21 @@ export function useSignIn() {
 
 export function useSignUp() {
   return useMutation({
-    mutationFn: async ({ email, password, fullName, isOrganizer, isArbiter }: {
+    mutationFn: async ({ email, password, fullName, isOrganizer, isArbiter, isParticipant }: {
       email: string; password: string; fullName: string;
-      isOrganizer: boolean; isArbiter: boolean;
+      isOrganizer: boolean; isArbiter: boolean; isParticipant: boolean;
     }) => {
       const { data, error } = await getClient().auth.signUp({
         email,
         password,
-        options: { data: { full_name: fullName, is_organizer: isOrganizer, is_arbiter: isArbiter } },
+        options: {
+          data: {
+            full_name: fullName,
+            is_organizer: isOrganizer,
+            is_arbiter: isArbiter,
+            is_participant: isParticipant,
+          },
+        },
       });
       if (error) throw error;
       return data;
@@ -80,13 +87,16 @@ export function useSignUp() {
 }
 
 /** Autoatendimento: usuário ajusta suas próprias capacidades (organizador/
- * árbitro) a qualquer momento — elas coexistem, não são mutuamente exclusivas. */
+ * árbitro/participante) a qualquer momento — elas coexistem, não são
+ * mutuamente exclusivas, mas pelo menos uma precisa ficar ativa. */
 export function useUpdateMyCapabilities() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ isOrganizer, isArbiter }: { isOrganizer: boolean; isArbiter: boolean }) => {
+    mutationFn: async ({ isOrganizer, isArbiter, isParticipant }: {
+      isOrganizer: boolean; isArbiter: boolean; isParticipant: boolean;
+    }) => {
       const { error } = await getClient().rpc('set_my_capabilities', {
-        p_is_organizer: isOrganizer, p_is_arbiter: isArbiter,
+        p_is_organizer: isOrganizer, p_is_arbiter: isArbiter, p_is_participant: isParticipant,
       });
       if (error) throw error;
     },
