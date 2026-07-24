@@ -30,7 +30,7 @@ const schema = z.object({
   cbx_id:     z.string().regex(/^\d*$/, 'Apenas números').optional(),
   email:      z.string().email('E-mail inválido').optional().or(z.literal('')),
   phone:      z.string().optional(),
-  pairing_group_id: z.string().optional(),
+  category_id: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -51,7 +51,7 @@ interface AutofillData {
 interface Props {
   tournamentId: string;
   tournamentSlug: string;
-  groups: { id: string; name: string }[];
+  classifications: { id: string; name: string }[];
   requirePaymentReceipt?: boolean;
   registrationFeeText?: string | null;
   isFree?: boolean;
@@ -62,7 +62,7 @@ interface Props {
 }
 
 export function RegistrationForm({
-  tournamentId, tournamentSlug, groups,
+  tournamentId, tournamentSlug, classifications,
   requirePaymentReceipt = false, registrationFeeText, isFree = false,
   autofill, saveAutofillOnSubmit = false,
 }: Props) {
@@ -86,7 +86,7 @@ export function RegistrationForm({
       cbx_id: autofill?.cbx_id || '',
       email: autofill?.email || '',
       phone: autofill?.phone || '',
-      pairing_group_id: groups.length === 1 ? groups[0].id : undefined,
+      category_id: undefined,
     },
   });
 
@@ -107,8 +107,8 @@ export function RegistrationForm({
   }
 
   async function onSubmit(values: FormValues) {
-    if (groups.length > 1 && !values.pairing_group_id) {
-      setError('Selecione o grupo em que deseja jogar.');
+    if (classifications.length > 0 && !values.category_id) {
+      setError('Selecione sua classificação.');
       return;
     }
     if (!isFree && requirePaymentReceipt && !receipt) {
@@ -133,7 +133,7 @@ export function RegistrationForm({
 
       const { error: insErr } = await supabase.from('tournament_registrations').insert({
         tournament_id: tournamentId,
-        pairing_group_id: values.pairing_group_id || null,
+        category_id: values.category_id || null,
         full_name: values.full_name.trim(),
         birth_year: values.birth_year ?? null,
         sex: values.sex || null,
@@ -239,11 +239,11 @@ export function RegistrationForm({
           </Select>
           <Input label="Escola / clube de xadrez" placeholder="Opcional" {...register('club_or_school')} error={errors.club_or_school?.message} />
         </div>
-        {groups.length > 1 && (
-          <Select label="Grupo *" {...register('pairing_group_id')} error={errors.pairing_group_id?.message} defaultValue="">
-            <option value="" disabled>Selecione o grupo…</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
+        {classifications.length > 0 && (
+          <Select label="Classificação *" {...register('category_id')} error={errors.category_id?.message} defaultValue="">
+            <option value="" disabled>Selecione sua classificação…</option>
+            {classifications.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </Select>
         )}

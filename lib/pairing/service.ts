@@ -7,6 +7,7 @@ import {
 } from './trf/serialize';
 import { parseEngineOutput } from './trf/parse-output';
 import { runDutchPairing } from './engine';
+import { bergerRoundPairs, roundRobinTotalRounds } from './berger';
 
 export interface GenerateResult {
   roundId: string;
@@ -62,8 +63,78 @@ export async function generateRoundDraft(
     throw new GenerateError('NO_RANKING', 'Jogadores sem ranking inicial — gere o seed do grupo antes de parear.');
   }
 
-  const priorRoundIds = (rounds ?? []).filter((r) => r.round_number < target).map((r) => r.id);
-  const roundNumberById = new Map((rounds ?? []).map((r) => [r.id, r.round_number]));
+  let boards: GenerateResult['boards'];
+
+  if (t.tournament_type === 'round_robin') {
+    // Rodízio: agendamento fixo por tabela de Berger, derivado do seed.
+    // Não usa a engine Suíça nem histórico/byes solicitados.
+    boards = bergerBoards(players, target);
+  } else {
+    boards = await swissBoards(supabase, t, group, players, rounds ?? [], target);
+  }
+
+  const payload = boards.map((b) => ({
+    board: b.board,
+    white_tp: b.whiteTp,
+    black_tp: b.blackTp,
+    bye_kind: b.byeKind,
+    points_w: b.byeKind === 'pairing' ? 1.0
+      : b.byeKind === 'requested_half' ? 0.5
+      : b.byeKind ? 0.0 : null,
+    points_b: null,
+  }));
+
+  const { data: roundId, error: rpcErr } = await supabase.rpc('save_round_draft', {
+    p_group_id: groupId,
+    p_round_number: target,
+    p_pairings: payload,
+  });
+  if (rpcErr) throw new GenerateError('SAVE_FAILED', rpcErr.message);
+
+  return { roundId: roundId as string, roundNumber: target, boards };
+}
+
+/** Pareamento da rodada `target` por tabela de Berger (rodízio). */
+function bergerBoards(players: TrfPlayer[], target: number): GenerateResult['boards'] {
+  const sorted = [...players].sort((a, b) => a.startno - b.startno);
+  const n = sorted.length;
+  const nEven = n % 2 === 0 ? n : n + 1;
+  const total = roundRobinTotalRounds(n);
+  if (target > total) {
+    throw new GenerateError('RR_COMPLETE',
+      `Rodízio completo: são apenas ${total} rodada(s) — todos já se enfrentam uma vez.`);
+  }
+  // slot 1..n → jogador por ordem de seed; slot nEven (ímpar) = fantasma → folga
+  const tpOf = (slot: number): string | null =>
+    slot >= 1 && slot <= n ? sorted[slot - 1].tpId : null;
+
+  const boards: GenerateResult['boards'] = [];
+  let board = 0;
+  for (const { white, black } of bergerRoundPairs(nEven, target)) {
+    const w = tpOf(white);
+    const b = tpOf(black);
+    if (w === null || b === null) {
+      const real = w ?? b;
+      if (real) boards.push({ board: null, whiteTp: real, blackTp: null, byeKind: 'round_robin' });
+    } else {
+      board += 1;
+      boards.push({ board, whiteTp: w, blackTp: b, byeKind: null });
+    }
+  }
+  return boards;
+}
+
+/** Pareamento Suíço via engine (Dutch/bbpPairings), com histórico e byes. */
+async function swissBoards(
+  supabase: SupabaseClient,
+  t: any,
+  group: any,
+  players: TrfPlayer[],
+  rounds: Array<{ id: string; round_number: number; status: string }>,
+  target: number,
+): Promise<GenerateResult['boards']> {
+  const priorRoundIds = rounds.filter((r) => r.round_number < target).map((r) => r.id);
+  const roundNumberById = new Map(rounds.map((r) => [r.id, r.round_number]));
   let games: TrfGame[] = [];
   if (priorRoundIds.length) {
     const { data: pairings } = await supabase
@@ -118,7 +189,6 @@ export async function generateRoundDraft(
     blackTp: pair.black === null ? null : tpByStartno.get(pair.black)!,
     byeKind: pair.black === null ? 'pairing' : null,
   }));
-  // byes solicitados viram linhas no rascunho
   for (const tpId of state.requestedByeTpIds) {
     const p = players.find((x) => x.tpId === tpId);
     if (p?.status === 'active' && p.joinedAtRound <= target) {
@@ -126,26 +196,7 @@ export async function generateRoundDraft(
         byeKind: state.requestedByeScore === 0.5 ? 'requested_half' : 'requested_zero' });
     }
   }
-
-  const payload = boards.map((b) => ({
-    board: b.board,
-    white_tp: b.whiteTp,
-    black_tp: b.blackTp,
-    bye_kind: b.byeKind,
-    points_w: b.byeKind === 'pairing' ? 1.0
-      : b.byeKind === 'requested_half' ? 0.5
-      : b.byeKind ? 0.0 : null,
-    points_b: null,
-  }));
-
-  const { data: roundId, error: rpcErr } = await supabase.rpc('save_round_draft', {
-    p_group_id: groupId,
-    p_round_number: target,
-    p_pairings: payload,
-  });
-  if (rpcErr) throw new GenerateError('SAVE_FAILED', rpcErr.message);
-
-  return { roundId: roundId as string, roundNumber: target, boards };
+  return boards;
 }
 
 /**

@@ -108,6 +108,7 @@ function GroupPanel({
 
   if (isLoading) return <PageSpinner />;
 
+  const isRoundRobin = tournament.tournament_type === 'round_robin';
   const groupPlayers = (tPlayers ?? []).filter((p: any) => p.pairing_group_id === groupId);
   const seededCount = groupPlayers.filter((p: any) => p.initial_ranking != null).length;
   const lastRound = rounds?.[rounds.length - 1];
@@ -167,35 +168,45 @@ function GroupPanel({
 
       {finishedCount < groupRoundsCount && (
         <div className="card p-4 space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Ausências na rodada {nextRoundNumber}
-            </p>
+          {!isRoundRobin && (
+            <>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Ausências na rodada {nextRoundNumber}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Marque quem não vai jogar esta rodada — recebe bye ({tournament.requested_bye_score === 0.5 ? '½ ponto' : '0 pontos'}) e não entra no pareamento.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {groupPlayers
+                  .filter((p: any) => p.status === 'active' && (p.joined_at_round ?? 1) <= nextRoundNumber)
+                  .map((p: any) => {
+                    const requested = byes.data?.has(p.id) ?? false;
+                    return (
+                      <button
+                        key={p.id}
+                        disabled={toggleBye.isPending || !canGenerate}
+                        onClick={() => run(() => toggleBye.mutateAsync({ tpId: p.id, requested: !requested }))}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${
+                          requested
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {requested ? '🚫 ' : ''}{p.player?.full_name ?? p.player_id}
+                      </button>
+                    );
+                  })}
+              </div>
+            </>
+          )}
+
+          {isRoundRobin && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Marque quem não vai jogar esta rodada — recebe bye ({tournament.requested_bye_score === 0.5 ? '½ ponto' : '0 pontos'}) e não entra no pareamento.
+              Rodízio (todos contra todos): o pareamento de cada rodada é fixo (tabela de Berger), definido pelo ranking inicial. Com número ímpar de jogadores, um folga por rodada (sem ponto).
             </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {groupPlayers
-              .filter((p: any) => p.status === 'active' && (p.joined_at_round ?? 1) <= nextRoundNumber)
-              .map((p: any) => {
-                const requested = byes.data?.has(p.id) ?? false;
-                return (
-                  <button
-                    key={p.id}
-                    disabled={toggleBye.isPending || !canGenerate}
-                    onClick={() => run(() => toggleBye.mutateAsync({ tpId: p.id, requested: !requested }))}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${
-                      requested
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {requested ? '🚫 ' : ''}{p.player?.full_name ?? p.player_id}
-                  </button>
-                );
-              })}
-          </div>
+          )}
 
           <Button
             loading={generate.isPending}

@@ -88,6 +88,7 @@ export interface Tournament {
   require_payment_receipt: boolean;
   registration_fee_text: string | null;
   is_free: boolean;
+  pairing_mode: PairingMode;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -111,8 +112,12 @@ export interface TournamentCategory {
   min_age: number | null;
   max_rating: number | null;
   min_rating: number | null;
+  sex: 'm' | 'w' | null;
+  pairing_group_id: string | null;
   created_at: string;
 }
+
+export type PairingMode = 'absolute' | 'per_category' | 'custom';
 
 export interface TournamentPlayer {
   id: string;

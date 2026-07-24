@@ -66,13 +66,14 @@ export function useCreateGroup(tournamentId: string) {
     mutationFn: async ({ name, rounds_count, sort_order }: {
       name: string; rounds_count?: number | null; sort_order?: number;
     }) => {
-      const { error } = await supabase.from('pairing_groups').insert({
+      const { data, error } = await supabase.from('pairing_groups').insert({
         tournament_id: tournamentId,
         name: name.trim(),
         rounds_count: rounds_count ?? null,
         sort_order: sort_order ?? 0,
-      });
+      }).select().single();
       if (error) throw error;
+      return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['pairing-groups', tournamentId] }),
   });

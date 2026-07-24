@@ -36,11 +36,11 @@ export default async function RegisterPage({ params }: Props) {
 
   if (!tournament) notFound();
 
-  const { data: groups } = await supabase
-    .from('pairing_groups')
+  const { data: classifications } = await supabase
+    .from('tournament_categories')
     .select('id, name')
     .eq('tournament_id', tournament.id)
-    .order('sort_order');
+    .order('name');
 
   const { data: { user } } = await supabase.auth.getUser();
   let autofill = null;
@@ -76,7 +76,7 @@ export default async function RegisterPage({ params }: Props) {
         <RegistrationForm
           tournamentId={tournament.id}
           tournamentSlug={slug}
-          groups={groups ?? []}
+          classifications={classifications ?? []}
           requirePaymentReceipt={tournament.require_payment_receipt}
           registrationFeeText={tournament.registration_fee_text}
           isFree={tournament.is_free}

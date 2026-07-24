@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { TournamentForm, type GroupDraft } from '@/components/tournament/tournament-form';
+import { TournamentForm } from '@/components/tournament/tournament-form';
 import { PageSpinner } from '@/components/ui/spinner';
 import { slugify } from '@/lib/utils/chess';
 import type { TournamentFormValues } from '@/types/database';
@@ -25,7 +25,7 @@ export default function NewTournamentPage() {
 
   if (loadingProfile || !profile || !canCreate) return <PageSpinner />;
 
-  async function handleSubmit(values: TournamentFormValues, groups?: GroupDraft[]) {
+  async function handleSubmit(values: TournamentFormValues) {
     if (!user) return;
     setLoading(true);
     setError('');
@@ -34,24 +34,10 @@ export default function NewTournamentPage() {
       const slug = slugify(values.name) + '-' + values.start_date.replace(/-/g, '');
       // Torneio criado por aqui é sempre nativo — modo não é escolha do
       // organizador (torneios importados só existem via painel de dev).
-      const { data, error: err } = await supabase
+      const { error: err } = await supabase
         .from('tournaments')
-        .insert({ ...values, mode: 'native', slug, created_by: user.id })
-        .select()
-        .single();
+        .insert({ ...values, mode: 'native', slug, created_by: user.id });
       if (err) throw err;
-
-      if (data && groups?.length) {
-        const rows = groups.map((g, i) => ({
-          tournament_id: data.id,
-          name: g.name,
-          sort_order: i,
-          rounds_count: g.rounds_count ? Number(g.rounds_count) : null,
-        }));
-        const { error: gErr } = await supabase.from('pairing_groups').insert(rows);
-        if (gErr) throw gErr;
-      }
-
       router.push('/admin');
     } catch (err: any) {
       setError(err.message ?? 'Erro ao criar torneio.');
@@ -70,7 +56,7 @@ export default function NewTournamentPage() {
           {error}
         </p>
       )}
-      <TournamentForm onSubmit={handleSubmit} loading={loading} submitLabel="Criar torneio" showGroups />
+      <TournamentForm onSubmit={handleSubmit} loading={loading} submitLabel="Criar torneio" />
     </div>
   );
 }
