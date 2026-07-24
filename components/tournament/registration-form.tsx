@@ -21,6 +21,7 @@ const schema = z.object({
   full_name:  z.string().min(5, 'Informe o nome completo'),
   birth_year: z.preprocess(emptyToUndef,
     z.coerce.number().int().min(1900, 'Ano inválido').max(CURRENT_YEAR, 'Ano inválido').optional()),
+  sex:        z.enum(['m', 'w']).optional().or(z.literal('')),
   city:       z.string().optional(),
   state:      z.string().optional(),
   club_or_school: z.string().optional(),
@@ -76,6 +77,7 @@ export function RegistrationForm({
     defaultValues: {
       full_name: autofill?.full_name || '',
       birth_year: autofill?.birth_year ?? undefined,
+      sex: '',
       city: autofill?.city || '',
       state: autofill?.state || '',
       club_or_school: autofill?.club_or_school || '',
@@ -134,6 +136,7 @@ export function RegistrationForm({
         pairing_group_id: values.pairing_group_id || null,
         full_name: values.full_name.trim(),
         birth_year: values.birth_year ?? null,
+        sex: values.sex || null,
         city: values.city?.trim() || null,
         state: values.state || null,
         club_or_school: values.club_or_school?.trim() || null,
@@ -219,8 +222,16 @@ export function RegistrationForm({
         <Input label="Nome completo *" placeholder="Como consta na CBX/FIDE" {...register('full_name')} error={errors.full_name?.message} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="Ano de nascimento" type="number" inputMode="numeric" placeholder="2010" {...register('birth_year')} error={errors.birth_year?.message} />
-          <Input label="Cidade" placeholder="Sua cidade" {...register('city')} error={errors.city?.message} />
+          <div>
+            <Select label="Sexo" {...register('sex')} defaultValue="">
+              <option value="">Prefiro não informar</option>
+              <option value="m">Masculino</option>
+              <option value="w">Feminino</option>
+            </Select>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Usado para categoria Feminino e homologação (TRF).</p>
+          </div>
         </div>
+        <Input label="Cidade" placeholder="Sua cidade" {...register('city')} error={errors.city?.message} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Select label="UF" {...register('state')} defaultValue="">
             <option value="">Selecione…</option>

@@ -19,6 +19,9 @@ export function AdminTournamentTabs({ slug, mode }: Props) {
     { href: `${base}/edit`,          label: 'Editar',        icon: '⚙️' },
     { href: `${base}/registrations`, label: 'Inscrições',    icon: '📝' },
     { href: `${base}/players`,       label: 'Participantes', icon: '👥' },
+    ...(mode === 'native'
+      ? [{ href: `${base}/groups`, label: 'Grupos', icon: '♟️' }]
+      : []),
     { href: `${base}/rounds`,        label: 'Rodadas',       icon: '📋' },
     { href: `${base}/staff`,         label: 'Equipe',        icon: '⚖️' },
     { href: `${base}/history`,       label: 'Histórico',     icon: '📜' },

@@ -4,7 +4,8 @@ import { useState } from 'react';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup, useGenerateSeeds,
   useGenerateRound, useRoundTransition, useSetResult,
-  useSwapDraft, useDraftWarnings, useRequestedByes, useToggleRequestedBye,
+  useOverridePairing, usePairingHistory, useDraftWarnings,
+  useRequestedByes, useToggleRequestedBye,
 } from '@/lib/hooks/use-native-rounds';
 import { useRoundPairings, useTournamentPlayers } from '@/lib/hooks/use-tournament';
 import { Button } from '@/components/ui/button';
@@ -325,16 +326,31 @@ const WARNING_LABELS: Record<string, string> = {
 function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; groupId: string; round: Round }) {
   const { data: pairings, isLoading } = useRoundPairings(round.id);
   const setResult = useSetResult(tournament.id, groupId);
-  const swap = useSwapDraft(tournament.id, groupId, round.id);
+  const override = useOverridePairing(tournament.id, groupId, round.id);
   const isDraft = round.status === 'draft';
+  const canOverride = round.status === 'ongoing' || round.status === 'finished';
   const { data: warnings } = useDraftWarnings(tournament.slug, round.id, isDraft);
+  const { data: history } = usePairingHistory(round.id, canOverride);
+  const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<{ pairingId: string; side: 'w' | 'b' } | null>(null);
+  const [pendingMoves, setPendingMoves] = useState<
+    Array<{ pairing_id: string; white_tp: string; black_tp: string | null }> | null
+  >(null);
+  const [justification, setJustification] = useState('');
   const [error, setError] = useState('');
 
   if (isLoading) return <PageSpinner />;
   if (!pairings?.length) return <p className="text-sm text-gray-500">Sem mesas.</p>;
 
-  async function handleSeatClick(p: any, side: 'w' | 'b') {
+  function cancelEditing() {
+    setEditing(false);
+    setSelected(null);
+    setPendingMoves(null);
+    setJustification('');
+    setError('');
+  }
+
+  function handleSeatClick(p: any, side: 'w' | 'b') {
     if (!selected) { setSelected({ pairingId: p.pairing_id, side }); return; }
     if (selected.pairingId === p.pairing_id && selected.side === side) { setSelected(null); return; }
     const p1 = pairings!.find((x: any) => x.pairing_id === selected.pairingId)!;
@@ -358,18 +374,30 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
     }
     setSelected(null);
     setError('');
-    try { await swap.mutateAsync(moves); } catch (e: any) { setError(e.message); }
+    setPendingMoves(moves);
   }
 
+  async function confirmOverride() {
+    if (!pendingMoves) return;
+    if (justification.trim().length < 3) { setError('Informe a justificativa (mín. 3 caracteres).'); return; }
+    setError('');
+    try {
+      await override.mutateAsync({ moves: pendingMoves, justification: justification.trim() });
+      cancelEditing();
+    } catch (e: any) { setError(e.message); }
+  }
+
+  const canSwap = editing && canOverride;
+
   const Seat = ({ p, side, name }: { p: any; side: 'w' | 'b'; name: string | null }) => {
-    if (!isDraft || !name) {
+    if (!canSwap || !name) {
       return <span className="text-gray-900 dark:text-gray-100">{name ?? 'BYE'}</span>;
     }
     const isSel = selected?.pairingId === p.pairing_id && selected?.side === side;
     return (
       <button
         onClick={() => handleSeatClick(p, side)}
-        disabled={swap.isPending}
+        disabled={override.isPending}
         className={`rounded px-1.5 py-0.5 transition-colors ${
           isSel
             ? 'bg-brand-600 text-white'
@@ -384,20 +412,33 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
 
   return (
     <div className="space-y-2">
-      {isDraft && (
-        <div className="rounded-lg bg-purple-50 dark:bg-purple-950/30 px-3 py-2 text-xs text-purple-700 dark:text-purple-300">
-          Modo edição: clique em dois jogadores para trocá-los de lugar.
-          {(warnings?.length ?? 0) > 0 && (
-            <span className="block mt-1 space-x-2">
-              {warnings!.map((w: any, i) => (
-                <Badge key={i} className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                  {w.board != null ? `Mesa ${w.board}: ` : ''}{WARNING_LABELS[w.code] ?? w.code}
-                </Badge>
-              ))}
-            </span>
-          )}
+      {isDraft && (warnings?.length ?? 0) > 0 && (
+        <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+          Avisos do pareamento (regenere se necessário):
+          <span className="block mt-1 space-x-2 space-y-1">
+            {warnings!.map((w: any, i) => (
+              <Badge key={i} className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                {w.board != null ? `Mesa ${w.board}: ` : ''}{WARNING_LABELS[w.code] ?? w.code}
+              </Badge>
+            ))}
+          </span>
         </div>
       )}
+
+      {canOverride && !editing && (
+        <div className="flex justify-end">
+          <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+            Alterar pareamento
+          </Button>
+        </div>
+      )}
+      {canSwap && (
+        <div className="rounded-lg bg-purple-50 dark:bg-purple-950/30 px-3 py-2 text-xs text-purple-700 dark:text-purple-300 flex items-center justify-between gap-2 flex-wrap">
+          <span>Clique em dois jogadores para trocá-los. A alteração exige justificativa.</span>
+          <button onClick={cancelEditing} className="font-medium underline">Cancelar</button>
+        </div>
+      )}
+
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       {pairings.map((p: any) => (
         <div key={p.pairing_id} className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm flex-wrap">
@@ -406,6 +447,11 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
             <Seat p={p} side="w" name={p.white_name} />
             <span className="text-gray-400 mx-1.5">×</span>
             <Seat p={p} side="b" name={p.black_name} />
+            {p.manual_override && (
+              <Badge className="ml-2 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                alterada
+              </Badge>
+            )}
           </div>
           {p.is_bye ? (
             <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
@@ -417,7 +463,7 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
             <select
               className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-xs"
               value={p.result}
-              disabled={setResult.isPending}
+              disabled={setResult.isPending || editing}
               onChange={async (e) => {
                 setError('');
                 try {
@@ -430,6 +476,56 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
           )}
         </div>
       ))}
+
+      {(history?.length ?? 0) > 0 && (
+        <div className="pt-2">
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Histórico de alterações</p>
+          <ul className="space-y-1">
+            {history!.map((h) => (
+              <li key={h.id} className="rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+                <span className="font-medium text-gray-800 dark:text-gray-200">{h.actor_name ?? 'Organizador'}</span>
+                {' · '}{new Date(h.created_at).toLocaleString('pt-BR')}
+                <p className="mt-0.5">Justificativa: {h.justification}</p>
+                {h.moves.length > 0 && (
+                  <p className="mt-0.5 text-gray-500">
+                    {h.moves.map((m, i) => (
+                      <span key={i}>{m.board != null ? `Mesa ${m.board}: ` : ''}{m.white_name} × {m.black_name}{i < h.moves.length - 1 ? ' · ' : ''}</span>
+                    ))}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {pendingMoves && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={cancelEditing}>
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Justificar alteração</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Alterar o pareamento gerado exige justificativa (regra FIDE C.04). Fica registrado com seu nome.
+            </p>
+            <textarea
+              autoFocus
+              rows={3}
+              value={justification}
+              onChange={(e) => setJustification(e.target.value)}
+              placeholder="Ex: correção de rating incorreto do jogador X"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            />
+            {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <Button size="sm" variant="secondary" onClick={() => { setPendingMoves(null); setJustification(''); setError(''); }}>
+                Voltar
+              </Button>
+              <Button size="sm" loading={override.isPending} onClick={confirmOverride}>
+                Confirmar alteração
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

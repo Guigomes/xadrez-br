@@ -44,8 +44,10 @@ export default function EditTournamentPage({ params }: Props) {
 
   async function handleDelete() {
     try {
+      const deletedName = tournament?.name ?? '';
       await deleteTournament.mutateAsync();
-      router.push('/admin');
+      router.push(`/admin?excluido=${encodeURIComponent(deletedName)}`);
+      router.refresh();
     } catch (err: any) {
       setError(err.message ?? 'Erro ao excluir.');
       setConfirmDelete(false);

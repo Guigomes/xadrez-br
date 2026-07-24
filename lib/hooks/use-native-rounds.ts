@@ -60,6 +60,55 @@ export function useCreateDefaultGroup(tournamentId: string) {
   });
 }
 
+export function useCreateGroup(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, rounds_count, sort_order }: {
+      name: string; rounds_count?: number | null; sort_order?: number;
+    }) => {
+      const { error } = await supabase.from('pairing_groups').insert({
+        tournament_id: tournamentId,
+        name: name.trim(),
+        rounds_count: rounds_count ?? null,
+        sort_order: sort_order ?? 0,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pairing-groups', tournamentId] }),
+  });
+}
+
+export function useUpdateGroup(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name, rounds_count, sort_order }: {
+      id: string; name?: string; rounds_count?: number | null; sort_order?: number;
+    }) => {
+      const patch: Record<string, unknown> = {};
+      if (name !== undefined) patch.name = name.trim();
+      if (rounds_count !== undefined) patch.rounds_count = rounds_count;
+      if (sort_order !== undefined) patch.sort_order = sort_order;
+      const { error } = await supabase.from('pairing_groups').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pairing-groups', tournamentId] }),
+  });
+}
+
+export function useDeleteGroup(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('pairing_groups').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pairing-groups', tournamentId] });
+      qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) });
+    },
+  });
+}
+
 export function useGenerateSeeds(tournamentId: string, groupId: string) {
   const invalidate = useInvalidate(tournamentId, groupId);
   return useMutation({
@@ -163,6 +212,58 @@ export function useSwapDraft(tournamentId: string, groupId: string, roundId: str
       invalidate();
       qc.invalidateQueries({ queryKey: ['pairings', roundId] });
       qc.invalidateQueries({ queryKey: ['draft-warnings', roundId] });
+    },
+  });
+}
+
+export function useOverridePairing(tournamentId: string, groupId: string, roundId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidate(tournamentId, groupId);
+  return useMutation({
+    mutationFn: async ({ moves, justification }: {
+      moves: Array<{ pairing_id: string; white_tp: string; black_tp: string | null }>;
+      justification: string;
+    }) => {
+      const { error } = await supabase.rpc('override_pairing_players', {
+        p_round_id: roundId, p_moves: moves, p_justification: justification,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['pairings', roundId] });
+      qc.invalidateQueries({ queryKey: ['pairing-history', roundId] });
+    },
+  });
+}
+
+export interface PairingOverrideEntry {
+  id: number;
+  created_at: string;
+  actor_name: string | null;
+  justification: string;
+  moves: Array<{ board: number | null; white_name: string; black_name: string }>;
+}
+
+export function usePairingHistory(roundId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['pairing-history', roundId],
+    enabled: enabled && !!roundId,
+    queryFn: async (): Promise<PairingOverrideEntry[]> => {
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('id, created_at, payload')
+        .eq('entity_id', roundId)
+        .eq('action', 'override_pairing')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((r: any) => ({
+        id: r.id,
+        created_at: r.created_at,
+        actor_name: r.payload?.actor_name ?? null,
+        justification: r.payload?.justification ?? '',
+        moves: r.payload?.moves ?? [],
+      }));
     },
   });
 }

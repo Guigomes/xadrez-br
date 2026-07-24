@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { TournamentForm } from '@/components/tournament/tournament-form';
+import { TournamentForm, type GroupDraft } from '@/components/tournament/tournament-form';
 import { PageSpinner } from '@/components/ui/spinner';
 import { slugify } from '@/lib/utils/chess';
 import type { TournamentFormValues } from '@/types/database';
@@ -25,7 +25,7 @@ export default function NewTournamentPage() {
 
   if (loadingProfile || !profile || !canCreate) return <PageSpinner />;
 
-  async function handleSubmit(values: TournamentFormValues) {
+  async function handleSubmit(values: TournamentFormValues, groups?: GroupDraft[]) {
     if (!user) return;
     setLoading(true);
     setError('');
@@ -40,6 +40,18 @@ export default function NewTournamentPage() {
         .select()
         .single();
       if (err) throw err;
+
+      if (data && groups?.length) {
+        const rows = groups.map((g, i) => ({
+          tournament_id: data.id,
+          name: g.name,
+          sort_order: i,
+          rounds_count: g.rounds_count ? Number(g.rounds_count) : null,
+        }));
+        const { error: gErr } = await supabase.from('pairing_groups').insert(rows);
+        if (gErr) throw gErr;
+      }
+
       router.push('/admin');
     } catch (err: any) {
       setError(err.message ?? 'Erro ao criar torneio.');
@@ -58,7 +70,7 @@ export default function NewTournamentPage() {
           {error}
         </p>
       )}
-      <TournamentForm onSubmit={handleSubmit} loading={loading} submitLabel="Criar torneio" />
+      <TournamentForm onSubmit={handleSubmit} loading={loading} submitLabel="Criar torneio" showGroups />
     </div>
   );
 }

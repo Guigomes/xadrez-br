@@ -341,6 +341,7 @@ export interface RoundPairingRow {
   white_points: number | null;
   black_points: number | null;
   is_bye: boolean;
+  manual_override: boolean;
 }
 
 // ============================================================

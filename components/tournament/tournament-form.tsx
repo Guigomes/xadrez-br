@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -54,14 +55,21 @@ const schema = z.object({
   }
 });
 
-interface Props {
-  defaultValues?: Partial<TournamentFormValues>;
-  onSubmit: (values: TournamentFormValues) => void;
-  loading?: boolean;
-  submitLabel?: string;
+export interface GroupDraft {
+  name: string;
+  rounds_count: string;
 }
 
-export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar' }: Props) {
+interface Props {
+  defaultValues?: Partial<TournamentFormValues>;
+  onSubmit: (values: TournamentFormValues, groups?: GroupDraft[]) => void;
+  loading?: boolean;
+  submitLabel?: string;
+  /** Mostra a seção opcional de grupos (só faz sentido na criação). */
+  showGroups?: boolean;
+}
+
+export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar', showGroups = false }: Props) {
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TournamentFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -80,6 +88,12 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
   });
 
   const isFree = watch('is_free');
+  const [groups, setGroups] = useState<GroupDraft[]>([]);
+
+  const addGroup = () => setGroups((g) => [...g, { name: '', rounds_count: '' }]);
+  const removeGroup = (i: number) => setGroups((g) => g.filter((_, idx) => idx !== i));
+  const updateGroup = (i: number, patch: Partial<GroupDraft>) =>
+    setGroups((g) => g.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
 
   return (
     <form
@@ -90,7 +104,10 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           registration_start_date: values.registration_start_date || undefined,
           registration_end_date: values.registration_end_date || undefined,
         };
-        onSubmit(payload);
+        const cleanGroups = groups
+          .map((g) => ({ name: g.name.trim(), rounds_count: g.rounds_count }))
+          .filter((g) => g.name.length > 0);
+        onSubmit(payload, showGroups ? cleanGroups : undefined);
       })}
       className="space-y-5"
     >
@@ -190,7 +207,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             <div>
               <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Torneio gratuito</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Sem taxa de inscrição. A tela de inscrição não exibe o campo de comprovante de pagamento.
+                Sem taxa de inscrição.
               </p>
             </div>
           </label>
@@ -243,6 +260,59 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           onChange={(v) => setValue('tiebreak_order', v, { shouldDirty: true })}
         />
       </div>
+
+      {/* Grupos de emparceiramento (opcional, só na criação) */}
+      {showGroups && (
+        <div className="card p-5 space-y-4">
+          <div>
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100">Grupos de emparceiramento</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Opcional. Crie divisões que pareiam separadamente (ex: Absoluto, Sub-14, Feminino).
+              Deixe vazio para usar um grupo único. Você também pode gerenciar isso depois na aba Grupos.
+            </p>
+          </div>
+
+          {groups.length > 0 && (
+            <div className="space-y-2">
+              {groups.map((g, i) => (
+                <div key={i} className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Input
+                      label={i === 0 ? 'Nome do grupo' : undefined}
+                      placeholder="Ex: Absoluto"
+                      value={g.name}
+                      onChange={(e) => updateGroup(i, { name: e.target.value })}
+                    />
+                  </div>
+                  <div className="w-24">
+                    <Input
+                      label={i === 0 ? 'Rodadas' : undefined}
+                      type="number"
+                      min={1}
+                      max={20}
+                      placeholder="herda"
+                      value={g.rounds_count}
+                      onChange={(e) => updateGroup(i, { rounds_count: e.target.value })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeGroup(i)}
+                    className="mb-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-10 text-sm text-gray-500 hover:text-red-600 dark:text-gray-400"
+                    aria-label="Remover grupo"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Button type="button" variant="secondary" size="sm" onClick={addGroup}>
+            + Adicionar grupo
+          </Button>
+        </div>
+      )}
 
       {/* Visibility */}
       <div className="card p-5">
