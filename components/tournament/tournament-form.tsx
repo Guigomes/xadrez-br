@@ -173,10 +173,14 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
               {...register('registration_end_date')}
             />
           </div>
-          <label className="flex items-center gap-3 cursor-pointer mt-3">
+        </div>
+
+        <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Cobrança</p>
+          <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 p-3">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              className="h-4 w-4 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
               {...register('is_free')}
               onChange={(e) => {
                 setValue('is_free', e.target.checked, { shouldDirty: true });
@@ -185,33 +189,32 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             />
             <div>
               <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Torneio gratuito</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Se marcado, a tela de inscrição não exibe o campo de comprovante de pagamento.
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Sem taxa de inscrição. A tela de inscrição não exibe o campo de comprovante de pagamento.
               </p>
             </div>
           </label>
           {!isFree && (
-            <>
+            <div className="mt-4 space-y-4">
               <Input
                 label="Valor da inscrição"
                 placeholder='Ex: R$50 (Absoluto) / R$30 (Sub-14)'
-                className="mt-3"
                 {...register('registration_fee_text')}
               />
-              <label className="flex items-center gap-3 cursor-pointer mt-3">
+              <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                  className="h-4 w-4 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                   {...register('require_payment_receipt')}
                 />
                 <div>
                   <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Exigir comprovante de pagamento</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Se marcado, a inscrição só é aceita com o comprovante anexado.
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    A inscrição só é aceita com o comprovante anexado.
                   </p>
                 </div>
               </label>
-            </>
+            </div>
           )}
         </div>
       </div>
