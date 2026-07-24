@@ -53,6 +53,7 @@ interface Props {
   groups: { id: string; name: string }[];
   requirePaymentReceipt?: boolean;
   registrationFeeText?: string | null;
+  isFree?: boolean;
   /** Dados do perfil de quem está logado e marcou "participante" — usados para pré-preencher o formulário. */
   autofill?: AutofillData | null;
   /** Se true, a inscrição enviada é salva de volta no perfil para alimentar o autopreenchimento da próxima vez. */
@@ -61,7 +62,7 @@ interface Props {
 
 export function RegistrationForm({
   tournamentId, tournamentSlug, groups,
-  requirePaymentReceipt = false, registrationFeeText,
+  requirePaymentReceipt = false, registrationFeeText, isFree = false,
   autofill, saveAutofillOnSubmit = false,
 }: Props) {
   const [receipt, setReceipt] = useState<File | null>(null);
@@ -108,7 +109,7 @@ export function RegistrationForm({
       setError('Selecione o grupo em que deseja jogar.');
       return;
     }
-    if (requirePaymentReceipt && !receipt) {
+    if (!isFree && requirePaymentReceipt && !receipt) {
       setError('Este torneio exige o comprovante de pagamento para concluir a inscrição.');
       return;
     }
@@ -260,34 +261,36 @@ export function RegistrationForm({
         </div>
       </div>
 
-      <div className="card p-5 space-y-3">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-          Comprovante de pagamento{requirePaymentReceipt && ' *'}
-        </h2>
-        {registrationFeeText && (
-          <p className="text-sm text-gray-700 dark:text-gray-300 -mt-1">
-            💰 Valor da inscrição: <strong>{registrationFeeText}</strong>
+      {!isFree && (
+        <div className="card p-5 space-y-3">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+            Comprovante de pagamento{requirePaymentReceipt && ' *'}
+          </h2>
+          {registrationFeeText && (
+            <p className="text-sm text-gray-700 dark:text-gray-300 -mt-1">
+              💰 Valor da inscrição: <strong>{registrationFeeText}</strong>
+            </p>
+          )}
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+            {requirePaymentReceipt
+              ? 'Obrigatório para esta inscrição — anexe o comprovante (JPG, PNG ou PDF, até 5 MB).'
+              : 'Se o torneio exige taxa de inscrição, anexe o comprovante (JPG, PNG ou PDF, até 5 MB).'}
           </p>
-        )}
-        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
-          {requirePaymentReceipt
-            ? 'Obrigatório para esta inscrição — anexe o comprovante (JPG, PNG ou PDF, até 5 MB).'
-            : 'Se o torneio exige taxa de inscrição, anexe o comprovante (JPG, PNG ou PDF, até 5 MB).'}
-        </p>
-        <input
-          type="file"
-          accept={RECEIPT_TYPES.join(',')}
-          onChange={handleReceiptChange}
-          className="block w-full text-sm text-gray-600 dark:text-gray-400
-            file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2
-            file:text-sm file:font-medium file:text-brand-700
-            dark:file:bg-brand-950/50 dark:file:text-brand-300"
-        />
-        {receiptError && <p className="text-xs text-red-600 dark:text-red-400">{receiptError}</p>}
-        {receipt && !receiptError && (
-          <p className="text-xs text-green-600 dark:text-green-400">📎 {receipt.name}</p>
-        )}
-      </div>
+          <input
+            type="file"
+            accept={RECEIPT_TYPES.join(',')}
+            onChange={handleReceiptChange}
+            className="block w-full text-sm text-gray-600 dark:text-gray-400
+              file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2
+              file:text-sm file:font-medium file:text-brand-700
+              dark:file:bg-brand-950/50 dark:file:text-brand-300"
+          />
+          {receiptError && <p className="text-xs text-red-600 dark:text-red-400">{receiptError}</p>}
+          {receipt && !receiptError && (
+            <p className="text-xs text-green-600 dark:text-green-400">📎 {receipt.name}</p>
+          )}
+        </div>
+      )}
 
       <Button type="submit" size="lg" loading={submitting} className="w-full">
         Enviar inscrição

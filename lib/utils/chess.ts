@@ -138,6 +138,18 @@ export const TIEBREAK_INFO = {
     description:
       'Soma dos pontos dos adversários derrotados + metade dos pontos dos adversários empatados. Premia vitórias contra adversários fortes.',
   },
+  wins: {
+    label: 'Número de vitórias',
+    short: 'Vit',
+    description:
+      'Quantidade total de partidas vencidas. Premia quem venceu mais jogos, independente do adversário.',
+  },
+  progressive: {
+    label: 'Progressivo',
+    short: 'Prog',
+    description:
+      'Soma da pontuação acumulada rodada a rodada. Premia quem pontuou cedo no torneio (boa campanha do início ao fim).',
+  },
   direct_encounter: {
     label: 'Confronto Direto',
     short: 'CD',

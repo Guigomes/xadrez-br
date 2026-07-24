@@ -87,6 +87,7 @@ export interface Tournament {
   tiebreak_order: TiebreakKey[];
   require_payment_receipt: boolean;
   registration_fee_text: string | null;
+  is_free: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -369,6 +370,7 @@ export interface TournamentFormValues {
   tiebreak_order: TiebreakKey[];
   require_payment_receipt: boolean;
   registration_fee_text?: string;
+  is_free: boolean;
 }
 
 export interface PlayerFormValues {

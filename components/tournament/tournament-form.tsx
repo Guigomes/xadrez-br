@@ -33,6 +33,7 @@ const schema = z.object({
   tiebreak_order: z.array(z.enum(['buchholz', 'buchholz_cut1', 'sonneborn_berger', 'wins', 'progressive'])),
   require_payment_receipt: z.boolean(),
   registration_fee_text: z.string().optional(),
+  is_free: z.boolean(),
 }).superRefine((values, ctx) => {
   if (values.registration_start_date && values.registration_end_date
     && values.registration_end_date < values.registration_start_date) {
@@ -68,14 +69,17 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       rounds_count: 7,
       is_public: false,
       mode: 'native',
-      initial_color: 'white1',
       rating_kind: 'std',
       requested_bye_score: 0.5,
       tiebreak_order: ['buchholz', 'buchholz_cut1', 'sonneborn_berger'],
       require_payment_receipt: false,
+      is_free: false,
       ...defaultValues,
+      initial_color: 'white1',
     },
   });
+
+  const isFree = watch('is_free');
 
   return (
     <form
@@ -169,25 +173,46 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
               {...register('registration_end_date')}
             />
           </div>
-          <Input
-            label="Valor da inscrição"
-            placeholder='Ex: R$50 (Absoluto) / R$30 (Sub-14) — deixe em branco se for gratuito'
-            className="mt-3"
-            {...register('registration_fee_text')}
-          />
           <label className="flex items-center gap-3 cursor-pointer mt-3">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-              {...register('require_payment_receipt')}
+              {...register('is_free')}
+              onChange={(e) => {
+                setValue('is_free', e.target.checked, { shouldDirty: true });
+                if (e.target.checked) setValue('require_payment_receipt', false, { shouldDirty: true });
+              }}
             />
             <div>
-              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Exigir comprovante de pagamento</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Torneio gratuito</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Se marcado, a inscrição só é aceita com o comprovante anexado.
+                Se marcado, a tela de inscrição não exibe o campo de comprovante de pagamento.
               </p>
             </div>
           </label>
+          {!isFree && (
+            <>
+              <Input
+                label="Valor da inscrição"
+                placeholder='Ex: R$50 (Absoluto) / R$30 (Sub-14)'
+                className="mt-3"
+                {...register('registration_fee_text')}
+              />
+              <label className="flex items-center gap-3 cursor-pointer mt-3">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                  {...register('require_payment_receipt')}
+                />
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Exigir comprovante de pagamento</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Se marcado, a inscrição só é aceita com o comprovante anexado.
+                  </p>
+                </div>
+              </label>
+            </>
+          )}
         </div>
       </div>
 
@@ -196,11 +221,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           interno (painel de desenvolvedor), fora deste formulário. */}
       <div className="card p-5 space-y-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Gerenciamento</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Select label="Cor do nº 1 (sorteio)" {...register('initial_color')}>
-            <option value="white1">Brancas</option>
-            <option value="black1">Pretas</option>
-          </Select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select label="Rating para seed" {...register('rating_kind')}>
             <option value="std">Clássico</option>
             <option value="rpd">Rápido</option>

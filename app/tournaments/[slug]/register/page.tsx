@@ -79,6 +79,7 @@ export default async function RegisterPage({ params }: Props) {
           groups={groups ?? []}
           requirePaymentReceipt={tournament.require_payment_receipt}
           registrationFeeText={tournament.registration_fee_text}
+          isFree={tournament.is_free}
           autofill={autofill}
           saveAutofillOnSubmit={!!autofill}
         />
