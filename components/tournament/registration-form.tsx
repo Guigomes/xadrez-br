@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { BR_STATES } from '@/lib/utils/chess';
+import { deriveCategory, type CategoryCandidate } from '@/lib/utils/classification-match';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
@@ -48,10 +49,16 @@ interface AutofillData {
   phone: string | null;
 }
 
+export interface RegistrationClassification extends CategoryCandidate {
+  name: string;
+}
+
 interface Props {
   tournamentId: string;
   tournamentSlug: string;
-  classifications: { id: string; name: string }[];
+  classifications: RegistrationClassification[];
+  /** Ano do início do torneio — usado pra derivar idade (convenção CBX: ano do torneio - ano de nascimento). */
+  tournamentStartYear: number | null;
   requirePaymentReceipt?: boolean;
   registrationFeeText?: string | null;
   isFree?: boolean;
@@ -62,7 +69,7 @@ interface Props {
 }
 
 export function RegistrationForm({
-  tournamentId, tournamentSlug, classifications,
+  tournamentId, tournamentSlug, classifications, tournamentStartYear,
   requirePaymentReceipt = false, registrationFeeText, isFree = false,
   autofill, saveAutofillOnSubmit = false,
 }: Props) {
@@ -71,8 +78,12 @@ export function RegistrationForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  // Enquanto o inscrito não mexe manualmente no dropdown, ele segue a
+  // pré-seleção derivada de ano de nascimento/sexo. Depois que ele escolhe,
+  // paramos de sobrescrever — é uma sugestão, não uma trava.
+  const [categoryTouched, setCategoryTouched] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       full_name: autofill?.full_name || '',
@@ -89,6 +100,33 @@ export function RegistrationForm({
       category_id: undefined,
     },
   });
+
+  const watchedSex = watch('sex');
+  const watchedBirthYear = watch('birth_year');
+  const watchedCategoryId = watch('category_id');
+
+  // Espelho client-side de derive_player_category (035) — mesma regra, mesmo
+  // desempate por especificidade. Só usa birth_year/sex: rating não é
+  // capturado neste formulário (025), então recorte por rating nunca
+  // pré-seleciona aqui — o organizador ajusta depois em Participantes.
+  const derivedCategory = useMemo(() => {
+    if (classifications.length === 0) return null;
+    const birthYear = typeof watchedBirthYear === 'number' && !Number.isNaN(watchedBirthYear)
+      ? watchedBirthYear
+      : null;
+    return deriveCategory(
+      classifications,
+      { sex: (watchedSex || null) as 'm' | 'w' | null, birthYear, ratingStd: null },
+      tournamentStartYear
+    );
+  }, [classifications, watchedSex, watchedBirthYear, tournamentStartYear]);
+
+  useEffect(() => {
+    if (categoryTouched || !derivedCategory) return;
+    setValue('category_id', derivedCategory.id, { shouldValidate: true });
+  }, [derivedCategory, categoryTouched, setValue]);
+
+  const selectedClassificationName = classifications.find((c) => c.id === watchedCategoryId)?.name ?? null;
 
   function handleReceiptChange(e: React.ChangeEvent<HTMLInputElement>) {
     setReceiptError('');
@@ -240,12 +278,24 @@ export function RegistrationForm({
           <Input label="Escola / clube de xadrez" placeholder="Opcional" {...register('club_or_school')} error={errors.club_or_school?.message} />
         </div>
         {classifications.length > 0 && (
-          <Select label="Classificação *" {...register('category_id')} error={errors.category_id?.message} defaultValue="">
-            <option value="" disabled>Selecione sua classificação…</option>
-            {classifications.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
+          <div>
+            <Select
+              label="Classificação *"
+              {...register('category_id', { onChange: () => setCategoryTouched(true) })}
+              error={errors.category_id?.message}
+              defaultValue=""
+            >
+              <option value="" disabled>Selecione sua classificação…</option>
+              {classifications.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </Select>
+            {selectedClassificationName && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Você vai concorrer em: Geral e {selectedClassificationName}
+              </p>
+            )}
+          </div>
         )}
       </div>
 

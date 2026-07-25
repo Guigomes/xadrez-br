@@ -6,6 +6,8 @@ import type { TournamentRegistration } from '@/types/database';
 
 export type RegistrationRow = TournamentRegistration & {
   pairing_groups: { name: string } | null;
+  /** Classificação declarada no formulário (034) — comparada com a derivada no admin. */
+  category: { id: string; name: string } | null;
 };
 
 /** Próxima rodada de entrada por grupo (F8): maior rodada não-rascunho + 1. */
@@ -38,7 +40,7 @@ export function useRegistrations(tournamentId: string) {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('tournament_registrations')
-        .select('*, pairing_groups(name)')
+        .select('*, pairing_groups(name), category:tournament_categories(id, name)')
         .eq('tournament_id', tournamentId)
         .order('created_at', { ascending: false });
       if (error) throw error;

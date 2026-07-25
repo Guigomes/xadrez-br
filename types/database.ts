@@ -89,6 +89,10 @@ export interface Tournament {
   registration_fee_text: string | null;
   is_free: boolean;
   pairing_mode: PairingMode;
+  /** Respostas das 3 perguntas de classificação (idade/rating/feminina) — migration 035. */
+  classification_dimensions: ClassificationDimension[];
+  /** Dimensão que divide os grupos de emparceiramento quando pairing_mode='per_category'. */
+  pairing_split: ClassificationDimension | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -114,10 +118,13 @@ export interface TournamentCategory {
   min_rating: number | null;
   sex: 'm' | 'w' | null;
   pairing_group_id: string | null;
+  /** Ordem de exibição e desempate quando duas células têm a mesma especificidade. */
+  sort_order: number;
   created_at: string;
 }
 
 export type PairingMode = 'absolute' | 'per_category' | 'custom';
+export type ClassificationDimension = 'age' | 'rating' | 'sex';
 
 export interface TournamentPlayer {
   id: string;
@@ -182,6 +189,8 @@ export interface Round {
   tournament_id: string;
   round_number: number;
   status: RoundStatus;
+  /** Grupo de emparceiramento dono da rodada (006/007) — null = torneio de grupo único. */
+  pairing_group_id: string | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;
@@ -247,8 +256,11 @@ export interface TournamentRegistration {
   id: string;
   tournament_id: string;
   pairing_group_id: string | null;
+  /** Classificação declarada pelo inscrito (034) — comparada com a derivada no admin. */
+  category_id: string | null;
   full_name: string;
   birth_year: number | null;
+  sex: 'm' | 'w' | null;
   city: string | null;
   state: string | null;
   club_or_school: string | null;
@@ -308,7 +320,9 @@ export interface StandingRow {
   sonneborn_berger: number | null;
   progressive: number | null;
   performance_rating: number | null;
+  /** Classificação derivada (célula da partição) — migration 035. */
   category_name: string | null;
+  category_id: string | null;
   pairing_group_id: string | null;
   pairing_group_name: string | null;
   tp_id: string;
@@ -419,6 +433,7 @@ export interface Database {
       get_player_tournament_history:{ Args: { p_tournament_id: string; p_tp_id: string }; Returns: PlayerHistoryRow[]; };
       search_tournaments:           { Args: { p_query?: string; p_state?: string; p_status?: TournamentStatus; p_limit?: number; p_offset?: number }; Returns: TournamentListItem[]; };
       get_round_pairings:           { Args: { p_round_id: string }; Returns: RoundPairingRow[]; };
+      refresh_tournament_categories:{ Args: { p_tournament_id: string }; Returns: number; };
     };
     Enums: {
       user_role:                UserRole;

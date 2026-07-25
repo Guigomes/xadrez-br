@@ -4,6 +4,7 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useTournament } from '@/lib/hooks/use-tournament';
 import { useUser } from '@/lib/hooks/use-auth';
+import { useCategories } from '@/lib/hooks/use-classifications';
 import {
   useRegistrations,
   useApproveRegistration,
@@ -12,6 +13,7 @@ import {
   openReceipt,
   type RegistrationRow,
 } from '@/lib/hooks/use-registrations';
+import { deriveCategory, type CategoryCandidate } from '@/lib/utils/classification-match';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,7 @@ export default function AdminRegistrationsPage({ params }: Props) {
   const { data: tournament, isLoading } = useTournament(slug);
   const { data: registrations, isLoading: loadingRegs } = useRegistrations(tournament?.id ?? '');
   const { data: nextRoundByGroup } = useNextRoundByGroup(tournament?.id ?? '');
+  const { data: categories } = useCategories(tournament?.id ?? '');
   const approve = useApproveRegistration(tournament?.id ?? '');
   const reject = useRejectRegistration(tournament?.id ?? '');
 
@@ -53,6 +56,25 @@ export default function AdminRegistrationsPage({ params }: Props) {
   const all = registrations ?? [];
   const filtered = all.filter((r) => r.status === filter);
   const pendingCount = all.filter((r) => r.status === 'pending').length;
+
+  const candidates: (CategoryCandidate & { name: string })[] = (categories ?? []).map((c) => ({
+    id: c.id, name: c.name, sortOrder: c.sort_order, sex: c.sex,
+    minAge: c.min_age, maxAge: c.max_age, minRating: c.min_rating, maxRating: c.max_rating,
+  }));
+  const tournamentStartYear = tournament.start_date ? new Date(tournament.start_date).getFullYear() : null;
+
+  // Compara o que o inscrito declarou com o que a regra derivaria — mesma
+  // regra de derive_player_category (035), espelhada em classification-match.ts.
+  // Só sinaliza divergência quando dá pra derivar algo com o dado disponível;
+  // sem birth_year/sex a derivação fica null e não é tratada como divergência
+  // (é "sem dado", não "declarou errado").
+  function declaredVsDerived(r: RegistrationRow): { declared: string | null; derived: string | null; diverges: boolean } {
+    const derived = deriveCategory(candidates, { sex: r.sex, birthYear: r.birth_year, ratingStd: r.rating_std }, tournamentStartYear);
+    const declared = r.category?.name ?? null;
+    const derivedId = derived?.id ?? null;
+    const declaredId = r.category?.id ?? null;
+    return { declared, derived: derived?.name ?? null, diverges: derivedId !== null && derivedId !== declaredId };
+  }
 
   async function handleApprove(registration: RegistrationRow) {
     if (!user) return;
@@ -148,7 +170,9 @@ export default function AdminRegistrationsPage({ params }: Props) {
         />
       ) : (
         <div className="space-y-3">
-          {filtered.map((r) => (
+          {filtered.map((r) => {
+            const { declared, derived, diverges } = declaredVsDerived(r);
+            return (
             <div key={r.id} className="card p-4">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
@@ -160,6 +184,16 @@ export default function AdminRegistrationsPage({ params }: Props) {
                     {r.pairing_groups?.name && (
                       <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
                         {r.pairing_groups.name}
+                      </Badge>
+                    )}
+                    {declared && (
+                      <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                        🏷️ {declared}
+                      </Badge>
+                    )}
+                    {diverges && (
+                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400">
+                        ⚠️ diverge: seria {derived}
                       </Badge>
                     )}
                   </div>
@@ -224,7 +258,8 @@ export default function AdminRegistrationsPage({ params }: Props) {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

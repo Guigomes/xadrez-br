@@ -1,17 +1,24 @@
 'use client';
 
-import { use, useState } from 'react';
-import { useTournament } from '@/lib/hooks/use-tournament';
+import { use, useMemo, useState } from 'react';
+import { useTournament, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useGroups, useCreateGroup, useUpdateGroup, useDeleteGroup } from '@/lib/hooks/use-native-rounds';
 import {
   useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory, useSetPairingMode,
+  useSetClassificationDimensions, useSetPairingSplit, useBulkCreateCategories, useRefreshCategories,
+  type CategoryInput,
 } from '@/lib/hooks/use-classifications';
+import { generateClassificationCells } from '@/lib/utils/classification-match';
+import {
+  AGE_PRESETS, RATING_PRESETS, CLASSIFICATION_COUNT_WARNING_THRESHOLD,
+  type AgePreset, type RatingPreset,
+} from '@/lib/constants/classification-presets';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
-import type { PairingMode, TournamentCategory, PairingGroup } from '@/types/database';
+import type { PairingMode, TournamentCategory, PairingGroup, ClassificationDimension } from '@/types/database';
 
 export default function ClassificationsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -34,6 +41,7 @@ export default function ClassificationsPage({ params }: { params: Promise<{ slug
       tournamentId={tournament.id}
       defaultRounds={tournament.rounds_count}
       currentMode={tournament.pairing_mode}
+      initialDimensions={tournament.classification_dimensions ?? []}
     />
   );
 }
@@ -50,21 +58,53 @@ function critSummary(c: TournamentCategory): string {
   return parts.join(' · ');
 }
 
+// Chave de faixa usada pra achar quantas faixas distintas de uma dimensão as
+// classificações existentes têm — é isso que vira "1 grupo por faixa" no
+// emparceiramento (mesma faixa em "Sub-17" e "Sub-17 Feminino" = mesmo grupo).
+function bandKey(dim: 'age' | 'rating', c: TournamentCategory): string | null {
+  if (dim === 'age') {
+    if (c.min_age == null && c.max_age == null) return null;
+    return `${c.min_age ?? ''}:${c.max_age ?? ''}`;
+  }
+  if (c.min_rating == null && c.max_rating == null) return null;
+  return `${c.min_rating ?? ''}:${c.max_rating ?? ''}`;
+}
+
+function bandLabel(c: TournamentCategory): string {
+  return c.name.replace(/\s+Feminino$/, '');
+}
+
 function Setup({
-  tournamentId, defaultRounds, currentMode,
+  tournamentId, defaultRounds, currentMode, initialDimensions,
 }: {
   tournamentId: string; defaultRounds: number; currentMode: PairingMode;
+  initialDimensions: ClassificationDimension[];
 }) {
   const { data: categories, isLoading: loadingCats } = useCategories(tournamentId);
   const { data: groups, isLoading: loadingGroups } = useGroups(tournamentId);
   const createCategory = useCreateCategory(tournamentId);
   const updateCategory = useUpdateCategory(tournamentId);
-  const deleteCategory = useDeleteCategory(tournamentId);
   const createGroup = useCreateGroup(tournamentId);
   const setMode = useSetPairingMode(tournamentId);
+  const setDimensions = useSetClassificationDimensions(tournamentId);
+  const setPairingSplit = useSetPairingSplit(tournamentId);
+  const bulkCreate = useBulkCreateCategories(tournamentId);
+  const refreshCategories = useRefreshCategories(tournamentId);
 
   const [error, setError] = useState('');
   const [applying, setApplying] = useState(false);
+  const [unmatchedCount, setUnmatchedCount] = useState<number | null>(null);
+
+  // Bloco 1 — as 3 perguntas.
+  const [ageOn, setAgeOn] = useState(initialDimensions.includes('age'));
+  const [ratingOn, setRatingOn] = useState(initialDimensions.includes('rating'));
+  const [femaleOn, setFemaleOn] = useState(initialDimensions.includes('sex'));
+  const [ageBands, setAgeBands] = useState<AgePreset[]>([]);
+  const [ratingBands, setRatingBands] = useState<RatingPreset[]>([]);
+  const [customAge, setCustomAge] = useState({ name: '', min: '', max: '' });
+  const [customRating, setCustomRating] = useState({ name: '', min: '', max: '' });
+
+  const [showManual, setShowManual] = useState(false);
   const [name, setName] = useState('');
   const [sex, setSex] = useState('');
   const [minAge, setMinAge] = useState('');
@@ -72,10 +112,86 @@ function Setup({
   const [minRating, setMinRating] = useState('');
   const [maxRating, setMaxRating] = useState('');
 
+  // useMemo precisa vir antes de qualquer return condicional (regra dos hooks) —
+  // cats/grps ainda podem ser undefined aqui, generateClassificationCells não
+  // depende deles.
+  const previewCells = useMemo(
+    () => generateClassificationCells({
+      ageBands: ageOn ? ageBands : [],
+      ratingBands: ratingOn ? ratingBands : [],
+      female: femaleOn,
+    }),
+    [ageOn, ratingOn, femaleOn, ageBands, ratingBands]
+  );
+
   if (loadingCats || loadingGroups) return <PageSpinner />;
 
   const cats = categories ?? [];
   const grps = groups ?? [];
+
+  const existingNames = new Set(cats.map((c) => c.name.trim().toLowerCase()));
+  const previewNames = new Set(previewCells.map((c) => c.name.trim().toLowerCase()));
+  const missingCells = previewCells.filter((c) => !existingNames.has(c.name.trim().toLowerCase()));
+  const staleCats = cats.filter(
+    (c) => previewCells.length > 0 && !previewNames.has(c.name.trim().toLowerCase())
+  );
+
+  function toggleAgePreset(preset: AgePreset) {
+    setAgeBands((prev) =>
+      prev.some((b) => b.name === preset.name) ? prev.filter((b) => b.name !== preset.name) : [...prev, preset]
+    );
+  }
+  function toggleRatingPreset(preset: RatingPreset) {
+    setRatingBands((prev) =>
+      prev.some((b) => b.name === preset.name) ? prev.filter((b) => b.name !== preset.name) : [...prev, preset]
+    );
+  }
+  function addCustomAge() {
+    if (!customAge.name.trim()) { setError('Informe o nome da faixa de idade.'); return; }
+    setError('');
+    setAgeBands((prev) => [...prev, {
+      name: customAge.name.trim(),
+      minAge: customAge.min ? Number(customAge.min) : null,
+      maxAge: customAge.max ? Number(customAge.max) : null,
+    }]);
+    setCustomAge({ name: '', min: '', max: '' });
+  }
+  function addCustomRating() {
+    if (!customRating.name.trim()) { setError('Informe o nome da faixa de rating.'); return; }
+    setError('');
+    setRatingBands((prev) => [...prev, {
+      name: customRating.name.trim(),
+      minRating: customRating.min ? Number(customRating.min) : null,
+      maxRating: customRating.max ? Number(customRating.max) : null,
+    }]);
+    setCustomRating({ name: '', min: '', max: '' });
+  }
+
+  async function generate() {
+    setApplying(true);
+    setError('');
+    setUnmatchedCount(null);
+    try {
+      const dims: ClassificationDimension[] = [
+        ...(ageOn ? (['age'] as const) : []),
+        ...(ratingOn ? (['rating'] as const) : []),
+        ...(femaleOn ? (['sex'] as const) : []),
+      ];
+      await setDimensions.mutateAsync(dims);
+
+      if (missingCells.length > 0) {
+        const inputs: CategoryInput[] = missingCells.map((c) => ({
+          name: c.name, sex: c.sex, min_age: c.minAge, max_age: c.maxAge,
+          min_rating: c.minRating, max_rating: c.maxRating,
+        }));
+        await bulkCreate.mutateAsync({ cells: inputs, startOrder: cats.length });
+      }
+
+      const unmatched = await refreshCategories.mutateAsync();
+      setUnmatchedCount(unmatched);
+    } catch (e: any) { setError(e.message); }
+    finally { setApplying(false); }
+  }
 
   async function addCategory() {
     if (name.trim().length < 1) { setError('Informe o nome da classificação.'); return; }
@@ -93,43 +209,86 @@ function Setup({
     } catch (e: any) { setError(e.message); }
   }
 
-  // Reconciliação por modo — grava pairing_mode + ajusta grupos/vínculos.
-  async function applyMode(mode: PairingMode) {
+  // Reconciliação por modo — grava pairing_mode (+ pairing_split) e ajusta grupos/vínculos.
+  async function applyAbsolute() {
     setApplying(true);
     setError('');
     try {
-      if (mode === 'absolute') {
-        let groupId = grps[0]?.id;
-        if (!groupId) {
-          const g = await createGroup.mutateAsync({ name: 'Único', sort_order: 0 });
-          groupId = (g as any)?.id;
-        }
-        for (const c of cats) {
-          if (c.pairing_group_id !== groupId) {
-            await updateCategory.mutateAsync({ id: c.id, patch: { pairing_group_id: groupId } });
-          }
-        }
-      } else if (mode === 'per_category') {
-        for (let i = 0; i < cats.length; i++) {
-          const c = cats[i];
-          if (c.pairing_group_id) continue; // já mapeado
-          const g = await createGroup.mutateAsync({ name: c.name, sort_order: i });
-          await updateCategory.mutateAsync({ id: c.id, patch: { pairing_group_id: (g as any)?.id } });
+      let groupId = grps[0]?.id;
+      if (!groupId) {
+        const g = await createGroup.mutateAsync({ name: 'Único', sort_order: 0 });
+        groupId = (g as any)?.id;
+      }
+      for (const c of cats) {
+        if (c.pairing_group_id !== groupId) {
+          await updateCategory.mutateAsync({ id: c.id, patch: { pairing_group_id: groupId } });
         }
       }
-      // custom: não reconcilia — o organizador mapeia à mão abaixo.
-      await setMode.mutateAsync(mode);
+      await setPairingSplit.mutateAsync(null);
+      await setMode.mutateAsync('absolute');
     } catch (e: any) { setError(e.message); }
     finally { setApplying(false); }
   }
 
+  // Um grupo por FAIXA da dimensão escolhida — não por classificação. Assim
+  // "Sub-17" e "Sub-17 Feminino" (mesma faixa de idade) caem no MESMO grupo;
+  // as outras dimensões continuam como recorte de premiação dentro dele.
+  async function applySplit(dim: 'age' | 'rating') {
+    setApplying(true);
+    setError('');
+    try {
+      const bands = new Map<string, { label: string; catIds: string[] }>();
+      for (const c of cats) {
+        const key = bandKey(dim, c);
+        if (key === null) continue;
+        if (!bands.has(key)) bands.set(key, { label: bandLabel(c), catIds: [] });
+        bands.get(key)!.catIds.push(c.id);
+      }
+      if (bands.size === 0) {
+        setError(`Nenhuma classificação usa ${dim === 'age' ? 'idade' : 'rating'} ainda — gere as classificações no bloco acima primeiro.`);
+        return;
+      }
+      let i = 0;
+      for (const [, band] of bands) {
+        let groupId = grps.find((g) => g.name === band.label)?.id;
+        if (!groupId) {
+          const g = await createGroup.mutateAsync({ name: band.label, sort_order: i });
+          groupId = (g as any)?.id;
+        }
+        for (const catId of band.catIds) {
+          const cat = cats.find((c) => c.id === catId);
+          if (cat && cat.pairing_group_id !== groupId) {
+            await updateCategory.mutateAsync({ id: catId, patch: { pairing_group_id: groupId } });
+          }
+        }
+        i++;
+      }
+      await setPairingSplit.mutateAsync(dim);
+      await setMode.mutateAsync('per_category');
+    } catch (e: any) { setError(e.message); }
+    finally { setApplying(false); }
+  }
+
+  async function applyCustom() {
+    setApplying(true);
+    setError('');
+    try {
+      await setPairingSplit.mutateAsync(null);
+      await setMode.mutateAsync('custom');
+    } catch (e: any) { setError(e.message); }
+    finally { setApplying(false); }
+  }
+
+  const hasAgeCats = cats.some((c) => c.min_age != null || c.max_age != null);
+  const hasRatingCats = cats.some((c) => c.min_rating != null || c.max_rating != null);
+
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Classificações & Emparceiramento</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Classificação e Emparceiramento</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Classificação é o que o inscrito escolhe (ex: Sub-7 Masc, U1400). O emparceiramento define
-          quem joga contra quem — pode ser absoluto, igual à classificação, ou personalizado.
+          Classificação é o ranking de premiação: cada jogador cai numa faixa (ou só no Geral).
+          Emparceiramento é quem joga contra quem — pode ser junto ou dividido por idade/rating.
         </p>
       </div>
 
@@ -137,58 +296,171 @@ function Setup({
         <p className="rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
 
-      {/* Classificações */}
+      {/* Bloco 1 — as 3 perguntas */}
       <section className="space-y-3">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Classificações</h2>
-        {cats.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Nenhuma classificação. Sem classificações, o torneio é absoluto (todos juntos).
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Classificação</h2>
+
+        <DimensionQuestion
+          question="Seu torneio vai ter classificação separada por idade?"
+          on={ageOn}
+          onToggle={() => setAgeOn((v) => !v)}
+        >
+          <div className="flex flex-wrap gap-1.5">
+            {AGE_PRESETS.map((p) => (
+              <Chip key={p.name} active={ageBands.some((b) => b.name === p.name)} onClick={() => toggleAgePreset(p)}>
+                {p.name}
+              </Chip>
+            ))}
+          </div>
+          <CustomRangeForm
+            label="idade"
+            value={customAge}
+            onChange={setCustomAge}
+            onAdd={addCustomAge}
+          />
+        </DimensionQuestion>
+
+        <DimensionQuestion
+          question="Seu torneio vai ter classificação separada por rating?"
+          on={ratingOn}
+          onToggle={() => setRatingOn((v) => !v)}
+        >
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            Rating não é pedido na inscrição pública — preencha em Participantes pra cada jogador que precisar.
           </p>
-        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {RATING_PRESETS.map((p) => (
+              <Chip key={p.name} active={ratingBands.some((b) => b.name === p.name)} onClick={() => toggleRatingPreset(p)}>
+                {p.name}
+              </Chip>
+            ))}
+          </div>
+          <CustomRangeForm
+            label="rating"
+            value={customRating}
+            onChange={setCustomRating}
+            onAdd={addCustomRating}
+          />
+        </DimensionQuestion>
+
+        <DimensionQuestion
+          question="Seu torneio vai ter classificação feminina?"
+          on={femaleOn}
+          onToggle={() => setFemaleOn((v) => !v)}
+        >
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Cruza com idade/rating quando marcados — ex: idade + feminina gera &quot;Sub-17&quot; e &quot;Sub-17 Feminino&quot;,
+            não uma &quot;Feminino&quot; avulsa. Só feminina marcada gera &quot;Feminino&quot; sozinha.
+          </p>
+        </DimensionQuestion>
+
+        {/* Bloco 2 — preview e geração */}
+        {previewCells.length > 0 && (
+          <div className="card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Preview — {previewCells.length} classificaç{previewCells.length !== 1 ? 'ões' : 'ão'}
+              </p>
+              {missingCells.length > 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">{missingCells.length} nova{missingCells.length !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+            {previewCells.length > CLASSIFICATION_COUNT_WARNING_THRESHOLD && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                {previewCells.length} classificações é bastante — confira se não cruzou dimensão demais.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {previewCells.map((c) => (
+                <span
+                  key={c.name}
+                  className={`rounded-full px-2.5 py-1 text-xs ${
+                    existingNames.has(c.name.trim().toLowerCase())
+                      ? 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                      : 'bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300'
+                  }`}
+                >
+                  {c.name}
+                </span>
+              ))}
+            </div>
+            <Button loading={applying} onClick={generate}>Gerar classificações</Button>
+            {unmatchedCount !== null && unmatchedCount > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                {unmatchedCount} jogador{unmatchedCount !== 1 ? 'es' : ''} sem classificação — falta ano de
+                nascimento{ratingOn ? ' ou rating' : ''}. Corrija em Participantes.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Classificações existentes */}
+        {cats.length > 0 && (
           <div className="space-y-2">
             {cats.map((c) => (
-              <CategoryRow key={c.id} category={c} tournamentId={tournamentId} onError={setError} />
+              <CategoryRow
+                key={c.id}
+                category={c}
+                tournamentId={tournamentId}
+                stale={staleCats.some((s) => s.id === c.id)}
+                onError={setError}
+              />
             ))}
           </div>
         )}
 
-        <div className="card p-4 space-y-3">
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Adicionar classificação</p>
-          <Input label="Nome" placeholder="Ex: Sub-7 Masculino" value={name} onChange={(e) => setName(e.target.value)} />
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <Select label="Sexo" value={sex} onChange={(e) => setSex(e.target.value)}>
-              <option value="">—</option>
-              <option value="m">Masculino</option>
-              <option value="w">Feminino</option>
-            </Select>
-            <Input label="Idade mín." type="number" value={minAge} onChange={(e) => setMinAge(e.target.value)} />
-            <Input label="Idade máx." type="number" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} />
-            <Input label="Rating mín." type="number" value={minRating} onChange={(e) => setMinRating(e.target.value)} />
-            <Input label="Rating máx." type="number" value={maxRating} onChange={(e) => setMaxRating(e.target.value)} />
+        <button
+          type="button"
+          onClick={() => setShowManual((v) => !v)}
+          className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          {showManual ? '– esconder' : '+ adicionar classificação manualmente'}
+        </button>
+
+        {showManual && (
+          <div className="card p-4 space-y-3">
+            <Input label="Nome" placeholder="Ex: Sub-7 Masculino" value={name} onChange={(e) => setName(e.target.value)} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Select label="Sexo" value={sex} onChange={(e) => setSex(e.target.value)}>
+                <option value="">—</option>
+                <option value="m">Masculino</option>
+                <option value="w">Feminino</option>
+              </Select>
+              <Input label="Idade mín." type="number" value={minAge} onChange={(e) => setMinAge(e.target.value)} />
+              <Input label="Idade máx." type="number" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} />
+              <Input label="Rating mín." type="number" value={minRating} onChange={(e) => setMinRating(e.target.value)} />
+              <Input label="Rating máx." type="number" value={maxRating} onChange={(e) => setMaxRating(e.target.value)} />
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Critérios são a regra de derivação (não bloqueiam a inscrição).</p>
+            <Button loading={createCategory.isPending} onClick={addCategory}>Adicionar</Button>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Critérios são informativos (não bloqueiam a inscrição).</p>
-          <Button loading={createCategory.isPending} onClick={addCategory}>Adicionar</Button>
-        </div>
+        )}
       </section>
 
       {/* Emparceiramento */}
       <section className="space-y-3">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Emparceiramento</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
         <div className="space-y-2">
           <ModeOption
             active={currentMode === 'absolute'} disabled={applying}
-            title="Absoluto" desc="Todos jogam no mesmo grupo, independente da classificação."
-            onSelect={() => applyMode('absolute')}
+            title="Não — todos juntos" desc="Um grupo único. As classificações continuam valendo pra premiação."
+            onSelect={applyAbsolute}
           />
           <ModeOption
-            active={currentMode === 'per_category'} disabled={applying || cats.length === 0}
-            title="Igual à classificação" desc="Cada classificação vira um grupo próprio (pareia separado)."
-            onSelect={() => applyMode('per_category')}
+            active={currentMode === 'per_category'} disabled={applying || !hasAgeCats}
+            title="Por idade" desc="Um grupo por faixa de idade. As demais classificações viram recorte dentro do grupo."
+            onSelect={() => applySplit('age')}
           />
           <ModeOption
-            active={currentMode === 'custom'} disabled={applying || cats.length === 0}
+            active={currentMode === 'per_category'} disabled={applying || !hasRatingCats}
+            title="Por rating" desc="Um grupo por faixa de rating."
+            onSelect={() => applySplit('rating')}
+          />
+          <ModeOption
+            active={currentMode === 'custom'} disabled={applying}
             title="Personalizado" desc="Você define os grupos e mapeia cada classificação a um grupo."
-            onSelect={() => applyMode('custom')}
+            onSelect={applyCustom}
           />
         </div>
 
@@ -202,6 +474,70 @@ function Setup({
           />
         )}
       </section>
+    </div>
+  );
+}
+
+function DimensionQuestion({
+  question, on, onToggle, children,
+}: {
+  question: string; on: boolean; onToggle: () => void; children?: React.ReactNode;
+}) {
+  return (
+    <div className="card p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{question}</p>
+        <div className="flex gap-1.5 shrink-0">
+          <Chip active={on} onClick={onToggle}>Sim</Chip>
+          <Chip active={!on} onClick={onToggle}>Não</Chip>
+        </div>
+      </div>
+      {on && children && <div className="space-y-2 pt-1">{children}</div>}
+    </div>
+  );
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+        active
+          ? 'bg-brand-600 text-white'
+          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CustomRangeForm({
+  label, value, onChange, onAdd,
+}: {
+  label: string;
+  value: { name: string; min: string; max: string };
+  onChange: (v: { name: string; min: string; max: string }) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-end gap-2 pt-1">
+      <div className="flex-1 min-w-[8rem]">
+        <Input
+          label={`Faixa custom de ${label}`}
+          placeholder="Nome"
+          value={value.name}
+          onChange={(e) => onChange({ ...value, name: e.target.value })}
+        />
+      </div>
+      <div className="w-20">
+        <Input label="Mín." type="number" value={value.min} onChange={(e) => onChange({ ...value, min: e.target.value })} />
+      </div>
+      <div className="w-20">
+        <Input label="Máx." type="number" value={value.max} onChange={(e) => onChange({ ...value, max: e.target.value })} />
+      </div>
+      <Button size="sm" variant="secondary" onClick={onAdd}>Add</Button>
     </div>
   );
 }
@@ -232,9 +568,9 @@ function ModeOption({
 }
 
 function CategoryRow({
-  category, tournamentId, onError,
+  category, tournamentId, stale, onError,
 }: {
-  category: TournamentCategory; tournamentId: string; onError: (m: string) => void;
+  category: TournamentCategory; tournamentId: string; stale: boolean; onError: (m: string) => void;
 }) {
   const updateCategory = useUpdateCategory(tournamentId);
   const deleteCategory = useDeleteCategory(tournamentId);
@@ -245,15 +581,22 @@ function CategoryRow({
   return (
     <div className="card p-3 flex flex-wrap items-center gap-3">
       <div className="flex-1 min-w-[10rem]">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => {
-            if (name.trim() && name.trim() !== category.name) {
-              updateCategory.mutateAsync({ id: category.id, patch: { name } }).catch((e) => onError(e.message));
-            }
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => {
+              if (name.trim() && name.trim() !== category.name) {
+                updateCategory.mutateAsync({ id: category.id, patch: { name } }).catch((e) => onError(e.message));
+              }
+            }}
+          />
+          {stale && (
+            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+              fora do padrão atual
+            </span>
+          )}
+        </div>
         {summary && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{summary}</p>}
       </div>
       {confirmDel ? (
@@ -286,8 +629,25 @@ function CustomMapping({
   const updateGroup = useUpdateGroup(tournamentId);
   const deleteGroup = useDeleteGroup(tournamentId);
   const updateCategory = useUpdateCategory(tournamentId);
+  const { data: rounds } = useTournamentRounds(tournamentId);
   const [newGroup, setNewGroup] = useState('');
   const [newRounds, setNewRounds] = useState('');
+
+  // useDeleteGroup é um DELETE cru — as FKs são ON DELETE SET NULL, então
+  // apagar um grupo com rodada já em andamento/encerrada orfanaria jogadores
+  // e rodadas (pairing_group_id = null), quebrando enforce_native_pairing_group
+  // na próxima escrita. Recusar aqui em vez de deixar quebrar depois.
+  function groupHasLockedRound(groupId: string): boolean {
+    return (rounds ?? []).some((r) => r.pairing_group_id === groupId && r.status !== 'draft');
+  }
+
+  function handleDeleteGroup(g: PairingGroup) {
+    if (groupHasLockedRound(g.id)) {
+      onError(`"${g.name}" já tem rodada publicada ou encerrada — não dá pra excluir sem orfanar jogadores/rodadas.`);
+      return;
+    }
+    deleteGroup.mutateAsync(g.id).catch((er) => onError(er.message));
+  }
 
   async function addGroup() {
     if (newGroup.trim().length < 1) { onError('Informe o nome do grupo.'); return; }
@@ -327,9 +687,11 @@ function CustomMapping({
               />
             </div>
             <button
-              onClick={() => deleteGroup.mutateAsync(g.id).catch((er) => onError(er.message))}
-              className="mb-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-10 text-sm text-gray-500 hover:text-red-600 dark:text-gray-400"
+              onClick={() => handleDeleteGroup(g)}
+              disabled={groupHasLockedRound(g.id)}
+              className="mb-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-10 text-sm text-gray-500 hover:text-red-600 disabled:opacity-40 disabled:hover:text-gray-500 dark:text-gray-400"
               aria-label="Excluir grupo"
+              title={groupHasLockedRound(g.id) ? 'Tem rodada publicada/encerrada — não dá pra excluir' : undefined}
             >✕</button>
           </div>
         ))}

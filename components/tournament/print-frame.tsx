@@ -15,6 +15,7 @@ export function PrintFrame({ title, children }: { title: string; children: React
         .print-root { max-width: 800px; margin: 0 auto; padding: 24px; color: #111; background: #fff; }
         .print-root h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
         .print-root h2 { font-size: 15px; font-weight: 600; margin: 16px 0 6px; }
+        .print-root h3 { font-size: 12px; font-weight: 600; color: #555; margin: 10px 0 4px; }
         .print-root table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .print-root th, .print-root td { border: 1px solid #ccc; padding: 4px 8px; text-align: center; }
         .print-root th { background: #f3f3f3; }

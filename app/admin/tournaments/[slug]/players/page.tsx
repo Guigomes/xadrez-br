@@ -104,6 +104,23 @@ export default function AdminPlayersPage({ params }: Props) {
   }
 
   const existingIds = new Set(tPlayers?.map((tp) => (tp as any).player?.id));
+
+  // Classificação (célula da partição) é derivada de birth_year/rating_std/sex
+  // — import e cadastro manual não preenchem esses campos, então ficam sem
+  // classificação até alguém corrigir aqui. Não é regressão, é o que falta
+  // pra derivar; melhor avisar do que fingir que já classificou.
+  const classificationDims = tournament.classification_dimensions ?? [];
+  const hasClassifications = classificationDims.length > 0;
+  function missingClassificationFields(player: any): string[] {
+    const missing: string[] = [];
+    if (classificationDims.includes('age') && player?.birth_year == null) missing.push('ano de nascimento');
+    if (classificationDims.includes('rating') && player?.rating_std == null) missing.push('rating');
+    if (classificationDims.includes('sex') && player?.sex == null) missing.push('sexo');
+    return missing;
+  }
+  const unclassified = hasClassifications
+    ? (tPlayers ?? []).filter((tp) => !(tp as any).category)
+    : [];
   const registrationPath = `/tournaments/${slug}/register`;
   const registrationUrl = typeof window !== 'undefined'
     ? `${window.location.origin}${registrationPath}` : registrationPath;
@@ -245,6 +262,14 @@ export default function AdminPlayersPage({ params }: Props) {
         </form>
       )}
 
+      {unclassified.length > 0 && (
+        <p className="mb-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          ⚠ {unclassified.length} jogador{unclassified.length !== 1 ? 'es' : ''} sem classificação —
+          falta ano de nascimento{classificationDims.includes('rating') ? ', rating' : ''}
+          {classificationDims.includes('sex') ? ' ou sexo' : ''}. Corrija na lista abaixo.
+        </p>
+      )}
+
       {/* Player list */}
       <div className="card">
         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
@@ -259,6 +284,7 @@ export default function AdminPlayersPage({ params }: Props) {
             {tPlayers?.map((tp, i) => {
               const tpAny = tp as any;
               const missingGroup = isNative && !tpAny.pairing_group_id && (groups?.length ?? 0) > 0;
+              const missingFields = hasClassifications && !tpAny.category ? missingClassificationFields(tpAny.player) : [];
               return (
                 <div key={tp.id} className="flex items-center gap-3 px-4 py-3">
                   <span className="text-xs text-gray-400 w-5 text-center">{tp.initial_ranking ?? i + 1}</span>
@@ -285,6 +311,11 @@ export default function AdminPlayersPage({ params }: Props) {
                           {groups!.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                         </select>
                       </div>
+                    )}
+                    {missingFields.length > 0 && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                        ⚠ sem classificação — falta {missingFields.join(', ')}
+                      </p>
                     )}
                   </div>
                   <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums">

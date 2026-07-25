@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import type { TournamentCategory, PairingMode } from '@/types/database';
+import type { TournamentCategory, PairingMode, ClassificationDimension } from '@/types/database';
 
 const supabase = createClient();
 
@@ -87,6 +87,84 @@ export function useSetPairingMode(tournamentId: string) {
       if (error) throw error;
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tournaments'] });
+    },
+  });
+}
+
+/** Grava as respostas das 3 perguntas (idade/rating/feminina) na aba de classificação. */
+export function useSetClassificationDimensions(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (dimensions: ClassificationDimension[]) => {
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ classification_dimensions: dimensions })
+        .eq('id', tournamentId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tournaments'] }),
+  });
+}
+
+/** Grava qual dimensão divide os grupos de emparceiramento (pairing_mode='per_category'). */
+export function useSetPairingSplit(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (split: ClassificationDimension | null) => {
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ pairing_split: split })
+        .eq('id', tournamentId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tournaments'] }),
+  });
+}
+
+/**
+ * Insere em lote as células que faltam (a tela já decide, comparando com as
+ * existentes, quais faltam — este hook só insere). `sort_order` segue a
+ * ordem do array recebido, encadeada a partir de `startOrder` pra não colidir
+ * com quem já existe.
+ */
+export function useBulkCreateCategories(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { cells: CategoryInput[]; startOrder: number }) => {
+      if (input.cells.length === 0) return [];
+      const rows = input.cells.map((c, i) => ({
+        tournament_id: tournamentId,
+        ...normalize(c),
+        sort_order: input.startOrder + i,
+      }));
+      const { data, error } = await supabase.from('tournament_categories').insert(rows).select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: categoryKeys.list(tournamentId) }),
+  });
+}
+
+/**
+ * Reatribui a classificação (célula derivada) de todo mundo no torneio,
+ * chamando a RPC `refresh_tournament_categories`. Devolve quantos jogadores
+ * ficaram sem célula (faltou ano de nascimento/rating/sexo) — a tela usa
+ * isso pro alerta.
+ */
+export function useRefreshCategories(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<number> => {
+      const { data, error } = await supabase.rpc('refresh_tournament_categories', {
+        p_tournament_id: tournamentId,
+      });
+      if (error) throw error;
+      return data ?? 0;
+    },
+    onSuccess: () => {
+      // category_id vive em tournament_players — precisa invalidar tudo que
+      // depende dele (jogadores, standings), não só a lista de categorias.
       qc.invalidateQueries({ queryKey: ['tournaments'] });
     },
   });

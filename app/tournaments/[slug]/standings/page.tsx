@@ -74,28 +74,43 @@ export default function StandingsPage({ params }: Props) {
     );
   }
 
-  // Categories are only used when the tournament has no pairing groups —
-  // mixing both filters in the same UI is more confusing than helpful.
-  const categories = hasGroups
-    ? []
-    : Array.from(
-        new Set((standings ?? []).map((r) => r.category_name).filter(Boolean) as string[]),
-      );
-  const hasCategories = categories.length > 1;
-
-  const displayed = hasGroups
+  // Linhas do grupo selecionado (todas, se o torneio não separa por grupo) —
+  // é dentro delas que "Geral" e cada classificação (célula derivada) são
+  // recortadas. Grupo e classificação não são mais mutuamente exclusivos:
+  // toda classificação vale dentro do seu grupo, e o Geral do grupo sempre
+  // existe (é a aba padrão).
+  const rowsInGroup = hasGroups
     ? (standings ?? []).filter((r) => r.pairing_group_id === selectedGroupId)
-    : selectedCategory === 'all'
-      ? standings
-      : standings
-          .filter((r) => r.category_name === selectedCategory)
-          .map((r, i) => ({ ...r, rank: (i + 1) as number }));
+    : (standings ?? []);
 
-  const heading = hasGroups
-    ? (pairingGroups.find((g) => g.id === selectedGroupId)?.name ?? 'Grupo')
-    : selectedCategory === 'all'
-      ? 'Classificação geral'
-      : selectedCategory;
+  const categories = (() => {
+    const seen = new Map<string, string>();
+    for (const r of rowsInGroup) {
+      if (r.category_id && r.category_name && !seen.has(r.category_id)) {
+        seen.set(r.category_id, r.category_name);
+      }
+    }
+    return Array.from(seen.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => compareGroupNames(a.name, b.name));
+  })();
+  const hasCategories = categories.length > 0;
+
+  // selectedCategory pode ficar obsoleto ao trocar de grupo (classificação
+  // de um grupo não existe no outro) — cai pro Geral nesse caso.
+  const effectiveCategory = categories.some((c) => c.id === selectedCategory) ? selectedCategory : 'all';
+
+  const displayed = effectiveCategory === 'all'
+    ? rowsInGroup
+    : rowsInGroup
+        .filter((r) => r.category_id === effectiveCategory)
+        .map((r, i) => ({ ...r, rank: (i + 1) as number }));
+
+  const groupLabel = hasGroups ? (pairingGroups.find((g) => g.id === selectedGroupId)?.name ?? 'Grupo') : null;
+  const categoryLabel = effectiveCategory === 'all'
+    ? 'Geral'
+    : (categories.find((c) => c.id === effectiveCategory)?.name ?? 'Geral');
+  const heading = groupLabel ? `${groupLabel} · ${categoryLabel}` : categoryLabel;
 
   const isOngoing = tournament?.status === 'ongoing';
 
@@ -156,49 +171,52 @@ export default function StandingsPage({ params }: Props) {
               </p>
             </div>
 
-            {hasGroups ? (
-              <div className="flex flex-wrap gap-1.5">
-                {pairingGroups.map((g) => (
+            <div className="flex flex-col items-start sm:items-end gap-1.5">
+              {hasGroups && (
+                <div className="flex flex-wrap gap-1.5">
+                  {pairingGroups.map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => { setSelectedGroupId(g.id); setSelectedCategory('all'); }}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        selectedGroupId === g.id
+                          ? 'bg-brand-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {hasCategories && (
+                <div className="flex flex-wrap gap-1.5">
                   <button
-                    key={g.id}
-                    onClick={() => setSelectedGroupId(g.id)}
+                    onClick={() => setSelectedCategory('all')}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      selectedGroupId === g.id
-                        ? 'bg-brand-600 text-white'
+                      effectiveCategory === 'all'
+                        ? 'bg-gray-700 text-white dark:bg-gray-600'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
                     }`}
                   >
-                    {g.name}
+                    Geral
                   </button>
-                ))}
-              </div>
-            ) : hasCategories ? (
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  onClick={() => setSelectedCategory('all')}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    selectedCategory === 'all'
-                      ? 'bg-brand-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  Geral
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      selectedCategory === cat
-                        ? 'bg-brand-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        effectiveCategory === cat.id
+                          ? 'bg-gray-700 text-white dark:bg-gray-600'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

@@ -36,11 +36,28 @@ export default async function RegisterPage({ params }: Props) {
 
   if (!tournament) notFound();
 
-  const { data: classifications } = await supabase
+  const { data: categoryRows } = await supabase
     .from('tournament_categories')
-    .select('id, name')
+    .select('id, name, sort_order, sex, min_age, max_age, min_rating, max_rating')
     .eq('tournament_id', tournament.id)
     .order('name');
+
+  // Mapeia pro shape camelCase que classification-match.ts espera (mesma
+  // regra de derivação do SQL, usada aqui só pra pré-selecionar a
+  // classificação — a escolha final continua sendo do inscrito).
+  const classifications = (categoryRows ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    sortOrder: c.sort_order,
+    sex: c.sex as 'm' | 'w' | null,
+    minAge: c.min_age,
+    maxAge: c.max_age,
+    minRating: c.min_rating,
+    maxRating: c.max_rating,
+  }));
+  const tournamentStartYear = tournament.start_date
+    ? new Date(tournament.start_date).getFullYear()
+    : null;
 
   const { data: { user } } = await supabase.auth.getUser();
   let autofill = null;
@@ -76,7 +93,8 @@ export default async function RegisterPage({ params }: Props) {
         <RegistrationForm
           tournamentId={tournament.id}
           tournamentSlug={slug}
-          classifications={classifications ?? []}
+          classifications={classifications}
+          tournamentStartYear={tournamentStartYear}
           requirePaymentReceipt={tournament.require_payment_receipt}
           registrationFeeText={tournament.registration_fee_text}
           isFree={tournament.is_free}
