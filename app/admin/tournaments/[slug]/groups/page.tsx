@@ -317,57 +317,8 @@ function Setup({
         <p className="rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
 
-      {/* Emparceiramento — vem primeiro na tela: é a decisão mais visível e
-          não depende de scroll pra achar. Seleção fica local até "Salvar". */}
-      <section className="space-y-3">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Emparceiramento</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
-        <div className="space-y-2">
-          <ModeOption
-            active={pendingChoice === 'absolute'} disabled={applying}
-            title="Não — todos juntos" desc="Um grupo único. As classificações continuam valendo pra premiação."
-            onSelect={() => selectPairing('absolute')}
-          />
-          <ModeOption
-            active={pendingChoice === 'age'} disabled={applying || !hasAgeCats}
-            title="Por idade" desc="Um grupo por faixa de idade. As demais classificações viram recorte dentro do grupo."
-            onSelect={() => selectPairing('age')}
-          />
-          <ModeOption
-            active={pendingChoice === 'rating'} disabled={applying || !hasRatingCats}
-            title="Por rating" desc="Um grupo por faixa de rating."
-            onSelect={() => selectPairing('rating')}
-          />
-          <ModeOption
-            active={pendingChoice === 'custom'} disabled={applying}
-            title="Personalizado" desc="Você define os grupos e mapeia cada classificação a um grupo."
-            onSelect={() => selectPairing('custom')}
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button loading={applying} onClick={saveEmparceiramento}>
-            Salvar emparceiramento
-          </Button>
-          {pairingSaved && !applying && (
-            <span className="text-sm text-green-600 dark:text-green-400">✓ Salvo</span>
-          )}
-        </div>
-        {/* Reconciliação é idempotente — clicar de novo depois de gerar mais
-            classificações na mesma dimensão vincula as novas ao grupo certo. */}
-
-        {pendingChoice === 'custom' && (
-          <CustomMapping
-            tournamentId={tournamentId}
-            defaultRounds={defaultRounds}
-            categories={cats}
-            groups={grps}
-            onError={setError}
-          />
-        )}
-      </section>
-
-      {/* Bloco 1 — as 3 perguntas */}
+      {/* Classificação vem primeiro: emparceiramento "por idade"/"por rating"
+          depende de já existir classificação usando aquela dimensão. */}
       <section className="space-y-3">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Classificação</h2>
 
@@ -505,6 +456,55 @@ function Setup({
             <p className="text-xs text-gray-500 dark:text-gray-400">Critérios são a regra de derivação (não bloqueiam a inscrição).</p>
             <Button loading={createCategory.isPending} onClick={addCategory}>Adicionar</Button>
           </div>
+        )}
+      </section>
+
+      {/* Emparceiramento — seleção fica local até "Salvar". */}
+      <section className="space-y-3">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Emparceiramento</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
+        <div className="space-y-2">
+          <ModeOption
+            active={pendingChoice === 'absolute'} disabled={applying}
+            title="Não — todos juntos" desc="Um grupo único. As classificações continuam valendo pra premiação."
+            onSelect={() => selectPairing('absolute')}
+          />
+          <ModeOption
+            active={pendingChoice === 'age'} disabled={applying || !hasAgeCats}
+            title="Por idade" desc="Um grupo por faixa de idade. As demais classificações viram recorte dentro do grupo."
+            onSelect={() => selectPairing('age')}
+          />
+          <ModeOption
+            active={pendingChoice === 'rating'} disabled={applying || !hasRatingCats}
+            title="Por rating" desc="Um grupo por faixa de rating."
+            onSelect={() => selectPairing('rating')}
+          />
+          <ModeOption
+            active={pendingChoice === 'custom'} disabled={applying}
+            title="Personalizado" desc="Você define os grupos e mapeia cada classificação a um grupo."
+            onSelect={() => selectPairing('custom')}
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button loading={applying} onClick={saveEmparceiramento}>
+            Salvar emparceiramento
+          </Button>
+          {pairingSaved && !applying && (
+            <span className="text-sm text-green-600 dark:text-green-400">✓ Salvo</span>
+          )}
+        </div>
+        {/* Reconciliação é idempotente — clicar de novo depois de gerar mais
+            classificações na mesma dimensão vincula as novas ao grupo certo. */}
+
+        {pendingChoice === 'custom' && (
+          <CustomMapping
+            tournamentId={tournamentId}
+            defaultRounds={defaultRounds}
+            categories={cats}
+            groups={grps}
+            onError={setError}
+          />
         )}
       </section>
     </div>
