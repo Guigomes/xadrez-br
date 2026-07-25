@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import type { TiebreakKey } from '@/types/database';
-import { TIEBREAK_INFO } from '@/lib/utils/chess';
+import { TiebreakLegendButton } from './tiebreak-legend-button';
 
 const LABELS: Record<TiebreakKey, string> = {
   buchholz: 'Buchholz',
@@ -20,8 +19,6 @@ interface Props {
 
 /** Clique para incluir/remover um critério; a ordem dos cliques define a prioridade. */
 export function TiebreakOrderPicker({ value, onChange }: Props) {
-  const [infoOpen, setInfoOpen] = useState(false);
-
   function toggle(key: TiebreakKey) {
     if (value.includes(key)) onChange(value.filter((k) => k !== key));
     else onChange([...value, key]);
@@ -36,56 +33,12 @@ export function TiebreakOrderPicker({ value, onChange }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2 flex-wrap">
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block">
           Ordem de desempate
         </label>
-        <button
-          type="button"
-          onClick={() => setInfoOpen(true)}
-          className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold text-gray-400 border border-gray-300 dark:border-gray-600 hover:text-gray-600 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-400 leading-none shrink-0 transition-colors"
-          aria-label="O que é cada critério de desempate"
-        >
-          i
-        </button>
+        <TiebreakLegendButton variant="link" tiebreakKeys={ALL} />
       </div>
-      {infoOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0"
-          onClick={() => setInfoOpen(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <p className="font-semibold text-gray-900 dark:text-gray-100">Critérios de desempate</p>
-              <button
-                type="button"
-                onClick={() => setInfoOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none transition-colors"
-                aria-label="Fechar"
-              >
-                ×
-              </button>
-            </div>
-            <div className="flex flex-col gap-4">
-              {ALL.map((key) => {
-                const info = TIEBREAK_INFO[key];
-                return (
-                  <div key={key}>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {info.label}{' '}
-                      <span className="text-xs font-normal text-gray-400">({info.short})</span>
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{info.description}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
       <div className="flex flex-wrap gap-2">
         {value.map((key, i) => (
           <span

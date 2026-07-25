@@ -2,19 +2,18 @@
 
 import React from 'react';
 import { TIEBREAK_INFO } from '@/lib/utils/chess';
+import type { TiebreakKey } from '@/types/database';
 
-const TIEBREAKS = [
-  { n: 1, info: TIEBREAK_INFO.buchholz },
-  { n: 2, info: TIEBREAK_INFO.buchholz_cut1 },
-  { n: 3, info: TIEBREAK_INFO.sonneborn_berger },
-] as const;
+const DEFAULT_KEYS: TiebreakKey[] = ['buchholz', 'buchholz_cut1', 'sonneborn_berger'];
 
 interface Props {
   /** 'icon' (padrão) pra espaço apertado (cabeçalho de tabela); 'link' pra texto legível onde há espaço. */
   variant?: 'icon' | 'link';
+  /** Quais critérios listar na legenda. Padrão: os 3 usados quando o torneio não configura ordem própria. */
+  tiebreakKeys?: TiebreakKey[];
 }
 
-export function TiebreakLegendButton({ variant = 'icon' }: Props) {
+export function TiebreakLegendButton({ variant = 'icon', tiebreakKeys = DEFAULT_KEYS }: Props) {
   const [open, setOpen] = React.useState(false);
   return (
     <>
@@ -57,15 +56,18 @@ export function TiebreakLegendButton({ variant = 'icon' }: Props) {
               </button>
             </div>
             <div className="flex flex-col gap-4">
-              {TIEBREAKS.map(({ n, info }) => (
-                <div key={info.short}>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Desempate {n} – {info.label}{' '}
-                    <span className="text-xs font-normal text-gray-400">({info.short})</span>
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{info.description}</p>
-                </div>
-              ))}
+              {tiebreakKeys.map((key, i) => {
+                const info = TIEBREAK_INFO[key];
+                return (
+                  <div key={key}>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Desempate {i + 1} – {info.label}{' '}
+                      <span className="text-xs font-normal text-gray-400">({info.short})</span>
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{info.description}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
