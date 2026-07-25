@@ -41,6 +41,7 @@ export default function ClassificationsPage({ params }: { params: Promise<{ slug
       tournamentId={tournament.id}
       defaultRounds={tournament.rounds_count}
       currentMode={tournament.pairing_mode}
+      currentSplit={tournament.pairing_split ?? null}
       initialDimensions={tournament.classification_dimensions ?? []}
     />
   );
@@ -74,10 +75,13 @@ function bandLabel(c: TournamentCategory): string {
   return c.name.replace(/\s+Feminino$/, '');
 }
 
+type PairingChoice = 'absolute' | 'age' | 'rating' | 'custom';
+
 function Setup({
-  tournamentId, defaultRounds, currentMode, initialDimensions,
+  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions,
 }: {
   tournamentId: string; defaultRounds: number; currentMode: PairingMode;
+  currentSplit: ClassificationDimension | null;
   initialDimensions: ClassificationDimension[];
 }) {
   const { data: categories, isLoading: loadingCats } = useCategories(tournamentId);
@@ -94,6 +98,18 @@ function Setup({
   const [error, setError] = useState('');
   const [applying, setApplying] = useState(false);
   const [unmatchedCount, setUnmatchedCount] = useState<number | null>(null);
+
+  // Emparceiramento: seleção fica local até "Salvar" — clicar num card só
+  // marcava e já persistia na hora, sem nenhum retorno visual de que salvou;
+  // ficava parecendo que não tinha feito nada. Agora clique só seleciona,
+  // salvar é uma ação explícita com confirmação.
+  // pairing_split aceita 'sex' no schema (approve_registration sabe lidar com
+  // isso), mas esta tela só oferece dividir por idade/rating — se vier 'sex'
+  // por algum outro caminho, cai em 'age' como seleção inicial padrão.
+  const savedChoice: PairingChoice =
+    currentMode === 'per_category' ? (currentSplit === 'rating' ? 'rating' : 'age') : currentMode;
+  const [pendingChoice, setPendingChoice] = useState<PairingChoice>(savedChoice);
+  const [pairingSaved, setPairingSaved] = useState(false);
 
   // Bloco 1 — as 3 perguntas.
   const [ageOn, setAgeOn] = useState(initialDimensions.includes('age'));
@@ -209,74 +225,79 @@ function Setup({
     } catch (e: any) { setError(e.message); }
   }
 
-  // Reconciliação por modo — grava pairing_mode (+ pairing_split) e ajusta grupos/vínculos.
+  // Reconciliação por modo — grava pairing_mode (+ pairing_split) e ajusta
+  // grupos/vínculos. Não gerenciam applying/error próprio: quem chama
+  // (saveEmparceiramento) centraliza isso, já que agora há um único botão
+  // "Salvar" em vez de cada card aplicar sozinho.
   async function applyAbsolute() {
-    setApplying(true);
-    setError('');
-    try {
-      let groupId = grps[0]?.id;
-      if (!groupId) {
-        const g = await createGroup.mutateAsync({ name: 'Único', sort_order: 0 });
-        groupId = (g as any)?.id;
+    let groupId = grps[0]?.id;
+    if (!groupId) {
+      const g = await createGroup.mutateAsync({ name: 'Único', sort_order: 0 });
+      groupId = (g as any)?.id;
+    }
+    for (const c of cats) {
+      if (c.pairing_group_id !== groupId) {
+        await updateCategory.mutateAsync({ id: c.id, patch: { pairing_group_id: groupId } });
       }
-      for (const c of cats) {
-        if (c.pairing_group_id !== groupId) {
-          await updateCategory.mutateAsync({ id: c.id, patch: { pairing_group_id: groupId } });
-        }
-      }
-      await setPairingSplit.mutateAsync(null);
-      await setMode.mutateAsync('absolute');
-    } catch (e: any) { setError(e.message); }
-    finally { setApplying(false); }
+    }
+    await setPairingSplit.mutateAsync(null);
+    await setMode.mutateAsync('absolute');
   }
 
   // Um grupo por FAIXA da dimensão escolhida — não por classificação. Assim
   // "Sub-17" e "Sub-17 Feminino" (mesma faixa de idade) caem no MESMO grupo;
   // as outras dimensões continuam como recorte de premiação dentro dele.
   async function applySplit(dim: 'age' | 'rating') {
+    const bands = new Map<string, { label: string; catIds: string[] }>();
+    for (const c of cats) {
+      const key = bandKey(dim, c);
+      if (key === null) continue;
+      if (!bands.has(key)) bands.set(key, { label: bandLabel(c), catIds: [] });
+      bands.get(key)!.catIds.push(c.id);
+    }
+    if (bands.size === 0) {
+      throw new Error(`Nenhuma classificação usa ${dim === 'age' ? 'idade' : 'rating'} ainda — gere as classificações no bloco abaixo primeiro.`);
+    }
+    let i = 0;
+    for (const [, band] of bands) {
+      let groupId = grps.find((g) => g.name === band.label)?.id;
+      if (!groupId) {
+        const g = await createGroup.mutateAsync({ name: band.label, sort_order: i });
+        groupId = (g as any)?.id;
+      }
+      for (const catId of band.catIds) {
+        const cat = cats.find((c) => c.id === catId);
+        if (cat && cat.pairing_group_id !== groupId) {
+          await updateCategory.mutateAsync({ id: catId, patch: { pairing_group_id: groupId } });
+        }
+      }
+      i++;
+    }
+    await setPairingSplit.mutateAsync(dim);
+    await setMode.mutateAsync('per_category');
+  }
+
+  async function applyCustom() {
+    await setPairingSplit.mutateAsync(null);
+    await setMode.mutateAsync('custom');
+  }
+
+  async function saveEmparceiramento() {
     setApplying(true);
     setError('');
+    setPairingSaved(false);
     try {
-      const bands = new Map<string, { label: string; catIds: string[] }>();
-      for (const c of cats) {
-        const key = bandKey(dim, c);
-        if (key === null) continue;
-        if (!bands.has(key)) bands.set(key, { label: bandLabel(c), catIds: [] });
-        bands.get(key)!.catIds.push(c.id);
-      }
-      if (bands.size === 0) {
-        setError(`Nenhuma classificação usa ${dim === 'age' ? 'idade' : 'rating'} ainda — gere as classificações no bloco acima primeiro.`);
-        return;
-      }
-      let i = 0;
-      for (const [, band] of bands) {
-        let groupId = grps.find((g) => g.name === band.label)?.id;
-        if (!groupId) {
-          const g = await createGroup.mutateAsync({ name: band.label, sort_order: i });
-          groupId = (g as any)?.id;
-        }
-        for (const catId of band.catIds) {
-          const cat = cats.find((c) => c.id === catId);
-          if (cat && cat.pairing_group_id !== groupId) {
-            await updateCategory.mutateAsync({ id: catId, patch: { pairing_group_id: groupId } });
-          }
-        }
-        i++;
-      }
-      await setPairingSplit.mutateAsync(dim);
-      await setMode.mutateAsync('per_category');
+      if (pendingChoice === 'absolute') await applyAbsolute();
+      else if (pendingChoice === 'custom') await applyCustom();
+      else await applySplit(pendingChoice);
+      setPairingSaved(true);
     } catch (e: any) { setError(e.message); }
     finally { setApplying(false); }
   }
 
-  async function applyCustom() {
-    setApplying(true);
-    setError('');
-    try {
-      await setPairingSplit.mutateAsync(null);
-      await setMode.mutateAsync('custom');
-    } catch (e: any) { setError(e.message); }
-    finally { setApplying(false); }
+  function selectPairing(choice: PairingChoice) {
+    setPendingChoice(choice);
+    setPairingSaved(false);
   }
 
   const hasAgeCats = cats.some((c) => c.min_age != null || c.max_age != null);
@@ -295,6 +316,56 @@ function Setup({
       {error && (
         <p className="rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
+
+      {/* Emparceiramento — vem primeiro na tela: é a decisão mais visível e
+          não depende de scroll pra achar. Seleção fica local até "Salvar". */}
+      <section className="space-y-3">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Emparceiramento</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
+        <div className="space-y-2">
+          <ModeOption
+            active={pendingChoice === 'absolute'} disabled={applying}
+            title="Não — todos juntos" desc="Um grupo único. As classificações continuam valendo pra premiação."
+            onSelect={() => selectPairing('absolute')}
+          />
+          <ModeOption
+            active={pendingChoice === 'age'} disabled={applying || !hasAgeCats}
+            title="Por idade" desc="Um grupo por faixa de idade. As demais classificações viram recorte dentro do grupo."
+            onSelect={() => selectPairing('age')}
+          />
+          <ModeOption
+            active={pendingChoice === 'rating'} disabled={applying || !hasRatingCats}
+            title="Por rating" desc="Um grupo por faixa de rating."
+            onSelect={() => selectPairing('rating')}
+          />
+          <ModeOption
+            active={pendingChoice === 'custom'} disabled={applying}
+            title="Personalizado" desc="Você define os grupos e mapeia cada classificação a um grupo."
+            onSelect={() => selectPairing('custom')}
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button loading={applying} onClick={saveEmparceiramento}>
+            Salvar emparceiramento
+          </Button>
+          {pairingSaved && !applying && (
+            <span className="text-sm text-green-600 dark:text-green-400">✓ Salvo</span>
+          )}
+        </div>
+        {/* Reconciliação é idempotente — clicar de novo depois de gerar mais
+            classificações na mesma dimensão vincula as novas ao grupo certo. */}
+
+        {pendingChoice === 'custom' && (
+          <CustomMapping
+            tournamentId={tournamentId}
+            defaultRounds={defaultRounds}
+            categories={cats}
+            groups={grps}
+            onError={setError}
+          />
+        )}
+      </section>
 
       {/* Bloco 1 — as 3 perguntas */}
       <section className="space-y-3">
@@ -434,44 +505,6 @@ function Setup({
             <p className="text-xs text-gray-500 dark:text-gray-400">Critérios são a regra de derivação (não bloqueiam a inscrição).</p>
             <Button loading={createCategory.isPending} onClick={addCategory}>Adicionar</Button>
           </div>
-        )}
-      </section>
-
-      {/* Emparceiramento */}
-      <section className="space-y-3">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Emparceiramento</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
-        <div className="space-y-2">
-          <ModeOption
-            active={currentMode === 'absolute'} disabled={applying}
-            title="Não — todos juntos" desc="Um grupo único. As classificações continuam valendo pra premiação."
-            onSelect={applyAbsolute}
-          />
-          <ModeOption
-            active={currentMode === 'per_category'} disabled={applying || !hasAgeCats}
-            title="Por idade" desc="Um grupo por faixa de idade. As demais classificações viram recorte dentro do grupo."
-            onSelect={() => applySplit('age')}
-          />
-          <ModeOption
-            active={currentMode === 'per_category'} disabled={applying || !hasRatingCats}
-            title="Por rating" desc="Um grupo por faixa de rating."
-            onSelect={() => applySplit('rating')}
-          />
-          <ModeOption
-            active={currentMode === 'custom'} disabled={applying}
-            title="Personalizado" desc="Você define os grupos e mapeia cada classificação a um grupo."
-            onSelect={applyCustom}
-          />
-        </div>
-
-        {currentMode === 'custom' && (
-          <CustomMapping
-            tournamentId={tournamentId}
-            defaultRounds={defaultRounds}
-            categories={cats}
-            groups={grps}
-            onError={setError}
-          />
         )}
       </section>
     </div>
