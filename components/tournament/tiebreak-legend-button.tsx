@@ -9,18 +9,33 @@ const TIEBREAKS = [
   { n: 3, info: TIEBREAK_INFO.sonneborn_berger },
 ] as const;
 
-export function TiebreakLegendButton() {
+interface Props {
+  /** 'icon' (padrão) pra espaço apertado (cabeçalho de tabela); 'link' pra texto legível onde há espaço. */
+  variant?: 'icon' | 'link';
+}
+
+export function TiebreakLegendButton({ variant = 'icon' }: Props) {
   const [open, setOpen] = React.useState(false);
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold text-gray-400 border border-gray-300 dark:border-gray-600 hover:text-gray-600 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-400 leading-none shrink-0 transition-colors"
-        aria-label="Ver critérios de desempate"
-      >
-        ?
-      </button>
+      {variant === 'link' ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline shrink-0"
+        >
+          Dúvidas sobre o desempate?
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold text-gray-400 border border-gray-300 dark:border-gray-600 hover:text-gray-600 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-400 leading-none shrink-0 transition-colors"
+          aria-label="Ver critérios de desempate"
+        >
+          ?
+        </button>
+      )}
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0"
