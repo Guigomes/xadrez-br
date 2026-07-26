@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import { useTournament, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useGroups, useCreateGroup, useUpdateGroup, useDeleteGroup } from '@/lib/hooks/use-native-rounds';
 import {
@@ -139,6 +139,17 @@ function Setup({
     }),
     [ageOn, ratingOn, femaleOn, ageBands, ratingBands]
   );
+
+  // Esta tela é o destino do redirect logo após criar um torneio, e o
+  // formulário de criação é longo — o organizador clica "Criar torneio" já
+  // scrolado lá embaixo. O scroll-to-top do App Router roda enquanto aqui
+  // ainda só existe o spinner (página curta, nada pra scrollar); quando os
+  // dados chegam e o conteúdo cresce, a posição antiga volta a valer e a tela
+  // aparece no meio. Força o topo quando o conteúdo real termina de montar.
+  const contentReady = !loadingCats && !loadingGroups;
+  useEffect(() => {
+    if (contentReady) window.scrollTo(0, 0);
+  }, [contentReady]);
 
   if (loadingCats || loadingGroups) return <PageSpinner />;
 
