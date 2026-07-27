@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AdminTournamentTabs } from './admin-tournament-tabs';
+import { TourResumeLink } from './tour-resume-link';
 import type { TournamentMode } from '@/types/database';
 
 interface Props {
@@ -24,13 +25,16 @@ export function AdminTournamentChrome({ slug, name, mode }: Props) {
     <div className="mb-6">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">{name}</h1>
-        <Link
-          href={`/tournaments/${slug}`}
-          target="_blank"
-          className="shrink-0 rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50"
-        >
-          Ver público
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <TourResumeLink />
+          <Link
+            href={`/tournaments/${slug}`}
+            target="_blank"
+            className="shrink-0 rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50"
+          >
+            Ver público
+          </Link>
+        </div>
       </div>
       <AdminTournamentTabs slug={slug} mode={mode} />
     </div>
