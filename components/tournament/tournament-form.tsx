@@ -161,13 +161,13 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Período de inscrições</p>
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Inscrições: início"
+              label="Início"
               type="date"
               error={errors.registration_start_date?.message}
               {...register('registration_start_date')}
             />
             <Input
-              label="Inscrições: encerramento"
+              label="Encerramento"
               type="date"
               error={errors.registration_end_date?.message}
               {...register('registration_end_date')}

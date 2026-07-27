@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { TournamentForm } from '@/components/tournament/tournament-form';
+import { TourTriggerButton } from '@/components/admin/tour-trigger-button';
 import { PageSpinner } from '@/components/ui/spinner';
 import { slugify } from '@/lib/utils/chess';
 import type { TournamentFormValues } from '@/types/database';
@@ -50,8 +51,9 @@ export default function NewTournamentPage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Novo torneio</h1>
+        <TourTriggerButton stepId="info-basica" label="❔ Tour" />
       </div>
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
