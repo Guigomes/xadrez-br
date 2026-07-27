@@ -95,7 +95,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       className="space-y-5"
     >
       {/* Basic info */}
-      <div className="card p-5 space-y-4">
+      <div className="card p-5 space-y-4" data-tour="info-basica">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Informações básicas</h2>
         <Input label="Nome do torneio *" error={errors.name?.message} {...register('name')} />
         <div>
@@ -127,7 +127,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       </div>
 
       {/* Format */}
-      <div className="card p-5 space-y-4">
+      <div className="card p-5 space-y-4" data-tour="formato">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Formato</h2>
         <div className="grid grid-cols-2 gap-3">
           <Select label="Sistema *" {...register('tournament_type')}>
@@ -222,7 +222,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       {/* Native pairing config — o modo do torneio (nativo/importado) é
           implícito: toda criação é nativa. "Importado" existe só para uso
           interno (painel de desenvolvedor), fora deste formulário. */}
-      <div className="card p-5 space-y-4">
+      <div className="card p-5 space-y-4" data-tour="gerenciamento">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Gerenciamento</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select label="Rating para seed" {...register('rating_kind')}>
@@ -245,7 +245,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       </div>
 
       {/* Visibility */}
-      <div className="card p-5">
+      <div className="card p-5" data-tour="visibilidade">
         <label className="flex items-center gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -261,9 +261,11 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
         </label>
       </div>
 
-      <Button type="submit" loading={loading} size="lg" className="w-full sm:w-auto">
-        {submitLabel}
-      </Button>
+      <div data-tour="criar">
+        <Button type="submit" loading={loading} size="lg" className="w-full sm:w-auto">
+          {submitLabel}
+        </Button>
+      </div>
     </form>
   );
 }

@@ -42,6 +42,43 @@
     @apply inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-md text-sm font-semibold tabular-nums;
   }
 
+  /* Tour guiado (driver.js). O CSS da lib traz cores fixas de tema claro, então
+     o tema é reajustado aqui — escopado em .xbr-tour, o popoverClass passado em
+     components/admin/tournament-tour.tsx. O visual espelha o modal de
+     components/tournament/tiebreak-legend-button.tsx pra não destoar do app. */
+  .driver-popover.xbr-tour {
+    @apply rounded-xl border border-gray-200 bg-white p-5 shadow-xl;
+    max-width: 340px;
+  }
+  .dark .driver-popover.xbr-tour {
+    @apply border-gray-700 bg-gray-900;
+  }
+  .driver-popover.xbr-tour .driver-popover-title {
+    @apply text-base font-semibold text-gray-900 dark:text-gray-100;
+  }
+  .driver-popover.xbr-tour .driver-popover-description {
+    @apply mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-400;
+  }
+  .driver-popover.xbr-tour .driver-popover-progress-text {
+    @apply text-xs text-gray-400 dark:text-gray-500;
+  }
+  .driver-popover.xbr-tour .driver-popover-close-btn {
+    @apply text-gray-400 hover:text-gray-600 dark:hover:text-gray-200;
+  }
+  .driver-popover.xbr-tour .driver-popover-footer-btn {
+    @apply rounded-lg border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600
+           hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400
+           dark:hover:bg-gray-800;
+  }
+  /* Avançar é a ação principal do passo. */
+  .driver-popover.xbr-tour .driver-popover-next-btn {
+    @apply border-brand-600 bg-brand-600 text-white hover:bg-brand-700
+           dark:border-brand-600 dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700;
+  }
+  .driver-popover.xbr-tour .driver-popover-arrow {
+    @apply border-white dark:border-gray-900;
+  }
+
   /* Chessboard repeating pattern overlay */
   .chess-pattern {
     background-image: repeating-conic-gradient(

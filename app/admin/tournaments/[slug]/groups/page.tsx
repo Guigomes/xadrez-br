@@ -330,10 +330,11 @@ function Setup({
 
       {/* Classificação vem primeiro: emparceiramento "por idade"/"por rating"
           depende de já existir classificação usando aquela dimensão. */}
-      <section className="space-y-3">
+      <section className="space-y-3" data-tour="secao-classificacao">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Classificação</h2>
 
         <DimensionQuestion
+          dataTour="pergunta-idade"
           question="Seu torneio vai ter classificação separada por idade?"
           on={ageOn}
           onToggle={() => setAgeOn((v) => !v)}
@@ -354,6 +355,7 @@ function Setup({
         </DimensionQuestion>
 
         <DimensionQuestion
+          dataTour="pergunta-rating"
           question="Seu torneio vai ter classificação separada por rating?"
           on={ratingOn}
           onToggle={() => setRatingOn((v) => !v)}
@@ -377,6 +379,7 @@ function Setup({
         </DimensionQuestion>
 
         <DimensionQuestion
+          dataTour="pergunta-feminina"
           question="Seu torneio vai ter classificação feminina?"
           on={femaleOn}
           onToggle={() => setFemaleOn((v) => !v)}
@@ -389,7 +392,7 @@ function Setup({
 
         {/* Bloco 2 — preview e geração */}
         {previewCells.length > 0 && (
-          <div className="card p-4 space-y-3">
+          <div className="card p-4 space-y-3" data-tour="gerar-classificacoes">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Preview — {previewCells.length} classificaç{previewCells.length !== 1 ? 'ões' : 'ão'}
@@ -471,7 +474,7 @@ function Setup({
       </section>
 
       {/* Emparceiramento — seleção fica local até "Salvar". */}
-      <section className="space-y-3">
+      <section className="space-y-3" data-tour="secao-emparceiramento">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Emparceiramento</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
         <div className="space-y-2">
@@ -523,12 +526,14 @@ function Setup({
 }
 
 function DimensionQuestion({
-  question, on, onToggle, children,
+  question, on, onToggle, children, dataTour,
 }: {
   question: string; on: boolean; onToggle: () => void; children?: React.ReactNode;
+  /** Âncora do tour guiado (components/admin/tournament-tour.tsx). */
+  dataTour?: string;
 }) {
   return (
-    <div className="card p-4 space-y-3">
+    <div className="card p-4 space-y-3" data-tour={dataTour}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{question}</p>
         <div className="flex gap-1.5 shrink-0">

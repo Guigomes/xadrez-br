@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup, useGenerateSeeds,
   useGenerateRound, useRoundTransition, useSetResult,
@@ -124,6 +125,22 @@ function GroupPanel({
     try { await fn(); } catch (e: any) { onError(e.message ?? 'Erro'); }
   };
 
+  // Grupo vazio e grupo sem seed são bloqueios diferentes com conselhos
+  // diferentes. Mandar "gere o ranking inicial" para um grupo sem ninguém é um
+  // beco sem saída: generate_initial_ranking não valida jogadores, roda com
+  // sucesso, não muda nada, e o botão de parear continua desabilitado.
+  const semParticipantes = (
+    <>
+      ⚠ Adicione participantes antes de parear a primeira rodada.{' '}
+      <Link
+        href={`/admin/tournaments/${tournament.slug}/players`}
+        className="font-medium underline hover:no-underline"
+      >
+        Ir para Participantes
+      </Link>
+    </>
+  );
+
   return (
     <div className="space-y-4">
       {/* Seed */}
@@ -217,11 +234,13 @@ function GroupPanel({
           </Button>
           {!canGenerate && (
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              {seededCount === 0
-                ? '⚠ Gere o ranking inicial acima antes de parear a primeira rodada.'
-                : lastRound && lastRound.status !== 'finished'
-                  ? `⚠ Encerre a rodada ${lastRound.round_number} antes de gerar a próxima.`
-                  : '⚠ Ainda não é possível gerar esta rodada.'}
+              {groupPlayers.length === 0
+                ? semParticipantes
+                : seededCount === 0
+                  ? '⚠ Gere o ranking inicial acima antes de parear a primeira rodada.'
+                  : lastRound && lastRound.status !== 'finished'
+                    ? `⚠ Encerre a rodada ${lastRound.round_number} antes de gerar a próxima.`
+                    : '⚠ Ainda não é possível gerar esta rodada.'}
             </p>
           )}
         </div>
@@ -246,7 +265,9 @@ function GroupPanel({
       )}
       {seededCount === 0 && (
         <p className="text-xs text-amber-600 dark:text-amber-400">
-          Gere o ranking inicial antes de parear a primeira rodada.
+          {groupPlayers.length === 0
+            ? semParticipantes
+            : 'Gere o ranking inicial antes de parear a primeira rodada.'}
         </p>
       )}
     </div>

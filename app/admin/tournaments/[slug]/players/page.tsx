@@ -149,7 +149,7 @@ export default function AdminPlayersPage({ params }: Props) {
 
       {isNative ? (
         /* Link de inscrição — o organizador compartilha com os jogadores */
-        <div className="card p-4 mb-4">
+        <div className="card p-4 mb-4" data-tour="link-inscricao">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Link de inscrição</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
             Compartilhe este link com os jogadores para eles se inscreverem sozinhos.
@@ -210,7 +210,7 @@ export default function AdminPlayersPage({ params }: Props) {
       )}
 
       {/* Search existing players */}
-      <div className="card p-4 mb-4">
+      <div className="card p-4 mb-4" data-tour="cadastrar-participante">
         <div className="flex items-center justify-between gap-3 mb-3">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Adicionar jogador existente</h2>
           <Button size="sm" onClick={() => setShowNewForm((v) => !v)}>

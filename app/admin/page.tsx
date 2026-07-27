@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
 import { FlashMessage } from '@/components/ui/flash-message';
+import { TourLauncher } from '@/components/admin/tour-launcher';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 
@@ -53,8 +54,12 @@ export default async function AdminDashboard({
             </Link>
           )}
           {canCreateTournament && (
+            <TourLauncher firstTime={!tournaments?.length} />
+          )}
+          {canCreateTournament && (
             <Link
               href="/admin/tournaments/new"
+              data-tour="novo-torneio"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

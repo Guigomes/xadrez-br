@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { TournamentTour } from '@/components/admin/tournament-tour';
 import type { UserRole } from '@/types/database';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -32,6 +33,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </div>
 
       <div className="container-app py-8">{children}</div>
+
+      {/* Fica aqui, e não numa página, porque o tour atravessa quatro rotas
+          (/admin, /new, /[slug]/groups, /[slug]/players) — este layout é o
+          ancestral comum das quatro e não remonta entre elas. */}
+      <TournamentTour />
     </div>
   );
 }
