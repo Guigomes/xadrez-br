@@ -31,15 +31,13 @@ describe('matchRoute', () => {
 });
 
 describe('stepsForRoute', () => {
-  it('sem progresso, devolve o bloco inteiro da rota', () => {
-    expect(stepsForRoute('admin', null).map((s) => s.id)).toEqual(['novo-torneio']);
-    expect(stepsForRoute('new', null).map((s) => s.id)).toEqual([
-      'info-basica',
-      'formato',
-      'gerenciamento',
-      'visibilidade',
-      'criar',
-    ]);
+  it('sem progresso, não mostra nada em rota nenhuma — nem em admin', () => {
+    // Decidir se o tour começa do zero é do TourLauncher (só ele sabe se é
+    // primeira vez / se já foi dispensado). Sem fromId explícito, essa função
+    // não tem como saber — teria que arriscar mostrar pra qualquer aba nova
+    // (sessionStorage some ao fechar), que é o caso comum, não a exceção.
+    expect(stepsForRoute('admin', null)).toEqual([]);
+    expect(stepsForRoute('new', null)).toEqual([]);
   });
 
   it('retoma no passo salvo quando ele é da própria rota', () => {

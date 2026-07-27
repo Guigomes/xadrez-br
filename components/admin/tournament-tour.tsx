@@ -68,7 +68,6 @@ export function TournamentTour() {
   }, []);
 
   const driverRef = useRef<Driver | null>(null);
-  const teardownRef = useRef(false);
 
   useEffect(() => {
     const route = matchRoute(pathname);
@@ -108,22 +107,33 @@ export function TournamentTour() {
           const current = block[opts.index ?? 0];
           if (current) writeProgress(current.id);
         },
-        // Só é chamado quando quem fecha é o organizador — driver.destroy()
-        // (o do cleanup abaixo) não passa por aqui. O teardownRef é defesa
-        // caso isso mude numa versão futura da lib.
-        onDestroyStarted: (_el, _step, opts) => {
-          if (teardownRef.current) {
-            opts.driver.destroy();
-            return;
-          }
-          if (opts.driver.hasNextStep()) {
-            // Saiu no meio — tratamos como "não quero isso".
-            dismiss();
-          } else {
+        // Próximo/Concluir no último passo do bloco: avança pra próxima rota
+        // e destrói. Sobrescrever o handler assume a responsabilidade de
+        // também chamar moveNext() nos passos que não são o último — senão a
+        // lib não anda sozinha.
+        onNextClick: (_el, _step, opts) => {
+          if (opts.driver.isLastStep()) {
             const next = nextStepAfter(last.id);
             if (next) writeProgress(next.id);
             else clearProgress();
+            opts.driver.destroy();
+          } else {
+            opts.driver.moveNext();
           }
+        },
+        // Clique no × — dispensa. Precisa de handler próprio: sem ele, driver.js
+        // trata o × como um destroy genérico indistinguível de "terminou o
+        // último passo", e dismiss() acabava sendo pulado.
+        onCloseClick: (_el, _step, opts) => {
+          dismiss();
+          opts.driver.destroy();
+        },
+        // Única via que ainda cai aqui é Esc — Próximo/Concluir e × já se
+        // resolvem sozinhos acima. driver.destroy() (o do cleanup abaixo, na
+        // troca de rota) usa a API pública, que internamente pula este hook
+        // de propósito — não precisa de guarda contra reentrância.
+        onDestroyStarted: (_el, _step, opts) => {
+          dismiss();
           opts.driver.destroy();
         },
       });
@@ -134,10 +144,8 @@ export function TournamentTour() {
 
     return () => {
       cancelled = true;
-      teardownRef.current = true;
       driverRef.current?.destroy();
       driverRef.current = null;
-      teardownRef.current = false;
     };
   }, [pathname, runId]);
 

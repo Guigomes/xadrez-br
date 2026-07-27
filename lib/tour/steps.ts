@@ -183,11 +183,18 @@ export function matchRoute(pathname: string): TourRoute | null {
  * `fromId` é o passo em que o tour parou. Se ele pertence a esta rota, o bloco
  * começa nele; se pertence a uma rota anterior (o organizador ainda não chegou
  * aqui) ou é desconhecido, não há nada a exibir — o tour só avança para frente.
+ *
+ * Sem `fromId`, a resposta é sempre vazia — mesmo na rota 'admin'. Decidir se
+ * o tour começa do zero é trabalho do TourLauncher (só ele sabe se é a
+ * primeira vez e se já foi dispensado); aqui teria que arriscar mostrar o
+ * tour pra qualquer visita com sessionStorage vazio — o caso comum, já que
+ * sessionStorage some ao fechar a aba. TourLauncher grava o primeiro passo
+ * ANTES de disparar o evento de início, então por essa função nunca vê
+ * `fromId` nulo numa partida legítima.
  */
 export function stepsForRoute(route: TourRoute, fromId: string | null): TourStep[] {
   const block = TOUR_STEPS.filter((s) => s.route === route);
-  if (!block.length) return [];
-  if (!fromId) return block;
+  if (!block.length || !fromId) return [];
 
   const start = block.findIndex((s) => s.id === fromId);
   if (start >= 0) return block.slice(start);

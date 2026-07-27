@@ -259,7 +259,7 @@ export function RegistrationForm({
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Dados do jogador</h2>
         <Input label="Nome completo *" placeholder="Como consta na CBX/FIDE" {...register('full_name')} error={errors.full_name?.message} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Ano de nascimento" type="number" inputMode="numeric" placeholder="2010" {...register('birth_year')} error={errors.birth_year?.message} />
+          <Input label="Ano de nascimento" type="number" inputMode="numeric" placeholder="2010" {...register('birth_year', { valueAsNumber: true })} error={errors.birth_year?.message} />
           <div>
             <Select label="Sexo" {...register('sex')} defaultValue="">
               <option value="">Prefiro não informar</option>
