@@ -68,8 +68,17 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'Formato do torneio',
     body:
       'Sistema, número de rodadas e ritmo de jogo. Aqui também ficam as datas e o período ' +
-      'de inscrição — fora dele o formulário público fecha sozinho. Se o torneio for pago, ' +
-      'desmarque "Torneio gratuito" e informe o valor.',
+      'de inscrição — fora dele o formulário público fecha sozinho.',
+  },
+  {
+    id: 'pergunta-gratuita',
+    route: 'new',
+    target: 'pergunta-gratuita',
+    title: 'Cobrança',
+    body:
+      'Responda "Não" se cobrar inscrição — aparecem os campos de valor e se o comprovante de ' +
+      'pagamento é obrigatório pra aprovar. Sem comprovante, você aprova só de olho no que o ' +
+      'jogador declarou.',
   },
   {
     id: 'gerenciamento',

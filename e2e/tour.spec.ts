@@ -49,10 +49,12 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     await page.locator('[data-tour="novo-torneio"]').click();
     await page.waitForURL(/\/admin\/tournaments\/new/);
 
-    // 5 passos em /new: info-basica, formato, gerenciamento, visibilidade, criar.
+    // 6 passos em /new: info-basica, formato, pergunta-gratuita, gerenciamento, visibilidade, criar.
     await expect(popoverTitle(page)).toHaveText('Informações básicas');
     await nextBtn(page).click();
     await expect(popoverTitle(page)).toHaveText('Formato do torneio');
+    await nextBtn(page).click();
+    await expect(popoverTitle(page)).toHaveText('Cobrança');
     await nextBtn(page).click();
     await expect(popoverTitle(page)).toHaveText('Ranking e desempate');
     await nextBtn(page).click();

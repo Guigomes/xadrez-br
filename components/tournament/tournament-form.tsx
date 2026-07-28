@@ -19,7 +19,7 @@ const schema = z.object({
   organizer_name:  z.string().min(2, 'Nome do organizador obrigatório'),
   chief_arbiter:   z.string().optional(),
   time_control:    z.string().min(2, 'Ritmo obrigatório'),
-  tournament_type: z.enum(['swiss', 'round_robin', 'knockout', 'other']),
+  tournament_type: z.enum(['swiss', 'round_robin']),
   start_date:      z.string().min(1, 'Data de início obrigatória'),
   end_date:        z.string().optional(),
   registration_start_date: z.string().optional(),
@@ -62,11 +62,11 @@ interface Props {
 }
 
 export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar' }: Props) {
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TournamentFormValues>({
+  const { register, handleSubmit, watch, setValue, getValues, formState: { errors } } = useForm<TournamentFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       tournament_type: 'swiss',
-      rounds_count: 7,
+      rounds_count: 6,
       is_public: false,
       mode: 'native',
       rating_kind: 'std',
@@ -133,8 +133,6 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           <Select label="Sistema *" {...register('tournament_type')}>
             <option value="swiss">Suíço</option>
             <option value="round_robin">Todos contra todos</option>
-            <option value="knockout">Eliminatório</option>
-            <option value="other">Outro</option>
           </Select>
           <Input
             label="Número de rodadas *"
@@ -153,7 +151,17 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           {...register('time_control')}
         />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Data de início *" type="date" error={errors.start_date?.message} {...register('start_date')} />
+          <Input
+            label="Data de início *" type="date" error={errors.start_date?.message}
+            {...register('start_date', {
+              // Maioria dos torneios começa e termina no mesmo dia — só
+              // preenche sozinho enquanto o organizador não mexeu no campo
+              // de encerramento (não sobrescreve escolha manual).
+              onChange: (e) => {
+                if (!getValues('end_date')) setValue('end_date', e.target.value);
+              },
+            })}
+          />
           <Input label="Data de encerramento" type="date" {...register('end_date')} />
         </div>
 
@@ -177,45 +185,47 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
 
         <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Cobrança</p>
-          <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-            <input
-              type="checkbox"
-              className="h-4 w-4 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-              {...register('is_free')}
-              onChange={(e) => {
-                setValue('is_free', e.target.checked, { shouldDirty: true });
-                if (e.target.checked) setValue('require_payment_receipt', false, { shouldDirty: true });
-              }}
-            />
-            <div>
-              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Torneio gratuito</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Sem taxa de inscrição.
-              </p>
+          <div className="card p-4 space-y-3" data-tour="pergunta-gratuita">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Seu torneio tem inscrição gratuita?</p>
+              <div className="flex gap-1.5 shrink-0">
+                <Chip
+                  active={isFree}
+                  onClick={() => {
+                    setValue('is_free', true, { shouldDirty: true });
+                    setValue('require_payment_receipt', false, { shouldDirty: true });
+                  }}
+                >
+                  Sim
+                </Chip>
+                <Chip active={!isFree} onClick={() => setValue('is_free', false, { shouldDirty: true })}>
+                  Não
+                </Chip>
+              </div>
             </div>
-          </label>
-          {!isFree && (
-            <div className="mt-4 space-y-4">
-              <Input
-                label="Valor da inscrição"
-                placeholder='Ex: R$50 (Absoluto) / R$30 (Sub-14)'
-                {...register('registration_fee_text')}
-              />
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                  {...register('require_payment_receipt')}
+            {!isFree && (
+              <div className="space-y-4 pt-1">
+                <Input
+                  label="Valor da inscrição"
+                  placeholder='Ex: R$50 (Absoluto) / R$30 (Sub-14)'
+                  {...register('registration_fee_text')}
                 />
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Exigir comprovante de pagamento</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    A inscrição só é aceita com o comprovante anexado.
-                  </p>
-                </div>
-              </label>
-            </div>
-          )}
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    {...register('require_payment_receipt')}
+                  />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Exigir comprovante de pagamento</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      A inscrição só é aceita com o comprovante anexado.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -267,5 +277,22 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Mesmo estilo das perguntas Sim/Não da tela de Classificação (groups/page.tsx). */
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+        active
+          ? 'bg-brand-600 text-white'
+          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
