@@ -44,6 +44,11 @@ function useInvalidate(tournamentId: string, groupId: string) {
     qc.invalidateQueries({ queryKey: tournamentKeys.rounds(tournamentId) });
     qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) });
     qc.invalidateQueries({ queryKey: tournamentKeys.standings(tournamentId) });
+    // finish_round (036) pode avançar tournaments.status sozinho pra
+    // 'finished' — sem isso, tournamentKeys.detail(slug) nunca seria
+    // invalidado (só é chaveado por slug, que esta função não tem à mão) e o
+    // banner de "torneio encerrado" só apareceria depois de um F5 manual.
+    qc.invalidateQueries({ queryKey: tournamentKeys.all });
   };
 }
 

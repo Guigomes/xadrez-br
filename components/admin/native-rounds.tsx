@@ -54,6 +54,17 @@ export function NativeRounds({ tournament }: { tournament: Tournament }) {
 
   return (
     <div>
+      {tournament.status === 'finished' && (
+        <div className="card p-4 mb-4 border-2 border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-center">
+          <p className="font-semibold text-gray-900 dark:text-gray-100">🏆 Torneio encerrado!</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            Todas as rodadas terminaram.{' '}
+            <Link href={`/tournaments/${tournament.slug}/standings`} className="underline font-medium">
+              Ver classificação final →
+            </Link>
+          </p>
+        </div>
+      )}
       {groups.length > 1 && (
         <div className="flex gap-2 mb-4 flex-wrap">
           {groups.map((g) => (

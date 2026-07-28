@@ -146,6 +146,18 @@ export default function StandingsPage({ params }: Props) {
         </p>
       )}
 
+      {tournament?.status === 'finished' && (() => {
+        const first = displayed.find((r) => r.rank === 1);
+        return (
+          <div className="card p-4 mb-4 border-2 border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-center">
+            <p className="font-semibold text-gray-900 dark:text-gray-100">🏆 Torneio encerrado!</p>
+            {first && (
+              <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">🥇 {first.full_name}</p>
+            )}
+          </div>
+        );
+      })()}
+
       <div className="card">
         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
