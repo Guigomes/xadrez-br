@@ -316,3 +316,26 @@ export function useAssignPlayerGroup(tournamentId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) }),
   });
 }
+
+/**
+ * Correção manual da classificação de um participante — sobrescreve o que
+ * derive_player_category calculou. Escolha deliberada: "Gerar classificações"
+ * (refresh_tournament_categories, 035) reprocessa todo mundo e some com essa
+ * correção sem aviso — é assim de propósito, não uma omissão.
+ */
+export function useSetPlayerCategory(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tpId, categoryId }: { tpId: string; categoryId: string | null }) => {
+      const { error } = await supabase
+        .from('tournament_players')
+        .update({ category_id: categoryId })
+        .eq('id', tpId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) });
+      qc.invalidateQueries({ queryKey: tournamentKeys.standings(tournamentId) });
+    },
+  });
+}

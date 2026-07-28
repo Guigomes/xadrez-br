@@ -108,12 +108,16 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     await expect(pendingCards).toHaveCount(0, { timeout: 10_000 });
 
     // --- Regra central: a menina cai só em Sub-17 Feminino, o menino só em Sub-17 ---
+    // O seletor de classificação (correção manual) lista TODAS as opções no
+    // DOM — toContainText pegaria "Feminino" da própria lista de opções do
+    // menino, não da selecionada. Lê a opção realmente marcada.
     await page.goto(`/admin/tournaments/${slug}/players`);
     const girlRow = page.locator('div.px-4.py-3', { hasText: 'E2E Menina' });
     const boyRow = page.locator('div.px-4.py-3', { hasText: 'E2E Menino' });
-    await expect(girlRow).toContainText('Sub-17 Feminino');
-    await expect(boyRow).toContainText('Sub-17');
-    await expect(boyRow).not.toContainText('Feminino');
+    const selectedOption = (row: typeof girlRow) =>
+      row.locator('select').evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.textContent);
+    await expect.poll(() => selectedOption(girlRow)).toBe('Sub-17 Feminino');
+    await expect.poll(() => selectedOption(boyRow)).toBe('Sub-17');
 
     // --- Ranking inicial + 1ª rodada ---
     await page.goto(`/admin/tournaments/${slug}/rounds`);

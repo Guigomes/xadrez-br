@@ -1,9 +1,10 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup } from '@/lib/hooks/use-tournament';
+import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory } from '@/lib/hooks/use-tournament';
 import { usePlayerSearch, useCreatePlayer } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
+import { useCategories } from '@/lib/hooks/use-classifications';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -21,6 +22,8 @@ export default function AdminPlayersPage({ params }: Props) {
   const { data: tPlayers, isLoading: loadingPlayers } = useTournamentPlayers(tournament?.id ?? '');
   const addPlayer = useAddTournamentPlayer(tournament?.id ?? '');
   const assignGroup = useAssignPlayerGroup(tournament?.id ?? '');
+  const setCategory = useSetPlayerCategory(tournament?.id ?? '');
+  const { data: categories } = useCategories(tournament?.id ?? '');
   const createPlayer = useCreatePlayer();
   const isNative = tournament?.mode === 'native';
   const { data: groups } = useGroups(isNative ? tournament!.id : '');
@@ -74,6 +77,15 @@ export default function AdminPlayersPage({ params }: Props) {
     setError('');
     try {
       await assignGroup.mutateAsync({ tpId, groupId: gId });
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }
+
+  async function handleSetCategory(tpId: string, categoryId: string) {
+    setError('');
+    try {
+      await setCategory.mutateAsync({ tpId, categoryId: categoryId || null });
     } catch (err: any) {
       setError(err.message);
     }
@@ -293,11 +305,24 @@ export default function AdminPlayersPage({ params }: Props) {
                       {tpAny.player?.full_name}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {tpAny.category?.name && `${tpAny.category.name} · `}
                       {tpAny.player?.city ?? tpAny.player?.state ?? ''}
                       {tpAny.player?.rating_std ? ` · ${tpAny.player.rating_std}` : ''}
                       {tpAny.player?.fide_id ? ` · FIDE ${tpAny.player.fide_id}` : ''}
                     </p>
+                    {hasClassifications && (categories?.length ?? 0) > 0 && (
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-xs text-gray-400">🏷️</span>
+                        <select
+                          className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-1.5 py-0.5 text-xs"
+                          value={tpAny.category_id ?? tpAny.category?.id ?? ''}
+                          disabled={setCategory.isPending}
+                          onChange={(e) => handleSetCategory(tp.id, e.target.value)}
+                        >
+                          <option value="">Geral (sem classificação)</option>
+                          {categories!.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    )}
                     {missingGroup && (
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs text-amber-600 dark:text-amber-400">⚠ sem grupo — não será pareado</span>
