@@ -38,7 +38,7 @@ export function NativeRounds({ tournament }: { tournament: Tournament }) {
     return (
       <EmptyState
         icon="♟"
-        title="Crie o grupo de pareamento"
+        title="Crie o grupo de emparceiramento"
         description="Todo torneio nativo precisa de ao menos um grupo. Se o torneio não tem divisões, use um grupo único."
         action={
           <Button loading={createGroup.isPending} onClick={() => createGroup.mutate('Único')}>

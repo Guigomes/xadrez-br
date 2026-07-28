@@ -231,7 +231,7 @@ export default function AdminPlayersPage({ params }: Props) {
       {/* Native tournament: pairing group is required before adding anyone */}
       {isNative && (
         <div className="card p-4 mb-4">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Grupo de pareamento</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Grupo de emparceiramento</h2>
           {!groups?.length ? (
             <div className="flex items-center gap-2">
               <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum grupo ainda.</p>

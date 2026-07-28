@@ -19,7 +19,7 @@ export default async function StandingsPrintPage({ params }: Props) {
     p_tournament_id: tournament.id,
   });
 
-  // Agrupa por grupo de pareamento
+  // Agrupa por grupo de emparceiramento
   const groups = new Map<string, any[]>();
   for (const r of rows ?? []) {
     const key = r.pairing_group_name ?? '—';
