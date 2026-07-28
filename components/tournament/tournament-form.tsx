@@ -33,7 +33,7 @@ const schema = z.object({
   tiebreak_order: z.array(z.enum(['buchholz', 'buchholz_cut1', 'sonneborn_berger', 'wins', 'progressive'])),
   require_payment_receipt: z.boolean(),
   registration_fee_text: z.string().optional(),
-  is_free: z.boolean(),
+  is_free: z.boolean({ required_error: 'Responda se a inscrição é gratuita' }),
 }).superRefine((values, ctx) => {
   if (values.registration_start_date && values.registration_end_date
     && values.registration_end_date < values.registration_start_date) {
@@ -73,7 +73,9 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       requested_bye_score: 0.5,
       tiebreak_order: ['buchholz', 'buchholz_cut1', 'sonneborn_berger'],
       require_payment_receipt: false,
-      is_free: false,
+      // Sem default de propósito — obriga o organizador a responder em vez
+      // de herdar "gratuito" silenciosamente (ver zod required_error acima).
+      is_free: undefined as unknown as boolean,
       ...defaultValues,
       initial_color: 'white1',
     },
@@ -190,20 +192,26 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Seu torneio tem inscrição gratuita?</p>
               <div className="flex gap-1.5 shrink-0">
                 <Chip
-                  active={isFree}
+                  active={isFree === true}
                   onClick={() => {
-                    setValue('is_free', true, { shouldDirty: true });
+                    setValue('is_free', true, { shouldDirty: true, shouldValidate: true });
                     setValue('require_payment_receipt', false, { shouldDirty: true });
                   }}
                 >
                   Sim
                 </Chip>
-                <Chip active={!isFree} onClick={() => setValue('is_free', false, { shouldDirty: true })}>
+                <Chip
+                  active={isFree === false}
+                  onClick={() => setValue('is_free', false, { shouldDirty: true, shouldValidate: true })}
+                >
                   Não
                 </Chip>
               </div>
             </div>
-            {!isFree && (
+            {errors.is_free && (
+              <p className="text-xs text-red-600 dark:text-red-400">{errors.is_free.message}</p>
+            )}
+            {isFree === false && (
               <div className="space-y-4 pt-1">
                 <Input
                   label="Valor da inscrição"
