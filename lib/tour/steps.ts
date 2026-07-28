@@ -17,8 +17,12 @@ export type TourRoute = 'admin' | 'new' | 'groups' | 'players';
 export interface TourStep {
   id: string;
   route: TourRoute;
-  /** Valor do atributo data-tour do elemento a destacar. */
-  target: string;
+  /**
+   * Valor do atributo data-tour do elemento a destacar. Ausente = passo sem
+   * alvo — driver.js mostra o popover sozinho, centralizado, sem recorte no
+   * overlay. É o caso da tela de boas-vindas, que não aponta pra nada.
+   */
+  target?: string;
   title: string;
   body: string;
   /**
@@ -26,17 +30,26 @@ export interface TourStep {
    * de travar o tour.
    */
   optional?: boolean;
+  /** Sobrescreve o texto padrão ("Próximo") só neste passo. */
+  nextBtnText?: string;
 }
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: 'boas-vindas',
+    route: 'admin',
+    title: 'Bem-vindo! 👋',
+    body:
+      'Vou te acompanhar pelas três etapas de criar um torneio: os dados do torneio, ' +
+      'as classificações e, por fim, os participantes. Leva menos de 5 minutos.',
+    nextBtnText: 'Começar',
+  },
   {
     id: 'novo-torneio',
     route: 'admin',
     target: 'novo-torneio',
     title: 'Tudo começa aqui',
-    body:
-      'Este botão cria um torneio do zero. Vou te acompanhar pelas três etapas: ' +
-      'os dados do torneio, as classificações e, por fim, os participantes.',
+    body: 'Este botão cria um torneio do zero.',
   },
 
   {

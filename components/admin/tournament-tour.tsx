@@ -79,7 +79,8 @@ export function TournamentTour() {
     let cancelled = false;
 
     (async () => {
-      const ready = await waitForTarget(sel(block[0].target), 5000);
+      const firstTarget = block[0].target;
+      const ready = firstTarget ? await waitForTarget(sel(firstTarget), 5000) : true;
       if (cancelled || !ready) return;
 
       const last = block[block.length - 1];
@@ -96,12 +97,18 @@ export function TournamentTour() {
         stageRadius: 12,
         popoverClass: 'xbr-tour',
         steps: block.map((s) => ({
-          element: sel(s.target),
+          // Sem target: popover sozinho, sem recorte no overlay (a tela de
+          // boas-vindas).
+          element: s.target ? sel(s.target) : undefined,
           // Alvo condicional é decidido na hora de exibir, não agora: o
           // organizador pode marcar "Sim" numa dimensão enquanto o tour está
           // aberto, e aí o card de gerar classificações passa a existir.
           skipMissingElement: s.optional,
-          popover: { title: s.title, description: s.body },
+          popover: {
+            title: s.title,
+            description: s.body,
+            ...(s.nextBtnText ? { nextBtnText: s.nextBtnText } : {}),
+          },
         })),
         onHighlighted: (_el, _step, opts) => {
           const current = block[opts.index ?? 0];

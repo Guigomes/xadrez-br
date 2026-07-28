@@ -97,6 +97,18 @@ describe('integridade do registro', () => {
   it('só o passo de render condicional é opcional', () => {
     expect(TOUR_STEPS.filter((s) => s.optional).map((s) => s.id)).toEqual(['gerar']);
   });
+
+  it('o passo de boas-vindas não tem alvo e sobrescreve o texto do botão', () => {
+    // Sem target, driver.js mostra o popover sozinho, sem recorte no overlay —
+    // é o que faz a tela de boas-vindas não apontar pra nada.
+    expect(TOUR_STEPS[0].id).toBe('boas-vindas');
+    expect(TOUR_STEPS[0].target).toBeUndefined();
+    expect(TOUR_STEPS[0].nextBtnText).toBe('Começar');
+  });
+
+  it('só o passo de boas-vindas sobrescreve o texto do botão', () => {
+    expect(TOUR_STEPS.filter((s) => s.nextBtnText).map((s) => s.id)).toEqual(['boas-vindas']);
+  });
 });
 
 describe('state fora do navegador', () => {

@@ -36,10 +36,13 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     await login(page, org);
     await page.goto('/admin');
 
-    // O tour abre sozinho: conta nova, zero torneios.
+    // O tour abre sozinho: conta nova, zero torneios. Primeiro passo é a tela
+    // de boas-vindas — sem alvo, botão próprio "Começar" em vez de "Próximo".
+    await expect(popoverTitle(page)).toHaveText('Bem-vindo! 👋');
+    await page.locator('.driver-popover-next-btn', { hasText: 'Começar' }).click();
     await expect(popoverTitle(page)).toHaveText('Tudo começa aqui');
 
-    // O alvo do único passo desta rota é o próprio link "Novo torneio" — clicar
+    // O alvo do passo seguinte é o próprio link "Novo torneio" — clicar
     // nele é a saída natural (o tour não navega sozinho). O componente
     // TournamentTour não desmonta nessa transição (mesmo layout /admin), só
     // reage à mudança de pathname.
@@ -105,7 +108,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
       await login(page, org2);
       await page.goto('/admin');
 
-      await expect(popoverTitle(page)).toHaveText('Tudo começa aqui');
+      await expect(popoverTitle(page)).toHaveText('Bem-vindo! 👋');
       await page.keyboard.press('Escape');
       await expect(page.locator('.driver-popover')).toHaveCount(0);
 
@@ -114,8 +117,12 @@ test.describe.serial('tour guiado de criação de torneio', () => {
       await page.waitForTimeout(500);
       await expect(page.locator('.driver-popover')).toHaveCount(0);
 
-      await page.getByRole('button', { name: 'Como criar um torneio' }).click();
-      await expect(popoverTitle(page)).toHaveText('Tudo começa aqui');
+      // Não sobrou botão de ajuda em /admin de propósito — achar "Novo
+      // torneio" não é o ponto de confusão. O botão de rever mora na tela de
+      // criar torneio e dentro de um torneio já existente.
+      await page.goto('/admin/tournaments/new');
+      await page.getByRole('button', { name: 'Dicas de como criar um torneio' }).click();
+      await expect(popoverTitle(page)).toHaveText('Informações básicas');
     } finally {
       await deleteTestOrganizer(org2.id);
     }

@@ -28,7 +28,7 @@ export function TourResumeLink() {
       onClick={start}
       className="shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
     >
-      ❔ Tour
+      ❔ Dicas de como criar um torneio
     </button>
   );
 }
