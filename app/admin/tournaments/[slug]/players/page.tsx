@@ -5,6 +5,7 @@ import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignP
 import { usePlayerSearch, useCreatePlayer, useSyncCbxRating, type CbxRatingResult } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { useCategories } from '@/lib/hooks/use-classifications';
+import { deriveCategory, type CategoryCandidate } from '@/lib/utils/classification-match';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -48,11 +49,33 @@ export default function AdminPlayersPage({ params }: Props) {
   const needsGroup = isNative && (groups?.length ?? 0) > 0;
   const groupReady = !isNative || !!groupId;
 
+  // Mesma derivação usada na inscrição pública (registration-form.tsx) — sem
+  // isso, jogador cadastrado/adicionado por aqui nascia sem category_id e
+  // ficava de fora da classificação até alguém corrigir manualmente na lista.
+  const categoryCandidates: CategoryCandidate[] = (categories ?? []).map((c) => ({
+    id: c.id, sortOrder: c.sort_order, sex: c.sex,
+    minAge: c.min_age, maxAge: c.max_age, minRating: c.min_rating, maxRating: c.max_rating,
+  }));
+  const tournamentStartYear = tournament.start_date ? new Date(tournament.start_date).getFullYear() : null;
+  function deriveCategoryId(player: { sex: string | null; birth_year: number | null; rating_std: number | null }): string | undefined {
+    if (categoryCandidates.length === 0) return undefined;
+    const derived = deriveCategory(
+      categoryCandidates,
+      { sex: player.sex as 'm' | 'w' | null, birthYear: player.birth_year, ratingStd: player.rating_std },
+      tournamentStartYear
+    );
+    return derived?.id;
+  }
+
   async function handleAddExisting(player: Player) {
     if (needsGroup && !groupId) { setError('Selecione o grupo antes de adicionar.'); return; }
     setError('');
     try {
-      await addPlayer.mutateAsync({ player_id: player.id, pairing_group_id: groupId || undefined });
+      await addPlayer.mutateAsync({
+        player_id: player.id,
+        pairing_group_id: groupId || undefined,
+        category_id: deriveCategoryId(player),
+      });
       setSearch('');
     } catch (err: any) {
       setError(err.message);
@@ -65,7 +88,11 @@ export default function AdminPlayersPage({ params }: Props) {
     setError('');
     try {
       const p = await createPlayer.mutateAsync(newPlayer as PlayerFormValues);
-      await addPlayer.mutateAsync({ player_id: p.id, pairing_group_id: groupId || undefined });
+      await addPlayer.mutateAsync({
+        player_id: p.id,
+        pairing_group_id: groupId || undefined,
+        category_id: deriveCategoryId(p),
+      });
       setNewPlayer({});
       setShowNewForm(false);
     } catch (err: any) {
@@ -117,10 +144,11 @@ export default function AdminPlayersPage({ params }: Props) {
 
   const existingIds = new Set(tPlayers?.map((tp) => (tp as any).player?.id));
 
-  // Classificação (célula da partição) é derivada de birth_year/rating_std/sex
-  // — import e cadastro manual não preenchem esses campos, então ficam sem
-  // classificação até alguém corrigir aqui. Não é regressão, é o que falta
-  // pra derivar; melhor avisar do que fingir que já classificou.
+  // Classificação (célula da partição) é derivada de birth_year/rating_std/sex.
+  // Cadastro manual e "adicionar existente" já derivam ao adicionar (ver
+  // deriveCategoryId acima) — mas import por URL não passa por esse fluxo e
+  // chess-results não traz esses campos, então continua sem classificação até
+  // alguém corrigir aqui. Melhor avisar do que fingir que já classificou.
   const classificationDims = tournament.classification_dimensions ?? [];
   const hasClassifications = classificationDims.length > 0;
   function missingClassificationFields(player: any): string[] {
@@ -257,6 +285,14 @@ export default function AdminPlayersPage({ params }: Props) {
         <form onSubmit={handleCreateAndAdd} className="card p-4 mb-4 space-y-3">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Novo jogador</h2>
           <Input label="Nome completo *" required value={newPlayer.full_name ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, full_name: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Ano de nascimento" type="number" value={newPlayer.birth_year ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, birth_year: parseInt(e.target.value) || undefined }))} />
+            <Select label="Sexo" value={newPlayer.sex ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, sex: (e.target.value || undefined) as PlayerFormValues['sex'] }))}>
+              <option value="">Prefiro não informar</option>
+              <option value="m">Masculino</option>
+              <option value="w">Feminino</option>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Estado" value={newPlayer.state ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, state: e.target.value }))} />
             <Input label="Rating Std" type="number" value={newPlayer.rating_std ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, rating_std: parseInt(e.target.value) || undefined }))} />

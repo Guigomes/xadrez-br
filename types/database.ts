@@ -401,6 +401,7 @@ export interface PlayerFormValues {
   state?: string;
   city?: string;
   birth_year?: number;
+  sex?: PlayerSex;
   rating_std?: number;
   rating_rpd?: number;
 }
