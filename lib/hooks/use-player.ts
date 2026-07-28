@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { tournamentKeys } from './use-tournament';
 import type { Player, PlayerFormValues } from '@/types/database';
 
 const supabase = createClient();
@@ -81,5 +82,33 @@ export function useCreatePlayer() {
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: playerKeys.lists() }),
+  });
+}
+
+export interface CbxRatingResult {
+  ratingStd: number | null;
+  ratingRpd: number | null;
+  ratingBlz: number | null;
+  checkedAt: string;
+  fromCache: boolean;
+  playerName: string | null;
+}
+
+/**
+ * Consulta o rating do jogador na CBX pelo ID CBX cadastrado — a rota faz o
+ * scraping e o cache de 30 dias (app/api/admin/players/[playerId]/cbx-rating).
+ * `tournamentId` só serve pra saber qual lista de participantes invalidar
+ * depois — use-player.ts não tem esse contexto sozinho.
+ */
+export function useSyncCbxRating(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (playerId: string): Promise<CbxRatingResult> => {
+      const res = await fetch(`/api/admin/players/${playerId}/cbx-rating`, { method: 'POST' });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Falha ao consultar rating na CBX');
+      return body as CbxRatingResult;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) }),
   });
 }

@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory } from '@/lib/hooks/use-tournament';
-import { usePlayerSearch, useCreatePlayer } from '@/lib/hooks/use-player';
+import { usePlayerSearch, useCreatePlayer, useSyncCbxRating, type CbxRatingResult } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { useCategories } from '@/lib/hooks/use-classifications';
 import { PageSpinner } from '@/components/ui/spinner';
@@ -309,6 +309,13 @@ export default function AdminPlayersPage({ params }: Props) {
                       {tpAny.player?.rating_std ? ` · ${tpAny.player.rating_std}` : ''}
                       {tpAny.player?.fide_id ? ` · FIDE ${tpAny.player.fide_id}` : ''}
                     </p>
+                    {tpAny.player?.cbx_id && tournament && (
+                      <CbxRatingButton
+                        tournamentId={tournament.id}
+                        playerId={tpAny.player.id}
+                        declaredName={tpAny.player.full_name}
+                      />
+                    )}
                     {hasClassifications && (categories?.length ?? 0) > 0 && (
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs text-gray-400">🏷️</span>
@@ -352,6 +359,61 @@ export default function AdminPlayersPage({ params }: Props) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function normalizeName(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+/**
+ * Consulta o rating oficial na CBX pelo ID cadastrado. A rota faz o cache de
+ * 30 dias — clicar de novo no mesmo mês não bate na CBX de novo, só devolve
+ * o que já está salvo (fromCache: true).
+ *
+ * Mostra o nome que voltou da CBX ao lado do cadastrado: o ID CBX é digitado
+ * à mão, e um dígito trocado aponta pra outra pessoa sem erro nenhum — não
+ * dá pra confiar cegamente no rating só porque a consulta "funcionou".
+ */
+function CbxRatingButton({
+  tournamentId, playerId, declaredName,
+}: {
+  tournamentId: string; playerId: string; declaredName: string;
+}) {
+  const sync = useSyncCbxRating(tournamentId);
+  const [result, setResult] = useState<CbxRatingResult | null>(null);
+  const [err, setErr] = useState('');
+
+  async function handleClick() {
+    setErr('');
+    try {
+      setResult(await sync.mutateAsync(playerId));
+    } catch (e: any) {
+      setErr(e.message);
+    }
+  }
+
+  const nameDiverges = !!result?.playerName && normalizeName(result.playerName) !== normalizeName(declaredName);
+
+  return (
+    <div className="mt-1 flex items-center gap-2 flex-wrap">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={sync.isPending}
+        className="text-xs text-brand-600 dark:text-brand-400 hover:underline disabled:opacity-50"
+      >
+        {sync.isPending ? 'Consultando CBX…' : '🔄 Consultar rating CBX'}
+      </button>
+      {result && (
+        <span className={`text-xs ${nameDiverges ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'}`}>
+          {result.fromCache ? 'já consultado este mês' : 'consultado agora'}
+          {result.playerName && ` · CBX: ${result.playerName}`}
+          {nameDiverges && ' ⚠ nome diverge — confira o ID'}
+        </span>
+      )}
+      {err && <span className="text-xs text-red-500 dark:text-red-400">{err}</span>}
     </div>
   );
 }
