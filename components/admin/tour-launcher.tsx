@@ -6,10 +6,8 @@ import { writeProgress, shouldAutoStart, TOUR_START_EVENT } from '@/lib/tour/sta
 
 /**
  * Dispara o tour sozinho para quem nunca criou um torneio. Sem botão próprio
- * — o organizador que já sabe o que faz não deve ver nada aqui; quem quiser
- * rever encontra "Dicas de como criar um torneio" na tela de criar torneio
- * e dentro de um torneio já existente (tour-trigger-button.tsx,
- * tour-resume-link.tsx).
+ * — o botão visível ao lado de "Novo torneio" é um <TourTriggerButton>
+ * separado (app/admin/page.tsx); este componente só cuida do autostart.
  *
  * O arranque grava o progresso ANTES de disparar o evento de propósito. Efeitos
  * do React rodam de baixo para cima — este componente (filho, dentro da página)

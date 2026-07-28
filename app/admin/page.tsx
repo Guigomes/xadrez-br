@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
 import { FlashMessage } from '@/components/ui/flash-message';
 import { TourLauncher } from '@/components/admin/tour-launcher';
+import { TourTriggerButton } from '@/components/admin/tour-trigger-button';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 
@@ -55,6 +56,9 @@ export default async function AdminDashboard({
           )}
           {canCreateTournament && (
             <TourLauncher firstTime={!tournaments?.length} />
+          )}
+          {canCreateTournament && (
+            <TourTriggerButton stepId="boas-vindas" label="❔ Dicas de como criar um torneio" />
           )}
           {canCreateTournament && (
             <Link
