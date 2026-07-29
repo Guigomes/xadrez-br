@@ -75,6 +75,36 @@ function bandLabel(c: TournamentCategory): string {
   return c.name.replace(/\s+Feminino$/, '');
 }
 
+// Reconstrói a seleção de chips (idade/rating) a partir do que já existe em
+// banco — sem isso, reabrir esta tela mostraria todos os chips como
+// desmarcados mesmo com classificações já geradas, e desmarcar um chip pra
+// excluir (ver toggleAgePreset/toggleRatingPreset) começaria do estado errado.
+// Faixa sem preset correspondente (criada por "+ adicionar classificação
+// manualmente" com idade/rating) também entra — vira um chip extra, mesmo
+// mecanismo de exclusão.
+function ageBandsFromCategories(cats: TournamentCategory[]): AgePreset[] {
+  const seen = new Map<string, AgePreset>();
+  for (const c of cats) {
+    if (c.min_age == null && c.max_age == null) continue;
+    const key = `${c.min_age ?? ''}:${c.max_age ?? ''}`;
+    if (seen.has(key)) continue;
+    const preset = AGE_PRESETS.find((p) => p.minAge === c.min_age && p.maxAge === c.max_age);
+    seen.set(key, preset ?? { name: bandLabel(c), minAge: c.min_age, maxAge: c.max_age });
+  }
+  return Array.from(seen.values());
+}
+function ratingBandsFromCategories(cats: TournamentCategory[]): RatingPreset[] {
+  const seen = new Map<string, RatingPreset>();
+  for (const c of cats) {
+    if (c.min_rating == null && c.max_rating == null) continue;
+    const key = `${c.min_rating ?? ''}:${c.max_rating ?? ''}`;
+    if (seen.has(key)) continue;
+    const preset = RATING_PRESETS.find((p) => p.minRating === c.min_rating && p.maxRating === c.max_rating);
+    seen.set(key, preset ?? { name: bandLabel(c), minRating: c.min_rating, maxRating: c.max_rating });
+  }
+  return Array.from(seen.values());
+}
+
 type PairingChoice = 'absolute' | 'age' | 'rating' | 'custom';
 
 function Setup({
@@ -88,6 +118,7 @@ function Setup({
   const { data: groups, isLoading: loadingGroups } = useGroups(tournamentId);
   const createCategory = useCreateCategory(tournamentId);
   const updateCategory = useUpdateCategory(tournamentId);
+  const deleteCategory = useDeleteCategory(tournamentId);
   const createGroup = useCreateGroup(tournamentId);
   const setMode = useSetPairingMode(tournamentId);
   const setDimensions = useSetClassificationDimensions(tournamentId);
@@ -128,9 +159,13 @@ function Setup({
   const [minRating, setMinRating] = useState('');
   const [maxRating, setMaxRating] = useState('');
 
-  // useMemo precisa vir antes de qualquer return condicional (regra dos hooks) —
-  // cats/grps ainda podem ser undefined aqui, generateClassificationCells não
-  // depende deles.
+  // Definidos antes de qualquer return condicional (regra dos hooks) —
+  // categories/groups ainda podem ser undefined durante o carregamento, mas
+  // "?? []" já cobre isso sem precisar esperar o guard de loading.
+  const cats = categories ?? [];
+  const grps = groups ?? [];
+
+  // useMemo precisa vir antes de qualquer return condicional (regra dos hooks).
   const previewCells = useMemo(
     () => generateClassificationCells({
       ageBands: ageOn ? ageBands : [],
@@ -151,10 +186,20 @@ function Setup({
     if (contentReady) window.scrollTo(0, 0);
   }, [contentReady]);
 
-  if (loadingCats || loadingGroups) return <PageSpinner />;
+  // Semeia os chips de idade/rating a partir do que já existe em banco — só
+  // roda uma vez, quando os dados chegam (contentReady vira true e fica).
+  // Depois disso, chips e banco ficam sincronizados pelas próprias mutações
+  // de toggle (ver toggleAgePreset/toggleRatingPreset/toggleAgeOn/etc.), não
+  // por re-sincronizar aqui de novo — senão uma exclusão em andamento
+  // reapareceria no próximo refetch antes do delete confirmar.
+  useEffect(() => {
+    if (!contentReady) return;
+    setAgeBands(ageBandsFromCategories(cats));
+    setRatingBands(ratingBandsFromCategories(cats));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentReady]);
 
-  const cats = categories ?? [];
-  const grps = groups ?? [];
+  if (loadingCats || loadingGroups) return <PageSpinner />;
 
   const existingNames = new Set(cats.map((c) => c.name.trim().toLowerCase()));
   const previewNames = new Set(previewCells.map((c) => c.name.trim().toLowerCase()));
@@ -163,15 +208,54 @@ function Setup({
     (c) => previewCells.length > 0 && !previewNames.has(c.name.trim().toLowerCase())
   );
 
-  function toggleAgePreset(preset: AgePreset) {
-    setAgeBands((prev) =>
-      prev.some((b) => b.name === preset.name) ? prev.filter((b) => b.name !== preset.name) : [...prev, preset]
-    );
+  // Desmarcar um chip que já tem classificação gerada EXCLUI na hora — não
+  // existe botão "Excluir" separado nem confirmação extra, o clique no chip
+  // já é a ação deliberada. Marcar só atualiza a seleção local; a criação de
+  // verdade continua acontecendo em "Gerar classificações".
+  async function deleteCatsMatching(pred: (c: TournamentCategory) => boolean) {
+    const toDelete = cats.filter(pred);
+    if (toDelete.length === 0) return;
+    try {
+      await Promise.all(toDelete.map((c) => deleteCategory.mutateAsync(c.id)));
+    } catch (e: any) { setError(e.message); }
   }
-  function toggleRatingPreset(preset: RatingPreset) {
-    setRatingBands((prev) =>
-      prev.some((b) => b.name === preset.name) ? prev.filter((b) => b.name !== preset.name) : [...prev, preset]
-    );
+
+  async function toggleAgePreset(preset: AgePreset) {
+    const isActive = ageBands.some((b) => b.name === preset.name);
+    setAgeBands((prev) => (isActive ? prev.filter((b) => b.name !== preset.name) : [...prev, preset]));
+    if (isActive) {
+      const key = `${preset.minAge ?? ''}:${preset.maxAge ?? ''}`;
+      await deleteCatsMatching((c) => `${c.min_age ?? ''}:${c.max_age ?? ''}` === key);
+    }
+  }
+  async function toggleRatingPreset(preset: RatingPreset) {
+    const isActive = ratingBands.some((b) => b.name === preset.name);
+    setRatingBands((prev) => (isActive ? prev.filter((b) => b.name !== preset.name) : [...prev, preset]));
+    if (isActive) {
+      const key = `${preset.minRating ?? ''}:${preset.maxRating ?? ''}`;
+      await deleteCatsMatching((c) => `${c.min_rating ?? ''}:${c.max_rating ?? ''}` === key);
+    }
+  }
+  async function toggleAgeOn() {
+    const next = !ageOn;
+    setAgeOn(next);
+    if (!next) {
+      setAgeBands([]);
+      await deleteCatsMatching((c) => c.min_age != null || c.max_age != null);
+    }
+  }
+  async function toggleRatingOn() {
+    const next = !ratingOn;
+    setRatingOn(next);
+    if (!next) {
+      setRatingBands([]);
+      await deleteCatsMatching((c) => c.min_rating != null || c.max_rating != null);
+    }
+  }
+  async function toggleFemale() {
+    const next = !femaleOn;
+    setFemaleOn(next);
+    if (!next) await deleteCatsMatching((c) => c.sex === 'w');
   }
   function addCustomAge() {
     if (!customAge.name.trim()) { setError('Informe o nome da faixa de idade.'); return; }
@@ -313,6 +397,10 @@ function Setup({
 
   const hasAgeCats = cats.some((c) => c.min_age != null || c.max_age != null);
   const hasRatingCats = cats.some((c) => c.min_rating != null || c.max_rating != null);
+  // Faixas customizadas (fora dos presets) viram chip extra — mesmo
+  // mecanismo de marcar/desmarcar dos presets, sem campo de nome separado.
+  const customAgeBands = ageBands.filter((b) => !AGE_PRESETS.some((p) => p.name === b.name));
+  const customRatingBands = ratingBands.filter((b) => !RATING_PRESETS.some((p) => p.name === b.name));
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -337,7 +425,7 @@ function Setup({
           dataTour="pergunta-idade"
           question="Seu torneio vai ter classificação separada por idade?"
           on={ageOn}
-          onToggle={() => setAgeOn((v) => !v)}
+          onToggle={toggleAgeOn}
         >
           <div className="flex flex-wrap gap-1.5">
             {AGE_PRESETS.map((p) => (
@@ -346,6 +434,13 @@ function Setup({
               </Chip>
             ))}
           </div>
+          {customAgeBands.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {customAgeBands.map((b) => (
+                <Chip key={b.name} active onClick={() => toggleAgePreset(b)}>{b.name}</Chip>
+              ))}
+            </div>
+          )}
           <CustomRangeForm
             label="idade"
             value={customAge}
@@ -358,7 +453,7 @@ function Setup({
           dataTour="pergunta-rating"
           question="Seu torneio vai ter classificação separada por rating?"
           on={ratingOn}
-          onToggle={() => setRatingOn((v) => !v)}
+          onToggle={toggleRatingOn}
         >
           <p className="text-xs text-amber-600 dark:text-amber-400">
             Rating não é pedido na inscrição pública — preencha em Participantes pra cada jogador que precisar.
@@ -370,6 +465,13 @@ function Setup({
               </Chip>
             ))}
           </div>
+          {customRatingBands.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {customRatingBands.map((b) => (
+                <Chip key={b.name} active onClick={() => toggleRatingPreset(b)}>{b.name}</Chip>
+              ))}
+            </div>
+          )}
           <CustomRangeForm
             label="rating"
             value={customRating}
@@ -382,7 +484,7 @@ function Setup({
           dataTour="pergunta-feminina"
           question="Seu torneio vai ter classificação feminina?"
           on={femaleOn}
-          onToggle={() => setFemaleOn((v) => !v)}
+          onToggle={toggleFemale}
         >
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Cruza com idade/rating quando marcados — ex: idade + feminina gera &quot;Sub-17&quot; e &quot;Sub-17 Feminino&quot;,
@@ -395,7 +497,7 @@ function Setup({
           <div className="card p-4 space-y-3" data-tour="gerar-classificacoes">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Preview — {previewCells.length} classificaç{previewCells.length !== 1 ? 'ões' : 'ão'}
+                Prévia — {previewCells.length} classificaç{previewCells.length !== 1 ? 'ões' : 'ão'}
               </p>
               {missingCells.length > 0 && (
                 <span className="text-xs text-gray-500 dark:text-gray-400">{missingCells.length} nova{missingCells.length !== 1 ? 's' : ''}</span>
@@ -437,9 +539,7 @@ function Setup({
               <CategoryRow
                 key={c.id}
                 category={c}
-                tournamentId={tournamentId}
                 stale={staleCats.some((s) => s.id === c.id)}
-                onError={setError}
               />
             ))}
           </div>
@@ -616,30 +716,18 @@ function ModeOption({
   );
 }
 
-function CategoryRow({
-  category, tournamentId, stale, onError,
-}: {
-  category: TournamentCategory; tournamentId: string; stale: boolean; onError: (m: string) => void;
-}) {
-  const updateCategory = useUpdateCategory(tournamentId);
-  const deleteCategory = useDeleteCategory(tournamentId);
-  const [name, setName] = useState(category.name);
-  const [confirmDel, setConfirmDel] = useState(false);
+// Sem renomear e sem excluir aqui de propósito — o nome é derivado da faixa
+// escolhida nos chips acima; nome diferente é o caso de "+ adicionar
+// classificação manualmente" (createCategory), e excluir é desmarcar o chip
+// correspondente (ver toggleAgePreset/toggleRatingPreset/toggleFemale).
+function CategoryRow({ category, stale }: { category: TournamentCategory; stale: boolean }) {
   const summary = critSummary(category);
 
   return (
     <div className="card p-3 flex flex-wrap items-center gap-3">
       <div className="flex-1 min-w-[10rem]">
         <div className="flex items-center gap-2">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => {
-              if (name.trim() && name.trim() !== category.name) {
-                updateCategory.mutateAsync({ id: category.id, patch: { name } }).catch((e) => onError(e.message));
-              }
-            }}
-          />
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{category.name}</p>
           {stale && (
             <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
               fora do padrão atual
@@ -648,22 +736,6 @@ function CategoryRow({
         </div>
         {summary && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{summary}</p>}
       </div>
-      {confirmDel ? (
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="secondary" loading={deleteCategory.isPending}
-            onClick={() => deleteCategory.mutateAsync(category.id).catch((e) => { onError(e.message); setConfirmDel(false); })}>
-            Confirmar
-          </Button>
-          <button onClick={() => setConfirmDel(false)} className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400">Cancelar</button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setConfirmDel(true)}
-          className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
-        >
-          Excluir
-        </button>
-      )}
     </div>
   );
 }

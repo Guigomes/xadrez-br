@@ -87,11 +87,19 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     await expect(page.locator('.driver-popover')).toHaveCount(0);
 
     // Navegação real: o organizador clica na aba, o tour não pula sozinho.
+    // "Agora falta gente" mora em Inscrições agora — o link de inscrição
+    // saiu de Participantes.
+    await page.getByRole('link', { name: 'Inscrições' }).click();
+    await page.waitForURL(/\/admin\/tournaments\/[^/]+\/registrations/);
+
+    await expect(popoverTitle(page)).toHaveText('Agora falta gente');
+    // Último passo do bloco de Inscrições — botão "Entendi", não "Próximo".
+    await page.locator('.driver-popover-next-btn', { hasText: 'Entendi' }).click();
+    await expect(page.locator('.driver-popover')).toHaveCount(0);
+
     await page.getByRole('link', { name: 'Participantes' }).click();
     await page.waitForURL(/\/admin\/tournaments\/[^/]+\/players/);
 
-    await expect(popoverTitle(page)).toHaveText('Agora falta gente');
-    await nextBtn(page).click();
     await expect(popoverTitle(page)).toHaveText('Ou cadastre você mesmo');
     // Último passo do tour inteiro — nextStepAfter('cadastrar') é null, então
     // o botão é "Concluir", não "Entendi".

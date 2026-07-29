@@ -1,18 +1,18 @@
 /**
  * Passos do tour guiado de criação de torneio.
  *
- * O tour atravessa quatro rotas e NÃO navega sozinho — quem navega é o
- * organizador (clica "Novo torneio", submete o formulário). Cada rota tem seu
- * bloco de passos; quando o bloco acaba, o progresso é gravado e o tour se cala
- * até o componente remontar na rota seguinte. Isso evita duplicar aqui as
- * regras de navegação que já existem nas páginas — notavelmente o `router.push`
- * de app/admin/tournaments/new/page.tsx.
+ * O tour atravessa cinco rotas e NÃO navega sozinho — quem navega é o
+ * organizador (clica "Novo torneio", submete o formulário, clica numa aba).
+ * Cada rota tem seu bloco de passos; quando o bloco acaba, o progresso é
+ * gravado e o tour se cala até o componente remontar na rota seguinte. Isso
+ * evita duplicar aqui as regras de navegação que já existem nas páginas —
+ * notavelmente o `router.push` de app/admin/tournaments/new/page.tsx.
  *
  * Os alvos são atributos `data-tour` explícitos. Ancorar por classe ou por
  * texto quebraria no primeiro ajuste de layout.
  */
 
-export type TourRoute = 'admin' | 'new' | 'groups' | 'players';
+export type TourRoute = 'admin' | 'new' | 'groups' | 'registrations' | 'players';
 
 export interface TourStep {
   id: string;
@@ -88,7 +88,8 @@ export const TOUR_STEPS: TourStep[] = [
     body:
       'O rating escolhido aqui ordena o ranking inicial, que é o que gera os pareamentos. ' +
       'A ordem de desempate decide quem fica na frente quando dois jogadores terminam com os ' +
-      'mesmos pontos — na dúvida, deixe o padrão.',
+      'mesmos pontos — na dúvida, deixe o padrão. Clique em "Dúvidas sobre o desempate?" pra ' +
+      'entender cada critério.',
   },
   {
     id: 'visibilidade',
@@ -172,12 +173,12 @@ export const TOUR_STEPS: TourStep[] = [
 
   {
     id: 'link-inscricao',
-    route: 'players',
+    route: 'registrations',
     target: 'link-inscricao',
     title: 'Agora falta gente',
     body:
-      'Copie este link e mande para os jogadores — eles se inscrevem sozinhos e você aprova ' +
-      'na aba Inscrições.',
+      'Copie este link e mande para os jogadores — eles se inscrevem sozinhos e a inscrição ' +
+      'aparece aqui embaixo pra você aprovar.',
   },
   {
     id: 'cadastrar',
@@ -185,7 +186,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: 'cadastrar-participante',
     title: 'Ou cadastre você mesmo',
     body:
-      'Use "Cadastrar participante" para adicionar à mão quem não vai usar o link. Com gente ' +
+      'Use "Cadastrar participante" pra adicionar à mão quem não vai usar o link. Com gente ' +
       'no torneio, a aba Rodadas libera o pareamento. É isso — bom torneio!',
   },
 ];
@@ -195,6 +196,7 @@ export function matchRoute(pathname: string): TourRoute | null {
   if (/^\/admin\/?$/.test(pathname)) return 'admin';
   if (/^\/admin\/tournaments\/new\/?$/.test(pathname)) return 'new';
   if (/^\/admin\/tournaments\/[^/]+\/groups\/?$/.test(pathname)) return 'groups';
+  if (/^\/admin\/tournaments\/[^/]+\/registrations\/?$/.test(pathname)) return 'registrations';
   if (/^\/admin\/tournaments\/[^/]+\/players\/?$/.test(pathname)) return 'players';
   return null;
 }

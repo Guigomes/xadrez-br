@@ -5,10 +5,11 @@ import { TOUR_STEPS, matchRoute, stepsForRoute, nextStepAfter } from '../steps';
 import { readProgress, isDismissed, shouldAutoStart } from '../state';
 
 describe('matchRoute', () => {
-  it('reconhece as quatro rotas do fluxo', () => {
+  it('reconhece as cinco rotas do fluxo', () => {
     expect(matchRoute('/admin')).toBe('admin');
     expect(matchRoute('/admin/tournaments/new')).toBe('new');
     expect(matchRoute('/admin/tournaments/aberto-sp-20260315/groups')).toBe('groups');
+    expect(matchRoute('/admin/tournaments/aberto-sp-20260315/registrations')).toBe('registrations');
     expect(matchRoute('/admin/tournaments/aberto-sp-20260315/players')).toBe('players');
   });
 
@@ -23,7 +24,6 @@ describe('matchRoute', () => {
 
   it('ignora o resto do admin e o site público', () => {
     expect(matchRoute('/admin/tournaments/x/rounds')).toBeNull();
-    expect(matchRoute('/admin/tournaments/x/registrations')).toBeNull();
     expect(matchRoute('/admin/stats')).toBeNull();
     expect(matchRoute('/tournaments/x/players')).toBeNull();
     expect(matchRoute('/')).toBeNull();
@@ -90,7 +90,7 @@ describe('integridade do registro', () => {
     // os de outra quebrariam a retomada silenciosamente.
     const ordem = TOUR_STEPS.map((s) => s.route);
     const primeiraOcorrencia = ordem.filter((r, i) => ordem.indexOf(r) === i);
-    expect(primeiraOcorrencia).toEqual(['admin', 'new', 'groups', 'players']);
+    expect(primeiraOcorrencia).toEqual(['admin', 'new', 'groups', 'registrations', 'players']);
     expect(ordem).toEqual(primeiraOcorrencia.flatMap((r) => ordem.filter((x) => x === r)));
   });
 

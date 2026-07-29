@@ -73,8 +73,8 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     // aparecerem — sem esperar, a leitura corre na frente da UI.
     await expect(page.locator('div.card.p-3')).toHaveCount(2, { timeout: 15_000 });
 
-    const categoryNames = await page.locator('div.card.p-3 input').evaluateAll(
-      (els) => els.map((el) => (el as HTMLInputElement).value)
+    const categoryNames = await page.locator('div.card.p-3 p.font-medium').evaluateAll(
+      (els) => els.map((el) => el.textContent?.trim())
     );
     // A célula com zero critérios não vira linha — é o Geral, implícito. Só
     // as duas células com pelo menos um critério aparecem.

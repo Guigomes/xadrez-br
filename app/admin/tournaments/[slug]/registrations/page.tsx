@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState } from 'react';
-import Link from 'next/link';
 import { useTournament } from '@/lib/hooks/use-tournament';
 import { useUser } from '@/lib/hooks/use-auth';
 import { useCategories } from '@/lib/hooks/use-classifications';
@@ -17,6 +16,7 @@ import { deriveCategory, type CategoryCandidate } from '@/lib/utils/classificati
 import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
 import type { RegistrationStatus } from '@/types/database';
 
@@ -49,9 +49,24 @@ export default function AdminRegistrationsPage({ params }: Props) {
   const [filter, setFilter] = useState<RegistrationStatus>('pending');
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
 
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p>Torneio não encontrado.</p>;
+
+  const registrationPath = `/tournaments/${slug}/register`;
+  const registrationUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${registrationPath}` : registrationPath;
+
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(registrationUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      setError('Não foi possível copiar automaticamente — selecione e copie o link manualmente.');
+    }
+  }
 
   const all = registrations ?? [];
   const filtered = all.filter((r) => r.status === filter);
@@ -113,17 +128,27 @@ export default function AdminRegistrationsPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Inscrições {pendingCount > 0 && `· ${pendingCount} pendente${pendingCount > 1 ? 's' : ''}`}
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Inscrições {pendingCount > 0 && `· ${pendingCount} pendente${pendingCount > 1 ? 's' : ''}`}
+      </p>
+
+      {/* Link de inscrição — o organizador compartilha com os jogadores */}
+      <div className="card p-4 mb-4" data-tour="link-inscricao">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Link de inscrição</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          Compartilhe este link com os jogadores para eles se inscreverem sozinhos.
         </p>
-        <Link
-          href={`/tournaments/${slug}/register`}
-          target="_blank"
-          className="rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3 py-1.5 text-sm font-medium text-brand-600 dark:text-brand-400"
-        >
-          Ver formulário público
-        </Link>
+        <div className="flex gap-2">
+          <Input
+            readOnly
+            value={registrationUrl}
+            onClick={(e) => e.currentTarget.select()}
+            className="flex-1"
+          />
+          <Button variant="secondary" onClick={handleCopyLink}>
+            {linkCopied ? '✓ Copiado' : 'Copiar'}
+          </Button>
+        </div>
       </div>
 
       {error && (

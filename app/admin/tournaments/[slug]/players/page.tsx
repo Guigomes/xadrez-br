@@ -40,7 +40,6 @@ export default function AdminPlayersPage({ params }: Props) {
   const [importReport, setImportReport] = useState('');
   const [importUrl, setImportUrl] = useState('');
   const [error, setError] = useState('');
-  const [linkCopied, setLinkCopied] = useState(false);
 
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p>Torneio não encontrado.</p>;
@@ -161,20 +160,6 @@ export default function AdminPlayersPage({ params }: Props) {
   const unclassified = hasClassifications
     ? (tPlayers ?? []).filter((tp) => !(tp as any).category)
     : [];
-  const registrationPath = `/tournaments/${slug}/register`;
-  const registrationUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${registrationPath}` : registrationPath;
-
-  async function handleCopyLink() {
-    try {
-      await navigator.clipboard.writeText(registrationUrl);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch {
-      setError('Não foi possível copiar automaticamente — selecione e copie o link manualmente.');
-    }
-  }
-
   return (
     <div className="max-w-2xl">
       {error && (
@@ -187,26 +172,7 @@ export default function AdminPlayersPage({ params }: Props) {
         </p>
       )}
 
-      {isNative ? (
-        /* Link de inscrição — o organizador compartilha com os jogadores */
-        <div className="card p-4 mb-4" data-tour="link-inscricao">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Link de inscrição</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            Compartilhe este link com os jogadores para eles se inscreverem sozinhos.
-          </p>
-          <div className="flex gap-2">
-            <Input
-              readOnly
-              value={registrationUrl}
-              onClick={(e) => e.currentTarget.select()}
-              className="flex-1"
-            />
-            <Button variant="secondary" onClick={handleCopyLink}>
-              {linkCopied ? '✓ Copiado' : 'Copiar'}
-            </Button>
-          </div>
-        </div>
-      ) : (
+      {!isNative && (
         /* Import by URL (chess-results) — só para torneios importados */
         <div className="card p-4 mb-4">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Importar participantes por link</h2>
