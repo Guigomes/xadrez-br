@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory } from '@/lib/hooks/use-tournament';
-import { usePlayerSearch, useCreatePlayer, useSyncCbxRating, type CbxRatingResult } from '@/lib/hooks/use-player';
+import { useCreatePlayer, useSyncCbxRating, type CbxRatingResult } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { useCategories } from '@/lib/hooks/use-classifications';
 import { deriveCategory, type CategoryCandidate } from '@/lib/utils/classification-match';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { formatScore } from '@/lib/utils/chess';
-import type { Player, PlayerFormValues } from '@/types/database';
+import type { PlayerFormValues } from '@/types/database';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -29,10 +29,6 @@ export default function AdminPlayersPage({ params }: Props) {
   const isNative = tournament?.mode === 'native';
   const { data: groups } = useGroups(isNative ? tournament!.id : '');
   const createGroup = useCreateDefaultGroup(tournament?.id ?? '');
-
-  const [search, setSearch] = useState('');
-  const [showNewForm, setShowNewForm] = useState(false);
-  const { data: searchResults } = usePlayerSearch(search);
 
   const [newPlayer, setNewPlayer] = useState<Partial<PlayerFormValues>>({});
   const [groupId, setGroupId] = useState('');
@@ -66,21 +62,6 @@ export default function AdminPlayersPage({ params }: Props) {
     return derived?.id;
   }
 
-  async function handleAddExisting(player: Player) {
-    if (needsGroup && !groupId) { setError('Selecione o grupo antes de adicionar.'); return; }
-    setError('');
-    try {
-      await addPlayer.mutateAsync({
-        player_id: player.id,
-        pairing_group_id: groupId || undefined,
-        category_id: deriveCategoryId(player),
-      });
-      setSearch('');
-    } catch (err: any) {
-      setError(err.message);
-    }
-  }
-
   async function handleCreateAndAdd(e: React.FormEvent) {
     e.preventDefault();
     if (needsGroup && !groupId) { setError('Selecione o grupo antes de adicionar.'); return; }
@@ -93,7 +74,6 @@ export default function AdminPlayersPage({ params }: Props) {
         category_id: deriveCategoryId(p),
       });
       setNewPlayer({});
-      setShowNewForm(false);
     } catch (err: any) {
       setError(err.message);
     }
@@ -141,13 +121,11 @@ export default function AdminPlayersPage({ params }: Props) {
     }
   }
 
-  const existingIds = new Set(tPlayers?.map((tp) => (tp as any).player?.id));
-
   // Classificação (célula da partição) é derivada de birth_year/rating_std/sex.
-  // Cadastro manual e "adicionar existente" já derivam ao adicionar (ver
-  // deriveCategoryId acima) — mas import por URL não passa por esse fluxo e
-  // chess-results não traz esses campos, então continua sem classificação até
-  // alguém corrigir aqui. Melhor avisar do que fingir que já classificou.
+  // Cadastro manual já deriva ao adicionar (ver deriveCategoryId acima) — mas
+  // import por URL não passa por esse fluxo e chess-results não traz esses
+  // campos, então continua sem classificação até alguém corrigir aqui.
+  // Melhor avisar do que fingir que já classificou.
   const classificationDims = tournament.classification_dimensions ?? [];
   const hasClassifications = classificationDims.length > 0;
   function missingClassificationFields(player: any): string[] {
@@ -215,66 +193,36 @@ export default function AdminPlayersPage({ params }: Props) {
         </div>
       )}
 
-      {/* Search existing players */}
-      <div className="card p-4 mb-4" data-tour="cadastrar-participante">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Adicionar jogador existente</h2>
-          <Button size="sm" onClick={() => setShowNewForm((v) => !v)}>
-            {showNewForm ? 'Fechar cadastro' : 'Cadastrar participante'}
-          </Button>
+      {/* Cadastrar participante — sem distinção entre "buscar existente" e
+          "cadastrar novo": o ID CBX é a chave. Se já existir um jogador com
+          esse ID, useCreatePlayer reaproveita o registro em vez de duplicar. */}
+      <form onSubmit={handleCreateAndAdd} className="card p-4 mb-4 space-y-3" data-tour="cadastrar-participante">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Cadastrar participante</h2>
+        <Input label="Nome completo *" required value={newPlayer.full_name ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, full_name: e.target.value }))} />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Ano de nascimento" type="number" value={newPlayer.birth_year ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, birth_year: parseInt(e.target.value) || undefined }))} />
+          <Select label="Sexo" value={newPlayer.sex ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, sex: (e.target.value || undefined) as PlayerFormValues['sex'] }))}>
+            <option value="">Prefiro não informar</option>
+            <option value="m">Masculino</option>
+            <option value="w">Feminino</option>
+          </Select>
         </div>
-        <Input
-          placeholder="Buscar por nome..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {(searchResults?.length ?? 0) > 0 && (
-          <div className="mt-2 divide-y divide-gray-100 dark:divide-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            {searchResults!.filter((p) => !existingIds.has(p.id)).map((player) => (
-              <div key={player.id} className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{player.full_name}</p>
-                  <p className="text-xs text-gray-400">{player.state} {player.rating_std ? `· ${player.rating_std}` : ''}</p>
-                </div>
-                <Button size="sm" onClick={() => handleAddExisting(player)} loading={addPlayer.isPending}
-                  disabled={needsGroup && !groupId}>
-                  Adicionar
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* New player form */}
-      {showNewForm && (
-        <form onSubmit={handleCreateAndAdd} className="card p-4 mb-4 space-y-3">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Novo jogador</h2>
-          <Input label="Nome completo *" required value={newPlayer.full_name ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, full_name: e.target.value }))} />
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Ano de nascimento" type="number" value={newPlayer.birth_year ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, birth_year: parseInt(e.target.value) || undefined }))} />
-            <Select label="Sexo" value={newPlayer.sex ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, sex: (e.target.value || undefined) as PlayerFormValues['sex'] }))}>
-              <option value="">Prefiro não informar</option>
-              <option value="m">Masculino</option>
-              <option value="w">Feminino</option>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Estado" value={newPlayer.state ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, state: e.target.value }))} />
-            <Input label="Rating Std" type="number" value={newPlayer.rating_std ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, rating_std: parseInt(e.target.value) || undefined }))} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="ID CBX" value={newPlayer.cbx_id ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, cbx_id: e.target.value }))} />
-            <Input label="ID FIDE" value={newPlayer.fide_id ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, fide_id: e.target.value }))} />
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" loading={createPlayer.isPending || addPlayer.isPending} disabled={needsGroup && !groupId}>
-              Cadastrar e adicionar
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setShowNewForm(false)}>Cancelar</Button>
-          </div>
-        </form>
-      )}
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Estado" value={newPlayer.state ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, state: e.target.value }))} />
+          <Input label="Rating Std" type="number" value={newPlayer.rating_std ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, rating_std: parseInt(e.target.value) || undefined }))} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="ID CBX" value={newPlayer.cbx_id ?? ''}
+            hint="Já cadastrado? A gente reaproveita — não duplica."
+            onChange={(e) => setNewPlayer((p) => ({ ...p, cbx_id: e.target.value }))}
+          />
+          <Input label="ID FIDE" value={newPlayer.fide_id ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, fide_id: e.target.value }))} />
+        </div>
+        <Button type="submit" loading={createPlayer.isPending || addPlayer.isPending} disabled={needsGroup && !groupId}>
+          Cadastrar e adicionar
+        </Button>
+      </form>
 
       {unclassified.length > 0 && (
         <p className="mb-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">

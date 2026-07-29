@@ -69,10 +69,23 @@ export function usePlayerTournaments(playerId: string) {
   });
 }
 
+/**
+ * Cadastra um jogador — ou reaproveita, se o ID CBX informado já existir.
+ * O ID CBX é a chave de deduplicação: sem essa checagem, cadastrar o mesmo
+ * jogador em dois torneios criaria dois registros de players duplicados
+ * (players/page.tsx não pede mais pra buscar por nome antes de cadastrar).
+ */
 export function useCreatePlayer() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (values: PlayerFormValues) => {
+      const cbxId = values.cbx_id?.trim();
+      if (cbxId) {
+        const { data: existing, error: findError } = await supabase
+          .from('players').select('*').eq('cbx_id', cbxId).maybeSingle();
+        if (findError) throw findError;
+        if (existing) return existing;
+      }
       const { data, error } = await supabase
         .from('players')
         .insert(values)
