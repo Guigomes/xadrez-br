@@ -98,6 +98,24 @@ export function useCreatePlayer() {
   });
 }
 
+/** Edita os dados cadastrais de um jogador já existente (nome, nascimento, IDs...). */
+export function useUpdatePlayer(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<PlayerFormValues> }) => {
+      const { data, error } = await supabase
+        .from('players')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) }),
+  });
+}
+
 export interface CbxRatingResult {
   ratingStd: number | null;
   ratingRpd: number | null;

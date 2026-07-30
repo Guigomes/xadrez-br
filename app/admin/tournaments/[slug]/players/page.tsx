@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory } from '@/lib/hooks/use-tournament';
-import { useCreatePlayer, useSyncCbxRating, type CbxRatingResult } from '@/lib/hooks/use-player';
+import { useCreatePlayer, useUpdatePlayer, useSyncCbxRating, type CbxRatingResult } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { useCategories } from '@/lib/hooks/use-classifications';
 import { deriveCategory, type CategoryCandidate } from '@/lib/utils/classification-match';
@@ -26,11 +26,16 @@ export default function AdminPlayersPage({ params }: Props) {
   const setCategory = useSetPlayerCategory(tournament?.id ?? '');
   const { data: categories } = useCategories(tournament?.id ?? '');
   const createPlayer = useCreatePlayer();
+  const updatePlayer = useUpdatePlayer(tournament?.id ?? '');
   const isNative = tournament?.mode === 'native';
-  const { data: groups } = useGroups(isNative ? tournament!.id : '');
+  const { data: groups, isLoading: loadingGroups } = useGroups(isNative ? tournament!.id : '');
   const createGroup = useCreateDefaultGroup(tournament?.id ?? '');
 
   const [newPlayer, setNewPlayer] = useState<Partial<PlayerFormValues>>({});
+  const [categoryId, setCategoryId] = useState('');
+  const [categoryTouched, setCategoryTouched] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Partial<PlayerFormValues>>({});
   const [importing, setImporting] = useState(false);
   const [importReport, setImportReport] = useState('');
   const [importUrl, setImportUrl] = useState('');
@@ -75,13 +80,46 @@ export default function AdminPlayersPage({ params }: Props) {
     setError('');
     try {
       const p = await createPlayer.mutateAsync(newPlayer as PlayerFormValues);
-      const categoryId = deriveCategoryId(p);
+      // categoryId reflete a sugestão automática (idade/sexo) ou a escolha
+      // manual do organizador, se ele mudou o select — deriveCategoryId(p) só
+      // entra como último recurso (ex.: o jogador já existia com dados que o
+      // form não mostrou, então nada aqui foi tocado).
+      const finalCategoryId = categoryId || deriveCategoryId(p);
       await addPlayer.mutateAsync({
         player_id: p.id,
-        pairing_group_id: resolveGroupId(categoryId),
-        category_id: categoryId,
+        pairing_group_id: resolveGroupId(finalCategoryId),
+        category_id: finalCategoryId,
       });
       setNewPlayer({});
+      setCategoryId('');
+      setCategoryTouched(false);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }
+
+  function startEdit(tpId: string, player: any) {
+    setEditingId(tpId);
+    setEditValues({
+      full_name: player.full_name,
+      birth_year: player.birth_year ?? undefined,
+      sex: player.sex ?? undefined,
+      state: player.state ?? undefined,
+      cbx_id: player.cbx_id ?? undefined,
+      fide_id: player.fide_id ?? undefined,
+    });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditValues({});
+  }
+
+  async function handleSaveEdit(playerId: string) {
+    setError('');
+    try {
+      await updatePlayer.mutateAsync({ id: playerId, patch: editValues });
+      cancelEdit();
     } catch (err: any) {
       setError(err.message);
     }
@@ -201,13 +239,44 @@ export default function AdminPlayersPage({ params }: Props) {
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Cadastrar participante</h2>
         <Input label="Nome completo *" required value={newPlayer.full_name ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, full_name: e.target.value }))} />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Ano de nascimento" type="number" value={newPlayer.birth_year ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, birth_year: parseInt(e.target.value) || undefined }))} />
-          <Select label="Sexo" value={newPlayer.sex ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, sex: (e.target.value || undefined) as PlayerFormValues['sex'] }))}>
+          <Input
+            label="Ano de nascimento" type="number" value={newPlayer.birth_year ?? ''}
+            onChange={(e) => {
+              const birth_year = parseInt(e.target.value) || undefined;
+              setNewPlayer((p) => ({ ...p, birth_year }));
+              if (!categoryTouched) {
+                setCategoryId(deriveCategoryId({ sex: newPlayer.sex ?? null, birth_year: birth_year ?? null, rating_std: null }) ?? '');
+              }
+            }}
+          />
+          <Select
+            label="Sexo" value={newPlayer.sex ?? ''}
+            onChange={(e) => {
+              const sex = (e.target.value || undefined) as PlayerFormValues['sex'];
+              setNewPlayer((p) => ({ ...p, sex }));
+              if (!categoryTouched) {
+                setCategoryId(deriveCategoryId({ sex: sex ?? null, birth_year: newPlayer.birth_year ?? null, rating_std: null }) ?? '');
+              }
+            }}
+          >
             <option value="">Prefiro não informar</option>
             <option value="m">Masculino</option>
             <option value="w">Feminino</option>
           </Select>
         </div>
+        {hasClassifications && (categories?.length ?? 0) > 0 && (
+          <div>
+            <Select
+              label="Classificação"
+              value={categoryId}
+              onChange={(e) => { setCategoryId(e.target.value); setCategoryTouched(true); }}
+            >
+              <option value="">Geral (sem classificação)</option>
+              {categories!.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+            <p className="mt-1 text-xs text-gray-400">Sugerida pela idade/sexo — troque se quiser.</p>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Input label="Estado" value={newPlayer.state ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, state: e.target.value }))} />
           <Input
@@ -217,7 +286,11 @@ export default function AdminPlayersPage({ params }: Props) {
           />
         </div>
         <Input label="ID FIDE" value={newPlayer.fide_id ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, fide_id: e.target.value }))} />
-        <Button type="submit" loading={createPlayer.isPending || addPlayer.isPending}>
+        <Button
+          type="submit"
+          loading={createPlayer.isPending || addPlayer.isPending}
+          disabled={isNative && loadingGroups}
+        >
           Adicionar
         </Button>
       </form>
@@ -249,20 +322,84 @@ export default function AdminPlayersPage({ params }: Props) {
                 <div key={tp.id} className="flex items-center gap-3 px-4 py-3">
                   <span className="text-xs text-gray-400 w-5 text-center">{tp.initial_ranking ?? i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {tpAny.player?.full_name}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {tpAny.player?.city ?? tpAny.player?.state ?? ''}
-                      {tpAny.player?.rating_std ? ` · ${tpAny.player.rating_std}` : ''}
-                      {tpAny.player?.fide_id ? ` · FIDE ${tpAny.player.fide_id}` : ''}
-                    </p>
-                    {tpAny.player?.cbx_id && tournament && (
-                      <CbxRatingButton
-                        tournamentId={tournament.id}
-                        playerId={tpAny.player.id}
-                        declaredName={tpAny.player.full_name}
-                      />
+                    {editingId === tp.id ? (
+                      <div className="space-y-2 py-1">
+                        <input
+                          className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-sm"
+                          placeholder="Nome completo"
+                          value={editValues.full_name ?? ''}
+                          onChange={(e) => setEditValues((v) => ({ ...v, full_name: e.target.value }))}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-xs"
+                            type="number" placeholder="Ano de nascimento"
+                            value={editValues.birth_year ?? ''}
+                            onChange={(e) => setEditValues((v) => ({ ...v, birth_year: parseInt(e.target.value) || undefined }))}
+                          />
+                          <select
+                            className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-xs"
+                            value={editValues.sex ?? ''}
+                            onChange={(e) => setEditValues((v) => ({ ...v, sex: (e.target.value || undefined) as PlayerFormValues['sex'] }))}
+                          >
+                            <option value="">Prefiro não informar</option>
+                            <option value="m">Masculino</option>
+                            <option value="w">Feminino</option>
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-xs"
+                            placeholder="Estado"
+                            value={editValues.state ?? ''}
+                            onChange={(e) => setEditValues((v) => ({ ...v, state: e.target.value }))}
+                          />
+                          <input
+                            className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-xs"
+                            placeholder="ID CBX"
+                            value={editValues.cbx_id ?? ''}
+                            onChange={(e) => setEditValues((v) => ({ ...v, cbx_id: e.target.value }))}
+                          />
+                        </div>
+                        <input
+                          className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-xs"
+                          placeholder="ID FIDE"
+                          value={editValues.fide_id ?? ''}
+                          onChange={(e) => setEditValues((v) => ({ ...v, fide_id: e.target.value }))}
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" loading={updatePlayer.isPending} onClick={() => handleSaveEdit(tpAny.player.id)}>
+                            Salvar
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={cancelEdit}>Cancelar</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {tpAny.player?.full_name}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {tpAny.player?.city ?? tpAny.player?.state ?? ''}
+                          {tpAny.player?.rating_std ? ` · ${tpAny.player.rating_std}` : ''}
+                          {tpAny.player?.cbx_id ? ` · CBX ${tpAny.player.cbx_id}` : ''}
+                          {tpAny.player?.fide_id ? ` · FIDE ${tpAny.player.fide_id}` : ''}
+                        </p>
+                        {tpAny.player?.cbx_id && tournament && (
+                          <CbxRatingButton
+                            tournamentId={tournament.id}
+                            playerId={tpAny.player.id}
+                            declaredName={tpAny.player.full_name}
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => startEdit(tp.id, tpAny.player)}
+                          className="mt-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"
+                        >
+                          ✏️ Editar
+                        </button>
+                      </>
                     )}
                     {hasClassifications && (categories?.length ?? 0) > 0 && (
                       <div className="mt-1 flex items-center gap-2">

@@ -106,28 +106,28 @@ export default async function TournamentLayout({ children, params }: Props) {
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
         <div className="container-app py-5">
           <div className="min-w-0 mb-1">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge className={getTournamentStatusColor(effectiveStatus, tournament.registration_end_date)}>
-                  {effectiveStatus === 'ongoing' && (
-                    <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                  )}
-                  {getTournamentStatusLabel(effectiveStatus, tournament.registration_end_date)}
-                </Badge>
-                {tournament.tournament_type === 'swiss' && (
-                  <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                    Suíço
-                  </Badge>
-                )}
-              </div>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
+                {tournament.name}
+              </h1>
               <div className="flex items-center gap-2 shrink-0">
                 <NotifyButton tournamentId={tournament.id} tournamentSlug={slug} />
                 <ShareButton title={tournament.name} />
               </div>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {tournament.name}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <Badge className={getTournamentStatusColor(effectiveStatus, tournament.registration_end_date)}>
+                {effectiveStatus === 'ongoing' && (
+                  <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                )}
+                {getTournamentStatusLabel(effectiveStatus, tournament.registration_end_date)}
+              </Badge>
+              {tournament.tournament_type === 'swiss' && (
+                <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                  Suíço
+                </Badge>
+              )}
+            </div>
             {lastImport?.last_run_at && (
               <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
                 {lastImport.last_status === 'error' ? (

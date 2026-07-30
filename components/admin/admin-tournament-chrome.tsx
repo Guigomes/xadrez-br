@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AdminTournamentTabs } from './admin-tournament-tabs';
 import { TourResumeLink } from './tour-resume-link';
+import { Badge } from '@/components/ui/badge';
+import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import type { TournamentMode, TournamentStatus } from '@/types/database';
 
 interface Props {
@@ -11,6 +13,7 @@ interface Props {
   name: string;
   mode: TournamentMode;
   status: TournamentStatus;
+  registrationEndDate: string | null;
 }
 
 /**
@@ -18,13 +21,13 @@ interface Props {
  * resultados do árbitro (rounds/[roundId]/results) — aquela tela é
  * mobile-first e não deve competir com a navegação por abas.
  */
-export function AdminTournamentChrome({ slug, name, mode, status }: Props) {
+export function AdminTournamentChrome({ slug, name, mode, status, registrationEndDate }: Props) {
   const pathname = usePathname();
   if (/\/rounds\/[^/]+\/results/.test(pathname)) return null;
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-1">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">{name}</h1>
         <div className="flex items-center gap-2 shrink-0">
           <TourResumeLink />
@@ -37,6 +40,12 @@ export function AdminTournamentChrome({ slug, name, mode, status }: Props) {
           </Link>
         </div>
       </div>
+      <Badge className={`mb-4 ${getTournamentStatusColor(status, registrationEndDate)}`}>
+        {status === 'ongoing' && (
+          <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+        )}
+        {getTournamentStatusLabel(status, registrationEndDate)}
+      </Badge>
       <AdminTournamentTabs slug={slug} mode={mode} status={status} />
     </div>
   );
