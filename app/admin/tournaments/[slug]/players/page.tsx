@@ -31,7 +31,6 @@ export default function AdminPlayersPage({ params }: Props) {
   const createGroup = useCreateDefaultGroup(tournament?.id ?? '');
 
   const [newPlayer, setNewPlayer] = useState<Partial<PlayerFormValues>>({});
-  const [groupId, setGroupId] = useState('');
   const [importing, setImporting] = useState(false);
   const [importReport, setImportReport] = useState('');
   const [importUrl, setImportUrl] = useState('');
@@ -40,9 +39,18 @@ export default function AdminPlayersPage({ params }: Props) {
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p>Torneio não encontrado.</p>;
 
-  // Torneio nativo com grupos exige grupo ao adicionar (o banco recusa sem isso).
-  const needsGroup = isNative && (groups?.length ?? 0) > 0;
-  const groupReady = !isNative || !!groupId;
+  // O que o organizador escolhe pro participante é a classificação (idade/rating/
+  // sexo, derivada automaticamente) — o grupo de emparceiramento é consequência
+  // dela, não uma segunda escolha manual. Cada categoria já carrega seu
+  // pairing_group_id (definido em Classificação e Emparceiramento); só cai no
+  // fallback "grupo único" quando não há classificação pra derivar daí.
+  function resolveGroupId(categoryId: string | undefined): string | undefined {
+    if (categoryId) {
+      const cat = categories?.find((c) => c.id === categoryId);
+      if (cat?.pairing_group_id) return cat.pairing_group_id;
+    }
+    return groups?.length === 1 ? groups[0].id : undefined;
+  }
 
   // Mesma derivação usada na inscrição pública (registration-form.tsx) — sem
   // isso, jogador cadastrado/adicionado por aqui nascia sem category_id e
@@ -64,14 +72,14 @@ export default function AdminPlayersPage({ params }: Props) {
 
   async function handleCreateAndAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (needsGroup && !groupId) { setError('Selecione o grupo antes de adicionar.'); return; }
     setError('');
     try {
       const p = await createPlayer.mutateAsync(newPlayer as PlayerFormValues);
+      const categoryId = deriveCategoryId(p);
       await addPlayer.mutateAsync({
         player_id: p.id,
-        pairing_group_id: groupId || undefined,
-        category_id: deriveCategoryId(p),
+        pairing_group_id: resolveGroupId(categoryId),
+        category_id: categoryId,
       });
       setNewPlayer({});
     } catch (err: any) {
@@ -172,24 +180,17 @@ export default function AdminPlayersPage({ params }: Props) {
         </div>
       )}
 
-      {/* Native tournament: pairing group is required before adding anyone */}
-      {isNative && (
-        <div className="card p-4 mb-4">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Grupo de emparceiramento</h2>
-          {!groups?.length ? (
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum grupo ainda.</p>
-              <Button size="sm" variant="secondary" loading={createGroup.isPending}
-                onClick={() => createGroup.mutate('Único')}>
-                Criar grupo &quot;Único&quot;
-              </Button>
-            </div>
-          ) : (
-            <Select label="Adicionar novos participantes ao grupo *" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-              <option value="">Selecione…</option>
-              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </Select>
-          )}
+      {/* Native tournament sem nenhum grupo ainda — precisa existir pelo menos
+          um antes de adicionar gente (DB recusa tournament_players sem
+          pairing_group_id em torneio nativo). Configure em Classificação e
+          Emparceiramento; este atalho só cobre quem pulou essa etapa. */}
+      {isNative && !groups?.length && (
+        <div className="card p-4 mb-4 flex items-center gap-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum grupo de emparceiramento ainda.</p>
+          <Button size="sm" variant="secondary" loading={createGroup.isPending}
+            onClick={() => createGroup.mutate('Único')}>
+            Criar grupo &quot;Único&quot;
+          </Button>
         </div>
       )}
 
@@ -209,18 +210,15 @@ export default function AdminPlayersPage({ params }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Estado" value={newPlayer.state ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, state: e.target.value }))} />
-          <Input label="Rating Std" type="number" value={newPlayer.rating_std ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, rating_std: parseInt(e.target.value) || undefined }))} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
           <Input
             label="ID CBX" value={newPlayer.cbx_id ?? ''}
-            hint="Já cadastrado? A gente reaproveita — não duplica."
+            hint="Rating vem da CBX depois — sem precisar digitar."
             onChange={(e) => setNewPlayer((p) => ({ ...p, cbx_id: e.target.value }))}
           />
-          <Input label="ID FIDE" value={newPlayer.fide_id ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, fide_id: e.target.value }))} />
         </div>
-        <Button type="submit" loading={createPlayer.isPending || addPlayer.isPending} disabled={needsGroup && !groupId}>
-          Cadastrar e adicionar
+        <Input label="ID FIDE" value={newPlayer.fide_id ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, fide_id: e.target.value }))} />
+        <Button type="submit" loading={createPlayer.isPending || addPlayer.isPending}>
+          Adicionar
         </Button>
       </form>
 
