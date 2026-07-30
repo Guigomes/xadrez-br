@@ -76,7 +76,8 @@ export async function POST(
     .select('cbx_id, cbx_rating_checked_at, rating_std, rating_rpd, rating_blz, full_name')
     .eq('id', playerId)
     .single();
-  if (fetchError || !player) return NextResponse.json({ error: 'Jogador não encontrado.' }, { status: 404 });
+  if (fetchError) return NextResponse.json({ error: `Erro ao buscar jogador: ${fetchError.message}` }, { status: 500 });
+  if (!player) return NextResponse.json({ error: 'Jogador não encontrado.' }, { status: 404 });
   if (!player.cbx_id) return NextResponse.json({ error: 'Jogador sem ID CBX cadastrado.' }, { status: 400 });
 
   // Cache: só reconsulta a CBX depois de 30 dias — pedido explícito de não
