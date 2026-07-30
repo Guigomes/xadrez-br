@@ -117,6 +117,7 @@ function Setup({
   const [error, setError] = useState('');
   const [applying, setApplying] = useState(false);
   const [unmatchedCount, setUnmatchedCount] = useState<number | null>(null);
+  const [classificationsSaved, setClassificationsSaved] = useState(false);
 
   // Emparceiramento: seleção fica local até "Salvar" — clicar num card só
   // marcava e já persistia na hora, sem nenhum retorno visual de que salvou;
@@ -205,6 +206,7 @@ function Setup({
   }
 
   async function toggleAgePreset(preset: AgePreset) {
+    setClassificationsSaved(false);
     const isActive = ageBands.some((b) => b.name === preset.name);
     setAgeBands((prev) => (isActive ? prev.filter((b) => b.name !== preset.name) : [...prev, preset]));
     if (isActive) {
@@ -213,6 +215,7 @@ function Setup({
     }
   }
   async function toggleRatingPreset(preset: RatingPreset) {
+    setClassificationsSaved(false);
     const isActive = ratingBands.some((b) => b.name === preset.name);
     setRatingBands((prev) => (isActive ? prev.filter((b) => b.name !== preset.name) : [...prev, preset]));
     if (isActive) {
@@ -221,6 +224,7 @@ function Setup({
     }
   }
   async function toggleAgeOn() {
+    setClassificationsSaved(false);
     const next = !ageOn;
     setAgeOn(next);
     if (!next) {
@@ -229,6 +233,7 @@ function Setup({
     }
   }
   async function toggleRatingOn() {
+    setClassificationsSaved(false);
     const next = !ratingOn;
     setRatingOn(next);
     if (!next) {
@@ -237,6 +242,7 @@ function Setup({
     }
   }
   async function toggleFemale() {
+    setClassificationsSaved(false);
     const next = !femaleOn;
     setFemaleOn(next);
     if (!next) await deleteCatsMatching((c) => c.sex === 'w');
@@ -244,6 +250,7 @@ function Setup({
   function addCustomAge() {
     if (!customAge.name.trim()) { setError('Informe o nome da faixa de idade.'); return; }
     setError('');
+    setClassificationsSaved(false);
     setAgeBands((prev) => [...prev, {
       name: customAge.name.trim(),
       minAge: customAge.min ? Number(customAge.min) : null,
@@ -254,6 +261,7 @@ function Setup({
   function addCustomRating() {
     if (!customRating.name.trim()) { setError('Informe o nome da faixa de rating.'); return; }
     setError('');
+    setClassificationsSaved(false);
     setRatingBands((prev) => [...prev, {
       name: customRating.name.trim(),
       minRating: customRating.min ? Number(customRating.min) : null,
@@ -266,6 +274,7 @@ function Setup({
     setApplying(true);
     setError('');
     setUnmatchedCount(null);
+    setClassificationsSaved(false);
     try {
       const dims: ClassificationDimension[] = [
         ...(ageOn ? (['age'] as const) : []),
@@ -284,6 +293,7 @@ function Setup({
 
       const unmatched = await refreshCategories.mutateAsync();
       setUnmatchedCount(unmatched);
+      setClassificationsSaved(true);
     } catch (e: any) { setError(e.message); }
     finally { setApplying(false); }
   }
@@ -506,7 +516,12 @@ function Setup({
                 </span>
               ))}
             </div>
-            <Button loading={applying} onClick={generate}>Salvar classificações</Button>
+            <div className="flex items-center gap-3">
+              <Button loading={applying} onClick={generate}>Salvar classificações</Button>
+              {classificationsSaved && !applying && (
+                <span className="text-sm text-green-600 dark:text-green-400">✓ Salvo</span>
+              )}
+            </div>
             {unmatchedCount !== null && unmatchedCount > 0 && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
                 {unmatchedCount} jogador{unmatchedCount !== 1 ? 'es' : ''} sem classificação — falta ano de
