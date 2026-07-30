@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     default: 'Torneios Xadrez BR',
     template: '%s | Torneios Xadrez BR',
   },
-  description: 'Acompanhe torneios de xadrez, resultados, classificações e o desempenho dos jogadores em tempo real.',
+  description: 'Crie e gerencie torneios de xadrez: inscrição online, emparceiramento automático, classificação por categoria e página pública ao vivo.',
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Torneios Xadrez BR',
     title: 'Torneios Xadrez BR',
-    description: 'Acompanhe torneios de xadrez, resultados e classificações.',
+    description: 'Crie e gerencie torneios de xadrez, do formulário de inscrição ao emparceiramento.',
   },
 };
 

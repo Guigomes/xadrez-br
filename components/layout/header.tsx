@@ -54,6 +54,18 @@ export function Header() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
 
+          {/* Link direto pro painel — antes só dava pra chegar lá abrindo o
+              menu "Minha conta". Com a home agora vendendo "crie seu torneio",
+              quem já tem conta precisa de um caminho de um clique só. */}
+          {user && (
+            <Link
+              href="/admin"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+            >
+              Painel
+            </Link>
+          )}
+
           {user ? (
             <div className="relative">
               <button

@@ -10,7 +10,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { formatScore } from '@/lib/utils/chess';
+import { formatScore, BR_STATES } from '@/lib/utils/chess';
 import type { PlayerFormValues } from '@/types/database';
 
 interface Props {
@@ -31,7 +31,7 @@ export default function AdminPlayersPage({ params }: Props) {
   const { data: groups, isLoading: loadingGroups } = useGroups(isNative ? tournament!.id : '');
   const createGroup = useCreateDefaultGroup(tournament?.id ?? '');
 
-  const [newPlayer, setNewPlayer] = useState<Partial<PlayerFormValues>>({});
+  const [newPlayer, setNewPlayer] = useState<Partial<PlayerFormValues>>({ federation: 'BRA' });
   const [categoryId, setCategoryId] = useState('');
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -90,7 +90,7 @@ export default function AdminPlayersPage({ params }: Props) {
         pairing_group_id: resolveGroupId(finalCategoryId),
         category_id: finalCategoryId,
       });
-      setNewPlayer({});
+      setNewPlayer({ federation: 'BRA' });
       setCategoryId('');
       setCategoryTouched(false);
     } catch (err: any) {
@@ -278,14 +278,24 @@ export default function AdminPlayersPage({ params }: Props) {
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Estado" value={newPlayer.state ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, state: e.target.value }))} />
+          <Select label="UF" value={newPlayer.state ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, state: e.target.value || undefined }))}>
+            <option value="">Selecione…</option>
+            {BR_STATES.map((s) => <option key={s.uf} value={s.uf}>{s.uf} — {s.name}</option>)}
+          </Select>
           <Input
             label="ID CBX" value={newPlayer.cbx_id ?? ''}
             hint="Rating vem da CBX depois — sem precisar digitar."
             onChange={(e) => setNewPlayer((p) => ({ ...p, cbx_id: e.target.value }))}
           />
         </div>
-        <Input label="ID FIDE" value={newPlayer.fide_id ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, fide_id: e.target.value }))} />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="ID FIDE" value={newPlayer.fide_id ?? ''} onChange={(e) => setNewPlayer((p) => ({ ...p, fide_id: e.target.value }))} />
+          <Input
+            label="Federação" maxLength={3} value={newPlayer.federation ?? ''}
+            onChange={(e) => setNewPlayer((p) => ({ ...p, federation: e.target.value.toUpperCase() }))}
+            hint="Sigla de 3 letras. Padrão: BRA"
+          />
+        </div>
         <Button
           type="submit"
           loading={createPlayer.isPending || addPlayer.isPending}
