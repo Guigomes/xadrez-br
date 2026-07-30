@@ -51,9 +51,13 @@ export default function NewTournamentPage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6">
+        <TourTriggerButton
+          stepId="info-basica"
+          label="❔ Dicas de como criar um torneio"
+          className="mb-2 inline-flex rounded-full bg-brand-50 dark:bg-brand-950/50 px-2.5 py-1 text-xs font-semibold text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/60 transition-colors"
+        />
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Novo torneio</h1>
-        <TourTriggerButton stepId="info-basica" label="❔ Dicas de como criar um torneio" />
       </div>
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">

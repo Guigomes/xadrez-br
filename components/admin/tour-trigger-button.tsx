@@ -9,7 +9,13 @@ import { writeProgress, TOUR_START_EVENT } from '@/lib/tour/state';
  * que parametrizado pelo passo inicial em vez de fixo no primeiro do tour
  * inteiro — cada tela que usa isso já está na rota certa.
  */
-export function TourTriggerButton({ stepId, label }: { stepId: string; label: string }) {
+export function TourTriggerButton({
+  stepId, label, className,
+}: {
+  stepId: string; label: string;
+  /** Sobrescreve o estilo padrão (borda cinza) — telas que precisam de mais destaque, como app/admin/tournaments/new/page.tsx. */
+  className?: string;
+}) {
   function start() {
     writeProgress(stepId);
     window.dispatchEvent(new Event(TOUR_START_EVENT));
@@ -19,7 +25,8 @@ export function TourTriggerButton({ stepId, label }: { stepId: string; label: st
     <button
       type="button"
       onClick={start}
-      className="shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+      className={className ??
+        'shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'}
     >
       {label}
     </button>
