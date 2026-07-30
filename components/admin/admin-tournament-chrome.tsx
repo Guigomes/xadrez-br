@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AdminTournamentTabs } from './admin-tournament-tabs';
 import { TourResumeLink } from './tour-resume-link';
-import type { TournamentMode } from '@/types/database';
+import type { TournamentMode, TournamentStatus } from '@/types/database';
 
 interface Props {
   slug: string;
   name: string;
   mode: TournamentMode;
+  status: TournamentStatus;
 }
 
 /**
@@ -17,7 +18,7 @@ interface Props {
  * resultados do árbitro (rounds/[roundId]/results) — aquela tela é
  * mobile-first e não deve competir com a navegação por abas.
  */
-export function AdminTournamentChrome({ slug, name, mode }: Props) {
+export function AdminTournamentChrome({ slug, name, mode, status }: Props) {
   const pathname = usePathname();
   if (/\/rounds\/[^/]+\/results/.test(pathname)) return null;
 
@@ -36,7 +37,7 @@ export function AdminTournamentChrome({ slug, name, mode }: Props) {
           </Link>
         </div>
       </div>
-      <AdminTournamentTabs slug={slug} mode={mode} />
+      <AdminTournamentTabs slug={slug} mode={mode} status={status} />
     </div>
   );
 }

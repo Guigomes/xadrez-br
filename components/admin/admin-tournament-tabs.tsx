@@ -3,28 +3,35 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
-import type { TournamentMode } from '@/types/database';
+import type { TournamentMode, TournamentStatus } from '@/types/database';
 
 interface Props {
   slug: string;
   mode: TournamentMode;
+  status: TournamentStatus;
 }
 
 /** Abas do admin do torneio — mesmo padrão visual de TournamentTabs (público). */
-export function AdminTournamentTabs({ slug, mode }: Props) {
+export function AdminTournamentTabs({ slug, mode, status }: Props) {
   const pathname = usePathname();
   const base = `/admin/tournaments/${slug}`;
 
+  // Rodadas só faz sentido depois que o torneio de fato começou — antes
+  // disso (draft/registration) é uma aba vazia competindo por atenção com
+  // Editar/Classificação/Inscrições, que é onde o organizador ainda está.
+  const hasStarted = status === 'ongoing' || status === 'finished' || status === 'cancelled';
+
   const tabs = [
     { href: `${base}/edit`,          label: 'Editar',        icon: '⚙️' },
-    { href: `${base}/registrations`, label: 'Inscrições',    icon: '📝' },
-    { href: `${base}/players`,       label: 'Participantes', icon: '👥' },
     ...(mode === 'native'
       ? [{ href: `${base}/groups`, label: 'Classificação e Emparceiramento', shortLabel: 'Classificação', icon: '🏷️' }]
       : []),
-    { href: `${base}/rounds`,        label: 'Rodadas',       icon: '📋' },
-    { href: `${base}/staff`,         label: 'Equipe',        icon: '⚖️' },
-    { href: `${base}/history`,       label: 'Histórico',     icon: '📜' },
+    { href: `${base}/registrations`, label: 'Inscrições',    icon: '📝' },
+    { href: `${base}/players`,       label: 'Participantes', icon: '👥' },
+    { href: `${base}/staff`,         label: 'Árbitros',      icon: '⚖️' },
+    ...(hasStarted
+      ? [{ href: `${base}/rounds`, label: 'Rodadas', icon: '📋' }]
+      : []),
     ...(mode === 'imported'
       ? [{ href: `${base}/imports`, label: 'Importações', icon: '🔄' }]
       : []),
