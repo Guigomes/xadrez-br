@@ -122,7 +122,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       </div>
 
       {/* Organizer */}
-      <div className="card p-5 space-y-4">
+      <div className="card p-5 space-y-4" data-tour="organizacao">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Organização</h2>
         <Input label="Organizador *" error={errors.organizer_name?.message} {...register('organizer_name')} />
         <Input label="Árbitro-chefe" {...register('chief_arbiter')} />

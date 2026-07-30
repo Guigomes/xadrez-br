@@ -51,7 +51,7 @@ export default function NewTournamentPage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Novo torneio</h1>
         <TourTriggerButton stepId="info-basica" label="❔ Dicas de como criar um torneio" />
       </div>

@@ -62,6 +62,15 @@ export const TOUR_STEPS: TourStep[] = [
       'jogadores vão te encontrar. A descrição aceita texto livre: regulamento, premiação, o que quiser.',
   },
   {
+    id: 'organizacao',
+    route: 'new',
+    target: 'organizacao',
+    title: 'Quem responde pelo torneio',
+    body:
+      'Organizador aparece na página pública, pra quem tiver dúvida saber a quem recorrer. ' +
+      'Árbitro-chefe é opcional — preencha se já tiver definido.',
+  },
+  {
     id: 'formato',
     route: 'new',
     target: 'formato',
@@ -154,9 +163,9 @@ export const TOUR_STEPS: TourStep[] = [
     route: 'groups',
     target: 'gerar-classificacoes',
     optional: true,
-    title: 'Confira antes de gerar',
+    title: 'Confira antes de salvar',
     body:
-      'Esta é a lista que será criada a partir do que você marcou. Depois de gerar, cada ' +
+      'Esta é a lista que será criada a partir do que você marcou. Depois de salvar, cada ' +
       'participante é classificado automaticamente pelos dados dele — ano de nascimento, ' +
       'rating e sexo.',
   },

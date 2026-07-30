@@ -47,18 +47,6 @@ export default function ClassificationsPage({ params }: { params: Promise<{ slug
   );
 }
 
-function critSummary(c: TournamentCategory): string {
-  const parts: string[] = [];
-  if (c.sex) parts.push(c.sex === 'w' ? 'Feminino' : 'Masculino');
-  if (c.min_age != null || c.max_age != null) {
-    parts.push(`idade ${c.min_age ?? '?'}–${c.max_age ?? '?'}`);
-  }
-  if (c.min_rating != null || c.max_rating != null) {
-    parts.push(`rating ${c.min_rating ?? '?'}–${c.max_rating ?? '?'}`);
-  }
-  return parts.join(' · ');
-}
-
 // Chave de faixa usada pra achar quantas faixas distintas de uma dimensão as
 // classificações existentes têm — é isso que vira "1 grupo por faixa" no
 // emparceiramento (mesma faixa em "Sub-17" e "Sub-17 Feminino" = mesmo grupo).
@@ -202,16 +190,12 @@ function Setup({
   if (loadingCats || loadingGroups) return <PageSpinner />;
 
   const existingNames = new Set(cats.map((c) => c.name.trim().toLowerCase()));
-  const previewNames = new Set(previewCells.map((c) => c.name.trim().toLowerCase()));
   const missingCells = previewCells.filter((c) => !existingNames.has(c.name.trim().toLowerCase()));
-  const staleCats = cats.filter(
-    (c) => previewCells.length > 0 && !previewNames.has(c.name.trim().toLowerCase())
-  );
 
   // Desmarcar um chip que já tem classificação gerada EXCLUI na hora — não
   // existe botão "Excluir" separado nem confirmação extra, o clique no chip
   // já é a ação deliberada. Marcar só atualiza a seleção local; a criação de
-  // verdade continua acontecendo em "Gerar classificações".
+  // verdade continua acontecendo em "Salvar classificações".
   async function deleteCatsMatching(pred: (c: TournamentCategory) => boolean) {
     const toDelete = cats.filter(pred);
     if (toDelete.length === 0) return;
@@ -522,26 +506,13 @@ function Setup({
                 </span>
               ))}
             </div>
-            <Button loading={applying} onClick={generate}>Gerar classificações</Button>
+            <Button loading={applying} onClick={generate}>Salvar classificações</Button>
             {unmatchedCount !== null && unmatchedCount > 0 && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
                 {unmatchedCount} jogador{unmatchedCount !== 1 ? 'es' : ''} sem classificação — falta ano de
                 nascimento{ratingOn ? ' ou rating' : ''}. Corrija em Participantes.
               </p>
             )}
-          </div>
-        )}
-
-        {/* Classificações existentes */}
-        {cats.length > 0 && (
-          <div className="space-y-2">
-            {cats.map((c) => (
-              <CategoryRow
-                key={c.id}
-                category={c}
-                stale={staleCats.some((s) => s.id === c.id)}
-              />
-            ))}
           </div>
         )}
 
@@ -686,7 +657,7 @@ function CustomRangeForm({
       <div className="w-20">
         <Input label="Máx." type="number" value={value.max} onChange={(e) => onChange({ ...value, max: e.target.value })} />
       </div>
-      <Button size="sm" variant="secondary" onClick={onAdd}>Add</Button>
+      <Button size="sm" variant="secondary" onClick={onAdd}>Adicionar</Button>
     </div>
   );
 }
@@ -713,30 +684,6 @@ function ModeOption({
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">{desc}</p>
     </button>
-  );
-}
-
-// Sem renomear e sem excluir aqui de propósito — o nome é derivado da faixa
-// escolhida nos chips acima; nome diferente é o caso de "+ adicionar
-// classificação manualmente" (createCategory), e excluir é desmarcar o chip
-// correspondente (ver toggleAgePreset/toggleRatingPreset/toggleFemale).
-function CategoryRow({ category, stale }: { category: TournamentCategory; stale: boolean }) {
-  const summary = critSummary(category);
-
-  return (
-    <div className="card p-3 flex flex-wrap items-center gap-3">
-      <div className="flex-1 min-w-[10rem]">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{category.name}</p>
-          {stale && (
-            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-              fora do padrão atual
-            </span>
-          )}
-        </div>
-        {summary && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{summary}</p>}
-      </div>
-    </div>
   );
 }
 
@@ -823,7 +770,7 @@ function CustomMapping({
           <div className="w-20">
             <Input label="Rodadas" type="number" min={1} max={20} placeholder="herda" value={newRounds} onChange={(e) => setNewRounds(e.target.value)} />
           </div>
-          <Button size="sm" loading={createGroup.isPending} onClick={addGroup}>Add</Button>
+          <Button size="sm" loading={createGroup.isPending} onClick={addGroup}>Adicionar</Button>
         </div>
       </div>
 

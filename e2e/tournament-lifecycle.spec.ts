@@ -66,19 +66,15 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sim', exact: true }).click();
     await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sub-17', exact: true }).click();
     await page.locator('[data-tour="pergunta-feminina"]').getByRole('button', { name: 'Sim', exact: true }).click();
-    await page.getByRole('button', { name: 'Gerar classificações' }).click();
+    await expect(page.getByText('2 novas')).toBeVisible();
+    await page.getByRole('button', { name: 'Salvar classificações' }).click();
 
     // generate() encadeia 3 mutações assíncronas (setDimensions, bulkCreate,
-    // refreshCategories) antes do React Query invalidar e as linhas
-    // aparecerem — sem esperar, a leitura corre na frente da UI.
-    await expect(page.locator('div.card.p-3')).toHaveCount(2, { timeout: 15_000 });
-
-    const categoryNames = await page.locator('div.card.p-3 p.font-medium').evaluateAll(
-      (els) => els.map((el) => el.textContent?.trim())
-    );
-    // A célula com zero critérios não vira linha — é o Geral, implícito. Só
-    // as duas células com pelo menos um critério aparecem.
-    expect(categoryNames.sort()).toEqual(['Sub-17', 'Sub-17 Feminino']);
+    // refreshCategories) antes do React Query invalidar — o selo "novas"
+    // some quando Sub-17 e Sub-17 Feminino já existem em banco. A prova de
+    // verdade (célula certa por jogador) vem mais abaixo, no select de
+    // Participantes.
+    await expect(page.getByText('2 novas')).toHaveCount(0, { timeout: 15_000 });
 
     // --- Emparceiramento: todos juntos ---
     await page.getByRole('button', { name: 'Não — todos juntos' }).click();
