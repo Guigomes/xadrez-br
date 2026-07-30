@@ -50,8 +50,10 @@ export default function TournamentsPage() {
         </Select>
         <Select value={status} onChange={(e) => setStatus(e.target.value as TournamentStatus | '')}>
           <option value="">Todos os status</option>
-          <option value="ongoing">Em andamento</option>
+          <option value="published">Publicados</option>
           <option value="registration">Inscrições abertas</option>
+          <option value="registration_closed">Inscrições encerradas</option>
+          <option value="ongoing">Em andamento</option>
           <option value="finished">Encerrados</option>
         </Select>
       </div>

@@ -44,27 +44,27 @@ export function resultBadgeColor(result: GameResult, forWhite: boolean): string 
 // ============================================================
 
 export const TOURNAMENT_STATUS_LABELS: Record<TournamentStatus, string> = {
-  draft:        'Rascunho',
-  registration: 'Inscrições abertas',
-  ongoing:      'Em andamento',
-  finished:     'Encerrado',
-  cancelled:    'Cancelado',
+  draft:                'Rascunho',
+  published:            'Publicado',
+  registration:         'Inscrições abertas',
+  registration_closed:  'Inscrições encerradas',
+  ongoing:              'Em andamento',
+  finished:             'Encerrado',
+  cancelled:             'Cancelado',
 };
 
 export const TOURNAMENT_STATUS_COLORS: Record<TournamentStatus, string> = {
-  draft:        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  registration: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  ongoing:      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  draft:                'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  published:            'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+  registration:         'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  registration_closed:  'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  ongoing:              'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   // purple-100 é visualmente quase branco (lightness alta demais pra esse
   // hue) — some contra o fundo do card ao lado de gray-100/green-100 nos
   // outros badges. purple-200 mantém a paleta mas com peso visual igual.
-  finished:     'bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200',
-  cancelled:    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  finished:             'bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200',
+  cancelled:            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 };
-
-const REGISTRATION_CLOSED_LABEL = 'Inscrições encerradas';
-const REGISTRATION_CLOSED_COLOR =
-  'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
 
 function todayInSaoPaulo(): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -73,10 +73,18 @@ function todayInSaoPaulo(): string {
   }).format(new Date());
 }
 
+/**
+ * 'registration_closed' já é status real no banco (migration 038), mas isso
+ * sozinho depende do organizador clicar "Avançar" depois do prazo. Enquanto
+ * isso não acontece, o selo continua mostrando "encerrada" só de olhar a
+ * data — a RLS de inscrição já bloqueia o envio por data de qualquer forma,
+ * então isso aqui é cosmético/defensivo, não duplica segurança.
+ */
 export function isRegistrationClosed(
   status: TournamentStatus,
   registrationEndDate: string | null | undefined,
 ): boolean {
+  if (status === 'registration_closed') return true;
   if (status !== 'registration' || !registrationEndDate) return false;
   return registrationEndDate < todayInSaoPaulo();
 }
@@ -85,7 +93,7 @@ export function getTournamentStatusLabel(
   status: TournamentStatus,
   registrationEndDate: string | null | undefined,
 ): string {
-  if (isRegistrationClosed(status, registrationEndDate)) return REGISTRATION_CLOSED_LABEL;
+  if (isRegistrationClosed(status, registrationEndDate)) return TOURNAMENT_STATUS_LABELS.registration_closed;
   return TOURNAMENT_STATUS_LABELS[status];
 }
 
@@ -93,7 +101,7 @@ export function getTournamentStatusColor(
   status: TournamentStatus,
   registrationEndDate: string | null | undefined,
 ): string {
-  if (isRegistrationClosed(status, registrationEndDate)) return REGISTRATION_CLOSED_COLOR;
+  if (isRegistrationClosed(status, registrationEndDate)) return TOURNAMENT_STATUS_COLORS.registration_closed;
   return TOURNAMENT_STATUS_COLORS[status];
 }
 

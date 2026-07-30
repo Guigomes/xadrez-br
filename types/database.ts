@@ -3,7 +3,7 @@
 // ============================================================
 
 export type UserRole = 'admin' | 'organizer' | 'arbiter' | 'public_user';
-export type TournamentStatus = 'draft' | 'registration' | 'ongoing' | 'finished' | 'cancelled';
+export type TournamentStatus = 'draft' | 'published' | 'registration' | 'registration_closed' | 'ongoing' | 'finished' | 'cancelled';
 export type TournamentType = 'swiss' | 'round_robin' | 'knockout' | 'other';
 export type RoundStatus = 'draft' | 'pending' | 'ongoing' | 'finished';
 export type ByeKind = 'pairing' | 'requested_half' | 'requested_zero' | 'late_entry';

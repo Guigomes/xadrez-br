@@ -15,7 +15,7 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-const STATUS_SEQUENCE: TournamentStatus[] = ['draft', 'registration', 'ongoing', 'finished'];
+const STATUS_SEQUENCE: TournamentStatus[] = ['draft', 'published', 'registration', 'registration_closed', 'ongoing', 'finished'];
 
 export default function EditTournamentPage({ params }: Props) {
   const { slug } = use(params);
@@ -64,6 +64,11 @@ export default function EditTournamentPage({ params }: Props) {
         .from('tournaments').update({ status: newStatus }).eq('id', tournament!.id);
       if (updErr) throw updErr;
       await qc.invalidateQueries({ queryKey: tournamentKeys.detail(slug) });
+      // O badge/abas do cabeçalho (AdminTournamentChrome/Tabs) vêm de props
+      // de Server Component, lidas uma vez no layout — invalidar o React
+      // Query não alcança isso. Sem o refresh, a aba Rodadas só aparecia
+      // depois de um F5 manual assim que ela passou a depender do status.
+      router.refresh();
       setStatusSaved(true);
       setTimeout(() => setStatusSaved(false), 2500);
     } catch (err: any) {
@@ -81,8 +86,9 @@ export default function EditTournamentPage({ params }: Props) {
 
   return (
     <div className="max-w-2xl">
-      {/* Status control — avança/volta na sequência draft → inscrições →
-          em andamento → encerrado. Cancelar é uma ação à parte. */}
+      {/* Status control — avança/volta na sequência draft → publicado →
+          inscrições → inscrições encerradas → em andamento → encerrado.
+          Cancelar é uma ação à parte. */}
       <div className="card p-4 mb-6">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Status do torneio</p>

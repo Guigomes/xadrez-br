@@ -77,14 +77,23 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     await expect(page.getByText('2 novas')).toHaveCount(0, { timeout: 15_000 });
 
     // --- Emparceiramento: todos juntos ---
+    // "✓ Salvo" de classificações (linha 70) ainda está na tela — .last()
+    // pega o de emparceiramento, que vem depois no DOM.
     await page.getByRole('button', { name: 'Não — todos juntos' }).click();
     await page.getByRole('button', { name: 'Salvar emparceiramento' }).click();
-    await expect(page.getByText('✓ Salvo')).toBeVisible();
+    await expect(page.getByText('✓ Salvo').last()).toBeVisible();
 
-    // --- Publicar: torneio nasce 'draft', e /register só abre inscrição com
-    //     status === 'registration' (app/tournaments/[slug]/register/page.tsx).
-    //     Sem datas de período configuradas, avançar o status já basta.
+    // --- Publicar: torneio nasce 'draft'. Sequência agora é draft →
+    //     published → registration → registration_closed → ongoing →
+    //     finished (migration 038); /register só abre inscrição com
+    //     status === 'registration' (app/tournaments/[slug]/register/page.tsx)
+    //     — precisa de 2 cliques em Avançar pra sair de draft e passar por
+    //     published. Sem datas de período configuradas, avançar o status já
+    //     basta. Espera o toast entre os cliques porque o botão fica
+    //     disabled durante o save.
     await page.goto(`/admin/tournaments/${slug}/edit`);
+    await page.getByRole('button', { name: 'Avançar →' }).click();
+    await expect(page.getByText('✓ Salvo')).toBeVisible();
     await page.getByRole('button', { name: 'Avançar →' }).click();
     await expect(page.getByText('✓ Salvo')).toBeVisible();
 

@@ -77,6 +77,13 @@ export default async function RegisterPage({ params }: Props) {
     tournament.registration_end_date && today > tournament.registration_end_date;
   const isOpen =
     tournament.status === 'registration' && !beforeWindow && !afterWindow;
+  // status ainda pode estar 'registration' com o prazo já vencido, se o
+  // organizador não clicou "Avançar" pra registration_closed — cobre os
+  // dois casos com a mesma variável em vez de duplicar a checagem de data.
+  const isNotYetOpen = tournament.status === 'draft' || tournament.status === 'published';
+  const isClosed =
+    tournament.status === 'registration_closed' ||
+    (tournament.status === 'registration' && afterWindow);
 
   return (
     <div className="max-w-xl mx-auto">
@@ -107,7 +114,7 @@ export default async function RegisterPage({ params }: Props) {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {beforeWindow
               ? 'Inscrições ainda não abriram'
-              : tournament.status === 'draft' || tournament.status === 'registration'
+              : isNotYetOpen
                 ? 'Inscrições não estão abertas'
                 : 'Inscrições encerradas'}
           </h2>
@@ -118,7 +125,9 @@ export default async function RegisterPage({ params }: Props) {
                 ? 'O torneio já está em andamento.'
                 : tournament.status === 'finished'
                   ? 'O torneio já foi encerrado.'
-                  : 'Acompanhe esta página — a organização abrirá as inscrições em breve.'}
+                  : isClosed
+                    ? 'O período de inscrições para este torneio já foi encerrado.'
+                    : 'Acompanhe esta página — a organização abrirá as inscrições em breve.'}
           </p>
           <Link
             href={`/tournaments/${slug}`}
