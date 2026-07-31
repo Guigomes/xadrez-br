@@ -39,9 +39,10 @@ export default function NewTournamentPage() {
         .from('tournaments')
         .insert({ ...values, mode: 'native', slug, created_by: user.id });
       if (err) throw err;
-      // Leva direto para o setup de classificações/emparceiramento —
-      // sem isso o organizador não teria como descobrir essa etapa.
-      router.push(`/admin/tournaments/${slug}/groups`);
+      // Leva direto pra aba Editar, onde mora o setup de
+      // classificações/emparceiramento — sem isso o organizador não teria
+      // como descobrir essa etapa.
+      router.push(`/admin/tournaments/${slug}/edit`);
     } catch (err: any) {
       setError(err.message ?? 'Erro ao criar torneio.');
     } finally {

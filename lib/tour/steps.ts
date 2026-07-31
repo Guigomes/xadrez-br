@@ -12,7 +12,7 @@
  * texto quebraria no primeiro ajuste de layout.
  */
 
-export type TourRoute = 'admin' | 'new' | 'groups' | 'registrations' | 'players';
+export type TourRoute = 'admin' | 'new' | 'edit' | 'registrations' | 'players';
 
 export interface TourStep {
   id: string;
@@ -121,7 +121,7 @@ export const TOUR_STEPS: TourStep[] = [
 
   {
     id: 'intro-classificacao',
-    route: 'groups',
+    route: 'edit',
     target: 'secao-classificacao',
     title: 'Duas coisas diferentes',
     body:
@@ -131,7 +131,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'pergunta-idade',
-    route: 'groups',
+    route: 'edit',
     target: 'pergunta-idade',
     title: 'Separar por idade?',
     body:
@@ -141,7 +141,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'pergunta-rating',
-    route: 'groups',
+    route: 'edit',
     target: 'pergunta-rating',
     title: 'Separar por rating?',
     body:
@@ -150,7 +150,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'pergunta-feminina',
-    route: 'groups',
+    route: 'edit',
     target: 'pergunta-feminina',
     title: 'Classificação feminina?',
     body:
@@ -160,7 +160,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'gerar',
-    route: 'groups',
+    route: 'edit',
     target: 'gerar-classificacoes',
     optional: true,
     title: 'Confira antes de salvar',
@@ -171,7 +171,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'emparceiramento',
-    route: 'groups',
+    route: 'edit',
     target: 'secao-emparceiramento',
     title: 'Quem joga contra quem',
     body:
@@ -204,7 +204,7 @@ export const TOUR_STEPS: TourStep[] = [
 export function matchRoute(pathname: string): TourRoute | null {
   if (/^\/admin\/?$/.test(pathname)) return 'admin';
   if (/^\/admin\/tournaments\/new\/?$/.test(pathname)) return 'new';
-  if (/^\/admin\/tournaments\/[^/]+\/groups\/?$/.test(pathname)) return 'groups';
+  if (/^\/admin\/tournaments\/[^/]+\/edit\/?$/.test(pathname)) return 'edit';
   if (/^\/admin\/tournaments\/[^/]+\/registrations\/?$/.test(pathname)) return 'registrations';
   if (/^\/admin\/tournaments\/[^/]+\/players\/?$/.test(pathname)) return 'players';
   return null;

@@ -15,5 +15,5 @@ export async function createTournament(page: Page, name: string) {
   await page.getByLabel('Data de início *').fill('2026-12-01');
   await page.locator('[data-tour="pergunta-gratuita"]').getByRole('button', { name: 'Sim', exact: true }).click();
   await page.getByRole('button', { name: 'Criar torneio' }).click();
-  await page.waitForURL(/\/admin\/tournaments\/[^/]+\/groups/);
+  await page.waitForURL(/\/admin\/tournaments\/[^/]+\/edit/);
 }

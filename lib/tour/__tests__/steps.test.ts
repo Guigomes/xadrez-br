@@ -8,7 +8,9 @@ describe('matchRoute', () => {
   it('reconhece as cinco rotas do fluxo', () => {
     expect(matchRoute('/admin')).toBe('admin');
     expect(matchRoute('/admin/tournaments/new')).toBe('new');
-    expect(matchRoute('/admin/tournaments/aberto-sp-20260315/groups')).toBe('groups');
+    // Classificação/emparceiramento moraram em /groups; agora ficam
+    // embutidos na aba Editar (components/admin/classification-setup.tsx).
+    expect(matchRoute('/admin/tournaments/aberto-sp-20260315/edit')).toBe('edit');
     expect(matchRoute('/admin/tournaments/aberto-sp-20260315/registrations')).toBe('registrations');
     expect(matchRoute('/admin/tournaments/aberto-sp-20260315/players')).toBe('players');
   });
@@ -16,10 +18,6 @@ describe('matchRoute', () => {
   it('tolera barra final', () => {
     expect(matchRoute('/admin/')).toBe('admin');
     expect(matchRoute('/admin/tournaments/new/')).toBe('new');
-  });
-
-  it('NÃO casa com /edit — é o mesmo TournamentForm, com os mesmos data-tour', () => {
-    expect(matchRoute('/admin/tournaments/aberto-sp-20260315/edit')).toBeNull();
   });
 
   it('ignora o resto do admin e o site público', () => {
@@ -49,13 +47,13 @@ describe('stepsForRoute', () => {
   });
 
   it('mostra o bloco quando o progresso ficou numa rota anterior', () => {
-    // Organizador parou em "criar" (rota new) e o redirect o levou a /groups.
-    expect(stepsForRoute('groups', 'criar')[0].id).toBe('intro-classificacao');
+    // Organizador parou em "criar" (rota new) e o redirect o levou a /edit.
+    expect(stepsForRoute('edit', 'criar')[0].id).toBe('intro-classificacao');
   });
 
   it('não volta atrás: progresso adiante da rota atual não reabre o bloco', () => {
-    // Já está em /players; voltar para /groups não deve reiniciar o tour lá.
-    expect(stepsForRoute('groups', 'link-inscricao')).toEqual([]);
+    // Já está em /players; voltar para /edit não deve reiniciar o tour lá.
+    expect(stepsForRoute('edit', 'link-inscricao')).toEqual([]);
     expect(stepsForRoute('new', 'intro-classificacao')).toEqual([]);
   });
 
@@ -90,7 +88,7 @@ describe('integridade do registro', () => {
     // os de outra quebrariam a retomada silenciosamente.
     const ordem = TOUR_STEPS.map((s) => s.route);
     const primeiraOcorrencia = ordem.filter((r, i) => ordem.indexOf(r) === i);
-    expect(primeiraOcorrencia).toEqual(['admin', 'new', 'groups', 'registrations', 'players']);
+    expect(primeiraOcorrencia).toEqual(['admin', 'new', 'edit', 'registrations', 'players']);
     expect(ordem).toEqual(primeiraOcorrencia.flatMap((r) => ordem.filter((x) => x === r)));
   });
 

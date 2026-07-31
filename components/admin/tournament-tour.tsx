@@ -27,11 +27,12 @@ function withMascot(title: string): string {
 /**
  * Espera o alvo existir no DOM.
  *
- * Necessário porque /groups e /players renderizam <PageSpinner /> enquanto o
+ * Necessário porque /edit e /players renderizam <PageSpinner /> enquanto o
  * React Query resolve — montar o spotlight antes disso ancoraria em nada. Em
- * /groups há um agravante: um window.scrollTo(0,0) dispara quando o conteúdo
- * termina de montar (ver o comentário em groups/page.tsx), e o recorte do
- * overlay ficaria desalinhado se o tour começasse antes.
+ * /edit há um agravante: um window.scrollTo(0,0) dispara quando o bloco de
+ * classificação termina de montar (ver o comentário em
+ * classification-setup.tsx), e o recorte do overlay ficaria desalinhado se o
+ * tour começasse antes.
  */
 function waitForTarget(selector: string, timeoutMs: number): Promise<boolean> {
   if (document.querySelector(selector)) return Promise.resolve(true);

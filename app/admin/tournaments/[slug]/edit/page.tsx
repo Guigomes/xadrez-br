@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTournament, useUpdateTournament, useDeleteTournament, tournamentKeys } from '@/lib/hooks/use-tournament';
 import { TournamentForm } from '@/components/tournament/tournament-form';
+import { ClassificationSetup } from '@/components/admin/classification-setup';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/client';
@@ -172,6 +173,19 @@ export default function EditTournamentPage({ params }: Props) {
         loading={updateTournament.isPending}
         submitLabel="Salvar alterações"
       />
+
+      {/* Classificação e emparceiramento — mesma aba de criação/edição, não
+          mais uma aba própria (era app/admin/tournaments/[slug]/groups). */}
+      <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
+        <ClassificationSetup
+          tournamentId={tournament.id}
+          mode={tournament.mode}
+          defaultRounds={tournament.rounds_count}
+          currentMode={tournament.pairing_mode}
+          currentSplit={tournament.pairing_split ?? null}
+          initialDimensions={tournament.classification_dimensions ?? []}
+        />
+      </div>
 
       {/* Danger zone — cancelar e excluir juntos: as duas ações incomuns,
           fora do fluxo normal de status. */}

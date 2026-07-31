@@ -16,16 +16,14 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
   const pathname = usePathname();
   const base = `/admin/tournaments/${slug}`;
 
-  // Rodadas só faz sentido depois que o torneio de fato começou — antes
-  // disso (draft/registration) é uma aba vazia competindo por atenção com
-  // Editar/Classificação/Inscrições, que é onde o organizador ainda está.
-  const hasStarted = status === 'ongoing' || status === 'finished' || status === 'cancelled';
+  // Rodadas só aparece com o torneio de fato em andamento ou já encerrado —
+  // antes disso (draft/published/registration/registration_closed) é uma aba
+  // vazia competindo por atenção com Editar/Inscrições, que é onde o
+  // organizador ainda está.
+  const hasStarted = status === 'ongoing' || status === 'finished';
 
   const tabs = [
     { href: `${base}/edit`,          label: 'Editar',        icon: '⚙️' },
-    ...(mode === 'native'
-      ? [{ href: `${base}/groups`, label: 'Classificação e Emparceiramento', shortLabel: 'Classificação', icon: '🏷️' }]
-      : []),
     { href: `${base}/registrations`, label: 'Inscrições',    icon: '📝' },
     { href: `${base}/players`,       label: 'Participantes', icon: '👥' },
     { href: `${base}/staff`,         label: 'Árbitros',      icon: '⚖️' },

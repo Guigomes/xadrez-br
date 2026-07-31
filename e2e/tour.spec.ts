@@ -4,7 +4,7 @@ import { createTournament } from './utils/tournament';
 
 /**
  * Cobre o tour guiado de criação de torneio (components/admin/tournament-tour.tsx)
- * de ponta a ponta — /admin → /new → /groups → /players — algo que não foi
+ * de ponta a ponta — /admin → /new → /edit → /players — algo que não foi
  * possível verificar manualmente porque o painel de preview usado durante o
  * desenvolvimento não composita frames (document.hidden=true trava o
  * requestAnimationFrame de que o streaming SSR do Next depende).
@@ -32,7 +32,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     await deleteTestOrganizer(org.id);
   });
 
-  test('percorre os 4 passos da rota /new, pula o passo opcional em /groups e termina em /players', async ({ page }) => {
+  test('percorre os 4 passos da rota /new, pula o passo opcional em /edit e termina em /players', async ({ page }) => {
     await login(page, org);
     await page.goto('/admin');
 
@@ -71,7 +71,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     // O tour não preenche nada — o organizador preenche de verdade e segue.
     await createTournament(page, `E2E Tour ${Date.now()}`);
 
-    // /groups: retoma sozinho no primeiro passo do bloco.
+    // /edit: retoma sozinho no primeiro passo do bloco.
     await expect(popoverTitle(page)).toHaveText('Duas coisas diferentes');
     await nextBtn(page).click();
     await expect(popoverTitle(page)).toHaveText('Separar por idade?');
