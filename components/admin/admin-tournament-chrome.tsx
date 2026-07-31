@@ -27,9 +27,20 @@ export function AdminTournamentChrome({ slug, name, mode, status, registrationEn
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">{name}</h1>
-        <div className="flex items-center gap-2 shrink-0">
+      {/* Nome sozinho na própria linha — dividindo a linha com os botões de
+          ação (como antes) ele colapsava pra largura zero em telas estreitas:
+          truncate liga overflow:hidden, que pelo spec de flexbox zera o
+          min-width automático do item, e os botões (shrink-0) levavam todo o
+          espaço. O nome do torneio sumia por completo no mobile. */}
+      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">{name}</h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <Badge className={getTournamentStatusColor(status, registrationEndDate)}>
+          {status === 'ongoing' && (
+            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+          )}
+          {getTournamentStatusLabel(status, registrationEndDate)}
+        </Badge>
+        <div className="flex items-center gap-2">
           <TourResumeLink />
           <Link
             href={`/tournaments/${slug}`}
@@ -40,13 +51,9 @@ export function AdminTournamentChrome({ slug, name, mode, status, registrationEn
           </Link>
         </div>
       </div>
-      <Badge className={`mb-4 ${getTournamentStatusColor(status, registrationEndDate)}`}>
-        {status === 'ongoing' && (
-          <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-        )}
-        {getTournamentStatusLabel(status, registrationEndDate)}
-      </Badge>
-      <AdminTournamentTabs slug={slug} mode={mode} status={status} />
+      <div className="mt-4">
+        <AdminTournamentTabs slug={slug} mode={mode} status={status} />
+      </div>
     </div>
   );
 }
