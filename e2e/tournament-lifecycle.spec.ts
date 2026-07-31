@@ -83,15 +83,18 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     await page.getByRole('button', { name: 'Salvar emparceiramento' }).click();
     await expect(page.getByText('✓ Salvo').last()).toBeVisible();
 
-    // --- Publicar: torneio nasce 'draft'. Sequência agora é draft →
-    //     published → registration → registration_closed → ongoing →
-    //     finished (migration 038); /register só abre inscrição com
-    //     status === 'registration' (app/tournaments/[slug]/register/page.tsx)
-    //     — controle de status virou um select (pula direto pra qualquer
-    //     estado, não mais botão sequencial). Sem datas de período
-    //     configuradas, escolher 'registration' já basta.
+    // --- Publicar e abrir inscrições: torneio nasce 'draft'. Sequência
+    //     agora é draft → published → registration → registration_closed →
+    //     ongoing → finished (migration 038); /register só abre inscrição
+    //     com status === 'registration' (app/tournaments/[slug]/register/
+    //     page.tsx). Botão nomeado por status (migration 040 cobre o avanço
+    //     automático por data; aqui é o caminho manual mesmo) — precisa dos
+    //     dois cliques pra sair de draft. Espera o toast entre eles porque
+    //     o botão fica disabled durante o save.
     await page.goto(`/admin/tournaments/${slug}/edit`);
-    await page.getByRole('combobox', { name: 'Status do torneio' }).selectOption('registration');
+    await page.getByRole('button', { name: 'Publicar' }).click();
+    await expect(page.getByText('✓ Salvo')).toBeVisible();
+    await page.getByRole('button', { name: 'Abrir Inscrições' }).click();
     await expect(page.getByText('✓ Salvo')).toBeVisible();
 
     // --- Dois jogadores, mesma idade, sexos diferentes ---

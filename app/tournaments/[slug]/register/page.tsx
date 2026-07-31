@@ -28,11 +28,10 @@ export default async function RegisterPage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
 
+  // get_tournament_by_slug (migration 040) corrige inscrição encerrada /
+  // torneio iniciado por data antes de decidir se o formulário abre.
   const { data: tournament } = await supabase
-    .from('tournaments')
-    .select('*')
-    .eq('slug', slug)
-    .single();
+    .rpc('get_tournament_by_slug', { p_slug: slug });
 
   if (!tournament) notFound();
 

@@ -433,6 +433,7 @@ export interface Database {
       get_tournament_standings:     { Args: { p_tournament_id: string }; Returns: StandingRow[]; };
       get_player_tournament_history:{ Args: { p_tournament_id: string; p_tp_id: string }; Returns: PlayerHistoryRow[]; };
       search_tournaments:           { Args: { p_query?: string; p_state?: string; p_status?: TournamentStatus; p_limit?: number; p_offset?: number }; Returns: TournamentListItem[]; };
+      get_tournament_by_slug:       { Args: { p_slug: string }; Returns: Tournament; };
       get_round_pairings:           { Args: { p_round_id: string }; Returns: RoundPairingRow[]; };
       refresh_tournament_categories:{ Args: { p_tournament_id: string }; Returns: number; };
     };

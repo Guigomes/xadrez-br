@@ -30,11 +30,12 @@ export default async function TournamentLayout({ children, params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
 
+  // get_tournament_by_slug (migration 040) corrige o status vencido por
+  // data (inscrição encerrada / torneio iniciado) antes de retornar — sem
+  // isso, quem acessa direto a página de um torneio poderia ver um status
+  // desatualizado até a próxima visita à listagem.
   const { data: tournament } = await supabase
-    .from('tournaments')
-    .select('*')
-    .eq('slug', slug)
-    .single();
+    .rpc('get_tournament_by_slug', { p_slug: slug });
 
   if (!tournament) notFound();
 

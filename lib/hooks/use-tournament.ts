@@ -52,11 +52,10 @@ export function useTournament(slug: string) {
   return useQuery({
     queryKey: tournamentKeys.detail(slug),
     queryFn: async (): Promise<Tournament | null> => {
+      // get_tournament_by_slug (migration 040) corrige status vencido por
+      // data (inscrição encerrada / torneio iniciado) antes de retornar.
       const { data, error } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('slug', slug)
-        .single();
+        .rpc('get_tournament_by_slug', { p_slug: slug });
       if (error) throw error;
       return data;
     },
