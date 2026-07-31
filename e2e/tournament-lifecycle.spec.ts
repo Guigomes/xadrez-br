@@ -87,14 +87,11 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     //     published → registration → registration_closed → ongoing →
     //     finished (migration 038); /register só abre inscrição com
     //     status === 'registration' (app/tournaments/[slug]/register/page.tsx)
-    //     — precisa de 2 cliques em Avançar pra sair de draft e passar por
-    //     published. Sem datas de período configuradas, avançar o status já
-    //     basta. Espera o toast entre os cliques porque o botão fica
-    //     disabled durante o save.
+    //     — controle de status virou um select (pula direto pra qualquer
+    //     estado, não mais botão sequencial). Sem datas de período
+    //     configuradas, escolher 'registration' já basta.
     await page.goto(`/admin/tournaments/${slug}/edit`);
-    await page.getByRole('button', { name: 'Avançar →' }).click();
-    await expect(page.getByText('✓ Salvo')).toBeVisible();
-    await page.getByRole('button', { name: 'Avançar →' }).click();
+    await page.getByRole('combobox', { name: 'Status do torneio' }).selectOption('registration');
     await expect(page.getByText('✓ Salvo')).toBeVisible();
 
     // --- Dois jogadores, mesma idade, sexos diferentes ---

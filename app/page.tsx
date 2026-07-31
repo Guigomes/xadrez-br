@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 import { TournamentCard } from '@/components/tournament/tournament-card';
 import type { TournamentListItem } from '@/types/database';
@@ -105,10 +106,19 @@ export default async function HomePage() {
 
         <div className="container-app relative py-16 sm:py-24">
           <div className="max-w-2xl">
-            <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-brand-100 backdrop-blur-sm">
-              <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
-              Sem instalar nada · funciona no celular
-            </p>
+            <div className="mb-5 flex items-center gap-3">
+              <Image
+                src="/mascot/gambito-acenando.png"
+                alt="Gambito, o mascote do sistema, acenando"
+                width={56}
+                height={56}
+                className="h-14 w-14 shrink-0 rounded-full object-cover object-top ring-2 ring-white/20"
+              />
+              <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-brand-100 backdrop-blur-sm">
+                <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
+                Sem instalar nada · funciona no celular
+              </p>
+            </div>
             <h1 className="mb-4 text-3xl font-bold leading-tight sm:text-5xl">
               Organize seu torneio de xadrez do começo ao fim
             </h1>
@@ -236,7 +246,13 @@ export default async function HomePage() {
       {/* Fechamento */}
       <section className="container-app py-12 sm:py-16">
         <div className="card overflow-hidden bg-gradient-to-br from-brand-50 to-white p-8 text-center sm:p-12 dark:from-brand-950/40 dark:to-gray-900">
-          <p className="mb-4 text-4xl" aria-hidden="true">♞</p>
+          <Image
+            src="/mascot/gambito-comemorando.png"
+            alt="Gambito comemorando"
+            width={80}
+            height={80}
+            className="mx-auto mb-4 h-20 w-20 rounded-full object-cover object-top ring-4 ring-white dark:ring-gray-900"
+          />
           <h2 className="mb-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
             Seu próximo torneio começa aqui
           </h2>

@@ -7,8 +7,9 @@ import { useTournament, useUpdateTournament, useDeleteTournament, tournamentKeys
 import { TournamentForm } from '@/components/tournament/tournament-form';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
+import { Select } from '@/components/ui/select';
 import { createClient } from '@/lib/supabase/client';
-import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
+import { getTournamentStatusColor, getTournamentStatusLabel, TOURNAMENT_STATUS_LABELS } from '@/lib/utils/chess';
 import type { TournamentFormValues, TournamentStatus } from '@/types/database';
 
 interface Props {
@@ -79,10 +80,6 @@ export default function EditTournamentPage({ params }: Props) {
   }
 
   const isCancelled = tournament.status === 'cancelled';
-  const currentIndex = STATUS_SEQUENCE.indexOf(tournament.status);
-  const prevStatus = currentIndex > 0 ? STATUS_SEQUENCE[currentIndex - 1] : null;
-  const nextStatus = currentIndex >= 0 && currentIndex < STATUS_SEQUENCE.length - 1
-    ? STATUS_SEQUENCE[currentIndex + 1] : null;
 
   return (
     <div className="max-w-2xl">
@@ -114,28 +111,24 @@ export default function EditTournamentPage({ params }: Props) {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-3">
-              <button
-                onClick={() => prevStatus && handleStatusChange(prevStatus)}
-                disabled={!prevStatus || !!statusSaving}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                {!!statusSaving && statusSaving === prevStatus && <Spinner />}
-                ← Voltar
-              </button>
-
+            <div className="flex items-center gap-3">
               <Badge className={getTournamentStatusColor(tournament.status, tournament.registration_end_date)}>
                 {getTournamentStatusLabel(tournament.status, tournament.registration_end_date)}
               </Badge>
-
-              <button
-                onClick={() => nextStatus && handleStatusChange(nextStatus)}
-                disabled={!nextStatus || !!statusSaving}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                {!!statusSaving && statusSaving === nextStatus && <Spinner />}
-                Avançar →
-              </button>
+              <div className="flex-1 flex items-center gap-2">
+                <Select
+                  aria-label="Status do torneio"
+                  value={tournament.status}
+                  disabled={!!statusSaving}
+                  onChange={(e) => handleStatusChange(e.target.value as TournamentStatus)}
+                  className="h-9"
+                >
+                  {STATUS_SEQUENCE.map((s) => (
+                    <option key={s} value={s}>{TOURNAMENT_STATUS_LABELS[s]}</option>
+                  ))}
+                </Select>
+                {!!statusSaving && <Spinner />}
+              </div>
             </div>
             <button
               onClick={() => handleStatusChange('cancelled')}
