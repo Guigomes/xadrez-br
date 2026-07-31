@@ -17,6 +17,13 @@ import {
 
 const sel = (target: string) => `[data-tour="${target}"]`;
 
+// driver.js grava title/description via innerHTML (não textContent), então dá
+// pra injetar o avatar do Gambito junto do título sem tocar em cada string de
+// lib/tour/steps.ts — ele "fala" o tour como interlocutor.
+function withMascot(title: string): string {
+  return `<span class="xbr-tour-title-row"><img src="/mascot/gambito-acenando.png" alt="" class="xbr-tour-avatar" />${title}</span>`;
+}
+
 /**
  * Espera o alvo existir no DOM.
  *
@@ -105,7 +112,7 @@ export function TournamentTour() {
           // aberto, e aí o card de gerar classificações passa a existir.
           skipMissingElement: s.optional,
           popover: {
-            title: s.title,
+            title: withMascot(s.title),
             description: s.body,
             ...(s.nextBtnText ? { nextBtnText: s.nextBtnText } : {}),
           },

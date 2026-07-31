@@ -56,6 +56,12 @@
   .driver-popover.xbr-tour .driver-popover-title {
     @apply text-base font-semibold text-gray-900 dark:text-gray-100;
   }
+  .driver-popover.xbr-tour .xbr-tour-title-row {
+    @apply flex items-center gap-2;
+  }
+  .driver-popover.xbr-tour .xbr-tour-avatar {
+    @apply h-7 w-7 shrink-0 rounded-full object-cover object-top ring-1 ring-gray-200 dark:ring-gray-700;
+  }
   .driver-popover.xbr-tour .driver-popover-description {
     @apply mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-400;
   }

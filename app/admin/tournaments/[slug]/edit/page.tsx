@@ -127,7 +127,17 @@ export default function EditTournamentPage({ params }: Props) {
                     <option key={s} value={s}>{TOURNAMENT_STATUS_LABELS[s]}</option>
                   ))}
                 </Select>
-                {!!statusSaving && <Spinner />}
+                {tournament.status === 'draft' && (
+                  <button
+                    onClick={() => handleStatusChange('published')}
+                    disabled={!!statusSaving}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                  >
+                    {statusSaving === 'published' && <Spinner />}
+                    Publicar
+                  </button>
+                )}
+                {!!statusSaving && statusSaving !== 'published' && <Spinner />}
               </div>
             </div>
             <button
