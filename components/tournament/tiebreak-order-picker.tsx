@@ -43,14 +43,35 @@ export function TiebreakOrderPicker({ value, onChange }: Props) {
         {value.map((key, i) => (
           <span
             key={key}
-            className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-950/50 pl-3 pr-1.5 py-1 text-xs font-medium text-brand-700 dark:text-brand-300"
+            className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-950/50 pl-3 pr-1 py-1 text-xs font-medium text-brand-700 dark:text-brand-300"
           >
             {i + 1}º {LABELS[key]}
-            <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
-              className="disabled:opacity-30 px-0.5">↑</button>
-            <button type="button" onClick={() => move(i, 1)} disabled={i === value.length - 1}
-              className="disabled:opacity-30 px-0.5">↓</button>
-            <button type="button" onClick={() => toggle(key)} className="px-0.5 hover:text-red-500">✕</button>
+            <button
+              type="button"
+              onClick={() => move(i, -1)}
+              disabled={i === 0}
+              aria-label={`Subir prioridade de ${LABELS[key]}`}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-sm hover:bg-brand-100 dark:hover:bg-brand-900 disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              onClick={() => move(i, 1)}
+              disabled={i === value.length - 1}
+              aria-label={`Descer prioridade de ${LABELS[key]}`}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-sm hover:bg-brand-100 dark:hover:bg-brand-900 disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              ↓
+            </button>
+            <button
+              type="button"
+              onClick={() => toggle(key)}
+              aria-label={`Remover ${LABELS[key]}`}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-sm hover:bg-red-100 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+            >
+              ✕
+            </button>
           </span>
         ))}
       </div>
