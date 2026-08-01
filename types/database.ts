@@ -73,7 +73,7 @@ export interface Tournament {
   time_control: string;
   tournament_type: TournamentType;
   start_date: string;
-  /** "HH:MM" (coluna `time`), opcional — só informativo, não entra em nenhuma regra de status. */
+  /** "HH:MM" (coluna `time`), opcional — entra na transição automática pra 'ongoing' (migration 047, next_status_by_date). */
   start_time: string | null;
   end_date: string | null;
   registration_start_date: string | null;

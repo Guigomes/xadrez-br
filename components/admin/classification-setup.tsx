@@ -30,11 +30,21 @@ interface ClassificationSetupProps {
   currentMode: PairingMode;
   currentSplit: ClassificationDimension | null;
   initialDimensions: ClassificationDimension[];
+  /**
+   * Rola pro topo da página quando os dados terminam de carregar — pensado
+   * pro destino do redirect logo após criar um torneio (página curta antes
+   * do conteúdo chegar, aparecia no meio quando ele crescia). Desliga
+   * quando este bloco é embutido no meio de uma página maior (ex: tela de
+   * criação, opção "Personalizado") — lá rolar pro topo pularia o resto
+   * do formulário que já está visível. Default true = comportamento
+   * antigo, inalterado pra quem já usa (aba Editar).
+   */
+  autoScrollTop?: boolean;
 }
 
 /** Bloco de classificação + emparceiramento, embutido na aba Editar (junto de criação/edição). */
 export function ClassificationSetup({
-  tournamentId, mode, defaultRounds, currentMode, currentSplit, initialDimensions,
+  tournamentId, mode, defaultRounds, currentMode, currentSplit, initialDimensions, autoScrollTop = true,
 }: ClassificationSetupProps) {
   if (mode !== 'native') {
     return (
@@ -53,6 +63,7 @@ export function ClassificationSetup({
       currentMode={currentMode}
       currentSplit={currentSplit}
       initialDimensions={initialDimensions}
+      autoScrollTop={autoScrollTop}
     />
   );
 }
@@ -106,11 +117,12 @@ function ratingBandsFromCategories(cats: TournamentCategory[]): RatingPreset[] {
 type PairingChoice = 'absolute' | 'age' | 'rating' | 'custom';
 
 function Setup({
-  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions,
+  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions, autoScrollTop,
 }: {
   tournamentId: string; defaultRounds: number; currentMode: PairingMode;
   currentSplit: ClassificationDimension | null;
   initialDimensions: ClassificationDimension[];
+  autoScrollTop: boolean;
 }) {
   const { data: categories, isLoading: loadingCats } = useCategories(tournamentId);
   const { data: groups, isLoading: loadingGroups } = useGroups(tournamentId);
@@ -180,11 +192,13 @@ function Setup({
   // enquanto aqui ainda só existe o spinner (página curta, nada pra
   // scrollar); quando os dados chegam e o conteúdo cresce, a posição antiga
   // volta a valer e a tela aparece no meio. Força o topo quando o conteúdo
-  // real termina de montar.
+  // real termina de montar. autoScrollTop=false (opção "Personalizado" na
+  // tela de criação) pula isso — lá o bloco nasce embutido no meio de uma
+  // página maior, rolar pro topo pularia o resto do formulário já visível.
   const contentReady = !loadingCats && !loadingGroups;
   useEffect(() => {
-    if (contentReady) window.scrollTo(0, 0);
-  }, [contentReady]);
+    if (contentReady && autoScrollTop) window.scrollTo(0, 0);
+  }, [contentReady, autoScrollTop]);
 
   // Semeia os chips de idade/rating a partir do que já existe em banco — só
   // roda uma vez, quando os dados chegam (contentReady vira true e fica).

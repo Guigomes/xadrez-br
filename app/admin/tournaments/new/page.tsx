@@ -132,9 +132,9 @@ export default function NewTournamentPage() {
         ];
         setCreated({ id: tournament.id, slug, rounds: values.rounds_count, dims });
       } else {
-        // Segue pra aba Editar — dá pra revisar/ajustar o que acabou de ser
-        // definido aqui (classificação/emparceiramento já vêm prontos).
-        router.push(`/admin/tournaments/${slug}/edit`);
+        // Segue pra visão geral — revisão do que acabou de ser criado antes
+        // de decidir se precisa ajustar algo na aba Editar.
+        router.push(`/admin/tournaments/${slug}`);
       }
     } catch (err: any) {
       setError(err.message ?? 'Erro ao criar torneio.');
@@ -152,39 +152,6 @@ export default function NewTournamentPage() {
   function selectCustom() {
     setPairingChoice('custom');
     (document.getElementById(FORM_ID) as HTMLFormElement | null)?.requestSubmit();
-  }
-
-  // Torneio já existe (criado via "Personalizado") — troca o rascunho pelo
-  // mapeamento de verdade, mesmo componente da aba Editar.
-  if (created) {
-    return (
-      <div className="max-w-2xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Torneio criado</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Falta só mapear cada classificação a um grupo de emparceiramento.
-          </p>
-        </div>
-        {error && (
-          <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
-            {error}
-          </p>
-        )}
-        <ClassificationSetup
-          tournamentId={created.id}
-          mode="native"
-          defaultRounds={created.rounds}
-          currentMode="custom"
-          currentSplit={null}
-          initialDimensions={created.dims}
-        />
-        <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
-          <Button onClick={() => router.push(`/admin/tournaments/${created.slug}/edit`)} size="lg" className="w-full sm:w-auto">
-            Concluir e ir para o torneio
-          </Button>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -306,23 +273,23 @@ export default function NewTournamentPage() {
           <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
           <div className="space-y-2">
             <ModeOption
-              active={pairingChoice === 'absolute'} disabled={loading}
+              active={pairingChoice === 'absolute'} disabled={loading || !!created}
               title="Não — todos juntos" desc="Um grupo único. As classificações continuam valendo pra premiação."
               onSelect={() => setPairingChoice('absolute')}
             />
             <ModeOption
-              active={pairingChoice === 'age'} disabled={loading || !ageOn || ageBands.length === 0}
+              active={pairingChoice === 'age'} disabled={loading || !!created || !ageOn || ageBands.length === 0}
               title="Por idade" desc="Um grupo por faixa de idade. As demais classificações viram recorte dentro do grupo."
               onSelect={() => setPairingChoice('age')}
             />
             <ModeOption
-              active={pairingChoice === 'rating'} disabled={loading || !ratingOn || ratingBands.length === 0}
+              active={pairingChoice === 'rating'} disabled={loading || !!created || !ratingOn || ratingBands.length === 0}
               title="Por rating" desc="Um grupo por faixa de rating."
               onSelect={() => setPairingChoice('rating')}
             />
             <ModeOption
               active={pairingChoice === 'custom'} loading={loading && pairingChoice === 'custom'}
-              disabled={loading}
+              disabled={loading || !!created}
               title="Personalizado" desc="Você define os grupos e mapeia cada classificação a um grupo — cria o torneio na hora pra liberar isso."
               onSelect={selectCustom}
             />
@@ -330,11 +297,54 @@ export default function NewTournamentPage() {
         </section>
       </div>
 
-      <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800" data-tour="criar">
-        <Button type="submit" form={FORM_ID} loading={loading} size="lg" className="w-full sm:w-auto">
-          Criar torneio
-        </Button>
-      </div>
+      {/* "Personalizado": tela não recarrega nem pula de posição — o
+          torneio já criado nasce aqui embaixo, com fade-in, no lugar onde o
+          botão "Criar torneio" ficaria. autoScrollTop=false porque o resto
+          do formulário acima continua visível (travado, já foi salvo). */}
+      {created ? (
+        <RevealBelow>
+          <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800 space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Emparceiramento personalizado</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Torneio criado. Falta só mapear cada classificação a um grupo.
+              </p>
+            </div>
+            <ClassificationSetup
+              tournamentId={created.id}
+              mode="native"
+              defaultRounds={created.rounds}
+              currentMode="custom"
+              currentSplit={null}
+              initialDimensions={created.dims}
+              autoScrollTop={false}
+            />
+            <Button onClick={() => router.push(`/admin/tournaments/${created.slug}`)} size="lg" className="w-full sm:w-auto">
+              Concluir e ir para o torneio
+            </Button>
+          </div>
+        </RevealBelow>
+      ) : (
+        <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800" data-tour="criar">
+          <Button type="submit" form={FORM_ID} loading={loading} size="lg" className="w-full sm:w-auto">
+            Criar torneio
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Fade + slide-in ao montar — usado só pra "Personalizado" aparecer embaixo sem o salto de trocar a página inteira de uma vez. */
+function RevealBelow({ children }: { children: React.ReactNode }) {
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return (
+    <div className={`transition-all duration-300 ease-out ${entered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
+      {children}
     </div>
   );
 }
