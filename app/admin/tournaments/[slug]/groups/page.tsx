@@ -1,22 +1,38 @@
 'use client';
 
-import { use, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { use } from 'react';
+import { useTournament } from '@/lib/hooks/use-tournament';
+import { ClassificationSetup } from '@/components/admin/classification-setup';
 import { PageSpinner } from '@/components/ui/spinner';
 
+interface Props {
+  params: Promise<{ slug: string }>;
+}
+
 /**
- * Classificação e Emparceiramento migraram pra dentro da aba Editar
- * (components/admin/classification-setup.tsx, renderizado em edit/page.tsx).
- * Esta rota fica só como redirect — bookmarks e o redirect pós-criação
- * (app/admin/tournaments/new/page.tsx) ainda existiam apontando pra cá.
+ * Aba "Emparceiramento" — separada de Editar desde que a tela de criação
+ * deixou de perguntar isso na hora (app/admin/tournaments/new só decide
+ * Classificação). Reaproveita esta rota, que antes só redirecionava pra
+ * /edit (Emparceiramento morava embutido lá).
  */
-export default function GroupsRedirect({ params }: { params: Promise<{ slug: string }> }) {
+export default function PairingPage({ params }: Props) {
   const { slug } = use(params);
-  const router = useRouter();
+  const { data: tournament, isLoading } = useTournament(slug);
 
-  useEffect(() => {
-    router.replace(`/admin/tournaments/${slug}/edit`);
-  }, [router, slug]);
+  if (isLoading) return <PageSpinner />;
+  if (!tournament) return <p className="text-red-500">Torneio não encontrado.</p>;
 
-  return <PageSpinner />;
+  return (
+    <div className="max-w-2xl">
+      <ClassificationSetup
+        tournamentId={tournament.id}
+        mode={tournament.mode}
+        defaultRounds={tournament.rounds_count}
+        currentMode={tournament.pairing_mode}
+        currentSplit={tournament.pairing_split ?? null}
+        initialDimensions={tournament.classification_dimensions ?? []}
+        showClassification={false}
+      />
+    </div>
+  );
 }

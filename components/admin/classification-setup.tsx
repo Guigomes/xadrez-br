@@ -50,12 +50,19 @@ interface ClassificationSetupProps {
    * as duas seções (aba Editar).
    */
   showClassification?: boolean;
+  /**
+   * Esconde a seção "Emparceiramento", mostrando só "Classificação". Usado
+   * pela aba Editar depois que Emparceiramento ganhou aba própria (app/admin/
+   * tournaments/[slug]/groups) — sem isso, apareceria duplicado em duas abas.
+   * Default true = comportamento antigo (mostra as duas seções).
+   */
+  showPairing?: boolean;
 }
 
 /** Bloco de classificação + emparceiramento, embutido na aba Editar (junto de criação/edição). */
 export function ClassificationSetup({
   tournamentId, mode, defaultRounds, currentMode, currentSplit, initialDimensions,
-  autoScrollTop = true, showClassification = true,
+  autoScrollTop = true, showClassification = true, showPairing = true,
 }: ClassificationSetupProps) {
   if (mode !== 'native') {
     return (
@@ -76,6 +83,7 @@ export function ClassificationSetup({
       initialDimensions={initialDimensions}
       autoScrollTop={autoScrollTop}
       showClassification={showClassification}
+      showPairing={showPairing}
     />
   );
 }
@@ -129,13 +137,14 @@ function ratingBandsFromCategories(cats: TournamentCategory[]): RatingPreset[] {
 type PairingChoice = 'absolute' | 'age' | 'rating' | 'custom';
 
 function Setup({
-  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions, autoScrollTop, showClassification,
+  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions, autoScrollTop, showClassification, showPairing,
 }: {
   tournamentId: string; defaultRounds: number; currentMode: PairingMode;
   currentSplit: ClassificationDimension | null;
   initialDimensions: ClassificationDimension[];
   autoScrollTop: boolean;
   showClassification: boolean;
+  showPairing: boolean;
 }) {
   const { data: categories, isLoading: loadingCats } = useCategories(tournamentId);
   const { data: groups, isLoading: loadingGroups } = useGroups(tournamentId);
@@ -600,6 +609,7 @@ function Setup({
       )}
 
       {/* Emparceiramento — seleção fica local até "Salvar". */}
+      {showPairing && (
       <section className="card p-5 space-y-3" data-tour="secao-emparceiramento">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">Emparceiramento</h3>
         <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
@@ -647,6 +657,7 @@ function Setup({
           />
         )}
       </section>
+      )}
     </div>
   );
 }

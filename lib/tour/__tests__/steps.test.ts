@@ -5,12 +5,13 @@ import { TOUR_STEPS, matchRoute, stepsForRoute, nextStepAfter } from '../steps';
 import { readProgress, isDismissed, shouldAutoStart } from '../state';
 
 describe('matchRoute', () => {
-  it('reconhece as cinco rotas do fluxo', () => {
+  it('reconhece as seis rotas do fluxo', () => {
     expect(matchRoute('/admin')).toBe('admin');
     expect(matchRoute('/admin/tournaments/new')).toBe('new');
-    // Classificação/emparceiramento moraram em /groups; agora ficam
-    // embutidos na aba Editar (components/admin/classification-setup.tsx).
     expect(matchRoute('/admin/tournaments/aberto-sp-20260315/edit')).toBe('edit');
+    // Emparceiramento tem aba própria — Editar mostra só Classificação
+    // (components/admin/classification-setup.tsx, showPairing={false} lá).
+    expect(matchRoute('/admin/tournaments/aberto-sp-20260315/groups')).toBe('groups');
     expect(matchRoute('/admin/tournaments/aberto-sp-20260315/registrations')).toBe('registrations');
     expect(matchRoute('/admin/tournaments/aberto-sp-20260315/players')).toBe('players');
   });
@@ -88,7 +89,7 @@ describe('integridade do registro', () => {
     // os de outra quebrariam a retomada silenciosamente.
     const ordem = TOUR_STEPS.map((s) => s.route);
     const primeiraOcorrencia = ordem.filter((r, i) => ordem.indexOf(r) === i);
-    expect(primeiraOcorrencia).toEqual(['admin', 'new', 'edit', 'registrations', 'players']);
+    expect(primeiraOcorrencia).toEqual(['admin', 'new', 'edit', 'groups', 'registrations', 'players']);
     expect(ordem).toEqual(primeiraOcorrencia.flatMap((r) => ordem.filter((x) => x === r)));
   });
 

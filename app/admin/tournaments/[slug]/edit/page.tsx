@@ -90,8 +90,8 @@ export default function EditTournamentPage({ params }: Props) {
         formId="tournament-edit-form"
       />
 
-      {/* Classificação e emparceiramento — mesma aba de criação/edição, não
-          mais uma aba própria (era app/admin/tournaments/[slug]/groups). */}
+      {/* Só Classificação aqui — Emparceiramento tem aba própria
+          (app/admin/tournaments/[slug]/groups), pra não duplicar a seção. */}
       <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
         <ClassificationSetup
           tournamentId={tournament.id}
@@ -100,6 +100,7 @@ export default function EditTournamentPage({ params }: Props) {
           currentMode={tournament.pairing_mode}
           currentSplit={tournament.pairing_split ?? null}
           initialDimensions={tournament.classification_dimensions ?? []}
+          showPairing={false}
         />
       </div>
 

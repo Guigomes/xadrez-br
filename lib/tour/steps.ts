@@ -1,7 +1,7 @@
 /**
  * Passos do tour guiado de criação de torneio.
  *
- * O tour atravessa cinco rotas e NÃO navega sozinho — quem navega é o
+ * O tour atravessa seis rotas e NÃO navega sozinho — quem navega é o
  * organizador (clica "Novo torneio", submete o formulário, clica numa aba).
  * Cada rota tem seu bloco de passos; quando o bloco acaba, o progresso é
  * gravado e o tour se cala até o componente remontar na rota seguinte. Isso
@@ -12,7 +12,7 @@
  * texto quebraria no primeiro ajuste de layout.
  */
 
-export type TourRoute = 'admin' | 'new' | 'edit' | 'registrations' | 'players';
+export type TourRoute = 'admin' | 'new' | 'edit' | 'groups' | 'registrations' | 'players';
 
 export interface TourStep {
   id: string;
@@ -115,8 +115,9 @@ export const TOUR_STEPS: TourStep[] = [
     target: 'criar',
     title: 'Última etapa',
     body:
-      'Logo acima tem Classificação e Emparceiramento — responda se quiser, mas é opcional: ' +
-      'dá pra pular e configurar depois, na aba Editar. Aqui embaixo, clique pra criar o torneio.',
+      'Logo acima tem Classificação — responda se quiser, mas é opcional: dá pra pular e ' +
+      'configurar depois, na aba Editar. Emparceiramento (quem joga contra quem) é definido ' +
+      'depois de criar, na aba própria. Aqui embaixo, clique pra criar o torneio.',
   },
 
   {
@@ -171,7 +172,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'emparceiramento',
-    route: 'edit',
+    route: 'groups',
     target: 'secao-emparceiramento',
     title: 'Quem joga contra quem',
     body:
@@ -205,6 +206,7 @@ export function matchRoute(pathname: string): TourRoute | null {
   if (/^\/admin\/?$/.test(pathname)) return 'admin';
   if (/^\/admin\/tournaments\/new\/?$/.test(pathname)) return 'new';
   if (/^\/admin\/tournaments\/[^/]+\/edit\/?$/.test(pathname)) return 'edit';
+  if (/^\/admin\/tournaments\/[^/]+\/groups\/?$/.test(pathname)) return 'groups';
   if (/^\/admin\/tournaments\/[^/]+\/registrations\/?$/.test(pathname)) return 'registrations';
   if (/^\/admin\/tournaments\/[^/]+\/players\/?$/.test(pathname)) return 'players';
   return null;

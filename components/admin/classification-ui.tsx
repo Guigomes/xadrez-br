@@ -1,6 +1,5 @@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 
 /**
  * Peças de UI compartilhadas entre o setup de classificação/emparceiramento
@@ -76,17 +75,15 @@ export function CustomRangeForm({
 }
 
 export function ModeOption({
-  active, disabled, loading, title, desc, onSelect,
+  active, disabled, title, desc, onSelect,
 }: {
   active: boolean; disabled?: boolean;
-  /** Spinner na frente do título — opção que dispara uma ação assíncrona antes de poder ser usada (ex: "Personalizado" na criação de torneio, que salva o torneio antes de liberar o mapeamento). */
-  loading?: boolean;
   title: string; desc: string; onSelect: () => void;
 }) {
   return (
     <button
       type="button"
-      disabled={disabled || loading}
+      disabled={disabled}
       onClick={onSelect}
       className={`w-full text-left rounded-lg border p-3 transition-colors disabled:opacity-40 ${
         active
@@ -95,11 +92,7 @@ export function ModeOption({
       }`}
     >
       <div className="flex items-center gap-2">
-        {loading ? (
-          <Spinner className="h-4 w-4" />
-        ) : (
-          <span className={`h-4 w-4 rounded-full border-2 ${active ? 'border-brand-500 bg-brand-500' : 'border-gray-300 dark:border-gray-600'}`} />
-        )}
+        <span className={`h-4 w-4 rounded-full border-2 ${active ? 'border-brand-500 bg-brand-500' : 'border-gray-300 dark:border-gray-600'}`} />
         <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{title}</span>
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">{desc}</p>

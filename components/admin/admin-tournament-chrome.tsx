@@ -20,6 +20,8 @@ interface Props {
   mode: TournamentMode;
   status: TournamentStatus;
   registrationEndDate: string | null;
+  /** false só quando status='draft' e pairing_mode='custom' sem grupo criado ou com classificação sem grupo — ver layout.tsx. */
+  pairingReady: boolean;
 }
 
 /**
@@ -61,7 +63,7 @@ const STATUS_ACTIONS: Partial<Record<TournamentStatus, { label: string; to: Tour
  * resultados do árbitro (rounds/[roundId]/results) — aquela tela é
  * mobile-first e não deve competir com a navegação por abas.
  */
-export function AdminTournamentChrome({ id, slug, name, mode, status, registrationEndDate }: Props) {
+export function AdminTournamentChrome({ id, slug, name, mode, status, registrationEndDate, pairingReady }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const qc = useQueryClient();
@@ -125,21 +127,27 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
               {statusSaving === 'draft' && <Spinner className="h-3 w-3" />} Reativar torneio
             </button>
           ) : (
-            (STATUS_ACTIONS[status] ?? []).map((action) => (
-              <button
-                key={action.to}
-                onClick={() => handleStatusChange(action.to, action.extra)}
-                disabled={!!statusSaving}
-                className={
-                  action.primary
-                    ? 'inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50'
-                    : 'inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50'
-                }
-              >
-                {statusSaving === action.to && <Spinner className="h-3 w-3" />}
-                {action.label}
-              </button>
-            ))
+            (STATUS_ACTIONS[status] ?? []).map((action) => {
+              // "Publicar" travado com emparceiramento 'custom' incompleto —
+              // ver comentário em layout.tsx sobre como pairingReady é calculado.
+              const blocked = action.to === 'published' && !pairingReady;
+              return (
+                <button
+                  key={action.to}
+                  onClick={() => handleStatusChange(action.to, action.extra)}
+                  disabled={!!statusSaving || blocked}
+                  title={blocked ? 'Defina o emparceiramento na aba própria antes de publicar.' : undefined}
+                  className={
+                    action.primary
+                      ? 'inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50'
+                      : 'inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50'
+                  }
+                >
+                  {statusSaving === action.to && <Spinner className="h-3 w-3" />}
+                  {action.label}
+                </button>
+              );
+            })
           )}
         </div>
         <button
@@ -152,6 +160,14 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
           ❔
         </button>
       </div>
+      {status === 'draft' && !pairingReady && (
+        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+          Emparceiramento personalizado incompleto — falta criar grupo ou mapear classificação na
+          aba{' '}
+          <a href={`/admin/tournaments/${slug}/groups`} className="underline">Emparceiramento</a>
+          {' '}antes de publicar.
+        </p>
+      )}
       {statusSaved && (
         <span className="mt-2 inline-block text-xs font-medium text-green-600 dark:text-green-400 animate-pulse">
           ✓ Salvo

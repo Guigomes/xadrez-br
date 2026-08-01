@@ -24,6 +24,7 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
 
   const tabs = [
     { href: `${base}/edit`,          label: 'Editar',        icon: '⚙️' },
+    { href: `${base}/groups`,        label: 'Emparceiramento', icon: '🔀' },
     { href: `${base}/registrations`, label: 'Inscrições',    icon: '📝' },
     { href: `${base}/players`,       label: 'Participantes', icon: '👥' },
     { href: `${base}/staff`,         label: 'Árbitros',      icon: '⚖️' },
