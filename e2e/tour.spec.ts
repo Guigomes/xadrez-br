@@ -63,7 +63,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     await nextBtn(page).click();
     await expect(popoverTitle(page)).toHaveText('Quem pode ver');
     await nextBtn(page).click();
-    await expect(popoverTitle(page)).toHaveText('Criar e continuar');
+    await expect(popoverTitle(page)).toHaveText('Última etapa');
     // Último passo do bloco — o botão é "Entendi" (continues=true), não "Próximo".
     await page.locator('.driver-popover-next-btn', { hasText: 'Entendi' }).click();
     await expect(page.locator('.driver-popover')).toHaveCount(0);

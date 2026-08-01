@@ -113,10 +113,10 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'criar',
     route: 'new',
     target: 'criar',
-    title: 'Criar e continuar',
+    title: 'Última etapa',
     body:
-      'Ao criar, você vai direto para a próxima etapa: definir as classificações e como o ' +
-      'emparceiramento será dividido. Te encontro lá.',
+      'Logo acima tem Classificação e Emparceiramento — responda se quiser, mas é opcional: ' +
+      'dá pra pular e configurar depois, na aba Editar. Aqui embaixo, clique pra criar o torneio.',
   },
 
   {
