@@ -31,16 +31,6 @@ interface ClassificationSetupProps {
   currentSplit: ClassificationDimension | null;
   initialDimensions: ClassificationDimension[];
   /**
-   * Rola pro topo da página quando os dados terminam de carregar — pensado
-   * pro destino do redirect logo após criar um torneio (página curta antes
-   * do conteúdo chegar, aparecia no meio quando ele crescia). Desliga
-   * quando este bloco é embutido no meio de uma página maior (ex: tela de
-   * criação, opção "Personalizado") — lá rolar pro topo pularia o resto
-   * do formulário que já está visível. Default true = comportamento
-   * antigo, inalterado pra quem já usa (aba Editar).
-   */
-  autoScrollTop?: boolean;
-  /**
    * Esconde a seção "Classificação" (idade/rating/feminina), mostrando só
    * "Emparceiramento". Usado quando quem chama já mostrou essa parte em
    * outro lugar da mesma tela — sem isso, a classificação aparecia
@@ -62,7 +52,7 @@ interface ClassificationSetupProps {
 /** Bloco de classificação + emparceiramento, embutido na aba Editar (junto de criação/edição). */
 export function ClassificationSetup({
   tournamentId, mode, defaultRounds, currentMode, currentSplit, initialDimensions,
-  autoScrollTop = true, showClassification = true, showPairing = true,
+  showClassification = true, showPairing = true,
 }: ClassificationSetupProps) {
   if (mode !== 'native') {
     return (
@@ -81,7 +71,6 @@ export function ClassificationSetup({
       currentMode={currentMode}
       currentSplit={currentSplit}
       initialDimensions={initialDimensions}
-      autoScrollTop={autoScrollTop}
       showClassification={showClassification}
       showPairing={showPairing}
     />
@@ -137,12 +126,11 @@ function ratingBandsFromCategories(cats: TournamentCategory[]): RatingPreset[] {
 type PairingChoice = 'absolute' | 'age' | 'rating' | 'custom';
 
 function Setup({
-  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions, autoScrollTop, showClassification, showPairing,
+  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions, showClassification, showPairing,
 }: {
   tournamentId: string; defaultRounds: number; currentMode: PairingMode;
   currentSplit: ClassificationDimension | null;
   initialDimensions: ClassificationDimension[];
-  autoScrollTop: boolean;
   showClassification: boolean;
   showPairing: boolean;
 }) {
@@ -208,19 +196,14 @@ function Setup({
     [ageOn, ratingOn, femaleOn, ageBands, ratingBands]
   );
 
-  // Esta seção fica embutida na aba Editar, destino do redirect logo após
-  // criar um torneio — o formulário de criação é longo, o organizador clica
-  // "Criar torneio" já scrolado lá embaixo. O scroll-to-top do App Router roda
-  // enquanto aqui ainda só existe o spinner (página curta, nada pra
-  // scrollar); quando os dados chegam e o conteúdo cresce, a posição antiga
-  // volta a valer e a tela aparece no meio. Força o topo quando o conteúdo
-  // real termina de montar. autoScrollTop=false (opção "Personalizado" na
-  // tela de criação) pula isso — lá o bloco nasce embutido no meio de uma
-  // página maior, rolar pro topo pularia o resto do formulário já visível.
+  // O scroll-to-top do App Router roda enquanto aqui ainda só existe o
+  // spinner (página curta, nada pra scrollar); quando os dados chegam e o
+  // conteúdo cresce, a posição antiga volta a valer e a tela aparece no
+  // meio. Força o topo de novo quando o conteúdo real termina de montar.
   const contentReady = !loadingCats && !loadingGroups;
   useEffect(() => {
-    if (contentReady && autoScrollTop) window.scrollTo(0, 0);
-  }, [contentReady, autoScrollTop]);
+    if (contentReady) window.scrollTo(0, 0);
+  }, [contentReady]);
 
   // Semeia os chips de idade/rating a partir do que já existe em banco — só
   // roda uma vez, quando os dados chegam (contentReady vira true e fica).

@@ -98,7 +98,7 @@ export default async function AdminDashboard({
           {tournaments.map((t) => (
             <Link
               key={t.id}
-              href={`/admin/tournaments/${t.slug}/edit`}
+              href={`/admin/tournaments/${t.slug}`}
               className="card p-4 flex flex-col gap-1 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
             >
               <div className="flex flex-wrap items-center gap-2 mb-1">

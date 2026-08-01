@@ -135,8 +135,8 @@ export default function NewTournamentPage() {
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Classificação</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Ranking de premiação: cada jogador cai numa faixa (ou só no Geral). Opcional: dá pra
-            configurar depois, na aba Editar. Emparceiramento (quem joga contra quem) é definido
-            depois de criar o torneio, na aba própria.
+            configurar depois, no botão &quot;Editar torneio&quot; da Visão geral. Emparceiramento
+            (quem joga contra quem) é definido depois de criar o torneio, na aba própria.
           </p>
         </div>
 

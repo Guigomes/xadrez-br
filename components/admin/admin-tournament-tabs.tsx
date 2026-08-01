@@ -18,12 +18,12 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
 
   // Rodadas só aparece com o torneio de fato em andamento ou já encerrado —
   // antes disso (draft/published/registration/registration_closed) é uma aba
-  // vazia competindo por atenção com Editar/Inscrições, que é onde o
+  // vazia competindo por atenção com Visão geral/Inscrições, que é onde o
   // organizador ainda está.
   const hasStarted = status === 'ongoing' || status === 'finished';
 
   const tabs = [
-    { href: `${base}/edit`,          label: 'Editar',        icon: '⚙️' },
+    { href: base,                    label: 'Visão geral',   icon: '🏆' },
     { href: `${base}/groups`,        label: 'Emparceiramento', icon: '🔀' },
     { href: `${base}/registrations`, label: 'Inscrições',    icon: '📝' },
     { href: `${base}/players`,       label: 'Participantes', icon: '👥' },
@@ -39,7 +39,14 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
   return (
     <nav className="grid grid-cols-3 border-b border-gray-200 dark:border-gray-800 -mx-4 sm:mx-0 sm:flex sm:flex-wrap sm:overflow-x-auto sm:gap-0.5 sm:px-0">
       {tabs.map((tab) => {
-        const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/');
+        // "Visão geral" mora na raiz (href === base), que é PREFIXO de todas
+        // as outras abas (${base}/edit, ${base}/groups, ...) — sem esse
+        // caso especial, o startsWith abaixo marcaria ela como ativa em
+        // qualquer sub-rota também. Mesmo tratamento de components/tournament/
+        // tournament-tabs.tsx (público).
+        const isActive = tab.href === base
+          ? pathname === base
+          : pathname === tab.href || pathname.startsWith(tab.href + '/');
         return (
           <Link
             key={tab.href}

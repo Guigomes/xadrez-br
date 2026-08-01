@@ -33,7 +33,9 @@ export default function EditTournamentPage({ params }: Props) {
     setError('');
     try {
       await updateTournament.mutateAsync(values);
-      router.push('/admin');
+      // Volta pra Visão geral (de onde se chega aqui pelo botão "Editar
+      // torneio"), não pro painel geral — Editar deixou de ser aba.
+      router.push(`/admin/tournaments/${slug}`);
     } catch (err: any) {
       setError(err.message ?? 'Erro ao salvar.');
     }
@@ -104,9 +106,9 @@ export default function EditTournamentPage({ params }: Props) {
         />
       </div>
 
-      {/* Salvar fica depois de Classificação e Emparceiramento — o form em si
-          (TournamentForm, formId acima) não muda, só onde o botão aparece:
-          `form="tournament-edit-form"` submete de fora, via atributo HTML5. */}
+      {/* Salvar fica depois de Classificação — o form em si (TournamentForm,
+          formId acima) não muda, só onde o botão aparece: `form="tournament-
+          edit-form"` submete de fora, via atributo HTML5. */}
       <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
         <Button type="submit" form="tournament-edit-form" loading={updateTournament.isPending} size="lg" className="w-full sm:w-auto">
           Salvar alterações

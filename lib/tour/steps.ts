@@ -116,8 +116,9 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'Última etapa',
     body:
       'Logo acima tem Classificação — responda se quiser, mas é opcional: dá pra pular e ' +
-      'configurar depois, na aba Editar. Emparceiramento (quem joga contra quem) é definido ' +
-      'depois de criar, na aba própria. Aqui embaixo, clique pra criar o torneio.',
+      'configurar depois, no botão "Editar torneio" da Visão geral. Emparceiramento (quem joga ' +
+      'contra quem) é definido depois de criar, na aba própria. Aqui embaixo, clique pra criar ' +
+      'o torneio.',
   },
 
   {
