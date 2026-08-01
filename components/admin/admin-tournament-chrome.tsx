@@ -30,20 +30,25 @@ interface Props {
  * mora na zona de perigo (edit/page.tsx), reativar mora no bloco isCancelled
  * abaixo. Movido de edit/page.tsx pra cá: viver aqui, fora das abas, evita
  * duplicar o mesmo badge+status em dois lugares da mesma tela.
+ *
+ * `extra`: campos além de `status` que a ação também grava. Usado só pelo
+ * par Abrir/Reabrir Inscrições, pra ligar/desligar registration_closes_by_
+ * date (migration 045) — sem isso, "Reabrir Inscrições" com o prazo já
+ * vencido fechava de novo sozinho na consulta seguinte.
  */
-const STATUS_ACTIONS: Partial<Record<TournamentStatus, { label: string; to: TournamentStatus; primary: boolean }[]>> = {
+const STATUS_ACTIONS: Partial<Record<TournamentStatus, { label: string; to: TournamentStatus; primary: boolean; extra?: Record<string, unknown> }[]>> = {
   draft: [
     { label: 'Publicar', to: 'published', primary: true },
   ],
   published: [
     { label: 'Voltar pra Rascunho', to: 'draft', primary: false },
-    { label: 'Abrir Inscrições', to: 'registration', primary: true },
+    { label: 'Abrir Inscrições', to: 'registration', primary: true, extra: { registration_closes_by_date: true } },
   ],
   registration: [
     { label: 'Encerrar Inscrições', to: 'registration_closed', primary: true },
   ],
   registration_closed: [
-    { label: 'Reabrir Inscrições', to: 'registration', primary: false },
+    { label: 'Reabrir Inscrições', to: 'registration', primary: false, extra: { registration_closes_by_date: false } },
     { label: 'Iniciar Torneio', to: 'ongoing', primary: true },
   ],
   ongoing: [
@@ -66,13 +71,13 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
 
   if (/\/rounds\/[^/]+\/results/.test(pathname)) return null;
 
-  async function handleStatusChange(newStatus: TournamentStatus) {
+  async function handleStatusChange(newStatus: TournamentStatus, extra?: Record<string, unknown>) {
     setError('');
     setStatusSaved(false);
     setStatusSaving(newStatus);
     try {
       const supabase = createClient();
-      const { error: updErr } = await supabase.from('tournaments').update({ status: newStatus }).eq('id', id);
+      const { error: updErr } = await supabase.from('tournaments').update({ status: newStatus, ...extra }).eq('id', id);
       if (updErr) throw updErr;
       await qc.invalidateQueries({ queryKey: tournamentKeys.detail(slug) });
       // Badge/abas vêm de props de Server Component, lidas uma vez no
@@ -123,7 +128,7 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
             (STATUS_ACTIONS[status] ?? []).map((action) => (
               <button
                 key={action.to}
-                onClick={() => handleStatusChange(action.to)}
+                onClick={() => handleStatusChange(action.to, action.extra)}
                 disabled={!!statusSaving}
                 className={
                   action.primary
