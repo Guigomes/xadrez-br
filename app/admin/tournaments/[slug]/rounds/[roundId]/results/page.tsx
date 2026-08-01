@@ -14,6 +14,8 @@ import { useUser } from '@/lib/hooks/use-auth';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { winnerSide } from '@/lib/utils/chess';
+import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
 import type { GameResult, Round } from '@/types/database';
 
 const MAIN: { value: GameResult; label: string }[] = [
@@ -61,7 +63,6 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
     ?? staff?.find((s) => s.user_id === userId)?.email
     ?? (userId === tournament?.created_by ? 'Organizador' : 'Árbitro');
   const [error, setError] = useState('');
-  const [showWoFor, setShowWoFor] = useState<string | null>(null);
   const boardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const games = useMemo(
@@ -75,14 +76,18 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
   if (!tournament || !round) return <p>Rodada não encontrada.</p>;
 
   async function submit(p: any, result: GameResult) {
+    const wasPending = p.result === '*';
     setError('');
-    setShowWoFor(null);
     try {
       await setResult.mutateAsync({ pairingId: p.pairing_id, result });
-      // avança para a próxima mesa pendente
-      const next = games.find((g: any) => g.result === '*' && g.pairing_id !== p.pairing_id);
-      if (next) {
-        boardRefs.current[next.pairing_id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // avança para a próxima mesa pendente — só no primeiro lançamento; uma
+      // correção (mesa já tinha resultado) não deveria pular a tela pro
+      // árbitro, que ainda está olhando pra essa mesa.
+      if (wasPending) {
+        const next = games.find((g: any) => g.result === '*' && g.pairing_id !== p.pairing_id);
+        if (next) {
+          boardRefs.current[next.pairing_id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     } catch (e: any) {
       setError(e.message ?? 'Erro ao lançar resultado');
@@ -132,11 +137,12 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
           const assignedTo = p.board_number != null ? arbiterByBoard.get(p.board_number) : undefined;
           const isMine = assignedTo === user?.id;
           const locked = !!assignedTo && !isMine && myRole !== 'organizer';
+          const canEnter = round.status !== 'draft' && round.status !== 'finished' && !locked;
           return (
             <div
               key={p.pairing_id}
               ref={(el) => { boardRefs.current[p.pairing_id] = el; }}
-              className={`card p-4 ${pending ? '' : 'opacity-70'}`}
+              className={`card p-4 ${!pending ? 'border-l-4 border-green-500 dark:border-green-600' : ''}`}
             >
               <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-400">MESA {p.board_number}</span>
@@ -182,14 +188,6 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                     </select>
                   )}
                 </span>
-                {!pending && !locked && (
-                  <button
-                    onClick={() => setShowWoFor(showWoFor === p.pairing_id ? null : p.pairing_id)}
-                    className="text-xs text-brand-600 dark:text-brand-400"
-                  >
-                    corrigir
-                  </button>
-                )}
               </div>
               {locked && pending && (
                 <p className="mb-2 text-xs text-amber-600 dark:text-amber-400">
@@ -197,36 +195,63 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                 </p>
               )}
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-3 text-sm">
-                <span className="font-medium text-gray-900 dark:text-gray-100 text-right truncate">{p.white_name}</span>
+                <span className="flex items-center justify-end gap-1.5 font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {winnerSide(p.result, 'white') === 'winner' && <span className="text-xs">🏆</span>}
+                  <WhitePawn className="h-4 w-3 shrink-0" />
+                  <span className="truncate">{p.white_name}</span>
+                </span>
                 <span className="text-gray-400 text-xs">×</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100 truncate">{p.black_name}</span>
+                <span className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-gray-100 truncate">
+                  <BlackPawn className="h-4 w-3 shrink-0" />
+                  <span className="truncate">{p.black_name}</span>
+                  {winnerSide(p.result, 'black') === 'winner' && <span className="text-xs">🏆</span>}
+                </span>
               </div>
 
-              {(pending || showWoFor === p.pairing_id) && round.status !== 'draft' && !locked ? (
+              {/* Botões continuam visíveis e clicáveis mesmo com resultado
+                  já lançado — o resultado selecionado só fica destacado em
+                  verde. A partida pode ser corrigida a qualquer momento até
+                  a rodada encerrar (sem precisar de um link "corrigir" à
+                  parte pra reabrir os botões). */}
+              {canEnter ? (
                 <>
                   <div className="grid grid-cols-3 gap-2">
-                    {MAIN.map((r) => (
-                      <button
-                        key={r.value}
-                        disabled={setResult.isPending}
-                        onClick={() => submit(p, r.value)}
-                        className="h-12 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-gray-900 dark:text-gray-100 text-lg active:bg-brand-600 active:text-white hover:bg-brand-100 dark:hover:bg-brand-900/40 transition-colors"
-                      >
-                        {r.label}
-                      </button>
-                    ))}
+                    {MAIN.map((r) => {
+                      const active = p.result === r.value;
+                      return (
+                        <button
+                          key={r.value}
+                          disabled={setResult.isPending}
+                          onClick={() => submit(p, r.value)}
+                          className={`h-12 rounded-xl font-bold text-lg transition-colors ${
+                            active
+                              ? 'bg-green-600 text-white'
+                              : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-brand-100 dark:hover:bg-brand-900/40'
+                          }`}
+                        >
+                          {r.label}
+                        </button>
+                      );
+                    })}
                   </div>
                   <div className="grid grid-cols-4 gap-2 mt-2">
-                    {WO.map((r) => (
-                      <button
-                        key={r.value}
-                        disabled={setResult.isPending}
-                        onClick={() => submit(p, r.value)}
-                        className="h-9 rounded-lg border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        {r.label}
-                      </button>
-                    ))}
+                    {WO.map((r) => {
+                      const active = r.value !== '*' && p.result === r.value;
+                      return (
+                        <button
+                          key={r.value}
+                          disabled={setResult.isPending}
+                          onClick={() => submit(p, r.value)}
+                          className={`h-9 rounded-lg border text-xs transition-colors ${
+                            active
+                              ? 'bg-green-600 border-green-600 text-white'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                          }`}
+                        >
+                          {r.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               ) : !pending ? (

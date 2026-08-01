@@ -40,11 +40,22 @@ interface ClassificationSetupProps {
    * antigo, inalterado pra quem já usa (aba Editar).
    */
   autoScrollTop?: boolean;
+  /**
+   * Esconde a seção "Classificação" (idade/rating/feminina), mostrando só
+   * "Emparceiramento". Usado quando quem chama já mostrou essa parte em
+   * outro lugar da mesma tela — sem isso, a classificação aparecia
+   * duplicada (uma vez ali, outra vez aqui embutido), com a segunda cópia
+   * "empurrando" o emparceiramento pra baixo do lugar onde o botão que
+   * revelou esse bloco estava. Default true = comportamento antigo, mostra
+   * as duas seções (aba Editar).
+   */
+  showClassification?: boolean;
 }
 
 /** Bloco de classificação + emparceiramento, embutido na aba Editar (junto de criação/edição). */
 export function ClassificationSetup({
-  tournamentId, mode, defaultRounds, currentMode, currentSplit, initialDimensions, autoScrollTop = true,
+  tournamentId, mode, defaultRounds, currentMode, currentSplit, initialDimensions,
+  autoScrollTop = true, showClassification = true,
 }: ClassificationSetupProps) {
   if (mode !== 'native') {
     return (
@@ -64,6 +75,7 @@ export function ClassificationSetup({
       currentSplit={currentSplit}
       initialDimensions={initialDimensions}
       autoScrollTop={autoScrollTop}
+      showClassification={showClassification}
     />
   );
 }
@@ -117,12 +129,13 @@ function ratingBandsFromCategories(cats: TournamentCategory[]): RatingPreset[] {
 type PairingChoice = 'absolute' | 'age' | 'rating' | 'custom';
 
 function Setup({
-  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions, autoScrollTop,
+  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions, autoScrollTop, showClassification,
 }: {
   tournamentId: string; defaultRounds: number; currentMode: PairingMode;
   currentSplit: ClassificationDimension | null;
   initialDimensions: ClassificationDimension[];
   autoScrollTop: boolean;
+  showClassification: boolean;
 }) {
   const { data: categories, isLoading: loadingCats } = useCategories(tournamentId);
   const { data: groups, isLoading: loadingGroups } = useGroups(tournamentId);
@@ -437,6 +450,7 @@ function Setup({
 
       {/* Classificação vem primeiro: emparceiramento "por idade"/"por rating"
           depende de já existir classificação usando aquela dimensão. */}
+      {showClassification && (
       <section className="card p-5 space-y-3" data-tour="secao-classificacao">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">Classificação</h3>
 
@@ -583,6 +597,7 @@ function Setup({
           </div>
         )}
       </section>
+      )}
 
       {/* Emparceiramento — seleção fica local até "Salvar". */}
       <section className="card p-5 space-y-3" data-tour="secao-emparceiramento">

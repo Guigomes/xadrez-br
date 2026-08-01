@@ -2,45 +2,14 @@
 
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { formatScore } from '@/lib/utils/chess';
+import { formatScore, winnerSide } from '@/lib/utils/chess';
+import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
 import type { RoundPairingRow } from '@/types/database';
 
 interface PairingsListProps {
   pairings: RoundPairingRow[];
   tournamentSlug: string;
   followedTpIds?: Set<string>;
-}
-
-function WhitePawn({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="10" cy="5.5" r="4" fill="white" stroke="#9ca3af" strokeWidth="1.5" />
-      <path d="M7 10.5C7 10.5 5.5 13 5 15H15C14.5 13 13 10.5 13 10.5C12 10 11 9.5 10 9.5C9 9.5 8 10 7 10.5Z" fill="white" stroke="#9ca3af" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M3 24H17L15 17H5L3 24Z" fill="white" stroke="#9ca3af" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function BlackPawn({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="10" cy="5.5" r="4" fill="#1f2937" stroke="#6b7280" strokeWidth="1.5" />
-      <path d="M7 10.5C7 10.5 5.5 13 5 15H15C14.5 13 13 10.5 13 10.5C12 10 11 9.5 10 9.5C9 9.5 8 10 7 10.5Z" fill="#1f2937" stroke="#6b7280" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M3 24H17L15 17H5L3 24Z" fill="#1f2937" stroke="#6b7280" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function winnerState(result: RoundPairingRow['result'], side: 'white' | 'black'): 'winner' | 'loser' | 'draw' | 'pending' {
-  if (result === '*') return 'pending';
-  if (result === '1/2-1/2') return 'draw';
-  if (result === 'bye') return side === 'white' ? 'winner' : 'pending';
-  if (result === '1-0') return side === 'white' ? 'winner' : 'loser';
-  if (result === '0-1') return side === 'black' ? 'winner' : 'loser';
-  if (result === 'forfeit_white') return side === 'black' ? 'winner' : 'loser';
-  if (result === 'forfeit_black') return side === 'white' ? 'winner' : 'loser';
-  if (result === 'double_forfeit') return 'loser';
-  return 'pending';
 }
 
 export function PairingsList({ pairings, tournamentSlug, followedTpIds }: PairingsListProps) {
@@ -63,8 +32,8 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds }: Pairin
   function PairingRow({ pairing, highlighted }: { pairing: RoundPairingRow; highlighted?: boolean }) {
     const followedWhite = highlighted && !!pairing.white_tp_id && followedTpIds?.has(pairing.white_tp_id);
     const followedBlack = highlighted && !!pairing.black_tp_id && followedTpIds?.has(pairing.black_tp_id);
-    const whiteState = winnerState(pairing.result, 'white');
-    const blackState = winnerState(pairing.result, 'black');
+    const whiteState = winnerSide(pairing.result, 'white');
+    const blackState = winnerSide(pairing.result, 'black');
     const hasResult = pairing.result !== '*';
 
     return (

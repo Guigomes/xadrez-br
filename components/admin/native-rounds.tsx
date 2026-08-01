@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSpinner } from '@/components/ui/spinner';
-import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS } from '@/lib/utils/chess';
+import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS, winnerSide } from '@/lib/utils/chess';
+import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
 import type { Tournament, Round, GameResult } from '@/types/database';
 
 const RESULTS: { value: GameResult; label: string }[] = [
@@ -483,13 +484,20 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
       )}
 
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-      {pairings.map((p: any) => (
+      {pairings.map((p: any) => {
+        const whiteWon = !p.is_bye && winnerSide(p.result, 'white') === 'winner';
+        const blackWon = !p.is_bye && winnerSide(p.result, 'black') === 'winner';
+        return (
         <div key={p.pairing_id} className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm flex-wrap">
           <div className="min-w-0 flex items-center flex-wrap gap-y-1">
             <span className="text-gray-400 mr-2">{p.board_number ?? '—'}</span>
+            <WhitePawn className="h-4 w-3 shrink-0 mr-1" />
             <Seat p={p} side="w" name={p.white_name} />
+            {whiteWon && <span className="ml-0.5 text-xs">🏆</span>}
             <span className="text-gray-400 mx-1.5">×</span>
+            <BlackPawn className="h-4 w-3 shrink-0 mr-1" />
             <Seat p={p} side="b" name={p.black_name} />
+            {blackWon && <span className="ml-0.5 text-xs">🏆</span>}
             {p.manual_override && (
               <Badge className="ml-2 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
                 alterada
@@ -518,7 +526,8 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
             </select>
           )}
         </div>
-      ))}
+        );
+      })}
 
       {(history?.length ?? 0) > 0 && (
         <div className="pt-2">

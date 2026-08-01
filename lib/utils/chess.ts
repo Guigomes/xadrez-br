@@ -4,6 +4,19 @@ import type { GameResult, TournamentStatus, RoundStatus } from '@/types/database
 // Game result helpers
 // ============================================================
 
+/** Quem ganhou/perdeu/empatou um lado específico — cobre bye e WO (forfeit), não só 1-0/0-1. */
+export function winnerSide(result: GameResult, side: 'white' | 'black'): 'winner' | 'loser' | 'draw' | 'pending' {
+  if (result === '*') return 'pending';
+  if (result === '1/2-1/2') return 'draw';
+  if (result === 'bye') return side === 'white' ? 'winner' : 'pending';
+  if (result === '1-0') return side === 'white' ? 'winner' : 'loser';
+  if (result === '0-1') return side === 'black' ? 'winner' : 'loser';
+  if (result === 'forfeit_white') return side === 'black' ? 'winner' : 'loser';
+  if (result === 'forfeit_black') return side === 'white' ? 'winner' : 'loser';
+  if (result === 'double_forfeit') return 'loser';
+  return 'pending';
+}
+
 export function resultLabel(result: GameResult, forWhite: boolean): string {
   switch (result) {
     case '1-0':       return forWhite ? 'Vitória' : 'Derrota';

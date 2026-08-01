@@ -318,6 +318,7 @@ export default function NewTournamentPage() {
               currentSplit={null}
               initialDimensions={created.dims}
               autoScrollTop={false}
+              showClassification={false}
             />
             <Button onClick={() => router.push(`/admin/tournaments/${created.slug}`)} size="lg" className="w-full sm:w-auto">
               Concluir e ir para o torneio
