@@ -67,7 +67,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
     defaultValues: {
       tournament_type: 'swiss',
       rounds_count: 6,
-      is_public: false,
+      is_public: true,
       mode: 'native',
       rating_kind: 'std',
       requested_bye_score: 0.5,
