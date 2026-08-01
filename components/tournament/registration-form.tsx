@@ -16,7 +16,11 @@ const CURRENT_YEAR = new Date().getFullYear();
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
 const RECEIPT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
-const emptyToUndef = (v: unknown) => (v === '' || v == null ? undefined : v);
+// birth_year usa valueAsNumber (register mais abaixo) — input number vazio
+// vira NaN, não '', antes de chegar aqui. Sem tratar isso, deixar "Ano de
+// nascimento" em branco quebrava a validação em silêncio (zod rejeitava NaN)
+// e a inscrição nunca era enviada, sem nenhum erro visível pro inscrito.
+const emptyToUndef = (v: unknown) => (v === '' || v == null || (typeof v === 'number' && Number.isNaN(v)) ? undefined : v);
 
 const schema = z.object({
   full_name:  z.string().min(5, 'Informe o nome completo'),
@@ -62,6 +66,7 @@ interface Props {
   requirePaymentReceipt?: boolean;
   registrationFeeText?: string | null;
   isFree?: boolean;
+  requireCbxId?: boolean;
   /** Dados do perfil de quem está logado e marcou "participante" — usados para pré-preencher o formulário. */
   autofill?: AutofillData | null;
   /** Se true, a inscrição enviada é salva de volta no perfil para alimentar o autopreenchimento da próxima vez. */
@@ -70,7 +75,7 @@ interface Props {
 
 export function RegistrationForm({
   tournamentId, tournamentSlug, classifications, tournamentStartYear,
-  requirePaymentReceipt = false, registrationFeeText, isFree = false,
+  requirePaymentReceipt = false, registrationFeeText, isFree = false, requireCbxId = false,
   autofill, saveAutofillOnSubmit = false,
 }: Props) {
   const [receipt, setReceipt] = useState<File | null>(null);
@@ -149,6 +154,10 @@ export function RegistrationForm({
       setError('Selecione sua classificação.');
       return;
     }
+    if (requireCbxId && !values.cbx_id) {
+      setError('Este torneio exige o ID CBX para concluir a inscrição.');
+      return;
+    }
     if (!isFree && requirePaymentReceipt && !receipt) {
       setError('Este torneio exige o comprovante de pagamento para concluir a inscrição.');
       return;
@@ -191,6 +200,9 @@ export function RegistrationForm({
         }
         if (insErr.message.includes('PAYMENT_RECEIPT_REQUIRED')) {
           throw new Error('Este torneio exige o comprovante de pagamento para concluir a inscrição.');
+        }
+        if (insErr.message.includes('CBX_ID_REQUIRED')) {
+          throw new Error('Este torneio exige o ID CBX para concluir a inscrição.');
         }
         throw insErr;
       }
@@ -305,7 +317,12 @@ export function RegistrationForm({
           Preencha se tiver — a organização confirma seu rating a partir do ID.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="ID CBX" inputMode="numeric" {...register('cbx_id')} error={errors.cbx_id?.message} />
+          <Input
+            label={`ID CBX${requireCbxId ? ' *' : ''}`}
+            inputMode="numeric"
+            {...register('cbx_id')}
+            error={errors.cbx_id?.message}
+          />
           <Input label="ID FIDE" inputMode="numeric" {...register('fide_id')} error={errors.fide_id?.message} />
         </div>
         <Input label="Federação" maxLength={3} {...register('federation')} error={errors.federation?.message} hint="Sigla de 3 letras. Padrão: BRA" />

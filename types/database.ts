@@ -88,6 +88,7 @@ export interface Tournament {
   require_payment_receipt: boolean;
   registration_fee_text: string | null;
   is_free: boolean;
+  require_cbx_id: boolean;
   pairing_mode: PairingMode;
   /** Respostas das 3 perguntas de classificação (idade/rating/feminina) — migration 035. */
   classification_dimensions: ClassificationDimension[];
@@ -391,6 +392,7 @@ export interface TournamentFormValues {
   require_payment_receipt: boolean;
   registration_fee_text?: string;
   is_free: boolean;
+  require_cbx_id: boolean;
 }
 
 export interface PlayerFormValues {

@@ -34,6 +34,7 @@ const schema = z.object({
   require_payment_receipt: z.boolean(),
   registration_fee_text: z.string().optional(),
   is_free: z.boolean({ required_error: 'Responda se a inscrição é gratuita' }),
+  require_cbx_id: z.boolean(),
 }).superRefine((values, ctx) => {
   if (values.registration_start_date && values.registration_end_date
     && values.registration_end_date < values.registration_start_date) {
@@ -89,6 +90,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       requested_bye_score: 0.5,
       tiebreak_order: ['buchholz', 'buchholz_cut1', 'sonneborn_berger'],
       require_payment_receipt: false,
+      require_cbx_id: false,
       // Sem default de propósito — obriga o organizador a responder em vez
       // de herdar "gratuito" silenciosamente (ver zod required_error acima).
       is_free: undefined as unknown as boolean,
@@ -283,6 +285,19 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           value={watch('tiebreak_order') as TiebreakKey[]}
           onChange={(v) => setValue('tiebreak_order', v, { shouldDirty: true })}
         />
+        <label className="flex items-start gap-3 cursor-pointer pt-2 border-t border-gray-100 dark:border-gray-800">
+          <input
+            type="checkbox"
+            className="h-4 w-4 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            {...register('require_cbx_id')}
+          />
+          <div>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">ID CBX obrigatório</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              A inscrição pública só é aceita com o ID CBX preenchido.
+            </p>
+          </div>
+        </label>
       </div>
 
       {/* Visibility */}
