@@ -31,7 +31,6 @@ export default function AdminPlayersPage({ params }: Props) {
   const { data: tournament, isLoading } = useTournament(slug);
   const { data: tPlayers, isLoading: loadingPlayers } = useTournamentPlayers(tournament?.id ?? '');
   const assignGroup = useAssignPlayerGroup(tournament?.id ?? '');
-  const setCategory = useSetPlayerCategory(tournament?.id ?? '');
   const { data: categories } = useCategories(tournament?.id ?? '');
   const isNative = tournament?.mode === 'native';
   const { data: groups, isLoading: loadingGroups } = useGroups(isNative ? tournament!.id : '');
@@ -72,15 +71,6 @@ export default function AdminPlayersPage({ params }: Props) {
     setError('');
     try {
       await assignGroup.mutateAsync({ tpId, groupId: gId });
-    } catch (err: any) {
-      setError(err.message);
-    }
-  }
-
-  async function handleSetCategory(tpId: string, categoryId: string) {
-    setError('');
-    try {
-      await setCategory.mutateAsync({ tpId, categoryId: categoryId || null });
     } catch (err: any) {
       setError(err.message);
     }
@@ -231,27 +221,6 @@ export default function AdminPlayersPage({ params }: Props) {
                         declaredName={tpAny.player.full_name}
                       />
                     )}
-                    <button
-                      type="button"
-                      onClick={() => startEdit(tp.id, tpAny.category_id ?? tpAny.category?.id ?? null, tpAny.player)}
-                      className="mt-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"
-                    >
-                      ✏️ Editar
-                    </button>
-                    {hasClassifications && (categories?.length ?? 0) > 0 && (
-                      <div className="mt-1 flex items-center gap-2">
-                        <span className="text-xs text-gray-400">🏷️</span>
-                        <select
-                          className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-1.5 py-0.5 text-xs"
-                          value={tpAny.category_id ?? tpAny.category?.id ?? ''}
-                          disabled={setCategory.isPending}
-                          onChange={(e) => handleSetCategory(tp.id, e.target.value)}
-                        >
-                          <option value="">Geral (sem classificação)</option>
-                          {categories!.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                      </div>
-                    )}
                     {missingGroup && (
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs text-amber-600 dark:text-amber-400">⚠ sem grupo — não será pareado</span>
@@ -272,9 +241,18 @@ export default function AdminPlayersPage({ params }: Props) {
                       </p>
                     )}
                   </div>
-                  <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums">
-                    {formatScore(tp.current_score)}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums">
+                      {formatScore(tp.current_score)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => startEdit(tp.id, tpAny.category_id ?? tpAny.category?.id ?? null, tpAny.player)}
+                      className="text-xs text-brand-600 dark:text-brand-400 hover:underline whitespace-nowrap"
+                    >
+                      ✏️ Editar
+                    </button>
+                  </div>
                 </div>
               );
             })}

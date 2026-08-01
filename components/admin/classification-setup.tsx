@@ -423,7 +423,7 @@ function Setup({
 
       {/* Classificação vem primeiro: emparceiramento "por idade"/"por rating"
           depende de já existir classificação usando aquela dimensão. */}
-      <section className="space-y-3" data-tour="secao-classificacao">
+      <section className="card p-5 space-y-3" data-tour="secao-classificacao">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">Classificação</h3>
 
         <DimensionQuestion
@@ -571,7 +571,7 @@ function Setup({
       </section>
 
       {/* Emparceiramento — seleção fica local até "Salvar". */}
-      <section className="space-y-3" data-tour="secao-emparceiramento">
+      <section className="card p-5 space-y-3" data-tour="secao-emparceiramento">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">Emparceiramento</h3>
         <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
         <div className="space-y-2">

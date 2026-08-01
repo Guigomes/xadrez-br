@@ -54,14 +54,31 @@ Trigger `trg_prevent_role_escalation` (migration 026) bloqueia usuário comum de
 - **Cabeçalhos duplicados/inconsistentes por página**: antes de adicionar um link de navegação num header de página admin, checar se `components/admin/admin-tournament-tabs.tsx` (o layout compartilhado em `app/admin/tournaments/[slug]/layout.tsx`) já cobre isso — não duplicar.
 - **Card de import do chess-results sem guarda de modo**: qualquer feature exclusiva de um modo (`native`/`imported`) precisa checar `tournament.mode` explicitamente na UI, não só confiar na RLS/trigger do banco (que bloqueia mas não esconde, gerando erro feio em vez de a opção simplesmente não aparecer).
 - **Registro manual de jogador sem grupo**: ao adicionar `tournament_players` em torneio nativo, `pairing_group_id` é obrigatório (trigger recusa). Toda tela que insere participante precisa oferecer o seletor de grupo, não só o RPC de pareamento.
+- **`approve_registration` reaproveitando `players` por nome sem atualizar dado novo** (migration 046): o find-or-create casa por CBX/FIDE/nome; ao achar um `players` já existente, só `sex` era retroalimentado (se nulo) — `birth_year`/`city`/`federation`/`fide_id`/`cbx_id`/`rating_std` da inscrição nova eram descartados em silêncio. Sintoma: segunda inscrição pro mesmo nome com idade preenchida aprovava sem classificação (derive_player_category depende de `birth_year`). Qualquer UPDATE de "enriquecer cadastro existente com dado novo" precisa cobrir todos os campos que a inscrição pode trazer, não só o que motivou o bug original.
 
-## Fluxo de trabalho esperado nesta sessão (repetir)
+## Fluxo de trabalho — gated por pedido explícito (não antecipar etapa)
 
-1. Editar código.
-2. `npx next lint` (esperar 0 *Error*) + `npx vitest run lib/pairing` (12/12 hoje).
-3. Se houver migration nova: criar script `cron-import/apply-NNN.mjs` seguindo o padrão existente, rodar, conferir contagens exatas de colunas/funções/triggers criados (não só "sem erro").
-4. Commit em português, mensagem explicando o *porquê*, não só o *o quê*. `git push origin main`.
-5. Monitorar o deploy (`gh run watch` em background) antes de reportar concluído.
+Pedido de **alteração** ("muda X", "corrige Y") → só:
+1. Editar código (achar causa raiz antes, não só sintoma/UI).
+2. Se houver migration nova: criar `supabase/migrations/NNN_nome.sql` idempotente + `scripts/apply-NNN.mjs` seguindo o padrão existente — mas **não rodar** a menos que peçam pra testar/publicar.
+
+Pedido de **testar** ("testa isso", "confere se funciona") → adiciona:
+3. `npx next lint` (esperar 0 *Error*) + `npx vitest run lib/pairing` quando mexeu em pareamento.
+4. Rodar migration nova (`apply-NNN.mjs` ou SQL direto) se ainda não rodou.
+5. Verificar visual/comportamento (preview local no browser) quando a mudança for observável ali.
+
+Pedido de **publicar/push** ("publica", "sobe", "faz push") → adiciona:
+6. Commit em português, mensagem explicando o *porquê*, não só o *o quê*.
+7. `git push origin main`.
+8. Monitorar o deploy (`gh run watch` em background) antes de reportar concluído.
+9. Registrar no `CLAUDE.md` (seção "Erros de UX já cometidos" ou equivalente) se foi bug/padrão que vale não repetir.
+
+**Não pular etapas de um pedido pro outro** — "muda X" não implica testar nem publicar; "testa" não implica publicar. Só avança de fase quando o usuário pedir explicitamente.
+
+## Ambiente de teste
+
+- **Confirmação de e-mail está desativada no Supabase Auth deste projeto.** Dá pra criar usuário de teste direto pela tela de cadastro (`/` → "Cadastre-se") com e-mail/senha inventados — loga na hora, sem precisar clicar em link de confirmação. Útil pra verificar telas do painel admin (`/admin/...`) que exigem login.
+- Usuário novo nasce sem `role='admin'` nem `is_organizer` — pra acessar "Novo torneio" e demais telas de organizador, precisa marcar `is_organizer=true` (ou `role='admin'`) em `user_profiles` direto no banco após o cadastro.
 
 ## O que NÃO existe ainda (não assumir implementado)
 

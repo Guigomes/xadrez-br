@@ -143,7 +143,7 @@ export default function NewTournamentPage() {
           </p>
         </div>
 
-        <section className="space-y-3" data-tour="secao-classificacao">
+        <section className="card p-5 space-y-3" data-tour="secao-classificacao">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">Classificação</h3>
 
           <DimensionQuestion
@@ -229,7 +229,7 @@ export default function NewTournamentPage() {
           )}
         </section>
 
-        <section className="space-y-3" data-tour="secao-emparceiramento">
+        <section className="card p-5 space-y-3" data-tour="secao-emparceiramento">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">Emparceiramento</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
           <div className="space-y-2">
