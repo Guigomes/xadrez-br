@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { RegistrationForm } from '@/components/tournament/registration-form';
 import { formatDateRange } from '@/lib/utils/date';
+import { todayInSaoPaulo } from '@/lib/utils/chess';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -20,9 +21,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+// Horário de Brasília, não UTC. A Vercel roda em UTC, então o
+// toISOString() que estava aqui já valia "amanhã" entre 21:00 e 00:00 BRT —
+// a tela dizia que a inscrição tinha encerrado 3h antes da hora. Mesmo
+// motivo do today_brt() no banco (migration 043): as três checagens de
+// janela (esta, a RLS e o selo de status) precisam concordar sobre "hoje".
+const todayISO = todayInSaoPaulo;
 
 export default async function RegisterPage({ params }: Props) {
   const { slug } = await params;

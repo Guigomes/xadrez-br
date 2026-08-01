@@ -66,7 +66,7 @@ export const TOURNAMENT_STATUS_COLORS: Record<TournamentStatus, string> = {
   cancelled:            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 };
 
-function todayInSaoPaulo(): string {
+export function todayInSaoPaulo(): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Sao_Paulo',
     year: 'numeric', month: '2-digit', day: '2-digit',
