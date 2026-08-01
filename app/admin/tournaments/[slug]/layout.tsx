@@ -13,7 +13,7 @@ export default async function AdminTournamentLayout({ children, params }: Props)
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('name, mode, status, registration_end_date')
+    .select('id, name, mode, status, registration_end_date')
     .eq('slug', slug)
     .single();
 
@@ -22,7 +22,7 @@ export default async function AdminTournamentLayout({ children, params }: Props)
   return (
     <div>
       <AdminTournamentChrome
-        slug={slug} name={tournament.name} mode={tournament.mode} status={tournament.status}
+        id={tournament.id} slug={slug} name={tournament.name} mode={tournament.mode} status={tournament.status}
         registrationEndDate={tournament.registration_end_date}
       />
       {children}
