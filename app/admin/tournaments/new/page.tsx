@@ -102,9 +102,11 @@ export default function NewTournamentPage() {
 
       await applyClassificationDraft(tournament.id, { ageOn, ratingOn, femaleOn, ageBands, ratingBands });
 
-      // Segue pra visão geral — revisão do que acabou de ser criado antes de
-      // decidir se precisa ajustar Emparceiramento na aba própria.
-      router.push(`/admin/tournaments/${slug}`);
+      // Direto pra aba Emparceiramento — é a única decisão que falta antes
+      // de poder publicar (?criado=1 aciona o popup de aviso lá, ver
+      // groups/page.tsx). Torneio nasce em rascunho: sem isso, o organizador
+      // só ia notar a pendência ao tentar publicar e ver o botão travado.
+      router.push(`/admin/tournaments/${slug}/groups?criado=1`);
     } catch (err: any) {
       setError(err.message ?? 'Erro ao criar torneio.');
     } finally {

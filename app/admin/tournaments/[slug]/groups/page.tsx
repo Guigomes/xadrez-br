@@ -1,9 +1,10 @@
 'use client';
 
-import { use } from 'react';
+import { use, Suspense } from 'react';
 import { useTournament } from '@/lib/hooks/use-tournament';
 import { ClassificationSetup } from '@/components/admin/classification-setup';
 import { PageSpinner } from '@/components/ui/spinner';
+import { CreatedModal } from './created-modal';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -24,6 +25,12 @@ export default function PairingPage({ params }: Props) {
 
   return (
     <div className="max-w-2xl">
+      {/* useSearchParams exige Suspense (Next bailaria a página inteira pra
+          client-side render sem isso) — isolado em componente próprio pra
+          não arrastar o resto da página pra dentro do boundary. */}
+      <Suspense fallback={null}>
+        <CreatedModal />
+      </Suspense>
       <ClassificationSetup
         tournamentId={tournament.id}
         mode={tournament.mode}
