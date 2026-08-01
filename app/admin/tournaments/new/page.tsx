@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { TournamentForm } from '@/components/tournament/tournament-form';
 import { TourTriggerButton } from '@/components/admin/tour-trigger-button';
 import { DimensionQuestion, Chip, CustomRangeForm, ModeOption } from '@/components/admin/classification-ui';
+import { ClassificationSetup } from '@/components/admin/classification-setup';
 import { applyClassificationDraft, type DraftPairingChoice } from '@/lib/utils/create-tournament-setup';
 import { generateClassificationCells } from '@/lib/utils/classification-match';
 import {
@@ -15,7 +16,7 @@ import {
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { slugify } from '@/lib/utils/chess';
-import type { TournamentFormValues } from '@/types/database';
+import type { ClassificationDimension, TournamentFormValues } from '@/types/database';
 import { useUser, useProfile } from '@/lib/hooks/use-auth';
 
 const FORM_ID = 'new-tournament-form';
@@ -38,7 +39,22 @@ export default function NewTournamentPage() {
   const [ratingBands, setRatingBands] = useState<RatingPreset[]>([]);
   const [customAge, setCustomAge] = useState({ name: '', min: '', max: '' });
   const [customRating, setCustomRating] = useState({ name: '', min: '', max: '' });
-  const [pairingChoice, setPairingChoice] = useState<DraftPairingChoice>('absolute');
+  const [pairingChoice, setPairingChoiceState] = useState<DraftPairingChoice>('absolute');
+  // handleSubmit roda dentro do submit nativo do form (disparado via
+  // requestSubmit em selectCustom) — se lesse `pairingChoice` do estado
+  // direto, pegaria o valor de ANTES do clique em "Personalizado" (state
+  // ainda não re-renderizou quando o submit síncrono dispara). Ref
+  // atualiza no mesmo tick, sem esperar re-render.
+  const pairingChoiceRef = useRef<DraftPairingChoice>('absolute');
+  function setPairingChoice(choice: DraftPairingChoice) {
+    pairingChoiceRef.current = choice;
+    setPairingChoiceState(choice);
+  }
+  // Torneio já criado a partir do clique em "Personalizado" — a partir daqui
+  // a tela troca o rascunho local pelo ClassificationSetup de verdade (mesmo
+  // componente da aba Editar), porque só com o torneio existindo dá pra
+  // mapear classificação -> grupo (ambos têm FK pro torneio).
+  const [created, setCreated] = useState<{ id: string; slug: string; rounds: number; dims: ClassificationDimension[] } | null>(null);
 
   const previewCells = useMemo(
     () => generateClassificationCells({
@@ -101,18 +117,74 @@ export default function NewTournamentPage() {
         .select('id').single();
       if (err) throw err;
 
+      const choice = pairingChoiceRef.current;
       await applyClassificationDraft(tournament.id, {
-        ageOn, ratingOn, femaleOn, ageBands, ratingBands, pairingChoice,
+        ageOn, ratingOn, femaleOn, ageBands, ratingBands, pairingChoice: choice,
       });
 
-      // Segue pra aba Editar — dá pra revisar/ajustar o que acabou de ser
-      // definido aqui (classificação/emparceiramento já vêm prontos).
-      router.push(`/admin/tournaments/${slug}/edit`);
+      if (choice === 'custom') {
+        // Fica na própria tela — troca o rascunho pelo mapeamento de verdade
+        // (ClassificationSetup), que só funciona com o torneio já existindo.
+        const dims: ClassificationDimension[] = [
+          ...(ageOn ? (['age'] as const) : []),
+          ...(ratingOn ? (['rating'] as const) : []),
+          ...(femaleOn ? (['sex'] as const) : []),
+        ];
+        setCreated({ id: tournament.id, slug, rounds: values.rounds_count, dims });
+      } else {
+        // Segue pra aba Editar — dá pra revisar/ajustar o que acabou de ser
+        // definido aqui (classificação/emparceiramento já vêm prontos).
+        router.push(`/admin/tournaments/${slug}/edit`);
+      }
     } catch (err: any) {
       setError(err.message ?? 'Erro ao criar torneio.');
     } finally {
       setLoading(false);
     }
+  }
+
+  // "Personalizado" precisa do torneio existindo pra mapear classificação ->
+  // grupo (ambos têm FK pro torneio) — diferente das outras 3 opções, que só
+  // marcam uma preferência local até "Criar torneio". Clicar aqui já dispara
+  // a criação (via submit nativo do form) em vez de esperar o botão do fim
+  // da página; requestSubmit roda a validação normal do TournamentForm — se
+  // faltar campo obrigatório, os erros aparecem lá, nada é criado.
+  function selectCustom() {
+    setPairingChoice('custom');
+    (document.getElementById(FORM_ID) as HTMLFormElement | null)?.requestSubmit();
+  }
+
+  // Torneio já existe (criado via "Personalizado") — troca o rascunho pelo
+  // mapeamento de verdade, mesmo componente da aba Editar.
+  if (created) {
+    return (
+      <div className="max-w-2xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Torneio criado</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Falta só mapear cada classificação a um grupo de emparceiramento.
+          </p>
+        </div>
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
+        <ClassificationSetup
+          tournamentId={created.id}
+          mode="native"
+          defaultRounds={created.rounds}
+          currentMode="custom"
+          currentSplit={null}
+          initialDimensions={created.dims}
+        />
+        <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
+          <Button onClick={() => router.push(`/admin/tournaments/${created.slug}/edit`)} size="lg" className="w-full sm:w-auto">
+            Concluir e ir para o torneio
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -234,19 +306,25 @@ export default function NewTournamentPage() {
           <p className="text-xs text-gray-500 dark:text-gray-400">O emparceiramento é separado?</p>
           <div className="space-y-2">
             <ModeOption
-              active={pairingChoice === 'absolute'}
+              active={pairingChoice === 'absolute'} disabled={loading}
               title="Não — todos juntos" desc="Um grupo único. As classificações continuam valendo pra premiação."
               onSelect={() => setPairingChoice('absolute')}
             />
             <ModeOption
-              active={pairingChoice === 'age'} disabled={!ageOn || ageBands.length === 0}
+              active={pairingChoice === 'age'} disabled={loading || !ageOn || ageBands.length === 0}
               title="Por idade" desc="Um grupo por faixa de idade. As demais classificações viram recorte dentro do grupo."
               onSelect={() => setPairingChoice('age')}
             />
             <ModeOption
-              active={pairingChoice === 'rating'} disabled={!ratingOn || ratingBands.length === 0}
+              active={pairingChoice === 'rating'} disabled={loading || !ratingOn || ratingBands.length === 0}
               title="Por rating" desc="Um grupo por faixa de rating."
               onSelect={() => setPairingChoice('rating')}
+            />
+            <ModeOption
+              active={pairingChoice === 'custom'} loading={loading && pairingChoice === 'custom'}
+              disabled={loading}
+              title="Personalizado" desc="Você define os grupos e mapeia cada classificação a um grupo — cria o torneio na hora pra liberar isso."
+              onSelect={selectCustom}
             />
           </div>
         </section>

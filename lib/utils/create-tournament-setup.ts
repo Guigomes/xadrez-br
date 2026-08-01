@@ -3,7 +3,7 @@ import { generateClassificationCells } from './classification-match';
 import type { AgePreset, RatingPreset } from '@/lib/constants/classification-presets';
 import type { ClassificationDimension } from '@/types/database';
 
-export type DraftPairingChoice = 'absolute' | 'age' | 'rating';
+export type DraftPairingChoice = 'absolute' | 'age' | 'rating' | 'custom';
 
 export interface ClassificationDraft {
   ageOn: boolean;
@@ -23,8 +23,11 @@ export interface ClassificationDraft {
  * groups (agora components/admin/classification-setup.tsx), só que sem
  * reconciliar contra nada existente — aqui é tudo linha nova.
  *
- * Sempre cria pelo menos um grupo de emparceiramento (mesmo sem nenhuma
+ * Cria pelo menos um grupo de emparceiramento (mesmo sem nenhuma
  * classificação) — torneio nativo não aceita participante sem grupo.
+ * Exceção: pairingChoice 'custom' não cria grupo nenhum aqui, porque o
+ * organizador vai mapear classificação -> grupo na hora (mesma tela,
+ * ClassificationSetup embutido) — torneio fica sem grupo até isso acontecer.
  */
 export async function applyClassificationDraft(tournamentId: string, draft: ClassificationDraft): Promise<void> {
   const supabase = createClient();
@@ -61,6 +64,18 @@ export async function applyClassificationDraft(tournamentId: string, draft: Clas
     const { data, error } = await supabase.from('tournament_categories').insert(rows).select();
     if (error) throw error;
     categories = data ?? [];
+  }
+
+  // 'custom': organizador vai mapear grupo por classificação na hora (aba
+  // Editar reaproveitada aqui mesmo, embutida na tela de criação) — sem
+  // grupo automático, igual ao applyCustom() de components/admin/
+  // classification-setup.tsx. Torneio fica temporariamente sem grupo até o
+  // organizador criar um manualmente (players/page.tsx já cobre esse estado).
+  if (draft.pairingChoice === 'custom') {
+    const { error: modeError } = await supabase
+      .from('tournaments').update({ pairing_mode: 'custom', pairing_split: null }).eq('id', tournamentId);
+    if (modeError) throw modeError;
+    return;
   }
 
   // pairingChoice 'age'/'rating' só faz sentido com classificações usando
