@@ -10,6 +10,14 @@ import { TiebreakOrderPicker } from '@/components/tournament/tiebreak-order-pick
 import { BR_STATES, slugify } from '@/lib/utils/chess';
 import type { TournamentFormValues, Tournament, TiebreakKey } from '@/types/database';
 
+/** 06:00 até 22:00, de 30 em 30 min — faixa de horário de abertura de clube/federação. */
+const START_TIME_OPTIONS = Array.from({ length: (22 - 6) * 2 + 1 }, (_, i) => {
+  const totalMinutes = 6 * 60 + i * 30;
+  const h = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+  const m = String(totalMinutes % 60).padStart(2, '0');
+  return `${h}:${m}`;
+});
+
 const schema = z.object({
   name:            z.string().min(3, 'Nome muito curto'),
   description:     z.string().optional(),
@@ -21,6 +29,7 @@ const schema = z.object({
   time_control:    z.string().min(2, 'Ritmo obrigatório'),
   tournament_type: z.enum(['swiss', 'round_robin']),
   start_date:      z.string().min(1, 'Data de início obrigatória'),
+  start_time:      z.string().optional(),
   end_date:        z.string().optional(),
   registration_start_date: z.string().optional(),
   registration_end_date:   z.string().optional(),
@@ -113,6 +122,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       onSubmit={handleSubmit((values) => {
         const payload: TournamentFormValues = {
           ...values,
+          start_time: values.start_time || undefined,
           end_date: values.end_date || undefined,
           registration_start_date: values.registration_start_date || undefined,
           registration_end_date: values.registration_end_date || undefined,
@@ -191,6 +201,10 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           />
           <Input label="Data de encerramento" type="date" {...register('end_date')} />
         </div>
+        <Select label="Horário de início (opcional)" {...register('start_time')}>
+          <option value="">Não informado</option>
+          {START_TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+        </Select>
 
         <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Período de inscrições</p>

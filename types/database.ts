@@ -73,9 +73,13 @@ export interface Tournament {
   time_control: string;
   tournament_type: TournamentType;
   start_date: string;
+  /** "HH:MM" (coluna `time`), opcional — só informativo, não entra em nenhuma regra de status. */
+  start_time: string | null;
   end_date: string | null;
   registration_start_date: string | null;
   registration_end_date: string | null;
+  /** false depois de "Reabrir Inscrições" manual — só "Encerrar Inscrições" volta a fechar, o prazo por data para de vigiar (migration 045). */
+  registration_closes_by_date: boolean;
   rounds_count: number;
   status: TournamentStatus;
   is_public: boolean;
@@ -379,6 +383,7 @@ export interface TournamentFormValues {
   time_control: string;
   tournament_type: TournamentType;
   start_date: string;
+  start_time?: string;
   end_date?: string;
   registration_start_date?: string;
   registration_end_date?: string;

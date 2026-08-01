@@ -73,7 +73,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
         {(tournament.venue || tournament.city) && (
           <span>📍 {[tournament.venue, `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}</span>
         )}
-        <span>📅 {formatDateRange(tournament.start_date, tournament.end_date)}</span>
+        <span>📅 {formatDateRange(tournament.start_date, tournament.end_date)}{tournament.start_time && ` às ${tournament.start_time.slice(0, 5)}`}</span>
         {tournament.registration_start_date && (
           <span>📝 Inscrições: {formatDateRange(tournament.registration_start_date, tournament.registration_end_date)}</span>
         )}
