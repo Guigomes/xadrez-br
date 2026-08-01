@@ -8,6 +8,7 @@ import { TournamentForm } from '@/components/tournament/tournament-form';
 import { ClassificationSetup } from '@/components/admin/classification-setup';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import type { TournamentFormValues, TournamentStatus } from '@/types/database';
@@ -172,6 +173,7 @@ export default function EditTournamentPage({ params }: Props) {
         onSubmit={handleSubmit}
         loading={updateTournament.isPending}
         submitLabel="Salvar alterações"
+        formId="tournament-edit-form"
       />
 
       {/* Classificação e emparceiramento — mesma aba de criação/edição, não
@@ -185,6 +187,15 @@ export default function EditTournamentPage({ params }: Props) {
           currentSplit={tournament.pairing_split ?? null}
           initialDimensions={tournament.classification_dimensions ?? []}
         />
+      </div>
+
+      {/* Salvar fica depois de Classificação e Emparceiramento — o form em si
+          (TournamentForm, formId acima) não muda, só onde o botão aparece:
+          `form="tournament-edit-form"` submete de fora, via atributo HTML5. */}
+      <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
+        <Button type="submit" form="tournament-edit-form" loading={updateTournament.isPending} size="lg" className="w-full sm:w-auto">
+          Salvar alterações
+        </Button>
       </div>
 
       {/* Danger zone — cancelar e excluir juntos: as duas ações incomuns,

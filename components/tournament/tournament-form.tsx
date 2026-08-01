@@ -54,14 +54,30 @@ const schema = z.object({
   }
 });
 
+/** Converte null -> undefined em todo o objeto (ver comentário de uso abaixo). */
+function stripNulls<T extends object>(obj: T | undefined): Partial<T> {
+  if (!obj) return {};
+  const out: any = {};
+  for (const [k, v] of Object.entries(obj)) out[k] = v === null ? undefined : v;
+  return out;
+}
+
 interface Props {
   defaultValues?: Partial<TournamentFormValues>;
   onSubmit: (values: TournamentFormValues) => void;
   loading?: boolean;
   submitLabel?: string;
+  /**
+   * Quando informado, o form ganha esse id e NÃO renderiza o próprio botão
+   * de salvar — quem chama coloca um `<Button type="submit" form={formId}>`
+   * onde quiser (fora do form, inclusive), via o atributo HTML5 `form`. Usado
+   * em edit/page.tsx pra deixar o salvar depois de Classificação e
+   * Emparceiramento, que ficam fora deste componente.
+   */
+  formId?: string;
 }
 
-export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar' }: Props) {
+export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar', formId }: Props) {
   const { register, handleSubmit, watch, setValue, getValues, formState: { errors } } = useForm<TournamentFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -76,7 +92,13 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       // Sem default de propósito — obriga o organizador a responder em vez
       // de herdar "gratuito" silenciosamente (ver zod required_error acima).
       is_free: undefined as unknown as boolean,
-      ...defaultValues,
+      // stripNulls: defaultValues vem direto da linha do banco (edit/page.tsx
+      // passa o torneio inteiro) — colunas opcionais sem valor chegam como
+      // null, mas o schema só aceita string | undefined nesses campos
+      // (z.string().optional() rejeita null). Sem isso, editar um torneio
+      // sem data de inscrição preenchida, por exemplo, falhava a validação
+      // sem nenhum aviso visível e "Salvar alterações" nunca completava.
+      ...stripNulls(defaultValues),
       initial_color: 'white1',
     },
   });
@@ -85,6 +107,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
 
   return (
     <form
+      id={formId}
       onSubmit={handleSubmit((values) => {
         const payload: TournamentFormValues = {
           ...values,
@@ -279,11 +302,13 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
         </label>
       </div>
 
-      <div data-tour="criar">
-        <Button type="submit" loading={loading} size="lg" className="w-full sm:w-auto">
-          {submitLabel}
-        </Button>
-      </div>
+      {!formId && (
+        <div data-tour="criar">
+          <Button type="submit" loading={loading} size="lg" className="w-full sm:w-auto">
+            {submitLabel}
+          </Button>
+        </div>
+      )}
     </form>
   );
 }
