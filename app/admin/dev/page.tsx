@@ -97,8 +97,8 @@ function DevPanel() {
         {tournamentId && (
           !groups?.length ? (
             <Button variant="secondary" size="sm" loading={createGroup.isPending}
-              onClick={() => createGroup.mutate('Único')}>
-              Criar grupo &quot;Único&quot; primeiro
+              onClick={() => createGroup.mutate('Absoluto')}>
+              Criar grupo &quot;Absoluto&quot; primeiro
             </Button>
           ) : (
             <Select label="Grupo" value={groupId} onChange={(e) => setGroupId(e.target.value)}>

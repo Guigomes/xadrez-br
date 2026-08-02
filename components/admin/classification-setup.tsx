@@ -351,7 +351,7 @@ function Setup({
   async function applyAbsolute() {
     let groupId = grps[0]?.id;
     if (!groupId) {
-      const g = await createGroup.mutateAsync({ name: 'Único', sort_order: 0 });
+      const g = await createGroup.mutateAsync({ name: 'Absoluto', sort_order: 0 });
       groupId = (g as any)?.id;
     }
     for (const c of cats) {

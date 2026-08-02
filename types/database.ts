@@ -418,6 +418,28 @@ export interface PairingResultUpdate {
   result: GameResult;
 }
 
+// Chatbot de suporte (docs/plano-chatbot-suporte.md) — Fase 2, só logado.
+export type ChatSessionStatus = 'bot' | 'encerrada';
+export type ChatMessageRole = 'user' | 'assistant' | 'system';
+
+export interface ChatSession {
+  id: string;
+  user_id: string;
+  tournament_id: string | null;
+  status: ChatSessionStatus;
+  last_message_at: string;
+  created_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: ChatMessageRole;
+  content: string;
+  sources: { doc_slug: string; doc_title: string }[] | null;
+  created_at: string;
+}
+
 // ============================================================
 // Supabase Database type (used with createClient generic)
 // ============================================================
@@ -434,6 +456,8 @@ export interface Database {
       pairings:             { Row: Pairing;            Insert: Omit<Pairing, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Pairing, 'id'>>; };
       standings:            { Row: Standing;           Insert: Omit<Standing, 'id'>; Update: Partial<Omit<Standing, 'id'>>; };
       player_follows:       { Row: PlayerFollow;       Insert: Omit<PlayerFollow, 'id' | 'created_at'>; Update: Partial<Omit<PlayerFollow, 'id'>>; };
+      chat_sessions:        { Row: ChatSession;        Insert: Partial<Omit<ChatSession, 'id' | 'created_at'>> & { user_id: string }; Update: Partial<Omit<ChatSession, 'id'>>; };
+      chat_messages:        { Row: ChatMessage;        Insert: Omit<ChatMessage, 'id' | 'created_at'>; Update: Partial<Omit<ChatMessage, 'id'>>; };
     };
     Functions: {
       recalculate_standings:        { Args: { p_tournament_id: string }; Returns: void; };
@@ -443,6 +467,7 @@ export interface Database {
       get_tournament_by_slug:       { Args: { p_slug: string }; Returns: Tournament; };
       get_round_pairings:           { Args: { p_round_id: string }; Returns: RoundPairingRow[]; };
       refresh_tournament_categories:{ Args: { p_tournament_id: string }; Returns: number; };
+      match_kb_chunks:               { Args: { query_embedding: number[]; match_count?: number; min_similarity?: number }; Returns: { doc_slug: string; doc_title: string; content: string; similarity: number }[]; };
     };
     Enums: {
       user_role:                UserRole;
@@ -451,6 +476,7 @@ export interface Database {
       round_status:             RoundStatus;
       game_result:              GameResult;
       player_tournament_status: PlayerTournamentStatus;
+      chat_session_status:      ChatSessionStatus;
     };
   };
 }

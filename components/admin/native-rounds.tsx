@@ -42,8 +42,8 @@ export function NativeRounds({ tournament }: { tournament: Tournament }) {
         title="Crie o grupo de emparceiramento"
         description="Todo torneio nativo precisa de ao menos um grupo. Se o torneio não tem divisões, use um grupo único."
         action={
-          <Button loading={createGroup.isPending} onClick={() => createGroup.mutate('Único')}>
-            Criar grupo &quot;Único&quot;
+          <Button loading={createGroup.isPending} onClick={() => createGroup.mutate('Absoluto')}>
+            Criar grupo &quot;Absoluto&quot;
           </Button>
         }
       />

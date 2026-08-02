@@ -132,23 +132,36 @@ export default function AdminRegistrationsPage({ params }: Props) {
         Inscrições {pendingCount > 0 && `· ${pendingCount} pendente${pendingCount > 1 ? 's' : ''}`}
       </p>
 
-      {/* Link de inscrição — o organizador compartilha com os jogadores */}
+      {/* Link de inscrição — o organizador compartilha com os jogadores.
+          data-tour fica sempre no wrapper (mesmo com inscrições fechadas)
+          pra não quebrar o alvo do tour guiado quando o organizador ainda
+          não publicou/abriu inscrições nesse ponto do fluxo. */}
       <div className="card p-4 mb-4" data-tour="link-inscricao">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Link de inscrição</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-          Compartilhe este link com os jogadores para eles se inscreverem sozinhos.
-        </p>
-        <div className="flex gap-2">
-          <Input
-            readOnly
-            value={registrationUrl}
-            onClick={(e) => e.currentTarget.select()}
-            className="flex-1"
-          />
-          <Button variant="secondary" onClick={handleCopyLink}>
-            {linkCopied ? '✓ Copiado' : 'Copiar'}
-          </Button>
-        </div>
+        {tournament.status === 'registration' ? (
+          <>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Compartilhe este link com os jogadores para eles se inscreverem sozinhos.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={registrationUrl}
+                onClick={(e) => e.currentTarget.select()}
+                className="flex-1"
+              />
+              <Button variant="secondary" onClick={handleCopyLink}>
+                {linkCopied ? '✓ Copiado' : 'Copiar'}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            As inscrições precisam estar abertas para você ver o link de inscrição.
+            {tournament.status === 'draft' && ' Publique o torneio e depois abra as inscrições (botões no topo da página).'}
+            {tournament.status === 'published' && ' Abra as inscrições (botão no topo da página) para liberar o link.'}
+          </p>
+        )}
       </div>
 
       {error && (

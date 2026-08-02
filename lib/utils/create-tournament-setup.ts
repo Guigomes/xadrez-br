@@ -20,10 +20,10 @@ export interface ClassificationDraft {
  * nada existente — aqui é tudo linha nova.
  *
  * Emparceiramento não é mais escolha da tela de criação — sempre nasce
- * como 'absolute' (grupo único "Único"), e o organizador troca pra
+ * como 'absolute' (grupo único "Absoluto"), e o organizador troca pra
  * por idade/rating/personalizado depois, na aba própria (app/admin/
  * tournaments/[slug]/groups). Torneio nativo não aceita participante sem
- * grupo (enforce_native_pairing_group), por isso o grupo "Único" nasce
+ * grupo (enforce_native_pairing_group), por isso o grupo "Absoluto" nasce
  * sempre, mesmo sem nenhuma classificação.
  */
 export async function applyClassificationDraft(tournamentId: string, draft: ClassificationDraft): Promise<void> {
@@ -65,7 +65,7 @@ export async function applyClassificationDraft(tournamentId: string, draft: Clas
 
   const { data: group, error } = await supabase
     .from('pairing_groups')
-    .insert({ tournament_id: tournamentId, name: 'Único', sort_order: 0 })
+    .insert({ tournament_id: tournamentId, name: 'Absoluto', sort_order: 0 })
     .select('id').single();
   if (error) throw error;
   if (categories.length > 0) {

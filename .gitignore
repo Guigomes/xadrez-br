@@ -50,3 +50,7 @@ public/workbox-*.js.map
 
 # claude worktrees
 .claude/worktrees/
+.claude/launch.json
+
+# supabase cli local cache
+supabase/.temp/

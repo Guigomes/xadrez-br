@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Analytics } from '@vercel/analytics/next';
 import { PwaRegister } from '@/components/pwa-register';
+import { ChatWidget } from '@/components/chat/chat-widget';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' });
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <main className="flex-1">{children}</main>
           <Footer />
+          <ChatWidget />
         </Providers>
         <PwaRegister />
         <Analytics />

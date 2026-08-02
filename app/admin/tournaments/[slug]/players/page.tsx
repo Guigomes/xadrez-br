@@ -159,8 +159,8 @@ export default function AdminPlayersPage({ params }: Props) {
         <div className="card p-4 mb-4 flex items-center gap-2">
           <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum grupo de emparceiramento ainda.</p>
           <Button size="sm" variant="secondary" loading={createGroup.isPending}
-            onClick={() => createGroup.mutate('Único')}>
-            Criar grupo &quot;Único&quot;
+            onClick={() => createGroup.mutate('Absoluto')}>
+            Criar grupo &quot;Absoluto&quot;
           </Button>
         </div>
       )}

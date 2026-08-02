@@ -9,10 +9,13 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "generate-icons": "node scripts/generate-icons.mjs",
+    "index-kb": "tsx scripts/index-kb.ts",
+    "smoke-kb": "tsx scripts/smoke-kb.ts",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@hookform/resolvers": "^3.9.1",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
@@ -29,6 +32,7 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
     "tailwind-merge": "^2.6.0",
+    "voyageai": "^0.4.0",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "zod": "^3.24.1"
@@ -48,6 +52,7 @@
     "postcss": "^8.4.49",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.1",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }
