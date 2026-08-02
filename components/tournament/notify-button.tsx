@@ -3,8 +3,12 @@
 import { useEffect, useState } from 'react';
 
 interface Props {
-  tournamentId: string;
-  tournamentSlug: string;
+  tournamentId?: string;
+  tournamentSlug?: string;
+  /** Rótulo do botão quando inscrito/ativo — default cobre o caso de torneio. */
+  activeLabel?: string;
+  /** Rótulo do botão quando ainda não inscrito — default cobre o caso de torneio. */
+  idleLabel?: string;
 }
 
 type Status = 'idle' | 'loading' | 'subscribed' | 'denied' | 'unsupported' | 'error';
@@ -51,7 +55,7 @@ async function getPushRegistration(): Promise<ServiceWorkerRegistration> {
   });
 }
 
-export function NotifyButton({ tournamentId }: Props) {
+export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -110,7 +114,7 @@ export function NotifyButton({ tournamentId }: Props) {
       const res = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscription: sub.toJSON(), tournamentId }),
+        body: JSON.stringify({ subscription: sub.toJSON(), tournamentId: tournamentId ?? null }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Erro ao salvar subscrição');
 
@@ -125,11 +129,11 @@ export function NotifyButton({ tournamentId }: Props) {
   if (status === 'unsupported') return null;
 
   const label =
-    status === 'subscribed' ? 'Notificações ativas' :
+    status === 'subscribed' ? (activeLabel ?? 'Notificações ativas') :
     status === 'denied'     ? 'Bloqueado pelo navegador' :
     status === 'loading'    ? 'Aguarde...' :
     status === 'error'      ? 'Erro – tentar novamente' :
-    'Ativar notificações';
+    (idleLabel ?? 'Ativar notificações');
 
   return (
     <div className="flex flex-col items-end gap-1">

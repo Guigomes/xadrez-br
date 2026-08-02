@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
+import { TOOL_DECLARATIONS, executeTool, type ToolContext } from './tools';
 
 export interface ChatTurn {
   role: 'user' | 'assistant';
@@ -8,6 +9,9 @@ export interface ChatTurn {
 
 const FALLBACK_ANSWER = 'Não consegui gerar uma resposta agora — tente de novo em instantes.';
 const MAX_TOKENS = 500;
+// Perguntas de contagem só precisam de 1 chamada de ferramenta — o teto
+// existe só pra nunca entrar num loop infinito se o modelo insistir.
+const MAX_TOOL_ROUNDS = 2;
 
 /**
  * Provedor trocável via CHAT_LLM_PROVIDER ('gemini' | 'anthropic') — Gemini
@@ -15,12 +19,22 @@ const MAX_TOKENS = 500;
  * Trocar de volta pra Anthropic: mudar CHAT_LLM_PROVIDER=anthropic e
  * preencher ANTHROPIC_API_KEY em .env.local — nenhum outro código muda,
  * prompt.ts é o mesmo pros dois provedores.
+ *
+ * toolContext (lib/chat/tools.ts) só existe no caminho Gemini por agora —
+ * é o provedor ativo. Se voltar pro Anthropic, as perguntas de contagem
+ * (ver tools.ts) deixam de funcionar até essa chamada ganhar tool use
+ * também; o resto do chat (KB) continua igual.
  */
-export async function generateAnswer(systemPrompt: string, history: ChatTurn[], message: string): Promise<string> {
+export async function generateAnswer(
+  systemPrompt: string,
+  history: ChatTurn[],
+  message: string,
+  toolContext?: ToolContext,
+): Promise<string> {
   const provider = process.env.CHAT_LLM_PROVIDER || 'gemini';
   return provider === 'anthropic'
     ? generateWithAnthropic(systemPrompt, history, message)
-    : generateWithGemini(systemPrompt, history, message);
+    : generateWithGemini(systemPrompt, history, message, toolContext);
 }
 
 let _anthropic: Anthropic | null = null;
@@ -61,16 +75,44 @@ function getGemini(): GoogleGenAI {
   return _gemini;
 }
 
-async function generateWithGemini(systemPrompt: string, history: ChatTurn[], message: string): Promise<string> {
+async function generateWithGemini(
+  systemPrompt: string,
+  history: ChatTurn[],
+  message: string,
+  toolContext?: ToolContext,
+): Promise<string> {
   // Gemini usa role 'model' onde a Anthropic usa 'assistant'.
-  const contents = [
+  const contents: any[] = [
     ...history.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
     { role: 'user' as const, parts: [{ text: message }] },
   ];
-  const response = await getGemini().models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents,
-    config: { systemInstruction: systemPrompt, maxOutputTokens: MAX_TOKENS },
-  });
-  return response.text?.trim() || FALLBACK_ANSWER;
+
+  const config: any = { systemInstruction: systemPrompt, maxOutputTokens: MAX_TOKENS };
+  if (toolContext) config.tools = [{ functionDeclarations: TOOL_DECLARATIONS }];
+
+  for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+    const response = await getGemini().models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents,
+      config,
+    });
+
+    // Pega o Part cru (não o getter response.functionCalls, que descarta o
+    // thoughtSignature) — modelos com thinking exigem ecoar esse Part
+    // inteiro de volta, senão a Gemini API rejeita a próxima chamada com
+    // "Function call is missing a thought_signature".
+    const functionCallPart = response.candidates?.[0]?.content?.parts?.find((p) => p.functionCall);
+    if (!functionCallPart?.functionCall || !toolContext) {
+      return response.text?.trim() || FALLBACK_ANSWER;
+    }
+
+    // Só a primeira — nenhuma das duas ferramentas depende uma da outra,
+    // não há motivo pro modelo pedir mais de uma por rodada aqui.
+    const call = functionCallPart.functionCall;
+    const result = await executeTool(call.name ?? '', call.args ?? {}, toolContext);
+    contents.push({ role: 'model', parts: [functionCallPart] });
+    contents.push({ role: 'user', parts: [{ functionResponse: { name: call.name, response: result } }] });
+  }
+
+  return FALLBACK_ANSWER;
 }

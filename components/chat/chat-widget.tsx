@@ -3,10 +3,19 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useUser } from '@/lib/hooks/use-auth';
-import { useChatMessages, useSendChatMessage } from '@/lib/hooks/use-chat';
+import {
+  useChatMessages, useSendChatMessage, useChatSession, useEscalateChat, useSubmitContactPhone,
+} from '@/lib/hooks/use-chat';
 import { ChatBubble } from './chat-bubble';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+// Se ninguém no admin responder nesse tempo depois da escalada, o widget
+// pede telefone pra contato (decisão do usuário — ver docs/plano-chatbot-
+// suporte.md §7, que já previa esse timeout, só que com e-mail no lugar).
+// Comparação de timestamp no cliente, sem job agendado (mesma ideia do plano).
+const ESCALATION_TIMEOUT_MS = 3 * 60 * 1000;
 
 /** Avatar do Gambito ao lado de cada resposta — reforça que é ele "falando", mesma ideia do tour guiado. */
 function GambitoAvatar() {
@@ -54,6 +63,13 @@ export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  // useChatMessages fica "enabled: false" até a sessão ganhar id (1ª mensagem
+  // da conversa) — sem isso, a bolha do usuário só apareceria depois da
+  // resposta do Gambito chegar, junto com ela.
+  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
+  const [phone, setPhone] = useState('');
+  const [showPhoneForm, setShowPhoneForm] = useState(false);
+  const [phoneSubmitted, setPhoneSubmitted] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   // Lido só depois de montar (localStorage não existe no server render).
@@ -61,26 +77,60 @@ export function ChatWidget() {
     setSessionId(readStoredSessionId());
   }, []);
 
-  const { data: messages, isLoading } = useChatMessages(sessionId);
+  const sessionQuery = useChatSession(sessionId);
+  const status = sessionQuery.data?.status ?? 'bot';
+  const isEscalated = status === 'aguardando_humano' || status === 'humano';
+
+  const { data: messages, isLoading } = useChatMessages(sessionId, isEscalated);
   const sendMessage = useSendChatMessage();
+  const escalate = useEscalateChat();
+  const submitPhone = useSubmitContactPhone();
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-  }, [messages, sendMessage.isPending]);
+  }, [messages, pendingUserMessage, sendMessage.isPending, showPhoneForm]);
+
+  // 3 min sem resposta do admin depois da escalada → pede telefone. Checa a
+  // cada segundo em vez de um timeout único, pra funcionar mesmo se o
+  // usuário abrir o widget bem depois de já ter escalado (reload da página).
+  useEffect(() => {
+    if (status !== 'aguardando_humano' || !sessionQuery.data?.escalated_at || phoneSubmitted) return;
+    const escalatedAt = new Date(sessionQuery.data.escalated_at).getTime();
+    const check = () => setShowPhoneForm(Date.now() - escalatedAt >= ESCALATION_TIMEOUT_MS);
+    check();
+    const interval = setInterval(check, 1000);
+    return () => clearInterval(interval);
+  }, [status, sessionQuery.data?.escalated_at, phoneSubmitted]);
 
   if (!user) return null;
+
+  function handleEscalate() {
+    if (!sessionId || escalate.isPending) return;
+    escalate.mutate(sessionId, { onSuccess: () => sessionQuery.refetch() });
+  }
+
+  function handleSubmitPhone() {
+    const value = phone.trim();
+    if (!value || !sessionId || submitPhone.isPending) return;
+    submitPhone.mutate({ sessionId, phone: value }, {
+      onSuccess: () => { setPhoneSubmitted(true); setShowPhoneForm(false); },
+    });
+  }
 
   function handleSend() {
     const message = input.trim();
     if (!message || sendMessage.isPending) return;
     setInput('');
+    setPendingUserMessage(message);
     sendMessage.mutate({ message, sessionId }, {
       onSuccess: (data) => {
         if (data.sessionId !== sessionId) {
           setSessionId(data.sessionId);
           writeStoredSessionId(data.sessionId);
         }
+        setPendingUserMessage(null);
       },
+      onError: () => setPendingUserMessage(null),
     });
   }
 
@@ -122,14 +172,16 @@ export function ChatWidget() {
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{m.content}</p>
-                  {m.sources && m.sources.length > 0 && (
-                    <p className="mt-1.5 text-xs opacity-70">
-                      Fonte: {m.sources.map((s) => s.doc_title).join(', ')}
-                    </p>
-                  )}
                 </div>
               </div>
             ))}
+            {pendingUserMessage && (
+              <div className="flex justify-end gap-2">
+                <div className="max-w-[85%] rounded-lg bg-brand-600 px-3 py-2 text-sm text-white">
+                  <p className="whitespace-pre-wrap">{pendingUserMessage}</p>
+                </div>
+              </div>
+            )}
             {sendMessage.isPending && (
               <div className="flex justify-start gap-2">
                 <GambitoAvatar />
@@ -143,7 +195,50 @@ export function ChatWidget() {
                 {(sendMessage.error as Error).message}
               </p>
             )}
+            {showPhoneForm && !phoneSubmitted && (
+              <div className="flex gap-2">
+                <GambitoAvatar />
+                <div className="max-w-[85%] space-y-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                  <p>Ainda não consegui te atender ao vivo. Deixa seu celular que a gente entra em contato:</p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="(11) 91234-5678"
+                      className="h-8 text-xs"
+                    />
+                    <Button size="sm" onClick={handleSubmitPhone} loading={submitPhone.isPending} disabled={!phone.trim()}>
+                      Enviar
+                    </Button>
+                  </div>
+                  {submitPhone.isError && (
+                    <p className="text-xs text-red-600 dark:text-red-400">{(submitPhone.error as Error).message}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {phoneSubmitted && (
+              <div className="flex gap-2">
+                <GambitoAvatar />
+                <p className="max-w-[85%] rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  Anotado! Vamos entrar em contato assim que possível.
+                </p>
+              </div>
+            )}
           </div>
+
+          {status === 'bot' && sessionId && (
+            <div className="border-t border-gray-200 px-3 py-2 dark:border-gray-800">
+              <button
+                type="button"
+                onClick={handleEscalate}
+                disabled={escalate.isPending}
+                className="text-xs font-medium text-brand-600 hover:underline disabled:opacity-50 dark:text-brand-400"
+              >
+                {escalate.isPending ? 'Chamando…' : 'Falar com atendente'}
+              </button>
+            </div>
+          )}
 
           <div className="flex items-end gap-2 border-t border-gray-200 p-3 dark:border-gray-800">
             <textarea

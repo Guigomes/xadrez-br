@@ -60,6 +60,26 @@ export async function sendTournamentNotification(
   await sendToSubscriptions(admin, subs ?? [], payload);
 }
 
+// Notify admin(s) that a user escalated a chat to a human (chat/escalate route).
+// Reuses the same push_subscriptions table — subscription made without a
+// tournamentId (ver EnableChatNotifications), então filtra só por user_id.
+export async function sendOperatorNotification(payload: { title: string; body: string; url?: string }) {
+  initVapid();
+  const admin = createAdminClient();
+
+  const { data: admins } = await admin.from('user_profiles').select('id').eq('role', 'admin');
+  const adminIds = (admins ?? []).map((a) => a.id);
+  if (!adminIds.length) return;
+
+  const { data: subs } = await admin
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .in('user_id', adminIds);
+
+  console.log(`[push] operator notification: ${subs?.length ?? 0} subs`);
+  await sendToSubscriptions(admin, subs ?? [], payload);
+}
+
 // Notify users who follow specific players (by tp_id) in a tournament
 export async function notifyPlayerFollowers(
   tournamentId: string,

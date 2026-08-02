@@ -10,6 +10,7 @@ read_excel.js
 
 # testing
 /coverage
+/test-results
 
 # next.js
 /.next/

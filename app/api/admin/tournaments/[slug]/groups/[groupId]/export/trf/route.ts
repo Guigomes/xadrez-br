@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { exportGroupTrf, GenerateError } from '@/lib/pairing/service';
+import { logError } from '@/lib/log-error';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,11 @@ export async function GET(
       return NextResponse.json({ error: e.message, code: e.code }, { status });
     }
     console.error('export trf failed:', e);
+    await logError({
+      source: 'api', message: e?.message ?? String(e), stack: e?.stack ?? null,
+      route: `/api/admin/tournaments/${slug}/groups/${groupId}/export/trf`, method: 'GET',
+      statusCode: 500, userId: user.id,
+    });
     return NextResponse.json({ error: 'Erro ao gerar TRF' }, { status: 500 });
   }
 }

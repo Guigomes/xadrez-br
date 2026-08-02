@@ -2,7 +2,10 @@
 
 > Plano para o assistente de suporte ao usuário: bot RAG sobre base de
 > conhecimento própria, com escalonamento para atendimento humano.
-> Elaborado em 2026-07-31. Status: **proposta, não implementado**.
+> Elaborado em 2026-07-31. Status: **Fases 1, 2 e 3 implementadas**
+> (2026-08-02) — ver `docs/pendencias-chatbot.md` para desvios em relação a
+> este documento (Gemini em vez de Anthropic, sem Realtime na Fase 3, chat
+> só logado desde o início).
 
 ---
 

@@ -130,6 +130,36 @@ function DevPanel() {
       </div>
 
       <div className="card p-5 space-y-2 mb-4">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Chatbot de suporte</h2>
+        <Link
+          href="/admin/dev/chat"
+          className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          → Ver histórico de conversas com o Gambito
+        </Link>
+      </div>
+
+      <div className="card p-5 space-y-2 mb-4">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Log de erros</h2>
+        <Link
+          href="/admin/dev/errors"
+          className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          → Ver erros não esperados capturados no site
+        </Link>
+      </div>
+
+      <div className="card p-5 space-y-2 mb-4">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Perguntas sem resposta</h2>
+        <Link
+          href="/admin/dev/unanswered"
+          className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          → Ver o que o Gambito não conseguiu responder
+        </Link>
+      </div>
+
+      <div className="card p-5 space-y-2 mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Torneio importado (chess-results)</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Torneios comuns são sempre nativos. O modo &quot;importado&quot; é exclusivo daqui.

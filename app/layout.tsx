@@ -7,6 +7,7 @@ import { Footer } from '@/components/layout/footer';
 import { Analytics } from '@vercel/analytics/next';
 import { PwaRegister } from '@/components/pwa-register';
 import { ChatWidget } from '@/components/chat/chat-widget';
+import { ErrorLogger } from '@/components/error-logger';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' });
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ChatWidget />
         </Providers>
         <PwaRegister />
+        <ErrorLogger />
         <Analytics />
       </body>
     </html>

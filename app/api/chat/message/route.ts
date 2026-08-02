@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { embedQuery } from '@/lib/chat/embeddings';
 import { buildSystemPrompt, extractSources, type RetrievedChunk } from '@/lib/chat/prompt';
 import { generateAnswer } from '@/lib/chat/llm';
+import { logError } from '@/lib/log-error';
 
 export const runtime = 'nodejs';
 
@@ -40,17 +41,17 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
 
   // Reaproveita a sessão se o id veio e é do usuário logado; senão cria uma nova.
-  let session: { id: string } | null = null;
+  let session: { id: string; status: string } | null = null;
   if (typeof sessionId === 'string' && sessionId) {
     const { data } = await admin
-      .from('chat_sessions').select('id').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
+      .from('chat_sessions').select('id, status').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
     session = data;
   }
   if (!session) {
     const { data, error } = await admin
       .from('chat_sessions')
       .insert({ user_id: user.id, tournament_id: typeof tournamentId === 'string' ? tournamentId : null })
-      .select('id').single();
+      .select('id, status').single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     session = data;
   }
@@ -72,6 +73,14 @@ export async function POST(request: NextRequest) {
     .from('chat_messages').insert({ session_id: session.id, role: 'user', content: message });
   if (userMsgError) return NextResponse.json({ error: userMsgError.message }, { status: 500 });
 
+  await admin.from('chat_sessions').update({ last_message_at: new Date().toISOString() }).eq('id', session.id);
+
+  // Escalada pra humano (app/api/chat/escalate/route.ts) — o bot para de
+  // responder, a mensagem só fica esperando o admin ver em /admin/dev/chat.
+  if (session.status === 'aguardando_humano' || session.status === 'humano') {
+    return NextResponse.json({ sessionId: session.id, answer: null, waitingForHuman: true, sources: [] });
+  }
+
   try {
     const queryEmbedding = await embedQuery(message);
     const { data: matches, error: matchError } = await admin.rpc('match_kb_chunks', {
@@ -90,17 +99,24 @@ export async function POST(request: NextRequest) {
       systemPrompt,
       history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       message,
+      // Client autenticado do próprio usuário (RLS) pras contagens — "meus
+      // torneios" só pode contar o que esse user_id realmente pode ver.
+      // admin só é usado por registrar_pergunta_sem_resposta (tabela sem
+      // policy de insert pro client comum, de propósito).
+      { supabase, admin, userId: user.id, sessionId: session.id, originalQuestion: message },
     );
 
     const { error: assistantMsgError } = await admin
       .from('chat_messages').insert({ session_id: session.id, role: 'assistant', content: answer, sources });
     if (assistantMsgError) throw assistantMsgError;
 
-    await admin.from('chat_sessions').update({ last_message_at: new Date().toISOString() }).eq('id', session.id);
-
     return NextResponse.json({ sessionId: session.id, answer, sources });
   } catch (err: any) {
     console.error('[chat] erro ao gerar resposta:', err);
+    await logError({
+      source: 'api', message: err?.message ?? String(err), stack: err?.stack ?? null,
+      route: '/api/chat/message', method: 'POST', statusCode: 500, userId: user.id,
+    });
     return NextResponse.json({ error: 'Erro ao gerar resposta. Tente de novo.' }, { status: 500 });
   }
 }

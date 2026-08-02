@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateRoundDraft, GenerateError } from '@/lib/pairing/service';
+import { logError } from '@/lib/log-error';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,11 @@ export async function POST(
       return NextResponse.json({ error: e.message, code: e.code }, { status });
     }
     console.error('generate round failed:', e);
+    await logError({
+      source: 'api', message: e?.message ?? String(e), stack: e?.stack ?? null,
+      route: `/api/admin/tournaments/${slug}/groups/${groupId}/rounds/generate`, method: 'POST',
+      statusCode: 500, userId: user.id,
+    });
     return NextResponse.json({ error: 'Erro interno ao gerar rodada' }, { status: 500 });
   }
 }

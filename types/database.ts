@@ -418,8 +418,9 @@ export interface PairingResultUpdate {
   result: GameResult;
 }
 
-// Chatbot de suporte (docs/plano-chatbot-suporte.md) — Fase 2, só logado.
-export type ChatSessionStatus = 'bot' | 'encerrada';
+// Chatbot de suporte (docs/plano-chatbot-suporte.md) — Fase 2 (bot) + Fase 3
+// (escalonamento humano), só logado.
+export type ChatSessionStatus = 'bot' | 'aguardando_humano' | 'humano' | 'encerrada';
 export type ChatMessageRole = 'user' | 'assistant' | 'system';
 
 export interface ChatSession {
@@ -427,6 +428,8 @@ export interface ChatSession {
   user_id: string;
   tournament_id: string | null;
   status: ChatSessionStatus;
+  escalated_at: string | null;
+  contact_phone: string | null;
   last_message_at: string;
   created_at: string;
 }
@@ -437,6 +440,38 @@ export interface ChatMessage {
   role: ChatMessageRole;
   content: string;
   sources: { doc_slug: string; doc_title: string }[] | null;
+  // true quando o admin digitou a mensagem em /admin/dev/chat (Fase 3) — só
+  // pra você revisar o histórico depois; o widget do usuário nunca lê isso,
+  // a mensagem sempre aparece como se fosse o Gambito (role='assistant' nos
+  // dois casos).
+  is_human: boolean;
+  created_at: string;
+}
+
+// Log centralizado de erros não esperados (migration 053_error_logs.sql).
+export type ErrorLogSource = 'client' | 'server' | 'api';
+
+export interface ErrorLog {
+  id: string;
+  source: ErrorLogSource;
+  message: string;
+  stack: string | null;
+  route: string | null;
+  method: string | null;
+  status_code: number | null;
+  user_id: string | null;
+  context: Record<string, unknown> | null;
+  created_at: string;
+}
+
+// Pergunta que o Gambito não conseguiu responder (migration
+// 055_unanswered_questions.sql) — registrada pela ferramenta
+// registrar_pergunta_sem_resposta (lib/chat/tools.ts).
+export interface UnansweredQuestion {
+  id: string;
+  session_id: string | null;
+  user_id: string | null;
+  question: string;
   created_at: string;
 }
 
@@ -457,7 +492,9 @@ export interface Database {
       standings:            { Row: Standing;           Insert: Omit<Standing, 'id'>; Update: Partial<Omit<Standing, 'id'>>; };
       player_follows:       { Row: PlayerFollow;       Insert: Omit<PlayerFollow, 'id' | 'created_at'>; Update: Partial<Omit<PlayerFollow, 'id'>>; };
       chat_sessions:        { Row: ChatSession;        Insert: Partial<Omit<ChatSession, 'id' | 'created_at'>> & { user_id: string }; Update: Partial<Omit<ChatSession, 'id'>>; };
-      chat_messages:        { Row: ChatMessage;        Insert: Omit<ChatMessage, 'id' | 'created_at'>; Update: Partial<Omit<ChatMessage, 'id'>>; };
+      chat_messages:        { Row: ChatMessage;        Insert: Omit<ChatMessage, 'id' | 'created_at' | 'is_human'> & { is_human?: boolean }; Update: Partial<Omit<ChatMessage, 'id'>>; };
+      error_logs:           { Row: ErrorLog;           Insert: Omit<ErrorLog, 'id' | 'created_at'>; Update: Partial<Omit<ErrorLog, 'id'>>; };
+      unanswered_questions: { Row: UnansweredQuestion; Insert: Omit<UnansweredQuestion, 'id' | 'created_at'>; Update: Partial<Omit<UnansweredQuestion, 'id'>>; };
     };
     Functions: {
       recalculate_standings:        { Args: { p_tournament_id: string }; Returns: void; };
