@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { embedQuery } from '@/lib/chat/embeddings';
 import { buildSystemPrompt, extractSources, type RetrievedChunk } from '@/lib/chat/prompt';
+import { generateAnswer } from '@/lib/chat/llm';
 
 export const runtime = 'nodejs';
 
@@ -11,17 +11,6 @@ export const runtime = 'nodejs';
 // então entra mesmo sem o resto.
 const MAX_MESSAGE_LENGTH = 2000;
 const HISTORY_LIMIT = 10;
-const MODEL = 'claude-haiku-4-5-20251001';
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic(): Anthropic {
-  if (!_anthropic) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error('ANTHROPIC_API_KEY não configurada.');
-    _anthropic = new Anthropic({ apiKey });
-  }
-  return _anthropic;
-}
 
 /**
  * Pipeline: embeda a pergunta → busca chunks relevantes (match_kb_chunks) →
@@ -97,21 +86,11 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildSystemPrompt(chunks);
     const sources = extractSources(chunks);
 
-    const completion = await getAnthropic().messages.create({
-      model: MODEL,
-      max_tokens: 500,
-      system: systemPrompt,
-      messages: [
-        ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        { role: 'user' as const, content: message },
-      ],
-    });
-
-    const answer = completion.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n')
-      .trim() || 'Não consegui gerar uma resposta agora — tente de novo em instantes.';
+    const answer = await generateAnswer(
+      systemPrompt,
+      history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+      message,
+    );
 
     const { error: assistantMsgError } = await admin
       .from('chat_messages').insert({ session_id: session.id, role: 'assistant', content: answer, sources });

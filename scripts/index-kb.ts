@@ -27,6 +27,23 @@ function hashOf(content: string): string {
   return createHash('sha256').update(content).digest('hex');
 }
 
+// Conta Voyage sem cartão cadastrado cai pra 3 RPM (ver dashboard.voyageai.com)
+// — sem retry o script quebra no segundo chunk. Só existe aqui (script
+// offline, rodado uma vez); embedQuery em tempo de request (route.ts) fica
+// sem retry de propósito, pra não estourar o timeout da função serverless.
+async function embedWithRetry(text: string, maxRetries = 6): Promise<number[]> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await embedDocument(text);
+    } catch (err: any) {
+      if (err?.statusCode !== 429 || attempt >= maxRetries) throw err;
+      const waitMs = 21_000;
+      console.log(`  rate limit da Voyage — esperando ${waitMs / 1000}s e tentando de novo...`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+}
+
 async function main() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -70,7 +87,7 @@ async function main() {
         skipped++;
         continue;
       }
-      const embedding = await embedDocument(chunk.content);
+      const embedding = await embedWithRetry(chunk.content);
       const { error } = await supabase.from('kb_chunks').upsert({
         doc_slug: doc.slug,
         doc_title: doc.title,
