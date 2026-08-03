@@ -1,4 +1,3 @@
-import { Type, type FunctionDeclaration } from '@google/genai';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -11,16 +10,31 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * Só disponível pra usuário logado — o chat inteiro já exige login
  * (app/api/chat/message/route.ts retorna 401 antes de chegar aqui), então
  * essas ferramentas nunca rodam sem um userId real.
+ *
+ * Formato neutro (JSON Schema puro), não amarrado ao SDK de nenhum
+ * provedor — lib/chat/llm.ts adapta pro formato de tool calling específico
+ * do Gemini (`Type` enum) ou da Anthropic (`input_schema`, já é esse
+ * formato quase 1:1).
  */
-export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: {
+    type: 'object';
+    properties: Record<string, { type: string; description?: string }>;
+    required?: string[];
+  };
+}
+
+export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'contar_torneios_por_estado',
     description:
       'Conta quantos torneios públicos (já publicados, não em rascunho) existem hoje em um estado brasileiro (UF).',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
-        estado: { type: Type.STRING, description: 'Sigla do estado (UF), ex: MS, SP, RJ.' },
+        estado: { type: 'string', description: 'Sigla do estado (UF), ex: MS, SP, RJ.' },
       },
       required: ['estado'],
     },
@@ -28,13 +42,13 @@ export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
     name: 'contar_meus_torneios',
     description: 'Conta quantos torneios o usuário logado (quem está conversando agora) já criou, em qualquer status.',
-    parameters: { type: Type.OBJECT, properties: {} },
+    parameters: { type: 'object', properties: {} },
   },
   {
     name: 'registrar_pergunta_sem_resposta',
     description:
       'Chame isso SEMPRE que você não conseguir responder — a pergunta não está no CONTEXTO e nenhuma outra ferramenta se aplica. Registra a pergunta pra alguém do time revisar depois e melhorar o sistema. Chame antes de dizer que não sabe, nunca em vez de responder quando você já sabe a resposta.',
-    parameters: { type: Type.OBJECT, properties: {} },
+    parameters: { type: 'object', properties: {} },
   },
 ];
 

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { GoogleGenAI } from '@google/genai';
-import { TOOL_DECLARATIONS, executeTool, type ToolContext } from './tools';
+import { GoogleGenAI, Type, type FunctionDeclaration } from '@google/genai';
+import { TOOL_DEFINITIONS, executeTool, type ToolContext } from './tools';
 
 export interface ChatTurn {
   role: 'user' | 'assistant';
@@ -15,15 +15,10 @@ const MAX_TOOL_ROUNDS = 2;
 
 /**
  * Provedor trocável via CHAT_LLM_PROVIDER ('gemini' | 'anthropic') — Gemini
- * tem free tier (~250-1500 req/dia), Anthropic é pago por uso mas sem teto.
- * Trocar de volta pra Anthropic: mudar CHAT_LLM_PROVIDER=anthropic e
- * preencher ANTHROPIC_API_KEY em .env.local — nenhum outro código muda,
- * prompt.ts é o mesmo pros dois provedores.
- *
- * toolContext (lib/chat/tools.ts) só existe no caminho Gemini por agora —
- * é o provedor ativo. Se voltar pro Anthropic, as perguntas de contagem
- * (ver tools.ts) deixam de funcionar até essa chamada ganhar tool use
- * também; o resto do chat (KB) continua igual.
+ * tem free tier (20 req/dia por modelo, bem apertado), Anthropic é pago por
+ * uso mas sem teto diário. Tool calling (lib/chat/tools.ts) implementado
+ * pros dois — TOOL_DEFINITIONS fica em formato neutro (JSON Schema puro),
+ * cada função aqui adapta pro formato específico do provedor.
  */
 export async function generateAnswer(
   systemPrompt: string,
@@ -33,7 +28,7 @@ export async function generateAnswer(
 ): Promise<string> {
   const provider = process.env.CHAT_LLM_PROVIDER || 'gemini';
   return provider === 'anthropic'
-    ? generateWithAnthropic(systemPrompt, history, message)
+    ? generateWithAnthropic(systemPrompt, history, message, toolContext)
     : generateWithGemini(systemPrompt, history, message, toolContext);
 }
 
@@ -47,22 +42,56 @@ function getAnthropic(): Anthropic {
   return _anthropic;
 }
 
-async function generateWithAnthropic(systemPrompt: string, history: ChatTurn[], message: string): Promise<string> {
-  const completion = await getAnthropic().messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: MAX_TOKENS,
-    system: systemPrompt,
-    messages: [
-      ...history.map((m) => ({ role: m.role, content: m.content })),
-      { role: 'user' as const, content: message },
-    ],
-  });
-  const text = completion.content
-    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-    .map((block) => block.text)
-    .join('\n')
-    .trim();
-  return text || FALLBACK_ANSWER;
+function toAnthropicTools(): Anthropic.Tool[] {
+  return TOOL_DEFINITIONS.map((def) => ({
+    name: def.name,
+    description: def.description,
+    input_schema: def.parameters,
+  }));
+}
+
+async function generateWithAnthropic(
+  systemPrompt: string,
+  history: ChatTurn[],
+  message: string,
+  toolContext?: ToolContext,
+): Promise<string> {
+  const messages: Anthropic.MessageParam[] = [
+    ...history.map((m) => ({ role: m.role, content: m.content })),
+    { role: 'user' as const, content: message },
+  ];
+  const tools = toolContext ? toAnthropicTools() : undefined;
+
+  for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+    const completion = await getAnthropic().messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: MAX_TOKENS,
+      system: systemPrompt,
+      messages,
+      tools,
+    });
+
+    const toolUseBlock = completion.content.find(
+      (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
+    );
+    if (!toolUseBlock || !toolContext) {
+      const text = completion.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map((block) => block.text)
+        .join('\n')
+        .trim();
+      return text || FALLBACK_ANSWER;
+    }
+
+    const result = await executeTool(toolUseBlock.name, (toolUseBlock.input as Record<string, unknown>) ?? {}, toolContext);
+    messages.push({ role: 'assistant', content: completion.content });
+    messages.push({
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: toolUseBlock.id, content: JSON.stringify(result) }],
+    });
+  }
+
+  return FALLBACK_ANSWER;
 }
 
 let _gemini: GoogleGenAI | null = null;
@@ -73,6 +102,32 @@ function getGemini(): GoogleGenAI {
     _gemini = new GoogleGenAI({ apiKey });
   }
   return _gemini;
+}
+
+const JSON_TYPE_TO_GEMINI_TYPE: Record<string, Type> = {
+  string: Type.STRING,
+  number: Type.NUMBER,
+  integer: Type.INTEGER,
+  boolean: Type.BOOLEAN,
+  object: Type.OBJECT,
+  array: Type.ARRAY,
+};
+
+function toGeminiDeclarations(): FunctionDeclaration[] {
+  return TOOL_DEFINITIONS.map((def) => ({
+    name: def.name,
+    description: def.description,
+    parameters: {
+      type: Type.OBJECT,
+      properties: Object.fromEntries(
+        Object.entries(def.parameters.properties).map(([key, prop]) => [
+          key,
+          { type: JSON_TYPE_TO_GEMINI_TYPE[prop.type] ?? Type.STRING, description: prop.description },
+        ])
+      ),
+      required: def.parameters.required,
+    },
+  }));
 }
 
 async function generateWithGemini(
@@ -88,7 +143,7 @@ async function generateWithGemini(
   ];
 
   const config: any = { systemInstruction: systemPrompt, maxOutputTokens: MAX_TOKENS };
-  if (toolContext) config.tools = [{ functionDeclarations: TOOL_DECLARATIONS }];
+  if (toolContext) config.tools = [{ functionDeclarations: toGeminiDeclarations() }];
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const response = await getGemini().models.generateContent({

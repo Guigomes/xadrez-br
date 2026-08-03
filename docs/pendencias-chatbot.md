@@ -1,7 +1,7 @@
 # Chatbot de Suporte — Status e Pendências
 
 > Complementa `docs/plano-chatbot-suporte.md`. Registrado em 2026-08-01,
-> atualizado em 2026-08-02.
+> atualizado em 2026-08-03.
 > Escopo: **Fases 1, 2 e 3** do plano original (KB + busca semântica + widget
 > de chat + escalonamento humano). Fora do escopo: Fase 4 (rate limit, teto
 > diário, métricas).
@@ -13,11 +13,12 @@
 - Acesso: **só usuário logado** (schema simplificado — sem `session_token`
   anônimo do plano original, usa `user_id = auth.uid()` direto).
 - Geração: provedor **trocável** via `lib/chat/llm.ts` (`CHAT_LLM_PROVIDER`).
-  Atualmente **Gemini** (`gemini-3-flash-preview`, free tier) — trocado do
-  Anthropic Claude Haiku em 2026-08-02 pra evitar custo enquanto o site está
-  em desenvolvimento sem usuários. Pra voltar ao Anthropic:
-  `CHAT_LLM_PROVIDER=anthropic` + preencher `ANTHROPIC_API_KEY` em
-  `.env.local` — nenhum outro código muda.
+  Trocado pra Gemini em 2026-08-02 (evitar custo), **voltado pra Anthropic
+  em 2026-08-03** (decisão do usuário: abandonar o Gemini de vez, free tier
+  de só 20 req/dia por modelo era restritivo demais). Atual:
+  `CHAT_LLM_PROVIDER=anthropic`, `claude-haiku-4-5-20251001`. Código do
+  Gemini continua no repo, tool calling implementado pros dois provedores
+  (`lib/chat/tools.ts` em formato neutro, adaptado em `lib/chat/llm.ts`).
 - Persona: chat usa o mascote **Gambito** (já usado no tour guiado e na home),
   não um assistente genérico.
 
@@ -174,6 +175,22 @@ Gotcha real descoberto testando: modelos Gemini com thinking exigem ecoar o
 API rejeita com 400 "Function call is missing a thought_signature" — ver
 `lib/chat/llm.ts` (usa `response.candidates[0].content.parts`, não o getter
 `response.functionCalls`). Documentado também no `CLAUDE.md` principal.
+
+### Portado pra Anthropic (2026-08-03)
+
+`TOOL_DEFINITIONS` virou formato neutro (JSON Schema puro, sem depender do
+enum `Type` do SDK do Gemini) — `lib/chat/llm.ts` adapta pro formato de tool
+use de cada provedor (`toAnthropicTools()`/`toGeminiDeclarations()`). Testado
+com chave real da Anthropic: pergunta de KB, as duas ferramentas de
+contagem (número bateu com query direta no banco: 11 torneios em MS) e a de
+pergunta-sem-resposta, todas funcionando.
+
+Achado testando: **Claude Haiku só chama `registrar_pergunta_sem_resposta`
+pra pergunta plausível mas fora da KB** (ex.: "como transferir organização
+de torneio") — pergunta claramente fora de assunto (ex.: "horário de
+lotérica") ele redireciona direto, sem registrar. Gemini registrava os dois
+casos. Ambos aceitáveis; o de Claude evita poluir a tabela com pergunta
+obviamente irrelevante.
 
 ## Log de erros centralizado (2026-08-02)
 
