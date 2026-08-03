@@ -85,6 +85,22 @@ export function useSubmitContactPhone() {
   });
 }
 
+/** 5 min sem interação (ver INACTIVITY_TIMEOUT_MS em chat-widget.tsx) — encerra a sessão sozinha. */
+export function useCloseInactiveChat() {
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await fetch('/api/chat/close-inactive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao encerrar sessão.');
+      return data;
+    },
+  });
+}
+
 export interface SendChatMessageResult {
   sessionId: string;
   // null quando a sessão já está escalada pra humano — o bot não gera mais

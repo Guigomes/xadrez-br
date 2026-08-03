@@ -85,3 +85,24 @@ export function useReplyToChatSession() {
     },
   });
 }
+
+/** Botão "Encerrar conversa" do atendente (/admin/dev/chat) — ver app/api/chat/close/route.ts. */
+export function useCloseChatSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await fetch('/api/chat/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao encerrar conversa.');
+      return data;
+    },
+    onSuccess: (_data, sessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-chat-messages', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-chat-sessions'] });
+    },
+  });
+}

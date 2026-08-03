@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useProfile } from '@/lib/hooks/use-auth';
-import { useAllChatSessions, useChatSessionMessages, useReplyToChatSession } from '@/lib/hooks/use-chat-admin';
+import { useAllChatSessions, useChatSessionMessages, useReplyToChatSession, useCloseChatSession } from '@/lib/hooks/use-chat-admin';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,7 @@ function ChatHistoryPanel() {
   const isEscalated = selected?.status === 'aguardando_humano' || selected?.status === 'humano';
   const { data: messages, isLoading: loadingMessages } = useChatSessionMessages(sessionId, isEscalated);
   const sendReply = useReplyToChatSession();
+  const closeSession = useCloseChatSession();
 
   const sorted = [...(sessions ?? [])].sort((a, b) => {
     if (a.status === 'aguardando_humano' && b.status !== 'aguardando_humano') return -1;
@@ -135,11 +136,23 @@ function ChatHistoryPanel() {
                   {selected?.user_full_name} · {selected?.user_email}
                   {selected?.contact_phone && ` · 📞 ${selected.contact_phone}`}
                 </p>
-                {selected && selected.status !== 'bot' && (
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_CLASS[selected.status]}`}>
-                    {STATUS_LABEL[selected.status]}
-                  </span>
-                )}
+                <div className="flex shrink-0 items-center gap-2">
+                  {selected && selected.status !== 'bot' && (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_CLASS[selected.status]}`}>
+                      {STATUS_LABEL[selected.status]}
+                    </span>
+                  )}
+                  {selected && selected.status !== 'encerrada' && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => closeSession.mutate(selected.id)}
+                      loading={closeSession.isPending}
+                    >
+                      Encerrar conversa
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="flex-1 space-y-3 overflow-y-auto mb-3">

@@ -73,7 +73,13 @@ export async function POST(request: NextRequest) {
     .from('chat_messages').insert({ session_id: session.id, role: 'user', content: message });
   if (userMsgError) return NextResponse.json({ error: userMsgError.message }, { status: 500 });
 
-  await admin.from('chat_sessions').update({ last_message_at: new Date().toISOString() }).eq('id', session.id);
+  // Sessão encerrada (manual ou por inatividade, ver close/route.ts e
+  // close-inactive/route.ts) reabre sozinha quando o usuário manda mensagem
+  // nova — pedido do usuário: só recomeça se enviar mensagem, não precisa de
+  // ação separada de "reabrir".
+  const sessionUpdate: Record<string, string> = { last_message_at: new Date().toISOString() };
+  if (session.status === 'encerrada') sessionUpdate.status = 'bot';
+  await admin.from('chat_sessions').update(sessionUpdate).eq('id', session.id);
 
   // Escalada pra humano (app/api/chat/escalate/route.ts) — o bot para de
   // responder, a mensagem só fica esperando o admin ver em /admin/dev/chat.

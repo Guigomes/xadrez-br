@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useUser } from '@/lib/hooks/use-auth';
 import {
   useChatMessages, useSendChatMessage, useChatSession, useEscalateChat, useSubmitContactPhone,
+  useCloseInactiveChat,
 } from '@/lib/hooks/use-chat';
 import { ChatBubble } from './chat-bubble';
 import { Spinner } from '@/components/ui/spinner';
@@ -17,6 +18,13 @@ import { Input } from '@/components/ui/input';
 // Comparação de timestamp no cliente, sem job agendado (mesma ideia do plano).
 const ESCALATION_TIMEOUT_MS = 3 * 60 * 1000;
 
+// Pedido do usuário: 5 min sem NENHUMA interação (bot ou humano) encerra a
+// conversa sozinha — independe de ter escalado ou não, diferente do timeout
+// acima. Contado a partir da última mensagem que o widget efetivamente viu
+// (lastActivityRef), não de um campo do banco — evita precisar ficar
+// repollando a sessão inteira só pra isso (ver app/api/chat/close-inactive/route.ts).
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
+
 /** Avatar do Gambito ao lado de cada resposta — reforça que é ele "falando", mesma ideia do tour guiado. */
 function GambitoAvatar() {
   return (
@@ -27,6 +35,20 @@ function GambitoAvatar() {
       height={28}
       className="h-7 w-7 shrink-0 rounded-full object-cover object-top"
     />
+  );
+}
+
+/**
+ * Avatar de atendente humano — pedido do usuário: reverte a decisão antiga
+ * de nunca revelar que quem respondeu foi um humano (ver docs/pendencias-
+ * chatbot.md, "Fase 3"). Usado quando a mensagem tem is_human=true, ou no
+ * cabeçalho enquanto status='humano'.
+ */
+function HumanAvatar() {
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm dark:bg-brand-900">
+      🎧
+    </span>
   );
 }
 
@@ -69,8 +91,14 @@ export function ChatWidget() {
   const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
   const [phone, setPhone] = useState('');
   const [showPhoneForm, setShowPhoneForm] = useState(false);
+  // Texto do formulário muda conforme o motivo — 'inactivity' (5 min gerais,
+  // já apareceu junto da mensagem de encerramento) não pode repetir "ainda
+  // não consegui te atender ao vivo", que só faz sentido no caso de escalada.
+  const [phoneFormReason, setPhoneFormReason] = useState<'escalation' | 'inactivity'>('escalation');
   const [phoneSubmitted, setPhoneSubmitted] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const lastActivityRef = useRef<number>(Date.now());
+  const closingRef = useRef(false);
 
   // Lido só depois de montar (localStorage não existe no server render).
   useEffect(() => {
@@ -85,6 +113,7 @@ export function ChatWidget() {
   const sendMessage = useSendChatMessage();
   const escalate = useEscalateChat();
   const submitPhone = useSubmitContactPhone();
+  const closeInactive = useCloseInactiveChat();
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -96,11 +125,43 @@ export function ChatWidget() {
   useEffect(() => {
     if (status !== 'aguardando_humano' || !sessionQuery.data?.escalated_at || phoneSubmitted) return;
     const escalatedAt = new Date(sessionQuery.data.escalated_at).getTime();
-    const check = () => setShowPhoneForm(Date.now() - escalatedAt >= ESCALATION_TIMEOUT_MS);
+    const check = () => {
+      if (Date.now() - escalatedAt >= ESCALATION_TIMEOUT_MS) {
+        setPhoneFormReason('escalation');
+        setShowPhoneForm(true);
+      }
+    };
     check();
     const interval = setInterval(check, 1000);
     return () => clearInterval(interval);
   }, [status, sessionQuery.data?.escalated_at, phoneSubmitted]);
+
+  // Qualquer mensagem nova (do usuário ou vinda do poll, bot/humano) conta
+  // como interação e reinicia a contagem dos 5 min.
+  useEffect(() => {
+    if (messages && messages.length > 0) lastActivityRef.current = Date.now();
+  }, [messages?.length]);
+
+  // 5 min sem NENHUMA mensagem → encerra a sessão sozinha (INACTIVITY_TIMEOUT_MS).
+  useEffect(() => {
+    if (!sessionId || status === 'encerrada') { closingRef.current = false; return; }
+    const interval = setInterval(() => {
+      if (closingRef.current) return;
+      if (Date.now() - lastActivityRef.current < INACTIVITY_TIMEOUT_MS) return;
+      closingRef.current = true;
+      closeInactive.mutate(sessionId, {
+        onSuccess: () => {
+          sessionQuery.refetch();
+          if (!phoneSubmitted) {
+            setPhoneFormReason('inactivity');
+            setShowPhoneForm(true);
+          }
+        },
+        onSettled: () => { closingRef.current = false; },
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [sessionId, status, phoneSubmitted]);
 
   if (!user) return null;
 
@@ -120,6 +181,7 @@ export function ChatWidget() {
   function handleSend() {
     const message = input.trim();
     if (!message || sendMessage.isPending) return;
+    lastActivityRef.current = Date.now();
     setInput('');
     setPendingUserMessage(message);
     sendMessage.mutate({ message, sessionId }, {
@@ -143,9 +205,11 @@ export function ChatWidget() {
           style={{ height: 'min(32rem, 70vh)' }}
         >
           <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
-            <GambitoAvatar />
+            {status === 'humano' ? <HumanAvatar /> : <GambitoAvatar />}
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100 leading-tight">Gambito</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 leading-tight">
+                {status === 'humano' ? 'Atendente' : 'Gambito'}
+              </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Suporte</p>
             </div>
           </div>
@@ -163,7 +227,7 @@ export function ChatWidget() {
             )}
             {messages?.map((m) => (
               <div key={m.id} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {m.role !== 'user' && <GambitoAvatar />}
+                {m.role !== 'user' && (m.is_human ? <HumanAvatar /> : <GambitoAvatar />)}
                 <div
                   className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                     m.role === 'user'
@@ -199,7 +263,11 @@ export function ChatWidget() {
               <div className="flex gap-2">
                 <GambitoAvatar />
                 <div className="max-w-[85%] space-y-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                  <p>Ainda não consegui te atender ao vivo. Deixa seu celular que a gente entra em contato:</p>
+                  <p>
+                    {phoneFormReason === 'escalation'
+                      ? 'Ainda não consegui te atender ao vivo. Deixa seu celular que a gente entra em contato:'
+                      : 'Deixa seu celular, se quiser, que a gente entra em contato:'}
+                  </p>
                   <div className="flex gap-2">
                     <Input
                       value={phone}
