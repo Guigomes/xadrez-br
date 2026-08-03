@@ -64,6 +64,23 @@ export function useApproveRegistration(tournamentId: string) {
         p_registration_id: registration.id,
       });
       if (error) throw new Error(`Erro ao aprovar inscrição: ${error.message}`);
+
+      // Consulta automática do rating CBX assim que o jogador entra no
+      // torneio — pedido do usuário: tira o botão manual da lista de
+      // participantes (players/page.tsx), a consulta acontece sozinha aqui
+      // e no cadastro manual. approve_registration (RPC, migration 020) cria
+      // ou reaproveita o player pelo cbx_id (mesma chave de dedupe de
+      // useCreatePlayer), por isso buscamos o id dele de novo aqui. Melhor
+      // esforço: falha na CBX não desfaz a aprovação, que já aconteceu.
+      if (registration.cbx_id) {
+        try {
+          const { data: player } = await supabase
+            .from('players').select('id').eq('cbx_id', registration.cbx_id).maybeSingle();
+          if (player) await fetch(`/api/admin/players/${player.id}/cbx-rating`, { method: 'POST' });
+        } catch {
+          // não bloqueia a aprovação
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registrations', tournamentId] });

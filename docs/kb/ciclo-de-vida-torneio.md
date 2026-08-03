@@ -57,6 +57,12 @@ Se o torneio tiver horário de início configurado, a data completa (data +
 horário) é o que decide quando o status muda sozinho pra "em andamento" —
 não só a data.
 
+No dia em que o torneio foi criado, essa troca automática não acontece —
+mesmo que a data de início ou de encerramento de inscrição já tenha
+passado (torneio cadastrado depois, com datas retroativas). O status
+inicial fica por conta do organizador; o relógio automático só passa a
+vigiar a partir do dia seguinte à criação.
+
 ## Encerrado (finished)
 
 Estado final, depois de "Encerrar Torneio". Não há mais ação de status a

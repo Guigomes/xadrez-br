@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory } from '@/lib/hooks/use-tournament';
-import { useCreatePlayer, useUpdatePlayer, useSyncCbxRating, type CbxRatingResult } from '@/lib/hooks/use-player';
+import { useCreatePlayer, useUpdatePlayer, useSyncCbxRating } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { useCategories } from '@/lib/hooks/use-classifications';
 import { deriveCategory, type CategoryCandidate } from '@/lib/utils/classification-match';
@@ -214,13 +214,6 @@ export default function AdminPlayersPage({ params }: Props) {
                       {tpAny.player?.cbx_id ? ` · CBX ${tpAny.player.cbx_id}` : ''}
                       {tpAny.player?.fide_id ? ` · FIDE ${tpAny.player.fide_id}` : ''}
                     </p>
-                    {tpAny.player?.cbx_id && tournament && (
-                      <CbxRatingButton
-                        tournamentId={tournament.id}
-                        playerId={tpAny.player.id}
-                        declaredName={tpAny.player.full_name}
-                      />
-                    )}
                     {missingGroup && (
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs text-amber-600 dark:text-amber-400">⚠ sem grupo — não será pareado</span>
@@ -241,18 +234,17 @@ export default function AdminPlayersPage({ params }: Props) {
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums">
-                      {formatScore(tp.current_score)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(tp.id, tpAny.category_id ?? tpAny.category?.id ?? null, tpAny.player)}
-                      className="text-xs text-brand-600 dark:text-brand-400 hover:underline whitespace-nowrap"
-                    >
-                      ✏️ Editar
-                    </button>
-                  </div>
+                  <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums shrink-0">
+                    {formatScore(tp.current_score)}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => startEdit(tp.id, tpAny.category_id ?? tpAny.category?.id ?? null, tpAny.player)}
+                    className="shrink-0"
+                  >
+                    ✏️ Editar
+                  </Button>
                 </div>
               );
             })}
@@ -288,10 +280,6 @@ export default function AdminPlayersPage({ params }: Props) {
   );
 }
 
-function normalizeName(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-}
-
 /**
  * Modal de cadastro/edição de participante — mesmo formulário nos dois casos.
  * `editing` null = cadastra jogador novo e já adiciona ao torneio;
@@ -314,6 +302,7 @@ function PlayerFormModal({
   const updatePlayer = useUpdatePlayer(tournamentId);
   const addPlayer = useAddTournamentPlayer(tournamentId);
   const setCategory = useSetPlayerCategory(tournamentId);
+  const syncCbxRating = useSyncCbxRating(tournamentId);
 
   const [values, setValues] = useState<Partial<PlayerFormValues>>(editing?.values ?? { federation: 'BRA' });
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? '');
@@ -359,6 +348,11 @@ function PlayerFormModal({
         if (categoryId !== editing.categoryId) {
           await setCategory.mutateAsync({ tpId: editing.tpId, categoryId: categoryId || null });
         }
+        // Consulta automática do rating CBX — pedido do usuário: tira o botão
+        // manual da lista, a consulta acontece sozinha aqui e na aprovação de
+        // inscrição (use-registrations.ts). Melhor esforço: não bloqueia o
+        // fechamento do modal nem vira erro visível se a CBX falhar.
+        if (values.cbx_id?.trim()) syncCbxRating.mutate(editing.playerId);
       } else {
         const p = await createPlayer.mutateAsync(values as PlayerFormValues);
         // categoryId reflete a sugestão automática (idade/sexo) ou a escolha
@@ -371,6 +365,7 @@ function PlayerFormModal({
           pairing_group_id: resolveGroupId(finalCategoryId),
           category_id: finalCategoryId,
         });
+        if (p.cbx_id) syncCbxRating.mutate(p.id);
       }
       onClose();
     } catch (err: any) {
@@ -456,56 +451,5 @@ function PlayerFormModal({
         </div>
       </form>
     </Modal>
-  );
-}
-
-/**
- * Consulta o rating oficial na CBX pelo ID cadastrado. A rota faz o cache de
- * 30 dias — clicar de novo no mesmo mês não bate na CBX de novo, só devolve
- * o que já está salvo (fromCache: true).
- *
- * Mostra o nome que voltou da CBX ao lado do cadastrado: o ID CBX é digitado
- * à mão, e um dígito trocado aponta pra outra pessoa sem erro nenhum — não
- * dá pra confiar cegamente no rating só porque a consulta "funcionou".
- */
-function CbxRatingButton({
-  tournamentId, playerId, declaredName,
-}: {
-  tournamentId: string; playerId: string; declaredName: string;
-}) {
-  const sync = useSyncCbxRating(tournamentId);
-  const [result, setResult] = useState<CbxRatingResult | null>(null);
-  const [err, setErr] = useState('');
-
-  async function handleClick() {
-    setErr('');
-    try {
-      setResult(await sync.mutateAsync(playerId));
-    } catch (e: any) {
-      setErr(e.message);
-    }
-  }
-
-  const nameDiverges = !!result?.playerName && normalizeName(result.playerName) !== normalizeName(declaredName);
-
-  return (
-    <div className="mt-1 flex items-center gap-2 flex-wrap">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={sync.isPending}
-        className="text-xs text-brand-600 dark:text-brand-400 hover:underline disabled:opacity-50"
-      >
-        {sync.isPending ? 'Consultando CBX…' : '🔄 Consultar rating CBX'}
-      </button>
-      {result && (
-        <span className={`text-xs ${nameDiverges ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'}`}>
-          {result.fromCache ? 'já consultado este mês' : 'consultado agora'}
-          {result.playerName && ` · CBX: ${result.playerName}`}
-          {nameDiverges && ' ⚠ nome diverge — confira o ID'}
-        </span>
-      )}
-      {err && <span className="text-xs text-red-500 dark:text-red-400">{err}</span>}
-    </div>
   );
 }
