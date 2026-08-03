@@ -2,7 +2,10 @@ import type React from 'react';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { ROUND_STATUS_LABELS, ROUND_STATUS_COLORS } from '@/lib/utils/chess';
+import {
+  ROUND_STATUS_LABELS, ROUND_STATUS_COLORS, TOURNAMENT_TYPE_LABELS, RATING_KIND_LABELS, TIEBREAK_INFO,
+} from '@/lib/utils/chess';
+import type { TiebreakKey } from '@/types/database';
 import { formatDateRange } from '@/lib/utils/date';
 import { Badge } from '@/components/ui/badge';
 
@@ -196,8 +199,11 @@ export default async function TournamentOverviewPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Pairing groups in sidebar — show when any group exists */}
-        {hasGroups ? (
+        {/* Pairing groups in sidebar — só quando a coluna principal não já
+            mostra a mesma lista em "Participantes por grupo" (antes do
+            torneio começar, currentRound null — ver bloco lá em cima). Sem
+            grupo nenhum, mostra Categorias no lugar (nunca os dois juntos). */}
+        {hasGroups && currentRound && (
           <div className="card p-4">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Grupos</h2>
             <div className="flex flex-col gap-1">
@@ -215,7 +221,8 @@ export default async function TournamentOverviewPage({ params }: Props) {
               ))}
             </div>
           </div>
-        ) : (categories?.length ?? 0) > 0 && (
+        )}
+        {!hasGroups && (categories?.length ?? 0) > 0 && (
           <div className="card p-4">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Categorias</h2>
             <div className="flex flex-wrap gap-2">
@@ -234,7 +241,37 @@ export default async function TournamentOverviewPage({ params }: Props) {
           {tournament.chief_arbiter && <InfoRow label="Árbitro-chefe" value={tournament.chief_arbiter} />}
           {tournament.venue && <InfoRow label="Local" value={tournament.venue} />}
           <InfoRow label="Ritmo" value={tournament.time_control} />
-          <InfoRow label="Sistema" value="Suíço" />
+          <InfoRow label="Sistema" value={TOURNAMENT_TYPE_LABELS[tournament.tournament_type]} />
+        </div>
+
+        {/* Regras — visão geral do que foi configurado na criação, exceto o
+            que é só gate de inscrição (CBX obrigatório, comprovante de
+            pagamento) — esse fica só na própria tela de inscrição. */}
+        <div className="card p-4 space-y-3 text-sm">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Regras do torneio</h2>
+          <InfoRow
+            label="Ranking inicial por rating"
+            value={RATING_KIND_LABELS[tournament.rating_kind]}
+          />
+          <InfoRow
+            label="Bye solicitado vale"
+            value={tournament.requested_bye_score === 0 ? '0 pontos' : '½ ponto'}
+          />
+          {tournament.tiebreak_order.length > 0 && (
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-xs text-gray-400 dark:text-gray-500">Critérios de desempate (ordem)</span>
+              <ol className="mt-1 space-y-1.5">
+                {(tournament.tiebreak_order as TiebreakKey[]).map((key, i) => (
+                  <li key={key} className="text-gray-800 dark:text-gray-200">
+                    <span className="font-medium">{i + 1}. {TIEBREAK_INFO[key]?.label ?? key}</span>
+                    {TIEBREAK_INFO[key]?.description && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{TIEBREAK_INFO[key].description}</p>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
         </div>
       </div>
     </div>

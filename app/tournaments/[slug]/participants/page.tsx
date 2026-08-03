@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
+import { compareParticipantOrder } from '@/lib/utils/chess';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -52,7 +53,10 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
     query = query.eq('pairing_group_id', selectedGroupId);
   }
 
-  const { data: players } = await query;
+  const { data: playersData } = await query;
+  // Enquanto o seed não foi gerado (initial_ranking todo null), a ordem do
+  // banco não significa nada — reordena por rating/nome (chess.ts).
+  const players = playersData ? [...playersData].sort(compareParticipantOrder) : playersData;
 
   const base = `/tournaments/${slug}/participants`;
 

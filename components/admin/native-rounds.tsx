@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import {
-  useGroups, useGroupRounds, useCreateDefaultGroup, useGenerateSeeds,
+  useGroups, useGroupRounds, useCreateDefaultGroup,
   useGenerateRound, useRoundTransition, useSetResult,
   useOverridePairing, usePairingHistory, useDraftWarnings,
   useRequestedByes, useToggleRequestedBye,
@@ -107,7 +107,6 @@ function GroupPanel({
 }) {
   const { data: rounds, isLoading } = useGroupRounds(groupId);
   const { data: tPlayers } = useTournamentPlayers(tournament.id);
-  const seeds = useGenerateSeeds(tournament.id, groupId);
   const generate = useGenerateRound(tournament.slug, tournament.id, groupId);
   const transition = useRoundTransition(tournament.id, groupId);
   const [openRoundId, setOpenRoundId] = useState<string | null>(null);
@@ -128,7 +127,6 @@ function GroupPanel({
   const finishedCount = (rounds ?? []).filter((r) => r.status === 'finished').length;
   const nextRoundNumber = (lastRound?.round_number ?? 0) + 1;
   const canGenerate =
-    seededCount > 0 &&
     finishedCount < groupRoundsCount &&
     (!lastRound || lastRound.status === 'finished');
 
@@ -155,25 +153,16 @@ function GroupPanel({
 
   return (
     <div className="space-y-4">
-      {/* Seed */}
-      <div className="card p-4 flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-            Jogadores: {groupPlayers.length} · Com seed: {seededCount}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            O ranking inicial ordena por rating e congela quando a rodada 1 é publicada.
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          loading={seeds.isPending}
-          disabled={(rounds ?? []).some((r) => r.status !== 'draft')}
-          onClick={() => run(() => seeds.mutateAsync())}
-        >
-          Gerar ranking inicial
-        </Button>
+      {/* Seed — gerado sozinho (ao iniciar o torneio, ou na hora de gerar a
+          1ª rodada se ninguém tiver clicado "Iniciar Torneio" antes; ver
+          generateRoundDraft em lib/pairing/service.ts). Sem botão manual. */}
+      <div className="card p-4">
+        <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+          Jogadores: {groupPlayers.length} · Com seed: {seededCount}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          O ranking inicial ordena por rating e congela quando a rodada 1 é publicada.
+        </p>
       </div>
 
       {/* Rounds */}
@@ -248,11 +237,9 @@ function GroupPanel({
             <p className="text-xs text-amber-600 dark:text-amber-400">
               {groupPlayers.length === 0
                 ? semParticipantes
-                : seededCount === 0
-                  ? '⚠ Gere o ranking inicial acima antes de parear a primeira rodada.'
-                  : lastRound && lastRound.status !== 'finished'
-                    ? `⚠ Encerre a rodada ${lastRound.round_number} antes de gerar a próxima.`
-                    : '⚠ Ainda não é possível gerar esta rodada.'}
+                : lastRound && lastRound.status !== 'finished'
+                  ? `⚠ Encerre a rodada ${lastRound.round_number} antes de gerar a próxima.`
+                  : '⚠ Ainda não é possível gerar esta rodada.'}
             </p>
           )}
         </div>
@@ -274,13 +261,6 @@ function GroupPanel({
             🖨️ Imprimir classificação
           </a>
         </div>
-      )}
-      {seededCount === 0 && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
-          {groupPlayers.length === 0
-            ? semParticipantes
-            : 'Gere o ranking inicial antes de parear a primeira rodada.'}
-        </p>
       )}
     </div>
   );

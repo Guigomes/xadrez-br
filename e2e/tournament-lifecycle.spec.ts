@@ -125,9 +125,9 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     await expect.poll(() => selectedOption(boyRow)).toBe('Sub-17');
 
     // --- Ranking inicial + 1ª rodada ---
+    // Sem botão manual (migration 058) — "Gerar rodada 1" semeia sozinho se
+    // o grupo ainda não tiver seed (generateRoundDraft, lib/pairing/service.ts).
     await page.goto(`/admin/tournaments/${slug}/rounds`);
-    await page.getByRole('button', { name: 'Gerar ranking inicial' }).click();
-    await expect(page.getByText('Com seed: 2')).toBeVisible();
     await page.getByRole('button', { name: /Gerar rodada 1 de \d+/ }).click();
     // O card da rodada (native-rounds.tsx RoundCard) é um <button> cujo nome
     // acessível inclui "Rodada 1" + o texto do badge de status — getByText

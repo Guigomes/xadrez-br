@@ -115,17 +115,6 @@ export function useDeleteGroup(tournamentId: string) {
   });
 }
 
-export function useGenerateSeeds(tournamentId: string, groupId: string) {
-  const invalidate = useInvalidate(tournamentId, groupId);
-  return useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc('generate_initial_ranking', { p_group_id: groupId });
-      if (error) throw error;
-    },
-    onSuccess: invalidate,
-  });
-}
-
 export function useRequestedByes(tournamentId: string, roundNumber: number) {
   return useQuery({
     queryKey: ['requested-byes', tournamentId, roundNumber],

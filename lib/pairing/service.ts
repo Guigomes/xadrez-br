@@ -60,6 +60,20 @@ export async function generateRoundDraft(
     joinedAtRound: tp.joined_at_round ?? 1,
   }));
   if (players.some((p) => !p.startno)) {
+    // Sem seed ainda — não existe mais botão manual separado pra isso (só
+    // "Iniciar Torneio", manual ou automático por data, ver migration 058);
+    // quem chegou aqui sem passar por lá semeia agora, na hora. Se o grupo
+    // já estiver travado por algum motivo (rodada publicada), a RPC recusa
+    // e o startno continua faltando — cai no erro original abaixo.
+    const { error: seedErr } = await supabase.rpc('generate_initial_ranking', { p_group_id: groupId });
+    if (!seedErr) {
+      const { data: reseeded } = await supabase
+        .from('tournament_players').select('id, initial_ranking').eq('pairing_group_id', groupId);
+      const rankingById = new Map((reseeded ?? []).map((r) => [r.id, r.initial_ranking]));
+      for (const p of players) p.startno = rankingById.get(p.tpId) ?? p.startno;
+    }
+  }
+  if (players.some((p) => !p.startno)) {
     throw new GenerateError('NO_RANKING', 'Jogadores sem ranking inicial — gere o seed do grupo antes de parear.');
   }
 

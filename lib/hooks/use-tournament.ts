@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { compareParticipantOrder } from '@/lib/utils/chess';
 import type {
   Tournament, TournamentFormValues, TournamentListItem,
   TournamentCategory, Round, StandingRow, RoundPairingRow,
@@ -95,7 +96,9 @@ export function useTournamentPlayers(tournamentId: string) {
         .eq('tournament_id', tournamentId)
         .order('initial_ranking', { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return data ?? [];
+      // Enquanto o seed não foi gerado (initial_ranking todo null), a ordem
+      // do banco não significa nada — reordena por rating/nome (chess.ts).
+      return (data ?? []).sort(compareParticipantOrder);
     },
     staleTime: 60_000,
   });

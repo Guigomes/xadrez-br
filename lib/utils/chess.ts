@@ -1,4 +1,4 @@
-import type { GameResult, TournamentStatus, RoundStatus } from '@/types/database';
+import type { GameResult, TournamentStatus, RoundStatus, TournamentType, RatingKind } from '@/types/database';
 
 // ============================================================
 // Game result helpers
@@ -77,6 +77,22 @@ export const TOURNAMENT_STATUS_COLORS: Record<TournamentStatus, string> = {
   // outros badges. purple-200 mantém a paleta mas com peso visual igual.
   finished:             'bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200',
   cancelled:            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+};
+
+// Mesmas opções de components/tournament/tournament-form.tsx (Sistema /
+// Rating para seed) — extraídas pra cá pra reuso na página pública do
+// torneio (visão geral de regras).
+export const TOURNAMENT_TYPE_LABELS: Record<TournamentType, string> = {
+  swiss:       'Suíço',
+  round_robin: 'Todos contra todos',
+  knockout:    'Eliminatório',
+  other:       'Outro',
+};
+
+export const RATING_KIND_LABELS: Record<RatingKind, string> = {
+  std: 'Clássico',
+  rpd: 'Rápido',
+  blz: 'Blitz',
 };
 
 export function todayInSaoPaulo(): string {
@@ -188,6 +204,25 @@ export const TIEBREAK_INFO = {
 // ============================================================
 // Format helpers
 // ============================================================
+
+/**
+ * Ordem de exibição de participantes: por initial_ranking (seed) quando já
+ * foi gerado; enquanto não foi (todos null), cai numa ordem natural por
+ * rating (maior primeiro) e nome — em vez da ordem crua do banco, que não
+ * significa nada pro organizador antes do seed existir.
+ */
+export function compareParticipantOrder(
+  a: { initial_ranking: number | null; player?: { rating_std?: number | null; full_name?: string | null } | null },
+  b: { initial_ranking: number | null; player?: { rating_std?: number | null; full_name?: string | null } | null },
+): number {
+  if (a.initial_ranking != null && b.initial_ranking != null) return a.initial_ranking - b.initial_ranking;
+  if (a.initial_ranking != null) return -1;
+  if (b.initial_ranking != null) return 1;
+  const ratingA = a.player?.rating_std ?? -1;
+  const ratingB = b.player?.rating_std ?? -1;
+  if (ratingA !== ratingB) return ratingB - ratingA;
+  return (a.player?.full_name ?? '').localeCompare(b.player?.full_name ?? '');
+}
 
 export function formatScore(score: number | null | undefined): string {
   if (score === null || score === undefined) return '–';

@@ -81,6 +81,25 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
       const supabase = createClient();
       const { error: updErr } = await supabase.from('tournaments').update({ status: newStatus, ...extra }).eq('id', id);
       if (updErr) throw updErr;
+
+      // Ranking inicial não tem mais botão manual — gera sozinho aqui (clique
+      // em "Iniciar Torneio") e também quando o torneio vira 'ongoing' sozinho
+      // por data (migration 058, get_tournament_by_slug/search_tournaments).
+      // Rede de segurança pra quem pula os dois: generateRoundDraft (lib/
+      // pairing/service.ts) semeia na hora se "Gerar rodada 1" ainda achar o
+      // grupo sem seed. Melhor esforço: falha aqui não desfaz a transição de
+      // status, que já aconteceu.
+      if (newStatus === 'ongoing' && mode === 'native') {
+        const { data: groups } = await supabase
+          .from('pairing_groups').select('id').eq('tournament_id', id);
+        for (const g of groups ?? []) {
+          await supabase.rpc('generate_initial_ranking', { p_group_id: g.id }).then(
+            ({ error: seedErr }) => { if (seedErr) console.error('[seed automático]', seedErr.message); }
+          );
+        }
+        await qc.invalidateQueries({ queryKey: tournamentKeys.players(id) });
+      }
+
       await qc.invalidateQueries({ queryKey: tournamentKeys.detail(slug) });
       // Badge/abas vêm de props de Server Component, lidas uma vez no
       // layout — invalidar o React Query não alcança isso (mesmo motivo de
