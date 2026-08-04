@@ -1,4 +1,6 @@
 import webpush from 'web-push';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import { createAdminClient } from '@/lib/supabase/server';
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -41,6 +43,69 @@ async function sendToSubscriptions(
   });
   if (stale.length) {
     await admin.from('push_subscriptions').delete().in('endpoint', stale);
+  }
+}
+
+function initFirebaseAdmin() {
+  if (getApps().length) return;
+  const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!json) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON não configurado.');
+  initializeApp({ credential: cert(JSON.parse(json)) });
+}
+
+async function getAdminFcmTokens(admin: AdminClient): Promise<string[]> {
+  const { data: admins } = await admin.from('user_profiles').select('id').eq('role', 'admin');
+  const adminIds = (admins ?? []).map((a) => a.id);
+  if (!adminIds.length) return [];
+
+  const { data: tokens } = await admin
+    .from('admin_fcm_tokens')
+    .select('token')
+    .in('user_id', adminIds);
+  return (tokens ?? []).map((t) => t.token);
+}
+
+// Push nativo pro app Android Gambito Admin (workspace-gambito-admin) —
+// substitui o polling em foreground service, que ficava sujeito a
+// otimização de bateria do Android/OEM e atrasava a notificação com o app
+// fechado. Mensagem sempre data-only (sem bloco `notification`): assim o
+// FirebaseMessagingService do app roda em qualquer estado (foreground,
+// background, processo morto) e monta a notificação ele mesmo via
+// NotificationHelper, igual ao fluxo antigo de polling — em vez de deixar o
+// Android exibir automaticamente e perder o clique pra sessão certa.
+export async function sendFcmToAdmins(payload: {
+  type: 'escalation' | 'message';
+  sessionId: string;
+  userName: string;
+  content?: string;
+}) {
+  const admin = createAdminClient();
+  const tokens = await getAdminFcmTokens(admin);
+  if (!tokens.length) return;
+
+  initFirebaseAdmin();
+  const result = await getMessaging().sendEachForMulticast({
+    tokens,
+    android: { priority: 'high' },
+    data: {
+      type: payload.type,
+      sessionId: payload.sessionId,
+      userName: payload.userName,
+      content: payload.content ?? '',
+    },
+  });
+
+  console.log(`[fcm] ${payload.type} sessão ${payload.sessionId}: ${result.successCount}/${tokens.length} ok`);
+
+  const stale: string[] = [];
+  result.responses.forEach((r, i) => {
+    const code = r.error?.code;
+    if (!r.success && (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-argument')) {
+      stale.push(tokens[i]);
+    }
+  });
+  if (stale.length) {
+    await admin.from('admin_fcm_tokens').delete().in('token', stale);
   }
 }
 

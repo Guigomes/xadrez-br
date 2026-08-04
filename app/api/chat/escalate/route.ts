@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { sendOperatorNotification } from '@/lib/push';
+import { sendFcmToAdmins, sendOperatorNotification } from '@/lib/push';
 
 export const runtime = 'nodejs';
 
@@ -48,17 +48,25 @@ export async function POST(request: NextRequest) {
   if (msgError) return NextResponse.json({ error: msgError.message }, { status: 500 });
 
   const { data: profile } = await supabase.from('user_profiles').select('full_name').eq('id', user.id).maybeSingle();
+  const userName = profile?.full_name || 'Alguém';
+
+  // Falha de push (ex.: VAPID/Firebase não configurado neste ambiente) não
+  // pode derrubar a escalada em si — o admin ainda vê no painel, só sem o
+  // aviso imediato. Web push (navegador) e FCM (app Android) são canais
+  // independentes, dispara os dois.
   try {
-    // Falha de push (ex.: VAPID não configurado neste ambiente) não pode
-    // derrubar a escalada em si — o admin ainda vê no painel, só sem o
-    // aviso imediato.
     await sendOperatorNotification({
       title: 'Gambito: atendimento solicitado',
-      body: `${profile?.full_name || 'Alguém'} pediu para falar com um atendente.`,
+      body: `${userName} pediu para falar com um atendente.`,
       url: `/admin/dev/chat?session=${sessionId}`,
     });
   } catch (err) {
-    console.error('[chat/escalate] push falhou:', err);
+    console.error('[chat/escalate] web push falhou:', err);
+  }
+  try {
+    await sendFcmToAdmins({ type: 'escalation', sessionId, userName });
+  } catch (err) {
+    console.error('[chat/escalate] fcm falhou:', err);
   }
 
   return NextResponse.json({ ok: true, escalatedAt });

@@ -4,6 +4,7 @@ import { embedQuery } from '@/lib/chat/embeddings';
 import { buildSystemPrompt, extractSources, type RetrievedChunk } from '@/lib/chat/prompt';
 import { generateAnswer } from '@/lib/chat/llm';
 import { logError } from '@/lib/log-error';
+import { sendFcmToAdmins, sendOperatorNotification } from '@/lib/push';
 
 export const runtime = 'nodejs';
 
@@ -83,7 +84,26 @@ export async function POST(request: NextRequest) {
 
   // Escalada pra humano (app/api/chat/escalate/route.ts) — o bot para de
   // responder, a mensagem só fica esperando o admin ver em /admin/dev/chat.
+  // Aviso já saiu no momento da escalada (escalate/route.ts); aqui é
+  // mensagem de acompanhamento na mesma sessão — sem isso o admin só vê a
+  // mensagem nova quando abrir o app de novo.
   if (session.status === 'aguardando_humano' || session.status === 'humano') {
+    const { data: profile } = await supabase.from('user_profiles').select('full_name').eq('id', user.id).maybeSingle();
+    const userName = profile?.full_name || 'Alguém';
+    try {
+      await sendOperatorNotification({
+        title: userName,
+        body: message,
+        url: `/admin/dev/chat?session=${session.id}`,
+      });
+    } catch (err) {
+      console.error('[chat/message] web push falhou:', err);
+    }
+    try {
+      await sendFcmToAdmins({ type: 'message', sessionId: session.id, userName, content: message });
+    } catch (err) {
+      console.error('[chat/message] fcm falhou:', err);
+    }
     return NextResponse.json({ sessionId: session.id, answer: null, waitingForHuman: true, sources: [] });
   }
 
