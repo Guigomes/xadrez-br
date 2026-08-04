@@ -109,21 +109,16 @@ export const TOUR_STEPS: TourStep[] = [
       'Torneio público aparece na lista do site. Desmarcado, ele só é acessível por quem tiver ' +
       'o link direto — útil enquanto você ainda está montando tudo.',
   },
-  {
-    id: 'criar',
-    route: 'new',
-    target: 'criar',
-    title: 'Última etapa',
-    body:
-      'Logo acima tem Classificação — responda se quiser, mas é opcional: dá pra pular e ' +
-      'configurar depois, no botão "Editar torneio" da Visão geral. Emparceiramento (quem joga ' +
-      'contra quem) é definido depois de criar, na aba própria. Aqui embaixo, clique pra criar ' +
-      'o torneio.',
-  },
-
+  // Bloco de Classificação: mora em 'new' porque é ali que as perguntas
+  // aparecem hoje (as mesmas âncoras data-tour existem em
+  // app/admin/tournaments/new/page.tsx). Ficou marcado como 'edit' de quando
+  // classificação só era editável depois de criar — e como criar pousa direto
+  // em /groups, o organizador nunca passava por /edit e o tour pulava a
+  // explicação inteira. A tela /edit segue tendo as mesmas seções pra quem
+  // volta ajustar depois; só o tour é que não passa mais por lá.
   {
     id: 'intro-classificacao',
-    route: 'edit',
+    route: 'new',
     target: 'secao-classificacao',
     title: 'Duas coisas diferentes',
     body:
@@ -133,7 +128,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'pergunta-idade',
-    route: 'edit',
+    route: 'new',
     target: 'pergunta-idade',
     title: 'Separar por idade?',
     body:
@@ -143,7 +138,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'pergunta-rating',
-    route: 'edit',
+    route: 'new',
     target: 'pergunta-rating',
     title: 'Separar por rating?',
     body:
@@ -152,7 +147,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'pergunta-feminina',
-    route: 'edit',
+    route: 'new',
     target: 'pergunta-feminina',
     title: 'Classificação feminina?',
     body:
@@ -162,15 +157,26 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'gerar',
-    route: 'edit',
+    route: 'new',
     target: 'gerar-classificacoes',
     optional: true,
     title: 'Confira antes de salvar',
     body:
-      'Esta é a lista que será criada a partir do que você marcou. Depois de salvar, cada ' +
+      'Esta é a lista que será criada junto com o torneio, a partir do que você marcou. Cada ' +
       'participante é classificado automaticamente pelos dados dele — ano de nascimento, ' +
       'rating e sexo.',
   },
+  {
+    id: 'criar',
+    route: 'new',
+    target: 'criar',
+    title: 'Última etapa',
+    body:
+      'Classificação é opcional: dá pra pular e configurar depois, no botão "Editar torneio" ' +
+      'da Visão geral. Emparceiramento (quem joga contra quem) é definido depois de criar, na ' +
+      'aba própria. Aqui embaixo, clique pra criar o torneio.',
+  },
+
   {
     id: 'emparceiramento',
     route: 'groups',

@@ -32,7 +32,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     await deleteTestOrganizer(org.id);
   });
 
-  test('percorre os 4 passos da rota /new, pula o passo opcional em /edit e termina em /players', async ({ page }) => {
+  test('percorre o bloco de /new, pula o passo opcional de classificação e termina em /players', async ({ page }) => {
     await login(page, org);
     await page.goto('/admin');
 
@@ -63,15 +63,9 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     await nextBtn(page).click();
     await expect(popoverTitle(page)).toHaveText('Quem pode ver');
     await nextBtn(page).click();
-    await expect(popoverTitle(page)).toHaveText('Última etapa');
-    // Último passo do bloco — o botão é "Entendi" (continues=true), não "Próximo".
-    await page.locator('.driver-popover-next-btn', { hasText: 'Entendi' }).click();
-    await expect(page.locator('.driver-popover')).toHaveCount(0);
 
-    // O tour não preenche nada — o organizador preenche de verdade e segue.
-    await createTournament(page, `E2E Tour ${Date.now()}`);
-
-    // /edit: retoma sozinho no primeiro passo do bloco.
+    // Classificação mora na própria tela de criação — o bloco segue direto,
+    // sem troca de rota.
     await expect(popoverTitle(page)).toHaveText('Duas coisas diferentes');
     await nextBtn(page).click();
     await expect(popoverTitle(page)).toHaveText('Separar por idade?');
@@ -83,8 +77,18 @@ test.describe.serial('tour guiado de criação de torneio', () => {
 
     // Regressão-chave: sem marcar "Sim" em nenhuma pergunta, o card "Gerar
     // classificações" nunca existiu no DOM — skipMissingElement precisa pular
-    // esse passo e ir direto pro de emparceiramento, sem travar nem contar
-    // um passo a mais na barra de progresso.
+    // esse passo e ir direto pro último, sem travar nem contar um passo a
+    // mais na barra de progresso.
+    await expect(popoverTitle(page)).toHaveText('Última etapa');
+    // Último passo do bloco — o botão é "Entendi" (continues=true), não "Próximo".
+    await page.locator('.driver-popover-next-btn', { hasText: 'Entendi' }).click();
+    await expect(page.locator('.driver-popover')).toHaveCount(0);
+
+    // O tour não preenche nada — o organizador preenche de verdade e segue.
+    // Criar pousa direto em /groups (Emparceiramento), onde o tour retoma.
+    await createTournament(page, `E2E Tour ${Date.now()}`);
+    await page.getByRole('button', { name: 'Entendi' }).click(); // modal "Torneio criado!"
+
     await expect(popoverTitle(page)).toHaveText('Quem joga contra quem');
     await page.locator('.driver-popover-next-btn', { hasText: 'Entendi' }).click();
     await expect(page.locator('.driver-popover')).toHaveCount(0);

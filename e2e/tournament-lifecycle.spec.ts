@@ -59,29 +59,27 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
 
     await login(page, org);
     await page.goto('/admin/tournaments/new');
-    await createTournament(page, `E2E Lifecycle ${Date.now()}`);
-    const slug = slugFromUrl(page);
 
     // --- Classificação: idade (Sub-17) + feminina ---
+    // Fica NA TELA DE CRIAÇÃO, antes de "Criar torneio" — as classificações
+    // são aplicadas junto com o insert (applyClassificationDraft, ver
+    // app/admin/tournaments/new/page.tsx). Não existe mais um "Salvar
+    // classificações" separado aqui; a prévia é o feedback.
     await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sim', exact: true }).click();
     await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sub-17', exact: true }).click();
     await page.locator('[data-tour="pergunta-feminina"]').getByRole('button', { name: 'Sim', exact: true }).click();
-    await expect(page.getByText('2 novas')).toBeVisible();
-    await page.getByRole('button', { name: 'Salvar classificações' }).click();
+    await expect(page.getByText(/Prévia — 2 classificações/)).toBeVisible();
 
-    // generate() encadeia 3 mutações assíncronas (setDimensions, bulkCreate,
-    // refreshCategories) antes do React Query invalidar — o selo "novas"
-    // some quando Sub-17 e Sub-17 Feminino já existem em banco. A prova de
-    // verdade (célula certa por jogador) vem mais abaixo, no select de
-    // Participantes.
-    await expect(page.getByText('2 novas')).toHaveCount(0, { timeout: 15_000 });
+    await createTournament(page, `E2E Lifecycle ${Date.now()}`);
+    const slug = slugFromUrl(page);
 
     // --- Emparceiramento: todos juntos ---
-    // "✓ Salvo" de classificações (linha 70) ainda está na tela — .last()
-    // pega o de emparceiramento, que vem depois no DOM.
+    // createTournament pousa em /groups?criado=1, que abre um modal de
+    // boas-vindas por cima do formulário — fecha antes de clicar em nada.
+    await page.getByRole('button', { name: 'Entendi' }).click();
     await page.getByRole('button', { name: 'Não — todos juntos' }).click();
     await page.getByRole('button', { name: 'Salvar emparceiramento' }).click();
-    await expect(page.getByText('✓ Salvo').last()).toBeVisible();
+    await expect(page.getByText('✓ Salvo')).toBeVisible({ timeout: 15_000 });
 
     // --- Publicar e abrir inscrições: torneio nasce 'draft'. Sequência
     //     agora é draft → published → registration → registration_closed →
@@ -91,11 +89,15 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     //     automático por data; aqui é o caminho manual mesmo) — precisa dos
     //     dois cliques pra sair de draft. Espera o toast entre eles porque
     //     o botão fica disabled durante o save.
+    // Confere o RESULTADO de cada transição (o botão da próxima, que só
+    // existe naquele status) em vez do "✓ Salvo": aquele toast some em 2,5s
+    // e o router.refresh() remonta o cabeçalho, então esperar por ele é
+    // corrida — a ação passava e o teste falhava mesmo assim.
     await page.goto(`/admin/tournaments/${slug}/edit`);
     await page.getByRole('button', { name: 'Publicar' }).click();
-    await expect(page.getByText('✓ Salvo')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Abrir Inscrições' })).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: 'Abrir Inscrições' }).click();
-    await expect(page.getByText('✓ Salvo')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Encerrar Inscrições' })).toBeVisible({ timeout: 15_000 });
 
     // --- Dois jogadores, mesma idade, sexos diferentes ---
     await register(page, slug, { fullName: `E2E Menina ${Date.now()}`, birthYear: 2010, sex: 'w' });
@@ -113,16 +115,26 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     await expect(pendingCards).toHaveCount(0, { timeout: 10_000 });
 
     // --- Regra central: a menina cai só em Sub-17 Feminino, o menino só em Sub-17 ---
-    // O seletor de classificação (correção manual) lista TODAS as opções no
-    // DOM — toContainText pegaria "Feminino" da própria lista de opções do
-    // menino, não da selecionada. Lê a opção realmente marcada.
+    // A classificação não é mais um <select> inline na linha: mora no modal
+    // de "✏️ Editar". O select lista TODAS as opções no DOM, então
+    // toContainText pegaria "Feminino" da própria lista de opções do menino —
+    // lê a opção realmente marcada.
     await page.goto(`/admin/tournaments/${slug}/players`);
-    const girlRow = page.locator('div.px-4.py-3', { hasText: 'E2E Menina' });
-    const boyRow = page.locator('div.px-4.py-3', { hasText: 'E2E Menino' });
-    const selectedOption = (row: typeof girlRow) =>
-      row.locator('select').evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.textContent);
-    await expect.poll(() => selectedOption(girlRow)).toBe('Sub-17 Feminino');
-    await expect.poll(() => selectedOption(boyRow)).toBe('Sub-17');
+
+    async function classificacaoDe(nome: string): Promise<string | null | undefined> {
+      await page.locator('div.px-4.py-3', { hasText: nome })
+        .getByRole('button', { name: /Editar/ }).click();
+      const modal = page.getByRole('heading', { name: 'Editar participante' });
+      await expect(modal).toBeVisible();
+      const valor = await page.getByLabel('Classificação')
+        .evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.textContent);
+      await page.getByRole('button', { name: 'Cancelar' }).click();
+      await expect(modal).toBeHidden();
+      return valor;
+    }
+
+    expect(await classificacaoDe('E2E Menina')).toBe('Sub-17 Feminino');
+    expect(await classificacaoDe('E2E Menino')).toBe('Sub-17');
 
     // --- Ranking inicial + 1ª rodada ---
     // Sem botão manual (migration 058) — "Gerar rodada 1" semeia sozinho se

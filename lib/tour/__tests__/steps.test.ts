@@ -43,19 +43,24 @@ describe('stepsForRoute', () => {
     expect(stepsForRoute('new', 'gerenciamento').map((s) => s.id)).toEqual([
       'gerenciamento',
       'visibilidade',
+      'intro-classificacao',
+      'pergunta-idade',
+      'pergunta-rating',
+      'pergunta-feminina',
+      'gerar',
       'criar',
     ]);
   });
 
   it('mostra o bloco quando o progresso ficou numa rota anterior', () => {
-    // Organizador parou em "criar" (rota new) e o redirect o levou a /edit.
-    expect(stepsForRoute('edit', 'criar')[0].id).toBe('intro-classificacao');
+    // Organizador parou em "criar" (rota new) e o redirect o levou a /groups.
+    expect(stepsForRoute('groups', 'criar')[0].id).toBe('emparceiramento');
   });
 
   it('não volta atrás: progresso adiante da rota atual não reabre o bloco', () => {
-    // Já está em /players; voltar para /edit não deve reiniciar o tour lá.
-    expect(stepsForRoute('edit', 'link-inscricao')).toEqual([]);
-    expect(stepsForRoute('new', 'intro-classificacao')).toEqual([]);
+    // Já está em /players; voltar para /groups não deve reiniciar o tour lá.
+    expect(stepsForRoute('groups', 'link-inscricao')).toEqual([]);
+    expect(stepsForRoute('new', 'emparceiramento')).toEqual([]);
   });
 
   it('progresso desconhecido não exibe nada', () => {
@@ -65,7 +70,7 @@ describe('stepsForRoute', () => {
 
 describe('nextStepAfter', () => {
   it('atravessa a fronteira entre rotas', () => {
-    expect(nextStepAfter('criar')?.id).toBe('intro-classificacao');
+    expect(nextStepAfter('criar')?.id).toBe('emparceiramento');
     expect(nextStepAfter('emparceiramento')?.id).toBe('link-inscricao');
   });
 
@@ -89,7 +94,7 @@ describe('integridade do registro', () => {
     // os de outra quebrariam a retomada silenciosamente.
     const ordem = TOUR_STEPS.map((s) => s.route);
     const primeiraOcorrencia = ordem.filter((r, i) => ordem.indexOf(r) === i);
-    expect(primeiraOcorrencia).toEqual(['admin', 'new', 'edit', 'groups', 'registrations', 'players']);
+    expect(primeiraOcorrencia).toEqual(['admin', 'new', 'groups', 'registrations', 'players']);
     expect(ordem).toEqual(primeiraOcorrencia.flatMap((r) => ordem.filter((x) => x === r)));
   });
 

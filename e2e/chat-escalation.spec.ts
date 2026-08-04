@@ -84,7 +84,13 @@ test.describe('escalonamento pra atendimento humano', () => {
     await login(adminPage, adminUser);
     await adminPage.goto('/admin/dev/chat');
     await adminPage.getByText(user.email).click();
-    await expect(adminPage.getByText('Aguardando você')).toBeVisible();
+    // Escopado ao painel da conversa aberta (o que tem a caixa de resposta):
+    // o mesmo badge aparece na lista lateral pra CADA sessão aguardando, e
+    // basta uma conversa real pendente no banco pra dar strict mode violation.
+    const conversaAberta = adminPage.locator('div.card', {
+      has: adminPage.getByPlaceholder('Responder como Gambito…'),
+    });
+    await expect(conversaAberta.getByText('Aguardando você')).toBeVisible();
 
     const replyText = 'Oi! Sou eu, vou te ajudar com isso agora.';
     await adminPage.getByPlaceholder('Responder como Gambito…').fill(replyText);
