@@ -475,6 +475,34 @@ export interface UnansweredQuestion {
   created_at: string;
 }
 
+// Notícias (migration 059_news.sql) — conteúdo editorial publicado pelo
+// painel dev (/admin/dev/noticias) e lido publicamente em /noticias.
+export type NewsStatus = 'draft' | 'published';
+/** Abrangência: estadual (com UF), nacional (Brasil) ou internacional. */
+export type NewsScope = 'state' | 'national' | 'international';
+
+export interface News {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  /** Markdown cru — renderizado sanitizado em components/news/markdown.tsx. */
+  body_md: string;
+  /** Path dentro do bucket news-covers, não a URL (ver lib/utils/news.ts). */
+  cover_path: string | null;
+  cover_alt: string | null;
+  source_name: string | null;
+  source_url: string | null;
+  scope: NewsScope;
+  /** UF — preenchida só quando scope='state' (check no banco garante). */
+  state: string | null;
+  status: NewsStatus;
+  published_at: string | null;
+  author_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ============================================================
 // Supabase Database type (used with createClient generic)
 // ============================================================
@@ -495,6 +523,7 @@ export interface Database {
       chat_messages:        { Row: ChatMessage;        Insert: Omit<ChatMessage, 'id' | 'created_at' | 'is_human'> & { is_human?: boolean }; Update: Partial<Omit<ChatMessage, 'id'>>; };
       error_logs:           { Row: ErrorLog;           Insert: Omit<ErrorLog, 'id' | 'created_at'>; Update: Partial<Omit<ErrorLog, 'id'>>; };
       unanswered_questions: { Row: UnansweredQuestion; Insert: Omit<UnansweredQuestion, 'id' | 'created_at'>; Update: Partial<Omit<UnansweredQuestion, 'id'>>; };
+      news:                 { Row: News;               Insert: Partial<Omit<News, 'id' | 'created_at' | 'updated_at'>> & Pick<News, 'slug' | 'title' | 'scope'>; Update: Partial<Omit<News, 'id'>>; };
     };
     Functions: {
       recalculate_standings:        { Args: { p_tournament_id: string }; Returns: void; };

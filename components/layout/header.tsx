@@ -17,6 +17,7 @@ export function Header() {
   const navLinks = [
     { href: '/tournaments', label: 'Torneios' },
     { href: '/players',     label: 'Jogadores' },
+    { href: '/noticias',    label: 'Notícias' },
   ];
 
   return (
