@@ -2,7 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 import { TournamentCard } from '@/components/tournament/tournament-card';
-import type { TournamentListItem } from '@/types/database';
+import { NewsCard } from '@/components/news/news-card';
+import type { News, TournamentListItem } from '@/types/database';
 
 /**
  * Home pública. O produto nasceu como "acompanhe torneios ao vivo" e a home
@@ -88,6 +89,13 @@ export default async function HomePage() {
   const { data: upcoming } = await supabase.rpc('search_tournaments', {
     p_status: 'registration', p_limit: 3,
   });
+
+  // RLS (news_select_public, migration 059) já esconde rascunho — não precisa
+  // filtrar status aqui.
+  const { data: news } = await supabase
+    .from('news').select('*')
+    .order('published_at', { ascending: false })
+    .limit(3);
 
   return (
     <div>
@@ -239,6 +247,26 @@ export default async function HomePage() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+      )}
+
+      {/* Notícias — depois dos torneios de propósito: quem chegou aqui pra
+          organizar já passou pelo CTA, e a notícia é o motivo de voltar entre
+          um torneio e outro. Com menos de 2 publicadas a seção não aparece:
+          uma nota solitária na home fica pior do que não ter seção nenhuma. */}
+      {(news?.length ?? 0) >= 2 && (
+        <section className="container-app py-12 sm:py-16">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Notícias</h2>
+            <Link href="/noticias" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+              Ver todas
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(news as News[]).map((n) => (
+              <NewsCard key={n.id} news={n} />
+            ))}
           </div>
         </section>
       )}

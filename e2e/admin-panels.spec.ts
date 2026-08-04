@@ -22,6 +22,10 @@ test.describe('painéis admin novos', () => {
   });
 
   test.afterEach(async () => {
+    // O teste de notícias termina excluindo o que criou, mas se ele falhar no
+    // meio (timeout, asserção) a notícia fica publicada no banco de verdade —
+    // e aparece na home e em /noticias. Rede de segurança: limpa sempre.
+    await adminClient().from('news').delete().like('slug', 'e2e-noticia-%');
     await deleteTestOrganizer(org.id);
   });
 
@@ -85,15 +89,20 @@ test.describe('painéis admin novos', () => {
     const anon = await browser.newContext();
     const anonPage = await anon.newPage();
 
+    // Aquece /noticias/[slug] na sessão já autenticada: em dev a rota compila
+    // na primeira visita e a navegação anônima seguinte estourava o timeout
+    // padrão (net::ERR_ABORTED). Aqui o custo da compilação já foi pago.
+    await page.goto(`/noticias/${publicSlug}`, { timeout: 60_000 });
+
     // Público enxerga a publicada…
-    await anonPage.goto(`/noticias/${publicSlug}`);
+    await anonPage.goto(`/noticias/${publicSlug}`, { timeout: 60_000 });
     await expect(anonPage.getByRole('heading', { name: title })).toBeVisible();
 
     // …e para de enxergar depois de despublicar.
     await page.goto(`/admin/dev/noticias/${slug}`);
     await page.getByRole('button', { name: 'Despublicar' }).click();
     await expect(page.getByText('✓ Salvo')).toBeVisible({ timeout: 20_000 });
-    await anonPage.goto(`/noticias/${publicSlug}`);
+    await anonPage.goto(`/noticias/${publicSlug}`, { timeout: 60_000 });
     await expect(anonPage.getByText('Página não encontrada')).toBeVisible();
     await anon.close();
 
