@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createTestOrganizer, deleteTestOrganizer, type TestOrganizer } from './utils/test-user';
 import { createTournament } from './utils/tournament';
+import { adminClient } from './utils/admin';
 
 /**
  * Smoke test de ponta a ponta da regra de partição de classificação — o
@@ -147,5 +148,69 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     // Gerar pareamento roda o motor de pareamento no servidor — mais lento
     // que uma mutação comum, o timeout padrão de 5s não é confiável aqui.
     await expect(page.getByRole('button', { name: /^Rodada 1\b/ })).toBeVisible({ timeout: 20_000 });
+  });
+
+  test('emparceiramento por idade limpa o grupo Absoluto e "Iniciar Torneio" já deixa a rodada 1 pareada', async ({ page }) => {
+    test.setTimeout(240_000);
+
+    await login(page, org);
+    await page.goto('/admin/tournaments/new');
+
+    // Duas faixas de idade — dois grupos de emparceiramento, nenhum "Absoluto".
+    await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sim', exact: true }).click();
+    await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sub-11', exact: true }).click();
+    await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sub-13', exact: true }).click();
+
+    await createTournament(page, `E2E Idade ${Date.now()}`);
+    const slug = slugFromUrl(page);
+    await page.getByRole('button', { name: 'Entendi' }).click(); // modal "Torneio criado!"
+
+    await page.getByRole('button', { name: 'Por idade' }).click();
+    await page.getByRole('button', { name: 'Salvar emparceiramento' }).click();
+    await expect(page.getByText('✓ Salvo')).toBeVisible({ timeout: 15_000 });
+
+    // Regressão: o grupo "Absoluto" nasce junto com o torneio
+    // (create-tournament-setup.ts) e ficava órfão ao dividir por faixa,
+    // aparecendo vazio como aba na tela de Rodadas.
+    const admin = adminClient();
+    const { data: tournament } = await admin
+      .from('tournaments').select('id').eq('slug', slug).single();
+    await expect.poll(async () => {
+      const { data } = await admin
+        .from('pairing_groups').select('name').eq('tournament_id', tournament!.id);
+      return (data ?? []).map((g) => g.name).sort();
+    }, { timeout: 15_000 }).toEqual(['Sub-11', 'Sub-13']);
+
+    // Jogadores de teste direto no banco: a inscrição pública é lenta demais
+    // pra encher dois grupos, e aqui o que importa é o pareamento existir.
+    const { data: grupos } = await admin
+      .from('pairing_groups').select('id, name').eq('tournament_id', tournament!.id);
+    for (const g of grupos ?? []) {
+      await admin.rpc('generate_test_players', {
+        p_tournament_id: tournament!.id, p_group_id: g.id, p_count: 4,
+      });
+    }
+
+    // Iniciar o torneio: além do seed, a rodada 1 já sai pareada em rascunho.
+    await page.goto(`/admin/tournaments/${slug}/edit`);
+    await page.getByRole('button', { name: 'Publicar' }).click();
+    await expect(page.getByRole('button', { name: 'Abrir Inscrições' })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Abrir Inscrições' }).click();
+    await expect(page.getByRole('button', { name: 'Encerrar Inscrições' })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Encerrar Inscrições' }).click();
+    await expect(page.getByRole('button', { name: 'Iniciar Torneio' })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Iniciar Torneio' }).click();
+    await expect(page.getByRole('button', { name: 'Encerrar Torneio' })).toBeVisible({ timeout: 30_000 });
+
+    await page.goto(`/admin/tournaments/${slug}/rounds`);
+
+    // Só as duas faixas aparecem como aba — sem "Absoluto" sobrando.
+    await expect(page.getByRole('button', { name: 'Sub-11', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Absoluto', exact: true })).toHaveCount(0);
+
+    // Rodada 1 já existe, em rascunho, e abre EXPANDIDA: o pareamento fica
+    // visível sem precisar clicar no card.
+    await expect(page.getByRole('button', { name: /^Rodada 1\b/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('button', { name: 'Publicar rodada' })).toBeVisible();
   });
 });

@@ -86,8 +86,10 @@ test.describe.serial('tour guiado de criação de torneio', () => {
 
     // O tour não preenche nada — o organizador preenche de verdade e segue.
     // Criar pousa direto em /groups (Emparceiramento), onde o tour retoma.
+    // Sem clicar em modal aqui: com o tour em andamento, o "Torneio criado!"
+    // não aparece (created-modal.tsx) — os dois brigavam pelo mesmo espaço e
+    // o overlay do driver.js bloqueava o botão do modal.
     await createTournament(page, `E2E Tour ${Date.now()}`);
-    await page.getByRole('button', { name: 'Entendi' }).click(); // modal "Torneio criado!"
 
     await expect(popoverTitle(page)).toHaveText('Quem joga contra quem');
     await page.locator('.driver-popover-next-btn', { hasText: 'Entendi' }).click();

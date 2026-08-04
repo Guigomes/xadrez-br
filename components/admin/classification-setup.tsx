@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useGroups, useCreateGroup, useUpdateGroup, useDeleteGroup } from '@/lib/hooks/use-native-rounds';
 import {
@@ -140,6 +141,7 @@ function Setup({
   const updateCategory = useUpdateCategory(tournamentId);
   const deleteCategory = useDeleteCategory(tournamentId);
   const createGroup = useCreateGroup(tournamentId);
+  const deleteGroup = useDeleteGroup(tournamentId);
   const setMode = useSetPairingMode(tournamentId);
   const setDimensions = useSetClassificationDimensions(tournamentId);
   const setPairingSplit = useSetPairingSplit(tournamentId);
@@ -378,12 +380,14 @@ function Setup({
       throw new Error(`Nenhuma classificação usa ${dim === 'age' ? 'idade' : 'rating'} ainda — gere as classificações no bloco abaixo primeiro.`);
     }
     let i = 0;
+    const usados = new Set<string>();
     for (const [, band] of bands) {
       let groupId = grps.find((g) => g.name === band.label)?.id;
       if (!groupId) {
         const g = await createGroup.mutateAsync({ name: band.label, sort_order: i });
         groupId = (g as any)?.id;
       }
+      if (groupId) usados.add(groupId);
       for (const catId of band.catIds) {
         const cat = cats.find((c) => c.id === catId);
         if (cat && cat.pairing_group_id !== groupId) {
@@ -392,8 +396,31 @@ function Setup({
       }
       i++;
     }
+
+    // Todo torneio nativo nasce com o grupo "Absoluto" (create-tournament-setup.ts:
+    // participante não entra sem grupo). Ao dividir por faixa, ele fica órfão —
+    // some da lógica mas continua aparecendo como aba na tela de Rodadas,
+    // vazio e sem sentido. Limpa aqui os grupos que sobraram, mas só os
+    // comprovadamente vazios: grupo com jogador ou rodada é dado de verdade e
+    // nunca é apagado em silêncio.
+    await removerGruposVazios(usados);
+
     await setPairingSplit.mutateAsync(dim);
     await setMode.mutateAsync('per_category');
+  }
+
+  async function removerGruposVazios(manter: Set<string>) {
+    const supabase = createClient();
+    for (const g of grps) {
+      if (manter.has(g.id)) continue;
+      const [{ count: comJogador }, { count: comRodada }] = await Promise.all([
+        supabase.from('tournament_players').select('id', { count: 'exact', head: true }).eq('pairing_group_id', g.id),
+        supabase.from('rounds').select('id', { count: 'exact', head: true }).eq('pairing_group_id', g.id),
+      ]);
+      if ((comJogador ?? 0) === 0 && (comRodada ?? 0) === 0) {
+        await deleteGroup.mutateAsync(g.id);
+      }
+    }
   }
 
   async function applyCustom() {

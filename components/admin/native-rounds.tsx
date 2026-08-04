@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup,
@@ -109,7 +109,17 @@ function GroupPanel({
   const { data: tPlayers } = useTournamentPlayers(tournament.id);
   const generate = useGenerateRound(tournament.slug, tournament.id, groupId);
   const transition = useRoundTransition(tournament.id, groupId);
+  // null = ainda não escolheu; o useEffect abaixo abre a rodada corrente
+  // assim que os dados chegam. '' = o organizador fechou tudo na mão.
   const [openRoundId, setOpenRoundId] = useState<string | null>(null);
+
+  // A rodada que importa é sempre a última não encerrada — deixar tudo
+  // fechado obrigava um clique a mais só pra ver o pareamento recém-gerado.
+  useEffect(() => {
+    if (openRoundId !== null || !rounds?.length) return;
+    const atual = [...rounds].reverse().find((r) => r.status !== 'finished') ?? rounds[rounds.length - 1];
+    setOpenRoundId(atual.id);
+  }, [rounds, openRoundId]);
 
   // Hooks precisam rodar antes de qualquer early return (regra dos hooks) —
   // nextRoundNumber é calculado com dados possivelmente ainda undefined.
@@ -174,7 +184,9 @@ function GroupPanel({
             groupId={groupId}
             round={round}
             open={openRoundId === round.id}
-            onToggle={() => setOpenRoundId(openRoundId === round.id ? null : round.id)}
+            // '' e não null ao fechar: null significa "ainda não escolheu" e
+            // faria o efeito de abrir-a-corrente reabrir o card na hora.
+            onToggle={() => setOpenRoundId(openRoundId === round.id ? '' : round.id)}
             onAction={(action) => run(() => transition.mutateAsync({ action, roundId: round.id }))}
             canReopen={round.round_number === (lastRound?.round_number ?? 0)}
             busy={transition.isPending}

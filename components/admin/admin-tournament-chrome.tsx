@@ -96,8 +96,30 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
           await supabase.rpc('generate_initial_ranking', { p_group_id: g.id }).then(
             ({ error: seedErr }) => { if (seedErr) console.error('[seed automático]', seedErr.message); }
           );
+
+          // Já deixa a rodada 1 pareada, em RASCUNHO — o organizador só
+          // revisa e publica. Sem isso, iniciar o torneio deixava a tela de
+          // Rodadas vazia esperando mais um clique que ele sempre daria.
+          // Só quando o grupo ainda não tem rodada nenhuma: reiniciar um
+          // torneio (ongoing -> ... -> ongoing) não pode reparear por cima.
+          const { count: jaTemRodada } = await supabase
+            .from('rounds').select('id', { count: 'exact', head: true }).eq('pairing_group_id', g.id);
+          if ((jaTemRodada ?? 0) > 0) continue;
+
+          const res = await fetch(
+            `/api/admin/tournaments/${slug}/groups/${g.id}/rounds/generate`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
+          );
+          if (!res.ok) {
+            // Grupo vazio é o caso comum aqui (NO_PLAYERS) e não é erro:
+            // o organizador ainda vai cadastrar gente. Não atrapalha o
+            // início do torneio nem vira mensagem na tela.
+            const body = await res.json().catch(() => null);
+            console.error('[rodada 1 automática]', body?.error ?? res.status);
+          }
         }
         await qc.invalidateQueries({ queryKey: tournamentKeys.players(id) });
+        await qc.invalidateQueries({ queryKey: ['group-rounds'] });
       }
 
       await qc.invalidateQueries({ queryKey: tournamentKeys.detail(slug) });

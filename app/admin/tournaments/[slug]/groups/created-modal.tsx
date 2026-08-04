@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
+import { readProgress } from '@/lib/tour/state';
 
 // Mesmo padrão de lib/tour/state.ts: preferência ("não quero ver isso de
 // novo") em localStorage, não expira ao fechar a aba. Guarda de
@@ -39,7 +40,13 @@ export function CreatedModal() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [show, setShow] = useState(searchParams.get('criado') === '1' && !isPermanentlyDismissed());
+  // Com o tour em andamento, ele já explica esta tela no passo "Quem joga
+  // contra quem" — e os dois juntos não só repetem o recado como brigam: o
+  // overlay do driver.js fica por cima e intercepta o clique no "Entendi"
+  // daqui, deixando o modal impossível de fechar.
+  const [show, setShow] = useState(
+    searchParams.get('criado') === '1' && !isPermanentlyDismissed() && readProgress() === null,
+  );
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
   function dismiss() {
