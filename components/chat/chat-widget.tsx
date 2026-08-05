@@ -8,6 +8,7 @@ import {
   useCloseInactiveChat,
 } from '@/lib/hooks/use-chat';
 import { ChatBubble } from './chat-bubble';
+import { ChatHistory } from './chat-history';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,6 +84,7 @@ function writeStoredSessionId(id: string) {
 export function ChatWidget() {
   const { user } = useUser();
   const [open, setOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   // useChatMessages fica "enabled: false" até a sessão ganhar id (1ª mensagem
@@ -206,15 +208,23 @@ export function ChatWidget() {
         >
           <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
             {status === 'humano' ? <HumanAvatar /> : <GambitoAvatar />}
-            <div>
+            <div className="flex-1">
               <h2 className="font-semibold text-gray-900 dark:text-gray-100 leading-tight">
                 {status === 'humano' ? 'Atendente' : 'Gambito'}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Suporte</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowHistory((v) => !v)}
+              className="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
+              title="Histórico de conversas"
+            >
+              Histórico
+            </button>
           </div>
 
-          <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          <div ref={listRef} className={`flex-1 space-y-3 overflow-y-auto px-4 py-3 ${showHistory ? 'hidden' : ''}`}>
             {isLoading && <Spinner className="mx-auto h-5 w-5" />}
             {!isLoading && (!messages || messages.length === 0) && (
               <div className="flex gap-2">
@@ -295,7 +305,19 @@ export function ChatWidget() {
             )}
           </div>
 
-          {status === 'bot' && sessionId && (
+          {showHistory && (
+            <ChatHistory
+              currentSessionId={sessionId}
+              onSelectSession={(id) => {
+                setSessionId(id);
+                writeStoredSessionId(id);
+                setShowHistory(false);
+              }}
+              onClose={() => setShowHistory(false)}
+            />
+          )}
+
+          {!showHistory && status === 'bot' && sessionId && (
             <div className="border-t border-gray-200 px-3 py-2 dark:border-gray-800">
               <button
                 type="button"
@@ -308,6 +330,7 @@ export function ChatWidget() {
             </div>
           )}
 
+          {!showHistory && (
           <div className="flex items-end gap-2 border-t border-gray-200 p-3 dark:border-gray-800">
             <textarea
               value={input}
@@ -326,6 +349,7 @@ export function ChatWidget() {
               Enviar
             </Button>
           </div>
+          )}
         </div>
       )}
     </>
