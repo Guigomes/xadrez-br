@@ -5,8 +5,9 @@ import Image from 'next/image';
 import { useUser } from '@/lib/hooks/use-auth';
 import {
   useChatMessages, useSendChatMessage, useChatSession, useEscalateChat, useSubmitContactPhone,
-  useCloseInactiveChat, useExpiredSessionCheck,
+  useCloseInactiveChat,
 } from '@/lib/hooks/use-chat';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChatBubble } from './chat-bubble';
 import { ChatHistory } from './chat-history';
 import { Spinner } from '@/components/ui/spinner';
@@ -52,6 +53,11 @@ function HumanAvatar() {
     </span>
   );
 }
+
+// Pedido do usuário: ao abrir o widget, se a última mensagem foi há mais
+// de 15 minutos, encerrar a conversa antiga e iniciar uma nova. Não se
+// aplica a sessões em atendimento humano (status='humano' ou 'aguardando_humano').
+const OPEN_EXPIRY_MS = 15 * 60 * 1000;
 
 const SESSION_KEY = 'xbr_chat_session_id';
 
@@ -116,22 +122,31 @@ export function ChatWidget() {
   const escalate = useEscalateChat();
   const submitPhone = useSubmitContactPhone();
   const closeInactive = useCloseInactiveChat();
-  const { checkAndExpire } = useExpiredSessionCheck({
-    onExpired: () => {
-      setSessionId(null);
-      try { localStorage.removeItem(SESSION_KEY); } catch { /* noop */ }
-    },
-  });
+  const queryClient = useQueryClient();
 
-  // Ao abrir o widget, verificar se a sessão expirou (última mensagem há
-  // mais de 15 min). Se sim, encerrar a sessão antiga e limpar o localStorage
-  // para que a próxima mensagem inicie uma nova conversa.
-  const prevOpenRef = useRef(false);
+  // Ao abrir o widget: se há sessão e a última mensagem foi há mais de
+  // OPEN_EXPIRY_MS, encerrar silenciosamente e limpar o localStorage pra
+  // a próxima mensagem criar uma nova conversa. Nunca encerra se o status
+  // indica atendimento humano em curso.
   useEffect(() => {
-    if (open && !prevOpenRef.current && sessionId) {
-      checkAndExpire(sessionId);
-    }
-    prevOpenRef.current = open;
+    if (!open || !sessionId || !sessionQuery.data) return;
+    const { status: s, last_message_at } = sessionQuery.data;
+    if (s === 'humano' || s === 'aguardando_humano' || s === 'encerrada') return;
+    if (!last_message_at) return;
+    const elapsed = Date.now() - new Date(last_message_at).getTime();
+    if (elapsed <= OPEN_EXPIRY_MS) return;
+    // Encerrar assincronamente — sem bloquear abertura do widget.
+    closeInactive.mutate(sessionId, {
+      onSuccess: () => {
+        queryClient.removeQueries({ queryKey: ['chat-session', sessionId] });
+        setSessionId(null);
+        writeStoredSessionId('');
+      },
+    });
+  // Só deve disparar quando `open` muda pra true (na abertura), não a cada
+  // re-render — sessionQuery.data é lido na hora, não como dependência de
+  // disparo, para evitar encerrar em re-renders posteriores com dados novos.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
