@@ -110,6 +110,27 @@ export interface SendChatMessageResult {
   sources: { doc_slug: string; doc_title: string }[];
 }
 
+/**
+ * Todas as sessões de chat do usuário logado, ordenadas da mais recente
+ * para a mais antiga. Limitado a 50 para não sobrecarregar. Usado pelo
+ * painel de histórico do widget.
+ */
+export function useChatHistory() {
+  return useQuery({
+    queryKey: ['chat-history'],
+    queryFn: async (): Promise<ChatSession[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function useSendChatMessage() {
   const queryClient = useQueryClient();
   return useMutation({
