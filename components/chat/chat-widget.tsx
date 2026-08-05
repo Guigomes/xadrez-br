@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useUser } from '@/lib/hooks/use-auth';
 import {
   useChatMessages, useSendChatMessage, useChatSession, useEscalateChat, useSubmitContactPhone,
-  useCloseInactiveChat,
+  useCloseInactiveChat, useExpiredSessionCheck,
 } from '@/lib/hooks/use-chat';
 import { ChatBubble } from './chat-bubble';
 import { ChatHistory } from './chat-history';
@@ -116,6 +116,23 @@ export function ChatWidget() {
   const escalate = useEscalateChat();
   const submitPhone = useSubmitContactPhone();
   const closeInactive = useCloseInactiveChat();
+  const { checkAndExpire } = useExpiredSessionCheck({
+    onExpired: () => {
+      setSessionId(null);
+      try { localStorage.removeItem(SESSION_KEY); } catch { /* noop */ }
+    },
+  });
+
+  // Ao abrir o widget, verificar se a sessão expirou (última mensagem há
+  // mais de 15 min). Se sim, encerrar a sessão antiga e limpar o localStorage
+  // para que a próxima mensagem inicie uma nova conversa.
+  const prevOpenRef = useRef(false);
+  useEffect(() => {
+    if (open && !prevOpenRef.current && sessionId) {
+      checkAndExpire(sessionId);
+    }
+    prevOpenRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
