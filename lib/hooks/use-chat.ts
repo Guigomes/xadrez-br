@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef as useReactRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import type { ChatMessage, ChatSession } from '@/types/database';
@@ -83,6 +84,70 @@ export function useSubmitContactPhone() {
       return data;
     },
   });
+}
+
+/**
+ * Ao abrir o widget, verifica se a sessão armazenada está expirada (última
+ * mensagem há mais de 15 min). Se sim, encerra a sessão via
+ * /api/chat/close-inactive e limpa o sessionId do localStorage — próxima
+ * mensagem do usuário criará uma nova sessão.
+ *
+ * Não encerra se a sessão estiver em atendimento humano
+ * (status='humano' ou 'aguardando_humano').
+ *
+ * Retorna a função `checkAndExpire(sessionId)` que deve ser chamada quando
+ * o widget é aberto. A função é assíncrona e não lança — erros de rede são
+ * silenciados para não bloquear a abertura do widget.
+ */
+export function useExpiredSessionCheck(options: {
+  onExpired: () => void;
+}) {
+  const checkingRef = useReactRef(false);
+
+  async function checkAndExpire(sessionId: string): Promise<void> {
+    if (checkingRef.current) return;
+    checkingRef.current = true;
+    try {
+      const supabase = createClient();
+      const { data: session } = await supabase
+        .from('chat_sessions')
+        .select('status, last_message_at')
+        .eq('id', sessionId)
+        .maybeSingle();
+
+      if (!session) {
+        // Sessão não existe no banco — limpar localStorage igualmente.
+        options.onExpired();
+        return;
+      }
+
+      // Conversas em atendimento humano nunca são encerradas automaticamente.
+      if (session.status === 'humano' || session.status === 'aguardando_humano') return;
+      // Sessão já encerrada → limpar só o localStorage.
+      if (session.status === 'encerrada') { options.onExpired(); return; }
+
+      const lastAt = session.last_message_at ? new Date(session.last_message_at).getTime() : null;
+      if (lastAt === null) return; // sem mensagem ainda, não expirar.
+
+      const EXPIRY_MS = 15 * 60 * 1000;
+      if (Date.now() - lastAt < EXPIRY_MS) return; // dentro do prazo.
+
+      // Encerrar via endpoint existente (idempotente).
+      await fetch('/api/chat/close-inactive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      options.onExpired();
+    } catch {
+      // Não bloquear abertura do widget em caso de falha.
+    } finally {
+      checkingRef.current = false;
+    }
+  }
+
+  return { checkAndExpire };
 }
 
 /** 5 min sem interação (ver INACTIVITY_TIMEOUT_MS em chat-widget.tsx) — encerra a sessão sozinha. */
