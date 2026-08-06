@@ -1,18 +1,31 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { useUser, useSignOut } from '@/lib/hooks/use-auth';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export function Header() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user } = useUser();
   const signOut = useSignOut();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
 
   const navLinks = [
     { href: '/tournaments', label: 'Torneios' },
@@ -25,10 +38,8 @@ export function Header() {
       <div className="container-app flex h-14 items-center justify-between gap-4">
         {/* Logo */}
         <Link href="/?home=1" className="flex items-center gap-2 font-bold text-brand-700 dark:text-brand-300">
-          <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-brand-600 text-white shadow-sm">
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h4a1 1 0 001-1v-3h2v3a1 1 0 001 1h4a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-            </svg>
+          <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-brand-600 text-white shadow-sm text-lg leading-none">
+            ♞
           </span>
           <span className="hidden sm:inline tracking-tight">Torneios Xadrez BR</span>
         </Link>
@@ -55,9 +66,6 @@ export function Header() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
 
-          {/* Link direto pro painel — antes só dava pra chegar lá abrindo o
-              menu "Minha conta". Com a home agora vendendo "crie seu torneio",
-              quem já tem conta precisa de um caminho de um clique só. */}
           {user && (
             <Link
               href="/admin"
@@ -68,9 +76,9 @@ export function Header() {
           )}
 
           {user ? (
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button
-                onClick={() => setMenuOpen(!menuOpen)}
+                onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-xs font-bold">
@@ -78,25 +86,25 @@ export function Header() {
                 </span>
                 <span className="hidden sm:inline">Minha conta</span>
               </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+              {dropdownOpen && (
+                <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-800 dark:bg-gray-900">
                   <Link
                     href="/admin"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => setDropdownOpen(false)}
                   >
                     Painel do organizador
                   </Link>
                   <Link
                     href="/account"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => setDropdownOpen(false)}
                   >
                     Minha conta
                   </Link>
                   <hr className="my-1 border-gray-200 dark:border-gray-800" />
                   <button
-                    onClick={() => { signOut.mutate(); setMenuOpen(false); }}
+                    onClick={() => { signOut.mutate(); setDropdownOpen(false); }}
                     className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                   >
                     Sair
@@ -116,11 +124,11 @@ export function Header() {
           {/* Mobile menu button */}
           <button
             className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menu"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {menuOpen
+              {mobileOpen
                 ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               }
@@ -129,15 +137,20 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile nav */}
-      {menuOpen && (
-        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 pb-3 pt-2">
+      {/* Mobile nav with transition */}
+      <div
+        className={cn(
+          'md:hidden overflow-hidden transition-all duration-200 ease-in-out',
+          mobileOpen ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
+        )}
+      >
+        <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 pb-3 pt-2">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-              onClick={() => setMenuOpen(false)}
+              onClick={() => setMobileOpen(false)}
             >
               {link.label}
             </Link>
@@ -147,21 +160,21 @@ export function Header() {
               <Link
                 href="/admin"
                 className="block py-2 text-sm font-medium text-brand-600 dark:text-brand-400"
-                onClick={() => setMenuOpen(false)}
+                onClick={() => setMobileOpen(false)}
               >
                 Painel do organizador
               </Link>
               <Link
                 href="/account"
                 className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                onClick={() => setMenuOpen(false)}
+                onClick={() => setMobileOpen(false)}
               >
                 Minha conta
               </Link>
             </>
           )}
         </div>
-      )}
+      </div>
     </header>
   );
 }

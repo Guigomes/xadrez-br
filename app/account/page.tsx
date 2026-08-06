@@ -150,7 +150,7 @@ export default function AccountPage() {
             Salvar
           </Button>
           {saved && (
-            <span className="text-sm font-medium text-green-600 dark:text-green-400 animate-pulse">
+            <span className="text-sm font-medium text-green-600 dark:text-green-400">
               ✓ Salvo
             </span>
           )}

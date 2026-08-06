@@ -247,8 +247,14 @@ export default async function TournamentOverviewPage({ params }: Props) {
         {/* Regras — visão geral do que foi configurado na criação, exceto o
             que é só gate de inscrição (CBX obrigatório, comprovante de
             pagamento) — esse fica só na própria tela de inscrição. */}
-        <div className="card p-4 space-y-3 text-sm">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Regras do torneio</h2>
+        <details className="card p-4 space-y-3 text-sm group" open>
+          <summary className="font-semibold text-gray-900 dark:text-gray-100 cursor-pointer list-none flex items-center justify-between">
+            Regras do torneio
+            <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+          <div className="space-y-3 pt-1">
           <InfoRow
             label="Ranking inicial por rating"
             value={RATING_KIND_LABELS[tournament.rating_kind]}
@@ -272,7 +278,8 @@ export default async function TournamentOverviewPage({ params }: Props) {
               </ol>
             </div>
           )}
-        </div>
+          </div>
+        </details>
       </div>
     </div>
   );

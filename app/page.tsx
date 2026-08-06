@@ -137,7 +137,7 @@ export default async function HomePage() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href={ctaHref}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 font-semibold text-brand-700 shadow-lg shadow-brand-950/20 transition-transform hover:scale-[1.02] hover:bg-brand-50"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3.5 font-semibold text-brand-700 shadow-lg shadow-brand-950/20 transition-transform hover:scale-[1.02] hover:bg-brand-50"
               >
                 Criar meu torneio
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -146,7 +146,7 @@ export default async function HomePage() {
               </Link>
               <Link
                 href="/tournaments"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 font-semibold text-white transition-colors hover:bg-white/10"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-6 py-3.5 font-semibold text-white transition-colors hover:bg-white/10"
               >
                 <span aria-hidden="true">♟</span> Acompanhar torneios
               </Link>
@@ -291,7 +291,7 @@ export default async function HomePage() {
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href={ctaHref}
-              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-brand-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-brand-700"
             >
               Criar meu torneio
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

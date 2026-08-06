@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [wantsArbiter, setWantsArbiter] = useState(false);
   const [wantsParticipant, setWantsParticipant] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const signIn = useSignIn();
   const signUp = useSignUp();
@@ -38,7 +39,7 @@ export default function LoginPage() {
           isOrganizer: wantsOrganizer, isArbiter: wantsArbiter, isParticipant: wantsParticipant,
         });
         setError('');
-        alert('Verifique seu email para confirmar o cadastro.');
+        setSuccess('Conta criada! Verifique seu email para confirmar o cadastro.');
         setMode('signin');
       }
     } catch (err: any) {
@@ -131,6 +132,12 @@ export default function LoginPage() {
             {error && (
               <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">
                 {error}
+              </p>
+            )}
+
+            {success && (
+              <p className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30 rounded-lg px-3 py-2">
+                {success}
               </p>
             )}
 

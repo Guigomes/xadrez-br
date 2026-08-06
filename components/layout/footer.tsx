@@ -1,6 +1,11 @@
+'use client';
+
 import Link from 'next/link';
+import { useUser } from '@/lib/hooks/use-auth';
 
 export function Footer() {
+  const { user } = useUser();
+
   return (
     <footer className="border-t border-gray-200 dark:border-gray-800 mt-16">
       <div className="container-app py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500 dark:text-gray-400">
@@ -15,7 +20,7 @@ export function Footer() {
           <Link href="/players" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
             Jogadores
           </Link>
-          <Link href="/login" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+          <Link href={user ? '/admin' : '/login'} className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
             Organizadores
           </Link>
         </div>

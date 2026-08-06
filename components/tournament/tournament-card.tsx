@@ -11,10 +11,18 @@ interface TournamentCardProps {
 export function TournamentCard({ tournament }: TournamentCardProps) {
   const isOngoing = tournament.status === 'ongoing';
 
+  const statusStrip = tournament.status === 'ongoing'
+    ? 'border-t-2 border-t-green-500'
+    : tournament.status === 'registration'
+      ? 'border-t-2 border-t-blue-500'
+      : tournament.status === 'finished'
+        ? 'border-t-2 border-t-gray-400'
+        : '';
+
   return (
     <Link
       href={`/tournaments/${tournament.slug}`}
-      className="card block p-4 hover:shadow-md transition-all hover:border-brand-200 dark:hover:border-brand-800 group"
+      className={`card block p-4 hover:shadow-md transition-all hover:border-brand-200 dark:hover:border-brand-800 group ${statusStrip}`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
