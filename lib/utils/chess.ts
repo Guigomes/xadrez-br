@@ -108,29 +108,40 @@ export function todayInSaoPaulo(): string {
  * isso não acontece, o selo continua mostrando "encerrada" só de olhar a
  * data — a RLS de inscrição já bloqueia o envio por data de qualquer forma,
  * então isso aqui é cosmético/defensivo, não duplica segurança.
+ *
+ * `registrationClosesByDate` (migration 045) é o override do organizador: ao
+ * clicar "Reabrir Inscrições" com o prazo já vencido, o campo vai a false e o
+ * backend para de refechar por data. Este selo tem que respeitar o mesmo
+ * interruptor — senão o status real fica 'registration' (aberto) mas o badge
+ * segue mostrando "encerrada" só porque a data passou. Default true = default
+ * do banco (comportamento de "Abrir Inscrições", prazo por data valendo).
  */
 export function isRegistrationClosed(
   status: TournamentStatus,
   registrationEndDate: string | null | undefined,
+  registrationClosesByDate: boolean = true,
 ): boolean {
   if (status === 'registration_closed') return true;
   if (status !== 'registration' || !registrationEndDate) return false;
+  if (!registrationClosesByDate) return false;
   return registrationEndDate < todayInSaoPaulo();
 }
 
 export function getTournamentStatusLabel(
   status: TournamentStatus,
   registrationEndDate: string | null | undefined,
+  registrationClosesByDate: boolean = true,
 ): string {
-  if (isRegistrationClosed(status, registrationEndDate)) return TOURNAMENT_STATUS_LABELS.registration_closed;
+  if (isRegistrationClosed(status, registrationEndDate, registrationClosesByDate)) return TOURNAMENT_STATUS_LABELS.registration_closed;
   return TOURNAMENT_STATUS_LABELS[status];
 }
 
 export function getTournamentStatusColor(
   status: TournamentStatus,
   registrationEndDate: string | null | undefined,
+  registrationClosesByDate: boolean = true,
 ): string {
-  if (isRegistrationClosed(status, registrationEndDate)) return TOURNAMENT_STATUS_COLORS.registration_closed;
+  if (isRegistrationClosed(status, registrationEndDate, registrationClosesByDate)) return TOURNAMENT_STATUS_COLORS.registration_closed;
   return TOURNAMENT_STATUS_COLORS[status];
 }
 

@@ -23,7 +23,7 @@ export default async function AdminDashboard({
 
   const { data: tournaments } = await supabase
     .from('tournaments')
-    .select('id, slug, name, status, start_date, end_date, registration_end_date, rounds_count, is_public, city, state')
+    .select('id, slug, name, status, start_date, end_date, registration_end_date, registration_closes_by_date, rounds_count, is_public, city, state')
     .eq('created_by', user!.id)
     .order('created_at', { ascending: false });
 
@@ -102,7 +102,7 @@ export default async function AdminDashboard({
               className="card p-4 flex flex-col gap-1 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
             >
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <Badge className={getTournamentStatusColor(t.status, t.registration_end_date)}>{getTournamentStatusLabel(t.status, t.registration_end_date)}</Badge>
+                <Badge className={getTournamentStatusColor(t.status, t.registration_end_date, t.registration_closes_by_date)}>{getTournamentStatusLabel(t.status, t.registration_end_date, t.registration_closes_by_date)}</Badge>
                 {!t.is_public && t.status !== 'draft' && (
                   <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Privado</Badge>
                 )}

@@ -20,6 +20,8 @@ interface Props {
   mode: TournamentMode;
   status: TournamentStatus;
   registrationEndDate: string | null;
+  /** Override do organizador (migration 045): false = "Reabrir Inscrições" com prazo vencido, o badge não deve mostrar "encerrada" só pela data. */
+  registrationClosesByDate: boolean;
   /** false só quando status='draft' e pairing_mode='custom' sem grupo criado ou com classificação sem grupo — ver layout.tsx. */
   pairingReady: boolean;
 }
@@ -63,7 +65,7 @@ const STATUS_ACTIONS: Partial<Record<TournamentStatus, { label: string; to: Tour
  * resultados do árbitro (rounds/[roundId]/results) — aquela tela é
  * mobile-first e não deve competir com a navegação por abas.
  */
-export function AdminTournamentChrome({ id, slug, name, mode, status, registrationEndDate, pairingReady }: Props) {
+export function AdminTournamentChrome({ id, slug, name, mode, status, registrationEndDate, registrationClosesByDate, pairingReady }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const qc = useQueryClient();
@@ -160,11 +162,11 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
         {/* min-h reserva a altura da variante de 2 botões, pra a linha não
             mudar de altura quando a situação passa de 1 pra 2 ações e volta. */}
         <div className="flex min-h-[2.25rem] flex-wrap items-center gap-2">
-          <Badge className={`${getTournamentStatusColor(status, registrationEndDate)} animate-fade-in`}>
+          <Badge className={`${getTournamentStatusColor(status, registrationEndDate, registrationClosesByDate)} animate-fade-in`}>
             {status === 'ongoing' && (
               <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
             )}
-            {getTournamentStatusLabel(status, registrationEndDate)}
+            {getTournamentStatusLabel(status, registrationEndDate, registrationClosesByDate)}
           </Badge>
           {isCancelled ? (
             <button

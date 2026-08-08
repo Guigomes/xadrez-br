@@ -64,27 +64,43 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <div className="lg:col-span-3 flex flex-wrap items-center justify-between gap-3 -mt-2 mb-2">
-        <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-          {(tournament.venue || tournament.city) && (
-            <span>📍 {[tournament.venue, `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}</span>
-          )}
-          <span>
-            📅 {formatDateRange(tournament.start_date, tournament.end_date)}
-            {tournament.start_time && ` às ${tournament.start_time.slice(0, 5)}`}
-          </span>
-          <span>⏱ {tournament.time_control}</span>
-          <span>🔄 {tournament.rounds_count} rodadas</span>
-          <span>♟ {tournament.tournament_type === 'swiss' ? 'Suíço' : 'Round robin'}</span>
-          <span>👤 {tournament.organizer_name}</span>
-          {tournament.chief_arbiter && <span>⚖️ {tournament.chief_arbiter}</span>}
+      {/* Card de detalhes — metadados agrupados em grid, ícones monocromáticos */}
+      <div className="lg:col-span-3 card p-4">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Detalhes</h2>
+          <Link
+            href={`${base}/edit`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 shrink-0"
+          >
+            <Icon path="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            Editar torneio
+          </Link>
         </div>
-        <Link
-          href={`${base}/edit`}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 shrink-0"
-        >
-          ⚙️ Editar torneio
-        </Link>
+        <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+          {(tournament.venue || tournament.city) && (
+            <InfoItem
+              label="Local"
+              value={[tournament.venue, tournament.city && `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}
+              icon="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          )}
+          <InfoItem
+            label="Data"
+            value={`${formatDateRange(tournament.start_date, tournament.end_date)}${tournament.start_time ? ` às ${tournament.start_time.slice(0, 5)}` : ''}`}
+            icon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+          <InfoItem label="Ritmo" value={tournament.time_control} icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <InfoItem label="Rodadas" value={`${tournament.rounds_count} rodadas`} icon="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          <InfoItem
+            label="Sistema"
+            value={tournament.tournament_type === 'swiss' ? 'Suíço' : 'Round robin'}
+            icon="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+          />
+          <InfoItem label="Organização" value={tournament.organizer_name} icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          {tournament.chief_arbiter && (
+            <InfoItem label="Árbitro-chefe" value={tournament.chief_arbiter} icon="M12 3v18m0-18l7 3m-7-3L5 6m0 0l-3 7a3 3 0 006 0L5 6zm14 0l-3 7a3 3 0 006 0l-3-7zM4 21h16" />
+          )}
+        </dl>
       </div>
 
       {/* Left column */}
@@ -166,6 +182,30 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Ícone outline monocromático, stroke=currentColor. */
+function Icon({ path, className = 'h-4 w-4' }: { path: string; className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={path} />
+    </svg>
+  );
+}
+
+/** Linha do card de detalhes: ícone + rótulo pequeno + valor. */
+function InfoItem({ label, value, icon }: { label: string; value: string; icon: string }) {
+  return (
+    <div className="flex items-start gap-3 min-w-0">
+      <span className="mt-0.5 shrink-0 text-gray-400 dark:text-gray-500">
+        <Icon path={icon} className="h-5 w-5" />
+      </span>
+      <div className="min-w-0">
+        <dt className="text-xs text-gray-400 dark:text-gray-500">{label}</dt>
+        <dd className="text-sm text-gray-800 dark:text-gray-200 break-words">{value}</dd>
       </div>
     </div>
   );

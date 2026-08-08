@@ -302,6 +302,7 @@ export interface TournamentListItem {
   start_date: string;
   end_date: string | null;
   registration_end_date: string | null;
+  registration_closes_by_date: boolean;
   status: TournamentStatus;
   tournament_type: TournamentType;
   rounds_count: number;

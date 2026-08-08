@@ -34,11 +34,11 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <Badge className={getTournamentStatusColor(tournament.status, tournament.registration_end_date)}>
+          <Badge className={getTournamentStatusColor(tournament.status, tournament.registration_end_date, tournament.registration_closes_by_date)}>
             {isOngoing && (
               <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
             )}
-            {getTournamentStatusLabel(tournament.status, tournament.registration_end_date)}
+            {getTournamentStatusLabel(tournament.status, tournament.registration_end_date, tournament.registration_closes_by_date)}
           </Badge>
         </div>
       </div>

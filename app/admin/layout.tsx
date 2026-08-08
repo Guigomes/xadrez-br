@@ -32,7 +32,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </div>
 
-      <div className="container-app py-8">{children}</div>
+      {/* pb extra no mobile: o mascote flutuante (ChatBubble, fixed bottom-4
+          right-4) cobria o canto do último card. O respiro deixa a última
+          linha rolar acima dele. */}
+      <div className="container-app py-8 pb-28 sm:pb-8">{children}</div>
 
       {/* Fica aqui, e não numa página, porque o tour atravessa quatro rotas
           (/admin, /new, /[slug]/edit, /[slug]/players) — este layout é o
