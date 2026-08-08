@@ -3,7 +3,7 @@
   "name": "Torneios Xadrez BR",
   "short_name": "Torneios BR",
   "description": "Acompanhe torneios de xadrez, resultados e classificações em tempo real.",
-  "start_url": "/",
+  "start_url": "/?home=1",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],

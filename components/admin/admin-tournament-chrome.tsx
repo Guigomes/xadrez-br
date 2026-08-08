@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { AdminTournamentTabs } from './admin-tournament-tabs';
@@ -70,6 +70,10 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
   const [statusSaving, setStatusSaving] = useState<TournamentStatus | null>(null);
   const [statusSaved, setStatusSaved] = useState(false);
   const [error, setError] = useState('');
+  // router.refresh() dentro de startTransition mantém a árvore atual montada
+  // enquanto o novo payload RSC carrega, em vez de desmontar/remontar de uma
+  // vez (que era o "pulo" dos componentes na troca de situação).
+  const [isPending, startTransition] = useTransition();
 
   if (/\/rounds\/[^/]+\/results/.test(pathname)) return null;
 
@@ -125,8 +129,9 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
       await qc.invalidateQueries({ queryKey: tournamentKeys.detail(slug) });
       // Badge/abas vêm de props de Server Component, lidas uma vez no
       // layout — invalidar o React Query não alcança isso (mesmo motivo de
-      // antes, quando este controle morava em edit/page.tsx).
-      router.refresh();
+      // antes, quando este controle morava em edit/page.tsx). O refresh vai
+      // dentro da transition pra a troca não piscar/pular.
+      startTransition(() => router.refresh());
       setStatusSaved(true);
       setTimeout(() => setStatusSaved(false), 2500);
     } catch (err: any) {
@@ -151,9 +156,11 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
           min-width automático do item, e os botões (shrink-0) levavam todo o
           espaço. O nome do torneio sumia por completo no mobile. */}
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">{name}</h1>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className={getTournamentStatusColor(status, registrationEndDate)}>
+      <div className={`mt-2 flex flex-wrap items-center justify-between gap-2 transition-opacity ${isPending ? 'opacity-60 cursor-progress' : ''}`}>
+        {/* min-h reserva a altura da variante de 2 botões, pra a linha não
+            mudar de altura quando a situação passa de 1 pra 2 ações e volta. */}
+        <div className="flex min-h-[2.25rem] flex-wrap items-center gap-2">
+          <Badge className={`${getTournamentStatusColor(status, registrationEndDate)} animate-fade-in`}>
             {status === 'ongoing' && (
               <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
             )}
@@ -202,18 +209,20 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
         </button>
       </div>
       {status === 'draft' && !pairingReady && (
-        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 animate-fade-in">
           Emparceiramento personalizado incompleto — falta criar grupo ou mapear classificação na
           aba{' '}
           <a href={`/admin/tournaments/${slug}/groups`} className="underline">Emparceiramento</a>
           {' '}antes de publicar.
         </p>
       )}
-      {statusSaved && (
-        <span className="mt-2 inline-block text-xs font-medium text-green-600 dark:text-green-400 animate-pulse">
+      {/* Slot de altura fixa sempre presente: alternar só a opacidade evita o
+          segundo pulo (o "✓ Salvo" entrando/saindo do fluxo empurrava as abas). */}
+      <div className="mt-2 h-4" aria-live="polite">
+        <span className={`text-xs font-medium text-green-600 dark:text-green-400 transition-opacity duration-200 ${statusSaved ? 'opacity-100' : 'opacity-0'}`}>
           ✓ Salvo
         </span>
-      )}
+      </div>
       {error && (
         <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
       )}

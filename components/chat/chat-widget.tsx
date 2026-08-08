@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { useUser } from '@/lib/hooks/use-auth';
+import { useUser, type InitialUser } from '@/lib/hooks/use-auth';
 import {
   useChatMessages, useSendChatMessage, useChatSession, useEscalateChat, useSubmitContactPhone,
   useCloseInactiveChat,
@@ -87,8 +87,11 @@ function writeStoredSessionId(id: string) {
  * por isso o self-gate em useUser() em vez de esconder via CSS. Monta
  * incondicionalmente no layout raiz (mesmo padrão de PwaRegister).
  */
-export function ChatWidget() {
-  const { user } = useUser();
+export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
+  const { user: liveUser, loading } = useUser();
+  // initialUser do servidor evita a bolha "pipocar" depois da hidratação
+  // (mesma razão do header). Depois de resolver, liveUser manda.
+  const user = loading ? (initialUser ?? null) : liveUser;
   const [open, setOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -104,6 +107,9 @@ export function ChatWidget() {
   // não consegui te atender ao vivo", que só faz sentido no caso de escalada.
   const [phoneFormReason, setPhoneFormReason] = useState<'escalation' | 'inactivity'>('escalation');
   const [phoneSubmitted, setPhoneSubmitted] = useState(false);
+  // Pulso de atenção na bolha só até o primeiro clique (flag em localStorage,
+  // lida depois de montar pra não divergir do server render).
+  const [everOpened, setEverOpened] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
   const lastActivityRef = useRef<number>(Date.now());
   const closingRef = useRef(false);
@@ -111,7 +117,16 @@ export function ChatWidget() {
   // Lido só depois de montar (localStorage não existe no server render).
   useEffect(() => {
     setSessionId(readStoredSessionId());
+    try {
+      setEverOpened(localStorage.getItem('xbr:chat:opened') === '1');
+    } catch { /* localStorage indisponível: mantém sem pulso */ }
   }, []);
+
+  function markOpened() {
+    if (everOpened) return;
+    setEverOpened(true);
+    try { localStorage.setItem('xbr:chat:opened', '1'); } catch { /* ignore */ }
+  }
 
   const sessionQuery = useChatSession(sessionId);
   const status = sessionQuery.data?.status ?? 'bot';
@@ -232,7 +247,7 @@ export function ChatWidget() {
 
   return (
     <>
-      <ChatBubble open={open} onClick={() => setOpen((v) => !v)} />
+      <ChatBubble open={open} pulse={!everOpened} onClick={() => { markOpened(); setOpen((v) => !v); }} />
       {open && (
         <div
           className="fixed bottom-20 right-4 z-40 flex w-[calc(100vw-2rem)] max-w-sm flex-col rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900"

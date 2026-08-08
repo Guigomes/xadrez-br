@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useTournament } from '@/lib/hooks/use-tournament';
-import { useStaff, useAddStaff, useRemoveStaff, useMyTournamentRole } from '@/lib/hooks/use-staff';
+import { useStaff, useAddStaff, useRemoveStaff, useMyTournamentRole, useStaffCandidates } from '@/lib/hooks/use-staff';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,11 +22,16 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<StaffRole>('arbiter');
   const [error, setError] = useState('');
+  // Busca de candidato por nome/e-mail. `picked` trava a lista depois de
+  // escolher, pra ela não reabrir enquanto o e-mail selecionado fica no campo.
+  const [picked, setPicked] = useState(false);
+  const { data: candidates } = useStaffCandidates(tournament?.id ?? '', picked ? '' : email);
 
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p>Torneio não encontrado.</p>;
 
   const isOrganizer = myRole === 'organizer';
+  const showSuggestions = !picked && (candidates?.length ?? 0) > 0;
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -34,9 +39,10 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
     try {
       await addStaff.mutateAsync({ email: email.trim(), role });
       setEmail('');
+      setPicked(false);
     } catch (err: any) {
       setError(err.message?.includes('USER_NOT_FOUND')
-        ? 'Nenhuma conta com este e-mail — peça para a pessoa se cadastrar primeiro.'
+        ? 'Nenhuma conta encontrada — peça para a pessoa se cadastrar primeiro.'
         : err.message ?? 'Erro ao adicionar');
     }
   }
@@ -49,10 +55,32 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
         <form onSubmit={handleAdd} className="card p-4 mb-6 space-y-3">
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Adicionar membro</p>
           <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-            <Input
-              type="email" required placeholder="email@dacontaexistente.com"
-              value={email} onChange={(e) => setEmail(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                required placeholder="Nome ou e-mail"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setPicked(false); }}
+                autoComplete="off"
+              />
+              {showSuggestions && (
+                <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                  {candidates!.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => { setEmail(c.email ?? ''); setPicked(true); }}
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
+                        <span className="block font-medium text-gray-900 dark:text-gray-100">{c.full_name || c.email}</span>
+                        {c.full_name && c.email && (
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">{c.email}</span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <Select value={role} onChange={(e) => setRole(e.target.value as StaffRole)}>
               <option value="arbiter">Árbitro</option>
               <option value="organizer">Organizador</option>
@@ -61,7 +89,8 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
           </div>
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Organizadores: gerenciam tudo. Árbitros: pareiam rodadas e lançam resultados
+            Digite nome ou e-mail (a partir de 3 letras) para buscar contas já cadastradas.
+            Organizadores gerenciam tudo; árbitros pareiam rodadas e lançam resultados
             (nas mesas atribuídas a eles, quando houver atribuição).
           </p>
         </form>

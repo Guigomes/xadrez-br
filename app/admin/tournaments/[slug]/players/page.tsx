@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
-import { formatScore, BR_STATES } from '@/lib/utils/chess';
+import { formatScore, BR_STATES, compareGroupNames } from '@/lib/utils/chess';
 import type { PlayerFormValues, PairingGroup, TournamentCategory } from '@/types/database';
 
 interface Props {
@@ -117,6 +117,84 @@ export default function AdminPlayersPage({ params }: Props) {
   const unclassified = hasClassifications
     ? (tPlayers ?? []).filter((tp) => !(tp as any).category)
     : [];
+
+  // Índice global estável pra numeração de fallback (initial_ranking ausente)
+  // não reiniciar dentro de cada grupo.
+  const indexOf = new Map<string, number>();
+  (tPlayers ?? []).forEach((tp, i) => indexOf.set(tp.id, i));
+
+  // Participantes divididos por grupo de emparceiramento (mesmo padrão da
+  // página pública). Sem grupo nenhum (importado ou nativo não configurado),
+  // cai na lista chapada.
+  const sortedGroups = [...(groups ?? [])].sort((a, b) => compareGroupNames(a.name, b.name));
+  const useGroupSections = isNative && sortedGroups.length > 0;
+  const groupSections = useGroupSections
+    ? [
+        ...sortedGroups.map((g) => ({
+          key: g.id,
+          title: g.name,
+          rows: (tPlayers ?? []).filter((tp) => (tp as any).pairing_group_id === g.id),
+        })),
+        {
+          key: '__none__',
+          title: 'Sem grupo',
+          rows: (tPlayers ?? []).filter((tp) => !(tp as any).pairing_group_id),
+        },
+      ].filter((s) => s.key !== '__none__' || s.rows.length > 0)
+    : [];
+
+  function renderRow(tp: any, i: number) {
+    const tpAny = tp as any;
+    const missingGroup = isNative && !tpAny.pairing_group_id && (groups?.length ?? 0) > 0;
+    const missingFields = hasClassifications && !tpAny.category ? missingClassificationFields(tpAny.player) : [];
+    return (
+      <div key={tp.id} className="flex items-center gap-3 px-4 py-3">
+        <span className="text-xs text-gray-400 w-5 text-center">{tp.initial_ranking ?? i + 1}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+            {tpAny.player?.full_name}
+          </p>
+          <p className="text-xs text-gray-400">
+            {tpAny.player?.city ?? tpAny.player?.state ?? ''}
+            {tpAny.player?.rating_std ? ` · ${tpAny.player.rating_std}` : ''}
+            {tpAny.player?.cbx_id ? ` · CBX ${tpAny.player.cbx_id}` : ''}
+            {tpAny.player?.fide_id ? ` · FIDE ${tpAny.player.fide_id}` : ''}
+          </p>
+          {missingGroup && (
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-xs text-amber-600 dark:text-amber-400">⚠ sem grupo — não será pareado</span>
+              <select
+                className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-1.5 py-0.5 text-xs"
+                defaultValue=""
+                disabled={assignGroup.isPending}
+                onChange={(e) => e.target.value && handleAssignGroup(tp.id, e.target.value)}
+              >
+                <option value="" disabled>Atribuir grupo…</option>
+                {groups!.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+            </div>
+          )}
+          {missingFields.length > 0 && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+              ⚠ sem classificação — falta {missingFields.join(', ')}
+            </p>
+          )}
+        </div>
+        <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums shrink-0">
+          {formatScore(tp.current_score)}
+        </span>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => startEdit(tp.id, tpAny.category_id ?? tpAny.category?.id ?? null, tpAny.player)}
+          className="shrink-0"
+        >
+          ✏️ Editar
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl">
       {error && (
@@ -195,59 +273,28 @@ export default function AdminPlayersPage({ params }: Props) {
         </div>
         {loadingPlayers ? (
           <div className="py-8 flex justify-center"><PageSpinner /></div>
-        ) : (
+        ) : !useGroupSections ? (
           <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
-            {tPlayers?.map((tp, i) => {
-              const tpAny = tp as any;
-              const missingGroup = isNative && !tpAny.pairing_group_id && (groups?.length ?? 0) > 0;
-              const missingFields = hasClassifications && !tpAny.category ? missingClassificationFields(tpAny.player) : [];
-              return (
-                <div key={tp.id} className="flex items-center gap-3 px-4 py-3">
-                  <span className="text-xs text-gray-400 w-5 text-center">{tp.initial_ranking ?? i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {tpAny.player?.full_name}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {tpAny.player?.city ?? tpAny.player?.state ?? ''}
-                      {tpAny.player?.rating_std ? ` · ${tpAny.player.rating_std}` : ''}
-                      {tpAny.player?.cbx_id ? ` · CBX ${tpAny.player.cbx_id}` : ''}
-                      {tpAny.player?.fide_id ? ` · FIDE ${tpAny.player.fide_id}` : ''}
-                    </p>
-                    {missingGroup && (
-                      <div className="mt-1 flex items-center gap-2">
-                        <span className="text-xs text-amber-600 dark:text-amber-400">⚠ sem grupo — não será pareado</span>
-                        <select
-                          className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-1.5 py-0.5 text-xs"
-                          defaultValue=""
-                          disabled={assignGroup.isPending}
-                          onChange={(e) => e.target.value && handleAssignGroup(tp.id, e.target.value)}
-                        >
-                          <option value="" disabled>Atribuir grupo…</option>
-                          {groups!.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                        </select>
-                      </div>
-                    )}
-                    {missingFields.length > 0 && (
-                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                        ⚠ sem classificação — falta {missingFields.join(', ')}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums shrink-0">
-                    {formatScore(tp.current_score)}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => startEdit(tp.id, tpAny.category_id ?? tpAny.category?.id ?? null, tpAny.player)}
-                    className="shrink-0"
-                  >
-                    ✏️ Editar
-                  </Button>
+            {(tPlayers ?? []).map((tp, i) => renderRow(tp, i))}
+          </div>
+        ) : (
+          <div>
+            {groupSections.map((section) => (
+              <div key={section.key}>
+                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-800/60">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    {section.title} ({section.rows.length})
+                  </p>
                 </div>
-              );
-            })}
+                {section.rows.length === 0 ? (
+                  <p className="px-4 py-3 text-xs text-gray-400">Nenhum participante neste grupo.</p>
+                ) : (
+                  <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
+                    {section.rows.map((tp) => renderRow(tp, indexOf.get(tp.id)!))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

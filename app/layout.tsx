@@ -8,6 +8,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { PwaRegister } from '@/components/pwa-register';
 import { ChatWidget } from '@/components/chat/chat-widget';
 import { ErrorLogger } from '@/components/error-logger';
+import { createClient } from '@/lib/supabase/server';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' });
 
@@ -42,15 +43,22 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Lê a sessão no servidor pra o primeiro paint do header/chat já sair com o
+  // estado logado — sem isso, useUser() só resolve depois da hidratação e a
+  // barra pisca "Entrar" antes de virar "Minha conta".
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const initialUser = user ? { id: user.id, email: user.email ?? null } : null;
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans min-h-screen flex flex-col`}>
         <Providers>
-          <Header />
+          <Header initialUser={initialUser} />
           <main className="flex-1">{children}</main>
           <Footer />
-          <ChatWidget />
+          <ChatWidget initialUser={initialUser} />
         </Providers>
         <PwaRegister />
         <ErrorLogger />

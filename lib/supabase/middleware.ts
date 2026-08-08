@@ -33,8 +33,10 @@ export async function updateSession(request: NextRequest) {
   if (isAdminRoute && !user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
+    return { response: NextResponse.redirect(loginUrl), user };
   }
 
-  return supabaseResponse;
+  // Devolve o user junto pra o middleware decidir o redirect da home sem um
+  // segundo getUser() (ver middleware.ts).
+  return { response: supabaseResponse, user };
 }

@@ -2,12 +2,12 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useTournament, useTournamentPlayers, useTournamentRounds } from '@/lib/hooks/use-tournament';
+import { useTournament, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useCategories } from '@/lib/hooks/use-classifications';
 import { useGroups } from '@/lib/hooks/use-native-rounds';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
-import { ROUND_STATUS_LABELS, ROUND_STATUS_COLORS } from '@/lib/utils/chess';
+import { ROUND_STATUS_LABELS, ROUND_STATUS_COLORS, compareGroupNames } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 
 interface Props {
@@ -15,11 +15,11 @@ interface Props {
 }
 
 /**
- * Aba "Visão geral" do admin — mesmo padrão visual da visão geral pública
- * (app/tournaments/[slug]/page.tsx: meta info, rodada atual, progresso de
- * rodadas, grupos/categorias, sobre o torneio), só que com links pro próprio
- * admin em vez das rotas públicas. A aba "Editar" saiu da navegação — chega-se
- * a ela só pelo botão "Editar torneio" aqui.
+ * Aba "Visão geral" do admin — enxuta: dados do torneio numa faixa só no topo
+ * (o cabeçalho compartilhado já mostra nome/situação), rodada em andamento,
+ * sobre o torneio, progresso de rodadas e as classificações criadas.
+ * Participantes, grupos e emparceiramento têm abas próprias — não se repetem
+ * aqui como card.
  */
 export default function AdminTournamentOverviewPage({ params }: Props) {
   const { slug } = use(params);
@@ -27,7 +27,6 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
   const tournamentId = tournament?.id ?? '';
   const { data: categories } = useCategories(tournamentId);
   const { data: groups } = useGroups(tournamentId);
-  const { data: players } = useTournamentPlayers(tournamentId);
   const { data: rounds, isLoading: loadingRounds } = useTournamentRounds(tournamentId);
 
   if (loadingTournament || loadingRounds) return <PageSpinner />;
@@ -37,8 +36,7 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
 
   // Dedupe por round_number — torneio com grupo tem uma linha de `rounds`
   // por grupo; sem isso, 10 grupos x 6 rodadas pareceria 60. Uma rodada só
-  // conta "finalizada" quando todos os grupos terminaram ela. Mesmo critério
-  // de app/tournaments/[slug]/page.tsx (visão geral pública).
+  // conta "finalizada" quando todos os grupos terminaram ela.
   type RS = 'pending' | 'ongoing' | 'finished';
   const roundsByNumber = new Map<number, RS[]>();
   for (const r of rounds ?? []) {
@@ -60,15 +58,9 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
   const completedRounds = aggregatedRounds.filter((r) => r.status === 'finished').length;
   const currentRound = aggregatedRounds.find((r) => r.status === 'ongoing');
 
-  // Mesmo critério de ordenação da visão geral pública: número da faixa
-  // etária embutido no nome (SUB7 < SUB9 < SUB11…), depois alfabético.
-  const groupList = [...(groups ?? [])].sort((a, b) => {
-    const nA = parseInt(a.name.match(/\d+/)?.[0] ?? '999', 10);
-    const nB = parseInt(b.name.match(/\d+/)?.[0] ?? '999', 10);
-    return nA !== nB ? nA - nB : a.name.localeCompare(b.name);
-  });
-  const hasGroups = groupList.length > 0;
-  const pairingIncomplete = tournament.pairing_mode === 'custom' && !hasGroups;
+  const groupName = new Map((groups ?? []).map((g) => [g.id, g.name]));
+  const sortedCategories = [...(categories ?? [])].sort((a, b) => compareGroupNames(a.name, b.name));
+  const hasGroups = (groups?.length ?? 0) > 0;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -83,6 +75,7 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
           </span>
           <span>⏱ {tournament.time_control}</span>
           <span>🔄 {tournament.rounds_count} rodadas</span>
+          <span>♟ {tournament.tournament_type === 'swiss' ? 'Suíço' : 'Round robin'}</span>
           <span>👤 {tournament.organizer_name}</span>
           {tournament.chief_arbiter && <span>⚖️ {tournament.chief_arbiter}</span>}
         </div>
@@ -113,32 +106,6 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
             </svg>
           </Link>
         )}
-
-        {pairingIncomplete && (
-          <div className="card p-4 border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20">
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">⚠ Emparceiramento personalizado incompleto</p>
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-              Falta criar grupo ou mapear classificação — configure na aba{' '}
-              <Link href={`${base}/groups`} className="underline">Emparceiramento</Link> antes de publicar.
-            </p>
-          </div>
-        )}
-
-        <Link
-          href={`${base}/players`}
-          className="card p-4 flex items-center justify-between gap-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors group"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">👥</span>
-            <div>
-              <p className="font-semibold text-gray-900 dark:text-gray-100">Participantes</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{players?.length ?? 0} inscritos</p>
-            </div>
-          </div>
-          <svg className="h-5 w-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
 
         {tournament.description && (
           <div className="card p-4 overflow-hidden">
@@ -171,50 +138,35 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
           </Link>
         )}
 
-        {hasGroups ? (
-          <div className="card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Grupos</h2>
-              <Link href={`${base}/groups`} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Editar</Link>
-            </div>
-            <div className="flex flex-col gap-1">
-              {groupList.map((g) => (
-                <div key={g.id} className="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {g.name}
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+              Classificações {sortedCategories.length > 0 && `(${sortedCategories.length})`}
+            </h2>
+            <Link href={`${base}/edit`} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Editar</Link>
+          </div>
+          {sortedCategories.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Nenhuma classificação — o torneio premia só o Geral. Dá pra criar faixas na aba Editar.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {sortedCategories.map((cat) => (
+                <div key={cat.id} className="flex items-center justify-between gap-2">
+                  <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300">
+                    {cat.name}
+                  </Badge>
+                  {hasGroups && (cat as any).pairing_group_id && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                      → {groupName.get((cat as any).pairing_group_id) ?? 'grupo'}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
-          </div>
-        ) : (categories?.length ?? 0) > 0 && (
-          <div className="card p-4">
-            <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Categorias</h2>
-            <div className="flex flex-wrap gap-2">
-              {(categories ?? []).map((cat) => (
-                <Badge key={cat.id} className="bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300">
-                  {cat.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="card p-4 space-y-3 text-sm">
-          <InfoRow label="Organização" value={tournament.organizer_name} />
-          {tournament.chief_arbiter && <InfoRow label="Árbitro-chefe" value={tournament.chief_arbiter} />}
-          {tournament.venue && <InfoRow label="Local" value={tournament.venue} />}
-          <InfoRow label="Ritmo" value={tournament.time_control} />
-          <InfoRow label="Sistema" value={tournament.tournament_type === 'swiss' ? 'Suíço' : 'Round robin'} />
+          )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5 min-w-0">
-      <span className="text-xs text-gray-400 dark:text-gray-500">{label}</span>
-      <span className="text-gray-800 dark:text-gray-200 break-words">{value}</span>
     </div>
   );
 }

@@ -7,18 +7,10 @@ import { StandingsTable } from '@/components/tournament/standings-table';
 import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import { compareGroupNames } from '@/lib/utils/chess';
 
 interface Props {
   params: Promise<{ slug: string }>;
-}
-
-// Sort pairing-group names by their numeric prefix (SUB7 < SUB9 < SUB11), then
-// alphabetically — matches the order used in the overview/rounds pages.
-function compareGroupNames(a: string, b: string): number {
-  const na = parseInt(a.match(/\d+/)?.[0] ?? '999', 10);
-  const nb = parseInt(b.match(/\d+/)?.[0] ?? '999', 10);
-  if (na !== nb) return na - nb;
-  return a.localeCompare(b);
 }
 
 export default function StandingsPage({ params }: Props) {

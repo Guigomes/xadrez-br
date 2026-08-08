@@ -57,7 +57,7 @@ export function CustomRangeForm({
     <div className="flex flex-wrap items-end gap-2 pt-1">
       <div className="flex-1 min-w-[8rem]">
         <Input
-          label={`Faixa custom de ${label}`}
+          label={`Faixa personalizada de ${label}`}
           placeholder="Nome"
           value={value.name}
           onChange={(e) => onChange({ ...value, name: e.target.value })}

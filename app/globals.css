@@ -94,3 +94,22 @@
     background-size: 48px 48px;
   }
 }
+
+/* Entradas suaves — usadas na troca de situação do torneio (admin-tournament-
+   chrome) pra badge/aviso/"✓ Salvo" aparecerem sem o salto seco de antes.
+   Sem dependência de framer-motion. */
+@keyframes xbr-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes xbr-fade-in-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@layer utilities {
+  .animate-fade-in    { animation: xbr-fade-in 0.2s ease-out both; }
+  .animate-fade-in-up { animation: xbr-fade-in-up 0.2s ease-out both; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in, .animate-fade-in-up { animation: none; }
+  }
+}

@@ -49,6 +49,33 @@ export function useStaff(tournamentId: string) {
   });
 }
 
+export interface StaffCandidate {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
+/**
+ * Autocomplete de candidato a membro da equipe — busca por nome OU e-mail a
+ * partir do 3º caractere (mesmo padrão de usePlayerSearch). user_profiles tem
+ * RLS de self-read, então a busca passa por RPC security definer gated por
+ * organizador (migration 062).
+ */
+export function useStaffCandidates(tournamentId: string, query: string) {
+  return useQuery({
+    queryKey: ['staff-candidates', tournamentId, query.trim()],
+    enabled: !!tournamentId && query.trim().length >= 3,
+    staleTime: 60_000,
+    queryFn: async (): Promise<StaffCandidate[]> => {
+      const { data, error } = await supabase.rpc('search_staff_candidates', {
+        p_tournament_id: tournamentId, p_query: query.trim(),
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function useAddStaff(tournamentId: string) {
   const qc = useQueryClient();
   return useMutation({

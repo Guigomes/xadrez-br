@@ -136,15 +136,12 @@ export default function NewTournamentPage() {
         <div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Classificação</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Ranking de premiação: cada jogador cai numa faixa (ou só no Geral). Opcional: dá pra
-            configurar depois, no botão &quot;Editar torneio&quot; da Visão geral. Emparceiramento
-            (quem joga contra quem) é definido depois de criar o torneio, na aba própria.
+            Ranking de premiação: cada jogador cai numa faixa (ou só no Geral),
+            classificado automaticamente pelos próprios dados — idade, rating e sexo.
           </p>
         </div>
 
         <section className="card p-5 space-y-3" data-tour="secao-classificacao">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Classificação</h3>
-
           <DimensionQuestion
             dataTour="pergunta-idade"
             question="Seu torneio vai ter classificação separada por idade?"

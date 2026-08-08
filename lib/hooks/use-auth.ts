@@ -13,6 +13,9 @@ function getClient() {
   return _client;
 }
 
+/** Sessão mínima lida no servidor e passada pro primeiro paint (ver app/layout.tsx). */
+export type InitialUser = { id: string; email: string | null } | null;
+
 export function useUser() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);

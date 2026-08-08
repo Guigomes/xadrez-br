@@ -240,6 +240,18 @@ export function formatTiebreak(value: number | null | undefined): string {
   return value.toFixed(1);
 }
 
+/**
+ * Ordena grupos de emparceiramento pelo número embutido no nome (SUB7 < SUB9 <
+ * SUB11…), caindo pra alfabético quando não há número. Extraído porque a mesma
+ * comparação estava duplicada na visão geral, nos participantes e na
+ * classificação — mudar o critério num lugar só passa a valer em todos.
+ */
+export function compareGroupNames(a: string, b: string): number {
+  const nA = parseInt(a.match(/\d+/)?.[0] ?? '999', 10);
+  const nB = parseInt(b.match(/\d+/)?.[0] ?? '999', 10);
+  return nA !== nB ? nA - nB : a.localeCompare(b);
+}
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()

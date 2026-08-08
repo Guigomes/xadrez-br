@@ -4,12 +4,16 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils/cn';
-import { useUser, useSignOut } from '@/lib/hooks/use-auth';
+import { useUser, useSignOut, type InitialUser } from '@/lib/hooks/use-auth';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
-export function Header() {
+export function Header({ initialUser }: { initialUser?: InitialUser }) {
   const pathname = usePathname();
-  const { user } = useUser();
+  const { user: liveUser, loading } = useUser();
+  // Enquanto o hook do cliente não resolveu (SSR + pré-hidratação), usa o
+  // initialUser do servidor pra o primeiro paint sair correto. Depois passa a
+  // confiar no liveUser, que reage a login/logout via onAuthStateChange.
+  const user = loading ? (initialUser ?? null) : liveUser;
   const signOut = useSignOut();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);

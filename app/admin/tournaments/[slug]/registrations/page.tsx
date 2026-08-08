@@ -157,9 +157,10 @@ export default function AdminRegistrationsPage({ params }: Props) {
           </>
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            As inscrições precisam estar abertas para você ver o link de inscrição.
-            {tournament.status === 'draft' && ' Publique o torneio e depois abra as inscrições (botões no topo da página).'}
-            {tournament.status === 'published' && ' Abra as inscrições (botão no topo da página) para liberar o link.'}
+            O link de inscrição aparece aqui assim que o torneio entrar em <strong>Inscrições abertas</strong>.
+            {tournament.status === 'draft' && ' Você está em Rascunho: publique o torneio e depois abra as inscrições nos botões no topo da página.'}
+            {tournament.status === 'published' && ' O torneio já está publicado: é só abrir as inscrições no botão no topo da página.'}
+            {(tournament.status === 'registration_closed' || tournament.status === 'ongoing' || tournament.status === 'finished') && ' As inscrições deste torneio já foram encerradas.'}
           </p>
         )}
       </div>
@@ -237,9 +238,11 @@ export default function AdminRegistrationsPage({ params }: Props) {
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 space-x-3">
                     {r.birth_year && <span>🎂 {r.birth_year}</span>}
+                    {r.sex && <span>{r.sex === 'w' ? '♀ Feminino' : '♂ Masculino'}</span>}
                     {(r.city || r.state) && <span>📍 {[r.city, r.state].filter(Boolean).join('/')}</span>}
                     {r.club_or_school && <span>🏫 {r.club_or_school}</span>}
                     {r.rating_std != null && <span>♟ Rating {r.rating_std}</span>}
+                    {r.federation && <span>🌐 {r.federation}</span>}
                     {r.cbx_id && <span>CBX {r.cbx_id}</span>}
                     {r.fide_id && <span>FIDE {r.fide_id}</span>}
                   </p>

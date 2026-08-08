@@ -33,5 +33,6 @@ create policy "admin_fcm_tokens_own_delete" on admin_fcm_tokens
 
 -- Deletar mensagem de erro (app Android, tela "Erros do site") — só select
 -- existia até aqui (migration 053).
+drop policy if exists "error_logs_delete_admin" on error_logs;
 create policy "error_logs_delete_admin" on error_logs
   for delete using (auth_user_role() = 'admin');

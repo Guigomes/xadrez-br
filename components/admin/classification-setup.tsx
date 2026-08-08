@@ -377,7 +377,7 @@ function Setup({
       bands.get(key)!.catIds.push(c.id);
     }
     if (bands.size === 0) {
-      throw new Error(`Nenhuma classificação usa ${dim === 'age' ? 'idade' : 'rating'} ainda — gere as classificações no bloco abaixo primeiro.`);
+      throw new Error(`Nenhuma classificação usa ${dim === 'age' ? 'idade' : 'rating'} ainda — crie as classificações na aba Editar primeiro.`);
     }
     let i = 0;
     const usados = new Set<string>();
@@ -456,10 +456,24 @@ function Setup({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Classificação e Emparceiramento</h2>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          {showClassification && showPairing
+            ? 'Classificação e Emparceiramento'
+            : showPairing ? 'Emparceiramento' : 'Classificação'}
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Classificação é o ranking de premiação: cada jogador cai numa faixa (ou só no Geral).
-          Emparceiramento é quem joga contra quem — pode ser junto ou dividido por idade/rating.
+          {showClassification && showPairing && (
+            <>Classificação é o ranking de premiação: cada jogador cai numa faixa (ou só no Geral).
+            Emparceiramento é quem joga contra quem — pode ser junto ou dividido por idade/rating.</>
+          )}
+          {!showClassification && showPairing && (
+            <>Quem joga contra quem: todos num grupo só, ou divididos por idade/rating. As
+            classificações de premiação você define na aba Editar.</>
+          )}
+          {showClassification && !showPairing && (
+            <>Ranking de premiação: cada jogador cai numa faixa (ou só no Geral), classificado
+            automaticamente pelos próprios dados — idade, rating e sexo.</>
+          )}
         </p>
       </div>
 
@@ -762,7 +776,7 @@ function CustomMapping({
       {/* Mapeamento classificação → grupo */}
       <div className="space-y-2">
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Classificação → grupo</p>
-        {categories.length === 0 && <p className="text-xs text-gray-500 dark:text-gray-400">Crie classificações acima.</p>}
+        {categories.length === 0 && <p className="text-xs text-gray-500 dark:text-gray-400">Crie classificações na aba Editar.</p>}
         {categories.map((c) => (
           <div key={c.id} className="flex items-center gap-3">
             <span className="flex-1 text-sm text-gray-800 dark:text-gray-200">{c.name}</span>

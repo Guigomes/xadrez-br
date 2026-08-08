@@ -14,6 +14,7 @@ export type RegistrationStatus = 'pending' | 'approved' | 'rejected';
 export type TournamentMode = 'native' | 'imported';
 export type InitialColor = 'white1' | 'black1';
 export type RatingKind = 'std' | 'rpd' | 'blz';
+export type TimeControlKind = 'bullet' | 'blitz' | 'rapid' | 'classical' | 'other';
 export type TiebreakKey = 'buchholz' | 'buchholz_cut1' | 'sonneborn_berger' | 'wins' | 'progressive';
 export type PlayerSex = 'm' | 'w';
 
@@ -71,6 +72,8 @@ export interface Tournament {
   organizer_name: string;
   chief_arbiter: string | null;
   time_control: string;
+  /** Categoria do ritmo pra busca/estatística — migration 061. Texto exibido continua em time_control. */
+  time_control_kind: TimeControlKind;
   tournament_type: TournamentType;
   start_date: string;
   /** "HH:MM" (coluna `time`), opcional — entra na transição automática pra 'ongoing' (migration 047, next_status_by_date). */
@@ -304,6 +307,7 @@ export interface TournamentListItem {
   rounds_count: number;
   organizer_name: string;
   time_control: string;
+  time_control_kind: TimeControlKind;
   player_count: number;
 }
 
@@ -381,6 +385,7 @@ export interface TournamentFormValues {
   organizer_name: string;
   chief_arbiter?: string;
   time_control: string;
+  time_control_kind: TimeControlKind;
   tournament_type: TournamentType;
   start_date: string;
   start_time?: string;
