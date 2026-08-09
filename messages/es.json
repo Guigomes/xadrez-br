@@ -1,0 +1,24 @@
+{
+  "brand": {
+    "name": "Torneios Xadrez BR"
+  },
+  "nav": {
+    "tournaments": "Torneos",
+    "players": "Jugadores",
+    "news": "Noticias",
+    "panel": "Panel",
+    "signIn": "Entrar",
+    "menu": "Menú"
+  },
+  "account": {
+    "myAccount": "Mi cuenta",
+    "organizerPanel": "Panel del organizador",
+    "signOut": "Salir"
+  },
+  "footer": {
+    "tournaments": "Torneos",
+    "players": "Jugadores",
+    "organizers": "Organizadores",
+    "copyright": "Torneios Xadrez BR © {year}"
+  }
+}

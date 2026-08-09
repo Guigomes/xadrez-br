@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 
+// createNextIntlPlugin aponta pro i18n/request.ts e só afeta rotas dentro do
+// segmento app/[locale] — DORMENTE enquanto esse segmento não existir (Fase 0
+// do docs/plano-i18n.md ainda não moveu a árvore). Wired agora pra fechar o
+// scaffolding; não muda nenhuma rota atual. Ver docs/pendencias-i18n.md.
+const createNextIntlPlugin = require('next-intl/plugin');
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
+
 // next-pwa is intentionally disabled: the app uses push-sw.js as its sole
 // service worker. Having next-pwa generate and register a Workbox sw.js in
 // production created a competing registration that caused stale manifest/icon
@@ -32,4 +39,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);
