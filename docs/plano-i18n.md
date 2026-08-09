@@ -1,8 +1,10 @@
-# Plano — Internacionalização (pt-BR / en)
+# Plano — Internacionalização (pt-BR / es / en)
 
-Objetivo: aplicação bilíngue **pt-BR** (padrão, Brasil) e **en** (resto do mundo), com detecção automática de localidade e seletor manual no header.
+Objetivo: aplicação trilíngue **pt-BR** (padrão, Brasil), **es** (países hispanofalantes) e **en** (resto do mundo), com detecção automática de localidade e seletor manual no header.
 
 Status: **plano** — nada implementado.
+
+> **Nota de revisão (espanhol adicionado).** O plano nasceu bilíngue (pt-BR/en). O espanhol entrou depois e muda coisas que não são só "somar um arquivo": a detecção deixa de ser binária (§1.4), o seletor deixa de ser toggle e vira dropdown (§4.2), e o custo de tradução cresce ~50% por superfície (cada chave existe em 3 idiomas, não 2). O motivo do espanhol vir junto do inglês, e não numa fase futura: o vizinho hispanofalante (Argentina, Paraguai, Uruguai, resto da América Latina) é público muito mais provável de um sistema de xadrez brasileiro do que um anglófono genérico — deixá-lo cair no inglês seria o pior dos três resultados pra ele.
 
 ---
 
@@ -33,33 +35,41 @@ Resultado nas URLs:
 | URL | Locale |
 |---|---|
 | `/tournaments/xyz` | pt-BR (padrão, sem prefixo) |
+| `/es/tournaments/xyz` | es |
 | `/en/tournaments/xyz` | en |
 
 **Por que prefixo de URL e não só cookie.** A alternativa (locale só em cookie, zero mudança de rota) é mais barata de implementar, mas quebra dois pontos que importam neste app:
 
 1. **Cache/render estático**: a mesma URL passaria a renderizar conteúdo diferente por cookie. As páginas públicas de torneio são o caminho quente e hoje podem ser cacheadas/estáticas; `Vary: Cookie` mata isso.
-2. **SEO e link compartilhável**: sem prefixo não há `hreflang`, o Google indexa uma versão só, e "manda o link em inglês pro estrangeiro" não existe.
+2. **SEO e link compartilhável**: sem prefixo não há `hreflang`, o Google indexa uma versão só, e "manda o link em espanhol pro argentino" não existe.
 
-**Por que `as-needed` e não `always`.** `always` (`/pt-BR/tournaments`) mudaria **todas** as URLs já existentes: índice do Google, links de torneio compartilhados no WhatsApp, `start_url` da PWA (`/?home=1`), cookie `last_tournament`. `as-needed` mantém a URL pt-BR atual byte a byte válida e adiciona só o ramo `/en`.
+**Por que `as-needed` e não `always`.** `always` (`/pt-BR/tournaments`) mudaria **todas** as URLs já existentes: índice do Google, links de torneio compartilhados no WhatsApp, `start_url` da PWA (`/?home=1`), cookie `last_tournament`. `as-needed` mantém a URL pt-BR atual byte a byte válida e adiciona só os ramos `/es` e `/en`.
 
 ### 1.3 Códigos de locale
 
-`pt-BR` e `en`. Manter `pt-BR` (não `pt`) — casa com o `lang="pt-BR"` atual, com `manifest.json` e com o formato de data já usado. `en` genérico (não `en-US`) porque o público é "qualquer lugar fora do Brasil", não os EUA.
+`pt-BR`, `es` e `en`. Manter `pt-BR` (não `pt`) — casa com o `lang="pt-BR"` atual, com `manifest.json` e com o formato de data já usado. `es` genérico (não `es-AR`/`es-ES`) porque o público-alvo é o hispanofalante inteiro, não um país específico — as diferenças regionais de espanhol (vocabulário, `vos`/`tú`) não valem manter três variantes de dicionário. `en` genérico (não `en-US`) pela mesma razão. Ordem de fallback fixa quando um locale pedido não existe: **es→pt-BR, en→pt-BR** (o default), configurada no `getRequestConfig`.
 
 ### 1.4 Prioridade de detecção
 
-Da maior pra menor:
+Com três idiomas a detecção deixa de ser "BR ou não" — precisa separar hispanofalante de anglófono. Da maior pra menor:
 
 1. **Escolha explícita** — cookie `NEXT_LOCALE` (gravado pelo seletor do header). Sempre ganha.
-2. **Prefixo da URL** — `/en/...` é en, resto é pt-BR.
-3. **Geo** — header `x-vercel-ip-country` (Vercel). `BR` → pt-BR; qualquer outro país → en.
-4. **`Accept-Language`** — fallback quando não há geo (dev local, outro host). Começa com `pt` → pt-BR; resto → en.
+2. **Prefixo da URL** — `/es/...` é es, `/en/...` é en, resto é pt-BR.
+3. **Geo** — header `x-vercel-ip-country` (Vercel):
+   - `BR` → **pt-BR**
+   - país de `SPANISH_COUNTRIES` → **es**
+   - qualquer outro → **en**
+4. **`Accept-Language`** — fallback quando não há geo (dev local, outro host). Primeiro tag de idioma: começa com `pt` → pt-BR; `es` → es; resto → en. Serve também de **desempate dentro do geo** quando quiser refinar (ex.: IP nos EUA mas `Accept-Language: es` — ver nota abaixo).
 5. **Padrão** — pt-BR.
+
+`SPANISH_COUNTRIES` (constante no código, ISO-3166-1 alpha-2): `AR, BO, CL, CO, CR, CU, DO, EC, ES, GT, HN, MX, NI, PA, PE, PR, PY, SV, UY, VE, GQ`. Lista fechada e revisável — deixa de fora Belize/EUA/Andorra de propósito (espanhol não é a língua majoritária de uso deles na web). Não tentar ser exaustivo com território minúsculo; o cookie e o seletor cobrem o caso raro.
+
+**Refinamento opcional (não bloqueia a Fase 2):** dentro de um país não-hispano/não-BR, um `Accept-Language` começando em `es` poderia promover pra es (o hispanofalante morando nos EUA). Fica como melhoria — o geo puro já acerta a grande maioria, e o seletor resolve o resto sem custo de complexidade no primeiro corte.
 
 Regras que não podem ser violadas:
 
 - Geo/`Accept-Language` só decidem **na primeira visita a URL sem prefixo**, via redirect que já grava o cookie. Nunca reavaliar geo em request subsequente — senão link compartilhado muda de idioma dependendo de quem abre.
-- Uma vez que o cookie existe, geo é ignorado (brasileiro viajando continua em pt-BR).
+- Uma vez que o cookie existe, geo é ignorado (brasileiro viajando continua em pt-BR; argentino que trocou pra pt-BR na mão continua em pt-BR).
 
 ---
 
@@ -70,14 +80,14 @@ Esta fase não traduz nada. Ela só põe o app rodando dentro de `[locale]` sem 
 ### 2.1 Instalação e config
 
 - `npm i next-intl`
-- `i18n/routing.ts` — `defineRouting({ locales: ['pt-BR','en'], defaultLocale: 'pt-BR', localePrefix: 'as-needed', localeDetection: false })`. `localeDetection: false` porque a detecção por geo é nossa (item 1.4), não a de `Accept-Language` da lib.
-- `i18n/request.ts` — `getRequestConfig` carregando `messages/{locale}.json`.
+- `i18n/routing.ts` — `defineRouting({ locales: ['pt-BR','es','en'], defaultLocale: 'pt-BR', localePrefix: 'as-needed', localeDetection: false })`. `localeDetection: false` porque a detecção por geo é nossa (item 1.4), não a de `Accept-Language` da lib.
+- `i18n/request.ts` — `getRequestConfig` carregando `messages/{locale}.json`, com fallback es→pt-BR e en→pt-BR pra chave ausente (a chave que faltar num idioma cai no default em vez de aparecer como o próprio nome da chave na tela).
 - `i18n/navigation.ts` — exporta `Link`, `redirect`, `usePathname`, `useRouter` locale-aware.
 - `next.config.js` — envolver com `createNextIntlPlugin()`.
 
 ### 2.2 Mover a árvore
 
-`app/*` (exceto `app/api/`) → `app/[locale]/*`. `app/global-error.tsx` **fica na raiz** (roda fora do layout, tem `<html>` próprio) e por isso não tem acesso ao locale — trata-se com string bilíngue fixa ou pt-BR mesmo.
+`app/*` (exceto `app/api/`) → `app/[locale]/*`. `app/global-error.tsx` **fica na raiz** (roda fora do layout, tem `<html>` próprio) e por isso não tem acesso ao locale — com três idiomas, texto trilíngue empilhado numa tela de erro fatal fica feio; mais limpo deixar em pt-BR mesmo (é a tela de "algo explodiu", rara e fora do fluxo).
 
 ### 2.3 Middleware — o ponto crítico
 
@@ -100,7 +110,7 @@ Efeito colateral já detectável: `components/layout/header.tsx:59` usa `pathnam
 - URLs pt-BR atuais respondem idênticas (nenhum redirect novo).
 - Login, logout e proteção de `/admin` funcionando.
 - Redirect do `last_tournament` funcionando para anônimo.
-- `/en/tournaments` responde (mesmo ainda em português).
+- `/es/tournaments` e `/en/tournaments` respondem (mesmo ainda em português).
 - `npx next lint` com 0 *Error*; e2e existente passando (ver §7).
 
 ---
@@ -109,7 +119,7 @@ Efeito colateral já detectável: `components/layout/header.tsx:59` usa `pathnam
 
 ### 3.1 Arquivos de mensagem
 
-`messages/pt-BR.json` e `messages/en.json`, namespaced por superfície:
+`messages/pt-BR.json`, `messages/es.json` e `messages/en.json`, namespaced por superfície:
 
 ```
 common      nav        footer     auth
@@ -120,7 +130,7 @@ admin.*     (tournaments, rounds, registrations, staff, groups, dev, stats)
 chat        tour
 ```
 
-Volume estimado por varredura de frases: **~700–900 chaves distintas**, ~40% superfície pública / ~60% painel admin.
+Volume estimado por varredura de frases: **~700–900 chaves distintas** (o mesmo conjunto de chaves — o que triplica é a tradução, não a contagem de chaves), ~40% superfície pública / ~60% painel admin. Com três idiomas, o trabalho de tradução por superfície é 3× o dicionário-fonte (pt-BR já existe implícito no código de hoje, então na prática são 2 traduções novas — es e en — por chave). O espanhol de um sistema de xadrez tem muito termo cognato ou já-consagrado (torneo, ronda, emparejamiento, desempate, clasificación), o que reduz o esforço real, mas **não terceirizar pro "parece português"**: falso cognato existe (ex.: "vaga"/"cadeira" não é "vaga"; "prazo" não é "plazo" em todo contexto).
 
 **Bundle**: passar o JSON inteiro pro `NextIntlClientProvider` empurra tudo pro cliente. Passar **só os namespaces daquele layout** — layout público recebe os namespaces públicos, `app/[locale]/admin/layout.tsx` recebe os `admin.*`. Sem isso o visitante anônimo baixa as ~500 chaves de admin que nunca vai ver.
 
@@ -139,7 +149,7 @@ Hoje o arquivo mistura regra de negócio com texto em português. Mapas a mover 
 
 ### 3.3 Datas e números
 
-- `lib/utils/date.ts` fixa `ptBR` do date-fns e usa padrão `"dd 'de' MMM 'de' yyyy"` (a preposição é português). Passa a receber o locale e escolher entre `ptBR`/`enUS` + padrão por idioma.
+- `lib/utils/date.ts` fixa `ptBR` do date-fns e usa padrão `"dd 'de' MMM 'de' yyyy"` (a preposição é português). Passa a receber o locale e escolher entre `ptBR`/`es`/`enUS` do date-fns + padrão por idioma. Detalhe feliz: o espanhol usa a **mesma** preposição `"dd 'de' MMM 'de' yyyy"` que o português (`15 de mar de 2026`), então o padrão pt serve pra es sem alteração — só o inglês precisa de outro (`MMM d, yyyy`).
 - ~15 chamadas de `toLocaleDateString('pt-BR')` / `toLocaleString('pt-BR')` espalhadas (register, chat-history, native-rounds, relative-time, admin/dev/*, admin/stats, history, registrations, imports). Trocar por formatador de locale ativo. Usar os formatadores do next-intl (`useFormatter`/`getFormatter`) em vez de `Intl` cru: eles são **seguros contra mismatch de hidratação**, que é justamente o risco aqui (servidor e cliente formatando com locale/fuso diferentes).
 - `stats/page.tsx:101` `toLocaleString('pt-BR')` em número (separador de milhar) — mesmo tratamento.
 
@@ -155,23 +165,23 @@ Ressalva importante nos presets de classificação: os nomes de categoria ("Sub-
 
 ### 4.1 Detecção (no middleware da Fase 0)
 
-Implementar a prioridade da §1.4. Só age quando: request sem prefixo de locale **e** sem cookie `NEXT_LOCALE`. Nesse caso, se geo ≠ BR (ou `Accept-Language` não-pt), redirect 307 para `/en<pathname>` e grava o cookie.
+Implementar a prioridade da §1.4. Só age quando: request sem prefixo de locale **e** sem cookie `NEXT_LOCALE`. Nesse caso resolve o locale-alvo (pt-BR / es / en) e, se **não** for o default pt-BR, redirect 307 para `/<locale><pathname>`, gravando o cookie. Se resolveu pt-BR, não redireciona (é o ramo sem prefixo) — mas grava o cookie mesmo assim, pra fixar a decisão e não reavaliar geo depois.
 
-Dev local não tem `x-vercel-ip-country` — cai no `Accept-Language`, então navegador em português continua em pt-BR. Para testar en localmente: seletor do header, ou cookie na mão.
+Dev local não tem `x-vercel-ip-country` — cai no `Accept-Language`, então navegador em português continua em pt-BR. Para testar es/en localmente: seletor do header, ou cookie na mão.
 
 ### 4.2 Seletor
 
-`components/ui/locale-toggle.tsx`, ao lado do `ThemeToggle` no header (`header.tsx:71`), mesmo padrão visual.
+`components/ui/locale-switcher.tsx`, ao lado do `ThemeToggle` no header (`header.tsx:71`), mesmo padrão visual.
 
-Com **dois** locales, toggle de dois estados (`PT` / `EN` com ícone de globo) em vez de dropdown — menos clique e menos código. Se um terceiro idioma entrar depois, vira dropdown.
+Com **três** locales o toggle de dois estados não serve — vira **dropdown** (globo + idioma atual, abre com as três opções: Português / Español / English, cada uma no próprio idioma, não traduzida). Mesmo padrão de "fechar ao clicar fora" que o menu de conta do header já tem (`header.tsx:23-32`) — reusar a lógica, não reinventar. No mobile (`header.tsx:151+`), lista os três como linhas, igual aos outros itens do menu aberto.
 
-Comportamento: `router.replace(pathname, { locale })` do `i18n/navigation` — preserva pathname e query, grava `NEXT_LOCALE`. Aparecer também no menu mobile (`header.tsx:151+`).
+Comportamento: `router.replace(pathname, { locale })` do `i18n/navigation` — preserva pathname e query, grava `NEXT_LOCALE`.
 
 ### 4.3 Metadata e SEO
 
 - `<html lang={locale}>` em vez do `pt-BR` fixo (`layout.tsx:55`).
 - `metadata` estático → `generateMetadata({ params: { locale } })`: title, description, openGraph traduzidos. Inclui o `appleWebApp.title`.
-- `alternates.languages` com `hreflang` pt-BR/en + `x-default`.
+- `alternates.languages` com `hreflang` pt-BR/es/en + `x-default` (= pt-BR). Os três precisam se apontar mutuamente, senão o Google trata como páginas soltas.
 - `public/manifest.json` tem `"lang": "pt-BR"` e nome/descrição em português. Manifest por locale é chato (a PWA instala uma vez). Decisão proposta: **manter um manifest só, pt-BR**, e aceitar que o nome instalado da PWA fique em português. Se virar requisito, vira `app/manifest.ts` dinâmico depois.
 
 ---
@@ -180,23 +190,23 @@ Comportamento: `router.replace(pathname, { locale })` do `i18n/navigation` — p
 
 Ordem por valor: público primeiro (é quem pode ser estrangeiro), admin depois.
 
-### Fase 3 — Superfície pública (~300–400 chaves)
+### Fase 3 — Superfície pública (~300–400 chaves × 2 idiomas novos)
 
 `app/[locale]/page.tsx` + `components/home/marketing-home.tsx` e `organizer-home.tsx`, `tournaments` (lista, detalhe, standings, rounds, players, participants, register), `players`, `noticias` (moldura da página, não os artigos), `login`, `account`, `components/layout/{header,footer}`, `components/ui/*` (empty-state, share-button, flash-message, spinner, tooltip, relative-time), `components/tournament/*`, `error.tsx`, `not-found.tsx`, `loading.tsx`.
 
-Nota de escopo: o **slug de rota `/noticias` fica em português** nos dois idiomas. Traduzir segmento de rota (`pathnames` do next-intl) é possível, mas quebra URL indexada e não vale a complexidade agora.
+Nota de escopo: o **slug de rota `/noticias` fica em português** nos três idiomas. Traduzir segmento de rota (`pathnames` do next-intl) é possível, mas quebra URL indexada e não vale a complexidade agora.
 
-### Fase 4 — Painel admin (~400–500 chaves)
+### Fase 4 — Painel admin (~400–500 chaves × 2 idiomas novos)
 
 `app/[locale]/admin/**` e `components/admin/**`, + `lib/tour/steps.ts` (256 linhas de copy do tour do driver.js).
 
-**Recomendação: fase separada e opcional.** O painel é usado por organizadores brasileiros; o retorno de traduzir 500 chaves de admin é baixo perto das 400 do público. Se o objetivo é "estrangeiro consegue ver e se inscrever num torneio", a Fase 3 já entrega isso. Deixar admin em pt-BR na primeira entrega é uma escolha defensável — mas então o seletor no header precisa continuar visível no admin (o usuário troca e nada muda ali; alternativa é esconder o seletor dentro de `/admin`).
+**Recomendação: fase separada e opcional.** O painel é usado por organizadores brasileiros; o retorno de traduzir 500 chaves de admin (agora em dois idiomas) é baixo perto das 400 do público. Se o objetivo é "estrangeiro consegue ver e se inscrever num torneio", a Fase 3 já entrega isso. Deixar admin em pt-BR na primeira entrega é uma escolha defensável — mas então o seletor no header precisa continuar visível no admin (o usuário troca e nada muda ali; alternativa é esconder o seletor dentro de `/admin`). Nota: o organizador hispanofalante (que cria torneio pra público argentino/paraguaio) é um caso mais plausível que o anglófono — se admin for traduzido um dia, **es tem prioridade sobre en**.
 
 ### Fase 5 — Gambito (chatbot) locale-aware
 
-`lib/chat/prompt.ts:34` manda "Responda em português". Passar o locale de `/api/chat/message` até o prompt e instruir o idioma de resposta.
+`lib/chat/prompt.ts:34` manda "Responda em português". Passar o locale de `/api/chat/message` até o prompt e instruir o idioma de resposta (pt-BR / es / en).
 
-Ressalva: a **KB (`kb_chunks`) é toda em português**. Em `en`, o LLM responde em inglês a partir de contexto português — funciona (é tradução na hora), mas a qualidade fica abaixo do pt-BR e termos podem oscilar. Indexar a KB em inglês é trabalho separado, fora deste plano.
+Ressalva: a **KB (`kb_chunks`) é toda em português**. Em es/en, o LLM responde no idioma pedido a partir de contexto português — funciona (é tradução na hora), mas a qualidade fica abaixo do pt-BR e termos podem oscilar. O espanhol sofre menos que o inglês aqui, pela proximidade das línguas e do vocabulário de xadrez. Indexar a KB em es/en é trabalho separado, fora deste plano.
 
 Como as rotas `app/api/*` ficam fora do `[locale]`, o locale precisa ir no corpo/header da requisição — não vem da URL.
 
@@ -207,7 +217,7 @@ Como as rotas `app/api/*` ficam fora do `[locale]`, o locale precisa ir no corpo
 Nada disto é traduzido por este plano, e o motivo importa:
 
 - **Conteúdo do banco**: nome de torneio, nome de grupo/categoria, nome de jogador, cidade, local. Digitado pelo organizador, num idioma só. Traduzir exigiria coluna por idioma em várias tabelas.
-- **Notícias (`noticias`)**: artigos vivem no banco. Precisaria de coluna `lang` (ou tabela de traduções) + filtro na listagem. Fase própria se virar requisito.
+- **Notícias (`noticias`)**: artigos vivem no banco. Precisaria de coluna `lang` (ou tabela de traduções) + filtro na listagem. Fase própria se virar requisito — e aí com 3 idiomas a decisão "o que mostrar pra quem não tem artigo no idioma dele" fica mais pesada (cair no pt-BR? esconder?).
 - **Push notifications** (`lib/push.ts`): payload montado no servidor num evento (rodada publicada), sem request do destinatário — não há geo nem cookie. O idioma teria que vir de **preferência gravada**: coluna `user_profiles.locale` (migration nova), gravada pelo seletor do header. Fase 6 opcional; hoje as notificações continuam em pt-BR.
 - **E-mails do Supabase Auth**: templates configurados no dashboard do Supabase, não no código. Suporte a multi-idioma ali é limitado. Fora do escopo de código.
 - **`docs/` e `CLAUDE.md`**: documentação interna, permanece em português.
@@ -218,11 +228,11 @@ Nada disto é traduzido por este plano, e o motivo importa:
 ## 7. Testes
 
 - **e2e existente** (`admin-panels`, `tournament-lifecycle`, `chat`, `chat-escalation`, `tour`) casa por texto em português. Com pt-BR como default sem prefixo, os specs continuam válidos — **desde que** o Playwright não seja empurrado pro `/en` pela detecção. Fixar `NEXT_LOCALE=pt-BR` via `context.addInitScript`/cookie no setup (mesmo mecanismo que o `chat-escalation.spec.ts` já usa para o `sessionId` — ver a pegadinha registrada no CLAUDE.md).
-- **Novo spec**: seletor troca idioma, cookie persiste entre navegações, `/en/tournaments/[slug]` renderiza em inglês.
-- **Teste de paridade de chaves** (vitest): `messages/pt-BR.json` e `messages/en.json` têm exatamente o mesmo conjunto de chaves. Barato e pega a regressão mais comum (chave nova só num idioma).
+- **Novo spec**: seletor troca idioma (dropdown, três opções), cookie persiste entre navegações, `/es/tournaments/[slug]` e `/en/tournaments/[slug]` renderizam no idioma certo.
+- **Teste de paridade de chaves** (vitest): `messages/pt-BR.json`, `messages/es.json` e `messages/en.json` têm exatamente o mesmo conjunto de chaves. Com três arquivos o teste vale ainda mais — a regressão "chave nova só num idioma" fica 2× mais provável. Comparar cada idioma contra o pt-BR (a fonte) e falhar listando as chaves faltantes/sobrando por idioma.
 - **Lint**: `npx next lint` 0 *Error*. Vale considerar `eslint-plugin-formatjs`/regra de "no literal string em JSX" **só** nas pastas já traduzidas, pra impedir volta de string crua.
 
-Lembrete de ambiente (CLAUDE.md): telas admin *client-gated* por auth não carregam no browser interno do agente. Validação visual do `/en` no admin precisa de Chrome real; a superfície pública é server-rendered e dá pra ver no preview.
+Lembrete de ambiente (CLAUDE.md): telas admin *client-gated* por auth não carregam no browser interno do agente, e o browser do sandbox não alcança o Supabase (503) — qualquer página que busque dado pelo cliente fica em "Carregando…". Validação da superfície pública (server-rendered) é por `curl` + grep no HTML, batendo em `/es/...` e `/en/...`; validação visual do admin precisa de Chrome real.
 
 ---
 
@@ -230,12 +240,14 @@ Lembrete de ambiente (CLAUDE.md): telas admin *client-gated* por auth não carre
 
 | Fase | Escopo | Risco | Bloqueia |
 |---|---|---|---|
-| 0 | `[locale]` + middleware + navegação | **Alto** — auth, redirect, cache | todas |
+| 0 | `[locale]` + middleware + navegação (3 locales) | **Alto** — auth, redirect, cache | todas |
 | 1 | mensagens, labels de `chess.ts`, datas | Médio (assinatura de `getTournamentStatusLabel`) | 3, 4 |
-| 2 | detecção geo + seletor | Baixo | — |
-| 3 | tradução pública | Baixo, volumoso | — |
-| 4 | tradução admin (opcional) | Baixo, volumoso | — |
-| 5 | Gambito bilíngue | Baixo (qualidade limitada pela KB pt) | — |
+| 2 | detecção geo (BR/es/en) + seletor dropdown | Baixo | — |
+| 3 | tradução pública (es + en) | Baixo, volumoso (2 idiomas) | — |
+| 4 | tradução admin (opcional, es antes de en) | Baixo, volumoso (2 idiomas) | — |
+| 5 | Gambito trilíngue | Baixo (qualidade limitada pela KB pt) | — |
 | 6 | push por `user_profiles.locale` (opcional, migration) | Baixo | — |
 
 A Fase 0 é a única que pode quebrar o que já funciona. Fazer, verificar o gate da §2.5 e só então seguir.
+
+Impacto do espanhol na estrutura (o que mudou vs. o plano bilíngue): a **arquitetura das Fases 0 e 1 é idêntica** — segmento `[locale]`, next-intl, extração de strings, tudo já foi desenhado pra N idiomas, não pra 2. O terceiro locale custa mais só em **detecção** (§1.4 deixa de ser binária e ganha a lista de países), no **seletor** (dropdown em vez de toggle, §4.2) e no **volume de tradução** (Fases 3–4, cada chave em es além de en). Nada disso muda o risco da Fase 0 nem a ordem das fases.
