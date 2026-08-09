@@ -64,7 +64,7 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      {/* Card de detalhes — metadados agrupados em grid, ícones monocromáticos */}
+      {/* Card de detalhes — metadados agrupados em grid, ícones na cor da marca */}
       <div className="lg:col-span-3 card p-4">
         <div className="flex items-start justify-between gap-3 mb-3">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Detalhes</h2>
@@ -200,7 +200,7 @@ function Icon({ path, className = 'h-4 w-4' }: { path: string; className?: strin
 function InfoItem({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
     <div className="flex items-start gap-3 min-w-0">
-      <span className="mt-0.5 shrink-0 text-gray-400 dark:text-gray-500">
+      <span className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400">
         <Icon path={icon} className="h-5 w-5" />
       </span>
       <div className="min-w-0">
