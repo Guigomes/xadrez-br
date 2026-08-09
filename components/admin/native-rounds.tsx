@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup,
@@ -120,6 +120,32 @@ function GroupPanel({
     const atual = [...rounds].reverse().find((r) => r.status !== 'finished') ?? rounds[rounds.length - 1];
     setOpenRoundId(atual.id);
   }, [rounds, openRoundId]);
+
+  // Rodada 1 automática pro torneio que virou 'ongoing' sozinho por data
+  // (next_status_by_date, migrations 040/047): esse caminho não passa pelo
+  // clique em "Iniciar Torneio" (admin-tournament-chrome.tsx), que já gera a
+  // rodada 1. E não dá pra parear junto com o seed no banco (migration 058)
+  // porque a engine é WASM e só roda em Node. Então gera aqui, na primeira
+  // abertura da aba Rodadas com o torneio em andamento e o grupo ainda sem
+  // rodada nenhuma. Rascunho não tem consumidor externo (o público só vê
+  // rodada publicada), então gerar na leitura do organizador equivale a gerar
+  // no instante da virada — mesmo padrão "lazy" que o status por data já usa.
+  // Não existe caminho pra excluir rodada no app, então "em andamento + zero
+  // rodadas" só pode significar "a 1ª nunca foi gerada" — não há risco de
+  // reparear por cima de algo que o organizador tirou de propósito.
+  const rodada1Disparada = useRef(false);
+  useEffect(() => {
+    if (rodada1Disparada.current) return;
+    if (tournament.status !== 'ongoing' || tournament.mode !== 'native') return;
+    if (!rounds || rounds.length > 0 || !tPlayers) return;
+    // Grupo vazio não é erro — o organizador ainda vai cadastrar gente. Sem
+    // esta guarda, cada abertura da aba jogaria um NO_PLAYERS na tela dele.
+    if (!tPlayers.some((p: any) => p.pairing_group_id === groupId)) return;
+    rodada1Disparada.current = true;
+    generate.mutateAsync(undefined).catch((e: any) =>
+      onError(e.message ?? 'Erro ao gerar a rodada 1 automaticamente')
+    );
+  }, [tournament.status, tournament.mode, rounds, tPlayers, groupId, generate, onError]);
 
   // Hooks precisam rodar antes de qualquer early return (regra dos hooks) —
   // nextRoundNumber é calculado com dados possivelmente ainda undefined.
