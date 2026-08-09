@@ -12,7 +12,7 @@ export default async function StandingsPrintPage({ params }: Props) {
   const supabase = await createClient();
 
   const { data: tournament } = await supabase
-    .from('tournaments').select('id, name').eq('slug', slug).single();
+    .from('tournaments').select('id, name, has_absolute_classification').eq('slug', slug).single();
   if (!tournament) notFound();
 
   const { data: rows } = await supabase.rpc('get_tournament_standings', {
@@ -30,7 +30,7 @@ export default async function StandingsPrintPage({ params }: Props) {
     <PrintFrame title={`Classificação — ${tournament.name}`}>
       {[...groups.entries()].map(([groupName, list]) => {
         // Classificações (células derivadas) presentes neste grupo — mesma
-        // lógica da tela de standings: Geral primeiro, depois cada célula
+        // lógica da tela de standings: absoluto primeiro, depois cada célula
         // com rank renumerado dentro dela.
         const categories = new Map<string, string>();
         for (const r of list) {
@@ -39,10 +39,18 @@ export default async function StandingsPrintPage({ params }: Props) {
           }
         }
 
+        // Mesma regra da tela de standings (migration 065): torneio que não
+        // premia o absoluto imprime só as faixas — a não ser que não haja
+        // faixa, e aí o absoluto é a única classificação que existe.
+        const showAbsolute =
+          tournament.has_absolute_classification !== false || categories.size === 0;
+
         return (
           <section key={groupName} className="print-section">
             {groups.size > 1 && <h2>{groupName}</h2>}
-            <StandingsPrintTable title={categories.size > 0 ? 'Geral' : undefined} rows={list} />
+            {showAbsolute && (
+              <StandingsPrintTable title={categories.size > 0 ? 'Absoluto' : undefined} rows={list} />
+            )}
             {[...categories.entries()].map(([catId, catName]) => (
               <StandingsPrintTable
                 key={catId}

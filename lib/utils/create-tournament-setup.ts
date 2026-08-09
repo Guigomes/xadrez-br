@@ -7,6 +7,8 @@ export interface ClassificationDraft {
   ageOn: boolean;
   ratingOn: boolean;
   femaleOn: boolean;
+  /** 4ª pergunta (migration 065): se o torneio premia o absoluto. */
+  absoluteOn: boolean;
   ageBands: AgePreset[];
   ratingBands: RatingPreset[];
 }
@@ -34,17 +36,23 @@ export async function applyClassificationDraft(tournamentId: string, draft: Clas
     ...(draft.ratingOn ? (['rating'] as const) : []),
     ...(draft.femaleOn ? (['sex'] as const) : []),
   ];
-  if (dims.length > 0) {
-    const { error } = await supabase
-      .from('tournaments').update({ classification_dimensions: dims }).eq('id', tournamentId);
-    if (error) throw error;
-  }
-
   const cells = generateClassificationCells({
     ageBands: draft.ageOn ? draft.ageBands : [],
     ratingBands: draft.ratingOn ? draft.ratingBands : [],
     female: draft.femaleOn,
   });
+
+  // Absoluto desligado só faz sentido com faixa: sem nenhuma, ele é a única
+  // classificação que existe e o torneio ficaria sem ranking pra mostrar. A
+  // tela de criação já esconde a pergunta nesse caso — isto aqui é o cinto de
+  // segurança pra qualquer caminho que mande absoluteOn=false sem faixa.
+  const patch: Record<string, unknown> = {
+    has_absolute_classification: cells.length > 0 ? draft.absoluteOn : true,
+  };
+  if (dims.length > 0) patch.classification_dimensions = dims;
+  const { error: patchError } = await supabase
+    .from('tournaments').update(patch).eq('id', tournamentId);
+  if (patchError) throw patchError;
 
   let categories: { id: string; name: string; min_age: number | null; max_age: number | null; min_rating: number | null; max_rating: number | null }[] = [];
   if (cells.length > 0) {

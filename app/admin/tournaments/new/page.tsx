@@ -34,6 +34,10 @@ export default function NewTournamentPage() {
   const [ageOn, setAgeOn] = useState(false);
   const [ratingOn, setRatingOn] = useState(false);
   const [femaleOn, setFemaleOn] = useState(false);
+  // Default ligado: é o comportamento de sempre (o ranking geral existia sem
+  // ninguém pedir) e o caso comum — o organizador só desmarca se as faixas
+  // forem a premiação inteira.
+  const [absoluteOn, setAbsoluteOn] = useState(true);
   const [ageBands, setAgeBands] = useState<AgePreset[]>([]);
   const [ratingBands, setRatingBands] = useState<RatingPreset[]>([]);
   const [customAge, setCustomAge] = useState({ name: '', min: '', max: '' });
@@ -100,7 +104,7 @@ export default function NewTournamentPage() {
         .select('id').single();
       if (err) throw err;
 
-      await applyClassificationDraft(tournament.id, { ageOn, ratingOn, femaleOn, ageBands, ratingBands });
+      await applyClassificationDraft(tournament.id, { ageOn, ratingOn, femaleOn, absoluteOn, ageBands, ratingBands });
 
       // Direto pra aba Emparceiramento — é a única decisão que falta antes
       // de poder publicar (?criado=1 aciona o popup de aviso lá, ver
@@ -136,7 +140,7 @@ export default function NewTournamentPage() {
         <div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Classificação</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Ranking de premiação: cada jogador cai numa faixa (ou só no Geral),
+            Ranking de premiação: cada jogador cai numa faixa (ou só no Absoluto),
             classificado automaticamente pelos próprios dados — idade, rating e sexo.
           </p>
         </div>
@@ -202,6 +206,23 @@ export default function NewTournamentPage() {
               não uma &quot;Feminino&quot; avulsa. Só feminina marcada gera &quot;Feminino&quot; sozinha.
             </p>
           </DimensionQuestion>
+
+          {/* Só faz sentido perguntar quando há faixa: sem nenhuma, o absoluto
+              é a única classificação que existe e desligá-lo deixaria o torneio
+              sem ranking nenhum. */}
+          {previewCells.length > 0 && (
+            <DimensionQuestion
+              question="Seu torneio vai ter classificação absoluta?"
+              on={absoluteOn}
+              onToggle={() => setAbsoluteOn((v) => !v)}
+              hint={
+                <>
+                  O absoluto é o ranking que atravessa todas as faixas — todo jogador aparece nele.
+                  Respondendo &quot;não&quot;, a classificação mostra só as faixas acima.
+                </>
+              }
+            />
+          )}
 
           {previewCells.length > 0 && (
             <div className="card p-4 space-y-3" data-tour="gerar-classificacoes">

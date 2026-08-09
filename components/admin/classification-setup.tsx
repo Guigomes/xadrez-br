@@ -7,6 +7,7 @@ import { useGroups, useCreateGroup, useUpdateGroup, useDeleteGroup } from '@/lib
 import {
   useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory, useSetPairingMode,
   useSetClassificationDimensions, useSetPairingSplit, useBulkCreateCategories, useRefreshCategories,
+  useSetAbsoluteClassification,
   type CategoryInput,
 } from '@/lib/hooks/use-classifications';
 import { generateClassificationCells } from '@/lib/utils/classification-match';
@@ -31,6 +32,8 @@ interface ClassificationSetupProps {
   currentMode: PairingMode;
   currentSplit: ClassificationDimension | null;
   initialDimensions: ClassificationDimension[];
+  /** Valor atual de tournaments.has_absolute_classification (migration 065). */
+  initialHasAbsolute: boolean;
   /**
    * Esconde a seção "Classificação" (idade/rating/feminina), mostrando só
    * "Emparceiramento". Usado quando quem chama já mostrou essa parte em
@@ -52,7 +55,7 @@ interface ClassificationSetupProps {
 
 /** Bloco de classificação + emparceiramento, embutido na aba Editar (junto de criação/edição). */
 export function ClassificationSetup({
-  tournamentId, mode, defaultRounds, currentMode, currentSplit, initialDimensions,
+  tournamentId, mode, defaultRounds, currentMode, currentSplit, initialDimensions, initialHasAbsolute,
   showClassification = true, showPairing = true,
 }: ClassificationSetupProps) {
   if (mode !== 'native') {
@@ -72,6 +75,7 @@ export function ClassificationSetup({
       currentMode={currentMode}
       currentSplit={currentSplit}
       initialDimensions={initialDimensions}
+      initialHasAbsolute={initialHasAbsolute}
       showClassification={showClassification}
       showPairing={showPairing}
     />
@@ -127,11 +131,13 @@ function ratingBandsFromCategories(cats: TournamentCategory[]): RatingPreset[] {
 type PairingChoice = 'absolute' | 'age' | 'rating' | 'custom';
 
 function Setup({
-  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions, showClassification, showPairing,
+  tournamentId, defaultRounds, currentMode, currentSplit, initialDimensions, initialHasAbsolute,
+  showClassification, showPairing,
 }: {
   tournamentId: string; defaultRounds: number; currentMode: PairingMode;
   currentSplit: ClassificationDimension | null;
   initialDimensions: ClassificationDimension[];
+  initialHasAbsolute: boolean;
   showClassification: boolean;
   showPairing: boolean;
 }) {
@@ -145,6 +151,7 @@ function Setup({
   const setMode = useSetPairingMode(tournamentId);
   const setDimensions = useSetClassificationDimensions(tournamentId);
   const setPairingSplit = useSetPairingSplit(tournamentId);
+  const setAbsolute = useSetAbsoluteClassification(tournamentId);
   const bulkCreate = useBulkCreateCategories(tournamentId);
   const refreshCategories = useRefreshCategories(tournamentId);
 
@@ -169,6 +176,7 @@ function Setup({
   const [ageOn, setAgeOn] = useState(initialDimensions.includes('age'));
   const [ratingOn, setRatingOn] = useState(initialDimensions.includes('rating'));
   const [femaleOn, setFemaleOn] = useState(initialDimensions.includes('sex'));
+  const [absoluteOn, setAbsoluteOn] = useState(initialHasAbsolute);
   const [ageBands, setAgeBands] = useState<AgePreset[]>([]);
   const [ratingBands, setRatingBands] = useState<RatingPreset[]>([]);
   const [customAge, setCustomAge] = useState({ name: '', min: '', max: '' });
@@ -278,6 +286,19 @@ function Setup({
     const next = !femaleOn;
     setFemaleOn(next);
     if (!next) await deleteCatsMatching((c) => c.sex === 'w');
+  }
+  // Persiste na hora, e não em "Salvar classificações": é um booleano só, não
+  // participa da prévia de células, e exigir o botão de salvar pra virar uma
+  // chave dessas confunde (as próprias chips de faixa já gravam no clique).
+  async function toggleAbsolute() {
+    const next = !absoluteOn;
+    setAbsoluteOn(next);
+    try {
+      await setAbsolute.mutateAsync(next);
+    } catch (e: any) {
+      setAbsoluteOn(!next);
+      setError(e.message);
+    }
   }
   function addCustomAge() {
     if (!customAge.name.trim()) { setError('Informe o nome da faixa de idade.'); return; }
@@ -463,7 +484,7 @@ function Setup({
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {showClassification && showPairing && (
-            <>Classificação é o ranking de premiação: cada jogador cai numa faixa (ou só no Geral).
+            <>Classificação é o ranking de premiação: cada jogador cai numa faixa (ou só no Absoluto).
             Emparceiramento é quem joga contra quem — pode ser junto ou dividido por idade/rating.</>
           )}
           {!showClassification && showPairing && (
@@ -471,7 +492,7 @@ function Setup({
             classificações de premiação você define na aba Editar.</>
           )}
           {showClassification && !showPairing && (
-            <>Ranking de premiação: cada jogador cai numa faixa (ou só no Geral), classificado
+            <>Ranking de premiação: cada jogador cai numa faixa (ou só no Absoluto), classificado
             automaticamente pelos próprios dados — idade, rating e sexo.</>
           )}
         </p>
@@ -557,6 +578,25 @@ function Setup({
             não uma &quot;Feminino&quot; avulsa. Só feminina marcada gera &quot;Feminino&quot; sozinha.
           </p>
         </DimensionQuestion>
+
+        {/* Só faz sentido perguntar quando existe (ou vai existir) faixa: sem
+            nenhuma, o absoluto é a única classificação do torneio. Considera
+            também `cats` e não só a prévia, porque classificação criada
+            manualmente sem critério de idade/rating não semeia chip nenhum e
+            deixaria a prévia vazia. */}
+        {(previewCells.length > 0 || cats.length > 0) && (
+          <DimensionQuestion
+            question="Seu torneio vai ter classificação absoluta?"
+            on={absoluteOn}
+            onToggle={toggleAbsolute}
+            hint={
+              <>
+                O absoluto é o ranking que atravessa todas as faixas — todo jogador aparece nele.
+                Respondendo &quot;não&quot;, a classificação pública mostra só as faixas.
+              </>
+            }
+          />
+        )}
 
         {/* Bloco 2 — preview e geração */}
         {previewCells.length > 0 && (

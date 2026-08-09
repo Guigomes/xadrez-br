@@ -465,7 +465,7 @@ function PlayerFormModal({
               value={categoryId}
               onChange={(e) => { setCategoryId(e.target.value); setCategoryTouched(true); }}
             >
-              <option value="">Geral (sem classificação)</option>
+              <option value="">Absoluto (sem faixa)</option>
               {categories!.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
             {!editing && <p className="mt-1 text-xs text-gray-400">Sugerida pela idade/sexo — troque se quiser.</p>}

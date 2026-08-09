@@ -132,6 +132,7 @@ export default function EditTournamentPage({ params }: Props) {
             currentMode={tournament.pairing_mode}
             currentSplit={tournament.pairing_split ?? null}
             initialDimensions={tournament.classification_dimensions ?? []}
+            initialHasAbsolute={tournament.has_absolute_classification ?? true}
             showPairing={false}
           />
         </fieldset>

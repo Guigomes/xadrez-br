@@ -11,12 +11,26 @@ torneio.
 ## Classificação — quem disputa prêmio com quem
 
 Classificação é o **ranking de premiação**. Cada jogador cai numa faixa (ou
-só no "Geral", se nenhuma faixa for configurada). Ela é montada respondendo
-três perguntas, na aba de criação do torneio (ou depois, na aba Editar):
+só no "Absoluto", se nenhuma faixa for configurada). Ela é montada respondendo
+quatro perguntas, na aba de criação do torneio (ou depois, na aba Editar):
 
 - Tem classificação separada por idade? (ex: Sub-9, Sub-11, Sub-17...)
 - Tem classificação separada por rating? (ex: até 1200, até 1600...)
 - Tem classificação feminina?
+- Tem classificação absoluta?
+
+As três primeiras criam **faixas**. A quarta é diferente: a classificação
+absoluta é o ranking que **atravessa todas as faixas** — todo jogador do grupo
+aparece nele, independente da faixa em que caiu. Respondendo "sim" (o padrão),
+a página de classificação mostra a aba "Absoluto" junto das faixas;
+respondendo "não", mostra só as faixas. A pergunta só aparece quando existe
+pelo menos uma faixa: sem nenhuma, o absoluto é a única classificação do
+torneio e não faz sentido desligá-lo.
+
+> Atenção ao nome repetido: "Absoluto" aqui é a **classificação** transversal.
+> Mais abaixo, "Absoluto" aparece como nome do **grupo de emparceiramento**
+> padrão. São coisas diferentes — uma é premiação, a outra é quem joga contra
+> quem.
 
 Essas dimensões se cruzam: idade + feminina gera, por exemplo, "Sub-17" e
 "Sub-17 Feminino" como classificações separadas — não uma "Feminino" avulsa
@@ -29,8 +43,10 @@ jogador manualmente na aba Participantes, senão ninguém cai nas faixas de
 rating.
 
 Depois de marcar as opções, o botão "Salvar classificações" cria de fato as
-categorias no banco. A cada inscrição aprovada, o sistema classifica o
-jogador automaticamente pelos dados dele (ano de nascimento, rating, sexo).
+faixas no banco. A cada inscrição aprovada, o sistema classifica o
+jogador automaticamente pelos dados dele (ano de nascimento, rating, sexo). A
+resposta sobre a classificação absoluta é a exceção: ela vale na hora do
+clique, sem precisar do botão de salvar.
 
 ## Emparceiramento — quem joga contra quem
 

@@ -163,7 +163,7 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
           </div>
           {sortedCategories.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Nenhuma classificação — o torneio premia só o Geral. Dá pra criar faixas na aba Editar.
+              Nenhuma classificação — o torneio premia só o Absoluto. Dá pra criar faixas na aba Editar.
             </p>
           ) : (
             <div className="flex flex-col gap-1.5">

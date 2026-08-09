@@ -9,11 +9,18 @@ import { Button } from '@/components/ui/button';
  */
 
 export function DimensionQuestion({
-  question, on, onToggle, children, dataTour,
+  question, on, onToggle, children, dataTour, hint,
 }: {
   question: string; on: boolean; onToggle: () => void; children?: React.ReactNode;
   /** Âncora do tour guiado (components/admin/tournament-tour.tsx). */
   dataTour?: string;
+  /**
+   * Texto de apoio que aparece com a pergunta, independente da resposta —
+   * diferente de `children`, que é a configuração revelada só no "Sim" (as
+   * faixas de idade/rating). Usado pela pergunta do absoluto, que não tem
+   * configuração nenhuma e precisa explicar o que o "Não" faz.
+   */
+  hint?: React.ReactNode;
 }) {
   return (
     <div className="card p-4 space-y-3" data-tour={dataTour}>
@@ -24,6 +31,7 @@ export function DimensionQuestion({
           <Chip active={!on} onClick={onToggle}>Não</Chip>
         </div>
       </div>
+      {hint && <div className="text-xs text-gray-500 dark:text-gray-400">{hint}</div>}
       {on && children && <div className="space-y-2 pt-1">{children}</div>}
     </div>
   );

@@ -67,6 +67,8 @@ interface Props {
   registrationFeeText?: string | null;
   isFree?: boolean;
   requireCbxId?: boolean;
+  /** migration 065: false = o torneio premia só as faixas, então o aviso de "vai concorrer em" não menciona o absoluto. */
+  hasAbsoluteClassification?: boolean;
   /** Dados do perfil de quem está logado e marcou "participante" — usados para pré-preencher o formulário. */
   autofill?: AutofillData | null;
   /** Se true, a inscrição enviada é salva de volta no perfil para alimentar o autopreenchimento da próxima vez. */
@@ -76,6 +78,7 @@ interface Props {
 export function RegistrationForm({
   tournamentId, tournamentSlug, classifications, tournamentStartYear,
   requirePaymentReceipt = false, registrationFeeText, isFree = false, requireCbxId = false,
+  hasAbsoluteClassification = true,
   autofill, saveAutofillOnSubmit = false,
 }: Props) {
   const [receipt, setReceipt] = useState<File | null>(null);
@@ -304,7 +307,9 @@ export function RegistrationForm({
             </Select>
             {selectedClassificationName && (
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Você vai concorrer em: Geral e {selectedClassificationName}
+                Você vai concorrer em: {hasAbsoluteClassification
+                  ? `Absoluto e ${selectedClassificationName}`
+                  : selectedClassificationName}
               </p>
             )}
           </div>

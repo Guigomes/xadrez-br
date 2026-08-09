@@ -99,6 +99,14 @@ export interface Tournament {
   pairing_mode: PairingMode;
   /** Respostas das 3 perguntas de classificação (idade/rating/feminina) — migration 035. */
   classification_dimensions: ClassificationDimension[];
+  /**
+   * 4ª pergunta da classificação (migration 065): se o torneio premia o
+   * absoluto — o ranking transversal a todas as faixas. `false` esconde a aba
+   * "Absoluto" da classificação pública e do /print, deixando só as faixas. A
+   * UI ignora o `false` quando o torneio não tem faixa nenhuma, senão não
+   * sobraria ranking pra mostrar.
+   */
+  has_absolute_classification: boolean;
   /** Dimensão que divide os grupos de emparceiramento quando pairing_mode='per_category'. */
   pairing_split: ClassificationDimension | null;
   created_by: string;

@@ -107,6 +107,21 @@ export function useSetClassificationDimensions(tournamentId: string) {
   });
 }
 
+/** Grava a 4ª pergunta: se o torneio premia o absoluto (migration 065). */
+export function useSetAbsoluteClassification(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (hasAbsolute: boolean) => {
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ has_absolute_classification: hasAbsolute })
+        .eq('id', tournamentId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tournaments'] }),
+  });
+}
+
 /** Grava qual dimensão divide os grupos de emparceiramento (pairing_mode='per_category'). */
 export function useSetPairingSplit(tournamentId: string) {
   const qc = useQueryClient();

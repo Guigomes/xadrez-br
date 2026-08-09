@@ -89,8 +89,11 @@ export function deriveCategory<T extends CategoryCandidate>(
 }
 
 // ------------------------------------------------------------
-// Geração das células a partir das 3 perguntas (produto cartesiano
-// exclusivo — partição, célula vazia descartada porque ela é o Geral).
+// Geração das células a partir das 3 perguntas de faixa (produto cartesiano
+// exclusivo — partição, célula vazia descartada porque ela é o Absoluto).
+// A 4ª pergunta (haverá classificação absoluta? migration 065) não entra aqui:
+// o absoluto é transversal, não uma célula da partição — vive em
+// tournaments.has_absolute_classification.
 // ------------------------------------------------------------
 
 export interface GeneratedCell extends ClassificationCriteria {
@@ -113,7 +116,7 @@ export function generateClassificationCells({ ageBands, ratingBands, female }: G
   for (const age of ageValues) {
     for (const rating of ratingValues) {
       for (const sex of sexValues) {
-        if (age === null && rating === null && sex === null) continue; // é o Geral, não vira célula
+        if (age === null && rating === null && sex === null) continue; // é o Absoluto, não vira célula
 
         const nameParts = [age?.name, rating?.name, sex === 'w' ? 'Feminino' : null].filter(
           (p): p is string => !!p

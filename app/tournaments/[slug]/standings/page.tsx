@@ -67,10 +67,10 @@ export default function StandingsPage({ params }: Props) {
   }
 
   // Linhas do grupo selecionado (todas, se o torneio não separa por grupo) —
-  // é dentro delas que "Geral" e cada classificação (célula derivada) são
-  // recortadas. Grupo e classificação não são mais mutuamente exclusivos:
-  // toda classificação vale dentro do seu grupo, e o Geral do grupo sempre
-  // existe (é a aba padrão).
+  // é dentro delas que o "Absoluto" e cada classificação (célula derivada) são
+  // recortados. Grupo e classificação não são mutuamente exclusivos: toda
+  // classificação vale dentro do seu grupo, e o absoluto do grupo é a aba
+  // padrão — quando o torneio premia o absoluto (ver showAbsolute abaixo).
   const rowsInGroup = hasGroups
     ? (standings ?? []).filter((r) => r.pairing_group_id === selectedGroupId)
     : (standings ?? []);
@@ -88,9 +88,19 @@ export default function StandingsPage({ params }: Props) {
   })();
   const hasCategories = categories.length > 0;
 
+  // Torneio que não premia o absoluto (migration 065) não mostra a aba
+  // transversal — só as faixas. Exceção: grupo sem faixa nenhuma sempre mostra
+  // o absoluto, senão não sobraria classificação pra ver (o organizador pode
+  // ter desligado a chave e depois apagado as faixas).
+  const showAbsolute = tournament?.has_absolute_classification !== false || !hasCategories;
+
   // selectedCategory pode ficar obsoleto ao trocar de grupo (classificação
-  // de um grupo não existe no outro) — cai pro Geral nesse caso.
-  const effectiveCategory = categories.some((c) => c.id === selectedCategory) ? selectedCategory : 'all';
+  // de um grupo não existe no outro) — cai pro absoluto nesse caso, ou pra
+  // primeira faixa quando o torneio não tem absoluto.
+  const fallbackCategory = showAbsolute ? 'all' : (categories[0]?.id ?? 'all');
+  const effectiveCategory = categories.some((c) => c.id === selectedCategory)
+    ? selectedCategory
+    : fallbackCategory;
 
   const displayed = effectiveCategory === 'all'
     ? rowsInGroup
@@ -100,8 +110,8 @@ export default function StandingsPage({ params }: Props) {
 
   const groupLabel = hasGroups ? (pairingGroups.find((g) => g.id === selectedGroupId)?.name ?? 'Grupo') : null;
   const categoryLabel = effectiveCategory === 'all'
-    ? 'Geral'
-    : (categories.find((c) => c.id === effectiveCategory)?.name ?? 'Geral');
+    ? 'Absoluto'
+    : (categories.find((c) => c.id === effectiveCategory)?.name ?? 'Absoluto');
   const heading = groupLabel ? `${groupLabel} · ${categoryLabel}` : categoryLabel;
 
   const isOngoing = tournament?.status === 'ongoing';
@@ -195,16 +205,18 @@ export default function StandingsPage({ params }: Props) {
               )}
               {hasCategories && (
                 <div className="flex flex-wrap gap-1.5">
-                  <button
-                    onClick={() => setSelectedCategory('all')}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      effectiveCategory === 'all'
-                        ? 'bg-gray-700 text-white dark:bg-gray-600'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    Geral
-                  </button>
+                  {showAbsolute && (
+                    <button
+                      onClick={() => setSelectedCategory('all')}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        effectiveCategory === 'all'
+                          ? 'bg-gray-700 text-white dark:bg-gray-600'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      Absoluto
+                    </button>
+                  )}
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
