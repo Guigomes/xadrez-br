@@ -5,10 +5,18 @@ import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/
 import { formatDateRange } from '@/lib/utils/date';
 
 /**
- * Home de quem está logado e é organizador (role=admin ou is_organizer). O
- * objetivo quase certo dessa pessoa ao abrir o site é gerenciar os próprios
- * torneios — mostrar a lista dela direto, em vez de uma landing de marketing
- * que ela já conhece, evita os dois cliques (menu → painel) do fluxo antigo.
+ * Dashboard do organizador (role=admin ou is_organizer) — os próprios torneios,
+ * inscrições pendentes e o atalho de criar. Nasceu como a home INTEIRA dessa
+ * pessoa (substituía a landing), e virou um BLOCO embutido no topo da home:
+ * `app/page.tsx` passa este componente pro `MarketingHome`, que o renderiza no
+ * lugar do hero. Motivo da virada (pedido do usuário): trocar a página inteira
+ * fazia o organizador perder o resto da home — torneios acontecendo agora,
+ * notícias, recursos —, coisas que ele também quer ver. Agora tem os dois:
+ * o próprio trabalho no topo, sem rolar, e a home completa abaixo.
+ *
+ * Por ser embutido, NÃO repete o que as seções seguintes já mostram (a antiga
+ * chamada "Ver torneios públicos" saiu: a home logo abaixo tem "Acontecendo
+ * agora" e "Inscrições abertas"). Não usar standalone.
  */
 
 // Ordem de relevância pra quem administra: o que exige ação agora primeiro,
@@ -25,7 +33,7 @@ const STATUS_PRIORITY: Record<string, number> = {
 
 const MAX_SHOWN = 6;
 
-export async function OrganizerHome({ userId, userName }: { userId: string; userName: string | null }) {
+export async function OrganizerDashboard({ userId, userName }: { userId: string; userName: string | null }) {
   const supabase = await createClient();
 
   const { data: tournaments } = await supabase
@@ -138,16 +146,16 @@ export async function OrganizerHome({ userId, userName }: { userId: string; user
             })}
           </div>
 
-          <div className="mt-5 flex items-center justify-between text-sm">
-            <Link href="/tournaments" className="text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">
-              Ver torneios públicos →
-            </Link>
-            {all.length > MAX_SHOWN && (
+          {/* Só "ver todos os meus" — a antiga chamada pra /tournaments saiu:
+              embutido na home, as seções "Acontecendo agora"/"Inscrições
+              abertas" logo abaixo já são essa porta. */}
+          {all.length > MAX_SHOWN && (
+            <div className="mt-5 flex justify-end text-sm">
               <Link href="/admin" className="font-medium text-brand-600 hover:underline dark:text-brand-400">
                 Ver todos os meus torneios ({all.length})
               </Link>
-            )}
-          </div>
+            </div>
+          )}
         </>
       )}
     </div>

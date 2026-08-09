@@ -140,7 +140,7 @@ Hoje o arquivo mistura regra de negócio com texto em português. Mapas a mover 
 
 - `TOURNAMENT_STATUS_LABELS`, `ROUND_STATUS_LABELS`, `TOURNAMENT_TYPE_LABELS`, `RATING_KIND_LABELS`
 - `TIEBREAK_INFO` (textos longos de explicação de critério de desempate)
-- `getTournamentStatusLabel(...)` — hoje devolve string pronta; passa a devolver chave de mensagem + os dados (o `registration_closes_by_date` do 3º parâmetro continua igual), e quem renderiza traduz. **Atenção**: essa função tem muitos call sites (admin/page, organizer-home, players, tournament-card, chrome, layouts público e admin) — mesma lista do bug do selo de inscrição registrado no CLAUDE.md. Mudar a assinatura exige varrer todos.
+- `getTournamentStatusLabel(...)` — hoje devolve string pronta; passa a devolver chave de mensagem + os dados (o `registration_closes_by_date` do 3º parâmetro continua igual), e quem renderiza traduz. **Atenção**: essa função tem muitos call sites (admin/page, organizer-dashboard, players, tournament-card, chrome, layouts público e admin) — mesma lista do bug do selo de inscrição registrado no CLAUDE.md. Mudar a assinatura exige varrer todos.
 - `TOURNAMENT_STATUS_COLORS`/`ROUND_STATUS_COLORS` **não mudam** (são classes CSS, não texto).
 
 **Não internacionalizar** `todayInSaoPaulo()` nem o `Intl.DateTimeFormat('en-CA', …)` de `chess.ts:99`: o fuso de São Paulo é **regra de negócio** (torneio brasileiro vira o dia no horário de Brasília, não no do visitante), e o `en-CA` ali é só um truque pra formatar `YYYY-MM-DD`. Um inglês vendo o torneio de fora continua no fuso do torneio.
@@ -192,7 +192,7 @@ Ordem por valor: público primeiro (é quem pode ser estrangeiro), admin depois.
 
 ### Fase 3 — Superfície pública (~300–400 chaves × 2 idiomas novos)
 
-`app/[locale]/page.tsx` + `components/home/marketing-home.tsx` e `organizer-home.tsx`, `tournaments` (lista, detalhe, standings, rounds, players, participants, register), `players`, `noticias` (moldura da página, não os artigos), `login`, `account`, `components/layout/{header,footer}`, `components/ui/*` (empty-state, share-button, flash-message, spinner, tooltip, relative-time), `components/tournament/*`, `error.tsx`, `not-found.tsx`, `loading.tsx`.
+`app/[locale]/page.tsx` + `components/home/marketing-home.tsx` e `organizer-dashboard.tsx`, `tournaments` (lista, detalhe, standings, rounds, players, participants, register), `players`, `noticias` (moldura da página, não os artigos), `login`, `account`, `components/layout/{header,footer}`, `components/ui/*` (empty-state, share-button, flash-message, spinner, tooltip, relative-time), `components/tournament/*`, `error.tsx`, `not-found.tsx`, `loading.tsx`.
 
 Nota de escopo: o **slug de rota `/noticias` fica em português** nos três idiomas. Traduzir segmento de rota (`pathnames` do next-intl) é possível, mas quebra URL indexada e não vale a complexidade agora.
 

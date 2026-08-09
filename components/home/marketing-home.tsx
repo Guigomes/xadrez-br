@@ -10,8 +10,13 @@ import type { News, TournamentListItem } from '@/types/database';
  * e a home refletia isso, mas o núcleo hoje é criar e rodar torneios nativos —
  * quem chega aqui precisa entender em 5 segundos que dá pra montar um torneio,
  * não só assistir a um. Acompanhar continua existindo (é o que traz o público
- * jogador), só que como caminho secundário. Vista por anônimos e por logados
- * que ainda não são organizadores; organizador tem a própria home (organizer-home).
+ * jogador), só que como caminho secundário.
+ *
+ * É a home de TODO MUNDO agora — anônimo, logado-não-organizador e organizador.
+ * O organizador não tem mais home separada: recebe o próprio dashboard pelo slot
+ * `dashboard`, que entra NO LUGAR do hero (ver a prop). Antes a home dele
+ * substituía esta página inteira, e ele perdia torneios ao vivo, notícias e
+ * recursos.
  */
 
 const STEPS = [
@@ -70,7 +75,21 @@ const FEATURES = [
   },
 ];
 
-export async function MarketingHome({ ctaHref }: { ctaHref: string }) {
+interface MarketingHomeProps {
+  ctaHref: string;
+  /**
+   * Bloco que substitui o hero. Passado só pra organizador logado
+   * (`OrganizerDashboard`, em app/page.tsx): pra quem já usa o produto, o hero
+   * é discurso de venda ocupando a primeira tela, e o que importa é o próprio
+   * trabalho — então o dashboard assume o topo e o hero sai. Todas as outras
+   * seções (Como funciona, Recursos, torneios, notícias, fechamento) continuam
+   * iguais pros dois casos. Ausente = hero normal (anônimo e logado-não-
+   * organizador seguem vendo a home exatamente como antes).
+   */
+  dashboard?: React.ReactNode;
+}
+
+export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) {
   const supabase = await createClient();
 
   const { data: ongoing } = await supabase.rpc('search_tournaments', {
@@ -89,7 +108,11 @@ export async function MarketingHome({ ctaHref }: { ctaHref: string }) {
 
   return (
     <div>
-      {/* Hero */}
+      {dashboard}
+
+      {/* Hero — só pra quem ainda não é organizador; com `dashboard` presente,
+          ele já ocupou este lugar. */}
+      {!dashboard && (
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900 text-white">
         <div className="chess-pattern pointer-events-none absolute inset-0" />
         {/* Brilho radial — dá profundidade ao gradiente chapado. */}
@@ -144,6 +167,7 @@ export async function MarketingHome({ ctaHref }: { ctaHref: string }) {
           </div>
         </div>
       </section>
+      )}
 
       {/* Como funciona — dá o modelo mental do fluxo antes de qualquer clique.
           É o mesmo caminho que o tour guiado percorre dentro do painel. */}
