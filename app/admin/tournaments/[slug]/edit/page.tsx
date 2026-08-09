@@ -30,6 +30,10 @@ export default function EditTournamentPage({ params }: Props) {
   if (!tournament) return <p className="text-red-500">Torneio não encontrado.</p>;
 
   async function handleSubmit(values: TournamentFormValues) {
+    // Não deveria chegar aqui com o torneio travado (o fieldset desabilita os
+    // campos e o botão de salvar nem é renderizado), mas o submit também sai
+    // de um Enter num input — guarda explícita em vez de confiar no layout.
+    if (isLocked) return;
     setError('');
     try {
       await updateTournament.mutateAsync(values);
@@ -75,6 +79,11 @@ export default function EditTournamentPage({ params }: Props) {
   }
 
   const isCancelled = tournament.status === 'cancelled';
+  // A configuração do torneio congela quando ele começa: mudar nº de rodadas,
+  // ritmo, desempate ou classificação com rodada já pareada deixaria o que já
+  // aconteceu inconsistente com a regra vigente. `cancelled` NÃO trava — dá
+  // pra reativar, e aí o torneio volta a ser editável.
+  const isLocked = tournament.status === 'ongoing' || tournament.status === 'finished';
 
   return (
     <div className="max-w-2xl">
@@ -84,36 +93,60 @@ export default function EditTournamentPage({ params }: Props) {
         </p>
       )}
 
+      {isLocked && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/30">
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+            {tournament.status === 'ongoing'
+              ? 'Torneio em andamento — dados não editáveis.'
+              : 'Torneio encerrado — dados não editáveis.'}
+          </p>
+          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+            A configuração fica congelada a partir do início do torneio. Resultados, participantes e
+            rodadas continuam sendo gerenciados nas abas próprias.
+          </p>
+        </div>
+      )}
+
       <TournamentForm
         defaultValues={tournament as any}
         onSubmit={handleSubmit}
         loading={updateTournament.isPending}
         submitLabel="Salvar alterações"
         formId="tournament-edit-form"
+        readOnly={isLocked}
       />
 
       {/* Só Classificação aqui — Emparceiramento tem aba própria
           (app/admin/tournaments/[slug]/groups), pra não duplicar a seção. */}
       <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
-        <ClassificationSetup
-          tournamentId={tournament.id}
-          mode={tournament.mode}
-          defaultRounds={tournament.rounds_count}
-          currentMode={tournament.pairing_mode}
-          currentSplit={tournament.pairing_split ?? null}
-          initialDimensions={tournament.classification_dimensions ?? []}
-          showPairing={false}
-        />
+        {/* Mesmo fieldset do TournamentForm: o ClassificationSetup persiste por
+            vários caminhos (chips que já excluem, "Salvar classificações",
+            mapeamento em CustomMapping) — desabilitar tudo de uma vez evita
+            passar `disabled` por dezenas de controles e por cada um que for
+            adicionado depois. */}
+        <fieldset disabled={isLocked} className="min-w-0">
+          <ClassificationSetup
+            tournamentId={tournament.id}
+            mode={tournament.mode}
+            defaultRounds={tournament.rounds_count}
+            currentMode={tournament.pairing_mode}
+            currentSplit={tournament.pairing_split ?? null}
+            initialDimensions={tournament.classification_dimensions ?? []}
+            showPairing={false}
+          />
+        </fieldset>
       </div>
 
       {/* Salvar fica depois de Classificação — o form em si (TournamentForm,
           formId acima) não muda, só onde o botão aparece: `form="tournament-
           edit-form"` submete de fora, via atributo HTML5. */}
-      <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
-        <Button type="submit" form="tournament-edit-form" loading={updateTournament.isPending} size="lg" className="w-full sm:w-auto">
-          Salvar alterações
-        </Button>
-      </div>
+      {!isLocked && (
+        <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
+          <Button type="submit" form="tournament-edit-form" loading={updateTournament.isPending} size="lg" className="w-full sm:w-auto">
+            Salvar alterações
+          </Button>
+        </div>
+      )}
 
       {/* Danger zone — cancelar e excluir juntos: as duas ações incomuns,
           fora do fluxo normal de status. */}

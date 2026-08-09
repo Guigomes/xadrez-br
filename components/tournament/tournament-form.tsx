@@ -114,9 +114,19 @@ interface Props {
    * Emparceiramento, que ficam fora deste componente.
    */
   formId?: string;
+  /**
+   * Torneio em andamento/encerrado: mostra os dados mas não deixa editar. Um
+   * `<fieldset disabled>` só, em volta de tudo — desabilita nativamente todo
+   * input/select/textarea/button descendente, inclusive os chips de Cobrança e
+   * o TiebreakOrderPicker, sem precisar passar `disabled` campo por campo (e
+   * sem risco de esquecer um campo novo depois). Quem chama também precisa
+   * esconder o próprio botão de salvar quando usa `formId` — ele fica FORA do
+   * form (atributo HTML5 `form`), logo fora do fieldset.
+   */
+  readOnly?: boolean;
 }
 
-export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar', formId }: Props) {
+export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar', formId, readOnly = false }: Props) {
   const {
     register, handleSubmit, watch, setValue, getValues,
     formState: { errors, isSubmitted },
@@ -212,6 +222,9 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       }, onInvalid)}
       className="space-y-5"
     >
+      {/* min-w-0: fieldset tem `min-width: min-content` por padrão, o que
+          estoura os grids de 2 colunas de dentro em tela estreita. */}
+      <fieldset disabled={readOnly} className="min-w-0 space-y-5">
       {isSubmitted && erroredFields.length > 0 && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950/30">
           <p className="text-sm font-medium text-red-700 dark:text-red-400">
@@ -457,8 +470,9 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           </div>
         </label>
       </div>
+      </fieldset>
 
-      {!formId && (
+      {!formId && !readOnly && (
         <div data-tour="criar">
           <Button type="submit" loading={loading} size="lg" className="w-full sm:w-auto">
             {submitLabel}
