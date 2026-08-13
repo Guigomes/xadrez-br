@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup,
   useGenerateRound, useRoundTransition, useSetResult,
@@ -105,6 +106,7 @@ function GroupPanel({
   tournament: Tournament; groupId: string; groupRoundsCount: number;
   onError: (m: string) => void;
 }) {
+  const router = useRouter();
   const { data: rounds, isLoading } = useGroupRounds(groupId);
   const { data: tPlayers } = useTournamentPlayers(tournament.id);
   const generate = useGenerateRound(tournament.slug, tournament.id, groupId);
@@ -213,7 +215,17 @@ function GroupPanel({
             // '' e não null ao fechar: null significa "ainda não escolheu" e
             // faria o efeito de abrir-a-corrente reabrir o card na hora.
             onToggle={() => setOpenRoundId(openRoundId === round.id ? '' : round.id)}
-            onAction={(action) => run(() => transition.mutateAsync({ action, roundId: round.id }))}
+            onAction={(action) =>
+              run(async () => {
+                await transition.mutateAsync({ action, roundId: round.id });
+                // Publicar a rodada leva direto ao lançamento de resultados: é
+                // o próximo passo natural do organizador, e o link "Lançar
+                // resultados" só aparecia depois de recarregar/reabrir o card.
+                if (action === 'publish') {
+                  router.push(`/admin/tournaments/${tournament.slug}/rounds/${round.id}/results`);
+                }
+              })
+            }
             canReopen={round.round_number === (lastRound?.round_number ?? 0)}
             busy={transition.isPending}
             onRegenerate={() => run(() => generate.mutateAsync(round.round_number))}
