@@ -381,10 +381,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             : ''}
           Podem ser editadas até a 1ª rodada ser publicada.
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          O rating dos participantes é preenchido automaticamente pelo ID CBX da inscrição — não precisa digitar.
-          {!requireCbxId && ' Sem ID CBX, o rating fica em branco até você preencher em Participantes.'}
-        </p>
+
         <TiebreakOrderPicker
           value={watch('tiebreak_order') as TiebreakKey[]}
           onChange={(v) => setValue('tiebreak_order', v, { shouldDirty: true })}
@@ -465,7 +462,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           <div>
             <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Torneio público</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Torneios públicos aparecem na listagem e podem ser acessados sem login.
+              Torneios públicos aparecem na listagem do site. Se desmarcar essa opção seu torneio só será visualizado por quem possuir o link do torneio. 
             </p>
           </div>
         </label>

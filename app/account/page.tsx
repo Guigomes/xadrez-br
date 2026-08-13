@@ -129,9 +129,7 @@ export default function AccountPage() {
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Participante</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Não é preciso estar cadastrado para jogar — a inscrição já é aberta a qualquer pessoa.
-              Serve só para ter seus dados reaproveitados e a inscrição preenchida automaticamente
-              num próximo torneio.
+              Não é preciso estar cadastrado para se inscrever em um torneio
             </p>
           </div>
         </label>

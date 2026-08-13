@@ -141,7 +141,7 @@ export default function AdminRegistrationsPage({ params }: Props) {
         {tournament.status === 'registration' ? (
           <>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Compartilhe este link com os jogadores para eles se inscreverem sozinhos.
+              Compartilhe este link com os jogadores para eles se inscreverem sozinhos ou cadastre eles manualmente na aba participantes.
             </p>
             <div className="flex gap-2">
               <Input
