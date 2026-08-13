@@ -70,13 +70,16 @@ export function chunkMarkdown(body: string): Chunk[] {
  * slug) — parser à mão em vez de puxar uma lib de YAML só pra isso.
  */
 export function parseKbDoc(raw: string): KbDoc {
-  const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  // \r?\n em vez de \n: checkout Windows com autocrlf deixa os .md em CRLF,
+  // e o parser precisa aceitar os dois finais de linha (senão o script de
+  // indexação quebra logo no primeiro doc).
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!match) {
     throw new Error('Documento sem frontmatter (esperado "---" no início e no fim dele).');
   }
   const [, frontmatter, body] = match;
   const fields: Record<string, string> = {};
-  for (const line of frontmatter.split('\n')) {
+  for (const line of frontmatter.split(/\r?\n/)) {
     const m = line.match(/^(\w+):\s*(.*)$/);
     if (m) fields[m[1]] = m[2].trim();
   }
