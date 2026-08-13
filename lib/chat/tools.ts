@@ -78,6 +78,18 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
   {
+    name: 'buscar_jogador',
+    description:
+      'Procura um jogador pelo nome em TODOS os torneios de uma vez e diz em quais ele está, com a pontuação em cada um. Use quando a pessoa perguntar por alguém sem dizer o torneio — "em que torneios o Fulano está?", "algum torneio tem o Fulano?", "onde o Fulano está jogando?".',
+    parameters: {
+      type: 'object',
+      properties: {
+        nome: { type: 'string', description: 'Nome (ou parte) do jogador procurado.' },
+      },
+      required: ['nome'],
+    },
+  },
+  {
     name: 'estado_do_torneio',
     description:
       'Situação geral de UM torneio: status, quantas rodadas já foram (finalizadas) de quantas previstas, qual a rodada atual, quantos participantes, quais os grupos de emparceiramento. Use para "quantas rodadas já foram?", "em que pé está o torneio?", "quantos jogadores tem?". NÃO traz a classificação nem pontos — para isso use classificacao_do_torneio.',
@@ -242,6 +254,65 @@ async function toolListarTorneios(args: Record<string, unknown>, ctx: ToolContex
       inscricoes_abertas: !isRegistrationClosed(t.status, t.registration_end_date, t.registration_closes_by_date),
     })),
   };
+}
+
+/**
+ * Busca transversal: nome do jogador -> em que torneios ele está.
+ *
+ * É a única ferramenta que NÃO passa por resolveTournament — justamente
+ * porque a pergunta é "onde ele está?", sem torneio conhecido. Duas consultas
+ * simples em vez de um join: `players` é world-readable e tem índice trigram
+ * em full_name (migration 001), e a RLS de `tournament_players`/`tournaments`
+ * já esconde rascunho alheio de graça.
+ */
+async function toolBuscarJogador(args: Record<string, unknown>, ctx: ToolContext): Promise<Record<string, unknown>> {
+  const nome = typeof args.nome === 'string' ? args.nome.trim() : '';
+  if (nome.length < 3) return { erro: 'nome_curto', mensagem: 'Preciso de pelo menos 3 letras do nome pra procurar.' };
+
+  const { data: players, error: pErr } = await ctx.supabase
+    .from('players')
+    .select('id, full_name, city, state')
+    .ilike('full_name', `%${nome}%`)
+    .order('full_name')
+    .limit(8);
+  if (pErr) return { error: pErr.message };
+  if (!players?.length) return { encontrados: [], mensagem: 'Nenhum jogador com esse nome no sistema.' };
+
+  const { data: entries, error: tpErr } = await ctx.supabase
+    .from('tournament_players')
+    .select('player_id, current_score, current_rank, status, tournament:tournaments(name, slug, status, start_date)')
+    .in('player_id', players.map((p: any) => p.id))
+    .limit(60);
+  if (tpErr) return { error: tpErr.message };
+
+  const byPlayer = new Map<string, any[]>();
+  for (const e of (entries ?? []) as any[]) {
+    // Torneio nulo = rascunho que a RLS escondeu; a inscrição existe mas não é visível.
+    if (!e.tournament) continue;
+    if (!byPlayer.has(e.player_id)) byPlayer.set(e.player_id, []);
+    byPlayer.get(e.player_id)!.push(e);
+  }
+
+  const encontrados = players.map((p: any) => ({
+    nome: p.full_name,
+    cidade: p.city,
+    estado: p.state,
+    torneios: (byPlayer.get(p.id) ?? []).map((e: any) => ({
+      torneio: e.tournament.name,
+      slug: e.tournament.slug,
+      situacao: e.tournament.status,
+      inicio: e.tournament.start_date,
+      pontos: e.current_score,
+      posicao: e.current_rank,
+      // Só destaca quando não está mais jogando — 'active' é o normal e não precisa dizer.
+      ...(e.status !== 'active' ? { participacao: e.status } : {}),
+    })),
+  })).filter((p) => p.torneios.length > 0);
+
+  if (encontrados.length === 0) {
+    return { encontrados: [], mensagem: 'Achei o nome no cadastro, mas ele não está inscrito em nenhum torneio visível.' };
+  }
+  return { total: encontrados.length, encontrados };
 }
 
 async function toolEstadoDoTorneio(args: Record<string, unknown>, ctx: ToolContext): Promise<Record<string, unknown>> {
@@ -483,6 +554,8 @@ export async function executeTool(
     }
     case 'listar_torneios':
       return toolListarTorneios(args, ctx);
+    case 'buscar_jogador':
+      return toolBuscarJogador(args, ctx);
     case 'estado_do_torneio':
       return toolEstadoDoTorneio(args, ctx);
     case 'classificacao_do_torneio':

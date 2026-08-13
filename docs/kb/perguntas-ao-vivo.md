@@ -11,6 +11,7 @@ O Gambito consulta o sistema na hora e responde perguntas sobre o estado de um t
 ## O que dá pra perguntar
 
 - **Quais torneios estão abertos ou acontecendo** — "que torneios estão com inscrição aberta?", "tem torneio em SP?", "quais os meus torneios?".
+- **Onde um jogador está inscrito** — "algum torneio tem o Fulano?", "em que torneios o Fulano está?". A busca é por nome, em todos os torneios de uma vez, e mostra a pontuação dele em cada um. Não precisa saber o torneio antes.
 - **Em que pé está o torneio** — "quantas rodadas já foram?", "qual a rodada atual?", "quantos participantes tem?".
 - **Classificação agora** — "quem está ganhando?", "quem lidera?", "quantos pontos tem o Fulano?".
 - **Confrontos de uma rodada** — "com quem o Fulano joga na rodada 3?", "em que mesa eu jogo?", "quais os jogos da rodada 2?".
