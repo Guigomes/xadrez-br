@@ -114,7 +114,11 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
   // já apareceu junto da mensagem de encerramento) não pode repetir "ainda
   // não consegui te atender ao vivo", que só faz sentido no caso de escalada.
   const [phoneFormReason, setPhoneFormReason] = useState<'escalation' | 'inactivity'>('escalation');
+  // phoneSubmitted = já deu o telefone, não pedir de novo (dura a sessão toda).
+  // phoneAck = mostrar a confirmação "Anotado!", que some quando a conversa
+  // recomeça. Separados de propósito: um é memória, o outro é o que está na tela.
   const [phoneSubmitted, setPhoneSubmitted] = useState(false);
+  const [phoneAck, setPhoneAck] = useState(false);
   // Pulso de atenção na bolha só até o primeiro clique (flag em localStorage,
   // lida depois de montar pra não divergir do server render).
   const [everOpened, setEverOpened] = useState(true);
@@ -233,7 +237,7 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
     const value = phone.trim();
     if (!value || !sessionId || submitPhone.isPending) return;
     submitPhone.mutate({ sessionId, phone: value }, {
-      onSuccess: () => { setPhoneSubmitted(true); setShowPhoneForm(false); },
+      onSuccess: () => { setPhoneSubmitted(true); setPhoneAck(true); setShowPhoneForm(false); },
     });
   }
 
@@ -242,6 +246,12 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
     if (!message || sendMessage.isPending) return;
     lastActivityRef.current = Date.now();
     setInput('');
+    // Mandar mensagem retoma a conversa (o servidor devolve a sessão pro bot
+    // quando ela estava só aguardando atendente), então o pedido de telefone
+    // e o "Anotado!" saem da tela — senão ficariam pendurados embaixo das
+    // mensagens novas, como se a conversa ainda estivesse encerrada.
+    setShowPhoneForm(false);
+    setPhoneAck(false);
     setPendingUserMessage(message);
     sendMessage.mutate({ message, sessionId, tournamentSlug }, {
       onSuccess: (data) => {
@@ -357,7 +367,7 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
                 </div>
               </div>
             )}
-            {phoneSubmitted && (
+            {phoneAck && (
               <div className="flex gap-2">
                 <GambitoAvatar />
                 <p className="max-w-[85%] rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">

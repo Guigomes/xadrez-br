@@ -90,15 +90,20 @@ export async function POST(request: NextRequest) {
   // close-inactive/route.ts) reabre sozinha quando o usuário manda mensagem
   // nova — pedido do usuário: só recomeça se enviar mensagem, não precisa de
   // ação separada de "reabrir".
+  //
+  // Mesma ideia pra escalada SEM resposta ainda ('aguardando_humano'): era um
+  // beco sem saída — quem pedia atendente e não era atendido ficava sem bot
+  // pra sempre naquela conversa, porque nada na tela desescala. Voltar pro bot
+  // não cancela o chamado: o aviso ao time continua saindo logo abaixo.
+  // 'humano' NÃO desescala — ali alguém do time já entrou na conversa, e o bot
+  // atropelar a resposta de uma pessoa seria pior que esperar.
+  const voltandoPraBot = session.status === 'encerrada' || session.status === 'aguardando_humano';
   const sessionUpdate: Record<string, string> = { last_message_at: new Date().toISOString() };
-  if (session.status === 'encerrada') sessionUpdate.status = 'bot';
+  if (voltandoPraBot) sessionUpdate.status = 'bot';
   await admin.from('chat_sessions').update(sessionUpdate).eq('id', session.id);
 
-  // Escalada pra humano (app/api/chat/escalate/route.ts) — o bot para de
-  // responder, a mensagem só fica esperando o admin ver em /admin/dev/chat.
-  // Aviso já saiu no momento da escalada (escalate/route.ts); aqui é
-  // mensagem de acompanhamento na mesma sessão — sem isso o admin só vê a
-  // mensagem nova quando abrir o app de novo.
+  // Avisa o time da mensagem nova mesmo quando o bot reassume: quem pediu
+  // atendente continua na fila. Só 'humano' interrompe o bot de responder.
   if (session.status === 'aguardando_humano' || session.status === 'humano') {
     const { data: profile } = userId
       ? await supabase.from('user_profiles').select('full_name').eq('id', userId).maybeSingle()
@@ -118,7 +123,12 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       console.error('[chat/message] fcm falhou:', err);
     }
-    return NextResponse.json({ sessionId: session.id, answer: null, waitingForHuman: true, sources: [] });
+    // Só para aqui quando um humano de fato assumiu a conversa. Vindo de
+    // 'aguardando_humano', a sessão acabou de voltar pra 'bot' acima e o
+    // fluxo segue pro Gambito responder normalmente.
+    if (!voltandoPraBot) {
+      return NextResponse.json({ sessionId: session.id, answer: null, waitingForHuman: true, sources: [] });
+    }
   }
 
   try {
