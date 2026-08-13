@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { createClient } from '@/lib/supabase/client';
 import { tournamentKeys } from '@/lib/hooks/use-tournament';
-import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
+import { getTournamentStatusColor, getTournamentStatusLabel, todayInSaoPaulo } from '@/lib/utils/chess';
 import { TOUR_STEPS } from '@/lib/tour/steps';
 import { writeProgress, TOUR_ENABLED } from '@/lib/tour/state';
 import type { TournamentMode, TournamentStatus } from '@/types/database';
@@ -85,7 +85,24 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
     setStatusSaving(newStatus);
     try {
       const supabase = createClient();
-      const { error: updErr } = await supabase.from('tournaments').update({ status: newStatus, ...extra }).eq('id', id);
+      // Abrir inscrição com o prazo JÁ vencido desliga o fechamento por data.
+      // Sem isto, o clique se desfazia sozinho: a ação gravava
+      // registration_closes_by_date=true e a regra automática
+      // (next_status_by_date, migration 056) reconhecia o prazo vencido e
+      // fechava de volta na consulta seguinte — o organizador via "Abrir
+      // Inscrições" não surtir efeito nenhum. A guarda da 056 só protege o
+      // DIA DA CRIAÇÃO do torneio, não o dia da ação manual. Um clique de
+      // hoje é uma intenção mais recente que uma data que já passou.
+      const patch = { status: newStatus, ...extra };
+      if (
+        newStatus === 'registration' &&
+        patch.registration_closes_by_date === true &&
+        registrationEndDate &&
+        registrationEndDate < todayInSaoPaulo()
+      ) {
+        patch.registration_closes_by_date = false;
+      }
+      const { error: updErr } = await supabase.from('tournaments').update(patch).eq('id', id);
       if (updErr) throw updErr;
 
       // Ranking inicial não tem mais botão manual — gera sozinho aqui (clique
