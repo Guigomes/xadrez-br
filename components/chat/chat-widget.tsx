@@ -31,10 +31,10 @@ const ESCALATION_TIMEOUT_MS = 3 * 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** Avatar do Gambito ao lado de cada resposta — reforça que é ele "falando", mesma ideia do tour guiado. */
-function GambitoAvatar() {
+function GambitoAvatar({ pose = 'acenando' }: { pose?: 'acenando' | 'pensando' }) {
   return (
     <Image
-      src="/mascot/gambito-acenando.png"
+      src={`/mascot/gambito-${pose}.png`}
       alt=""
       width={28}
       height={28}
@@ -320,7 +320,7 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
             )}
             {sendMessage.isPending && (
               <div className="flex justify-start gap-2">
-                <GambitoAvatar />
+                <GambitoAvatar pose="pensando" />
                 <div className="rounded-lg bg-gray-100 px-3 py-2 dark:bg-gray-800">
                   <Spinner className="h-4 w-4" />
                 </div>
