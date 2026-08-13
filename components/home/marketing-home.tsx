@@ -288,12 +288,16 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
       {/* Fechamento */}
       <section className="container-app py-12 sm:py-16">
         <div className="card overflow-hidden bg-gradient-to-br from-brand-50 to-white p-8 text-center sm:p-12 dark:from-brand-950/40 dark:to-gray-900">
+          {/* Showcase central: o Gambito aparece grande e INTEIRO (sem corte
+              circular) — é o único lugar que mostra o mascote em tamanho de
+              destaque, o resto usa avatar pequeno. object-contain preserva a
+              proporção retrato do sticker. */}
           <Image
             src="/mascot/gambito-comemorando.png"
             alt="Gambito comemorando"
-            width={80}
-            height={80}
-            className="mx-auto mb-4 h-20 w-20 rounded-full object-cover object-top ring-4 ring-white dark:ring-gray-900"
+            width={224}
+            height={336}
+            className="mx-auto mb-4 h-auto w-40 object-contain drop-shadow-xl sm:w-52"
           />
           <h2 className="mb-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
             Seu próximo torneio começa aqui
