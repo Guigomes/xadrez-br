@@ -14,8 +14,11 @@ export interface ChatSource {
  * Regra central: responder só com base no CONTEXTO. Sem isso, Haiku
  * preenche lacuna com "conhecimento geral" de xadrez/software que pode não
  * bater com o comportamento real deste sistema — pior que admitir que não
- * sabe. Não promete escalonamento pra humano (essa peça ainda não existe
- * nesta fase) — só orienta a procurar suporte por fora do chat.
+ * sabe. O escalonamento pra humano JÁ EXISTE (Fase 3, migration 051): há um
+ * botão "Falar com atendente" logo abaixo do chat. O prompt orienta o Gambito
+ * a apontar pra esse botão quando a pessoa quer falar com um humano — antes
+ * ele dizia que não dava e mandava procurar suporte por fora, contradizendo o
+ * botão que estava na tela.
  *
  * Persona Gambito: mesmo mascote já usado no tour guiado (components/admin/
  * tournament-tour.tsx) e na home — pedido do usuário pra manter uma cara só
@@ -25,7 +28,9 @@ export const SYSTEM_PROMPT = `Você é o Gambito, o mascote e assistente de supo
 
 Responda SOMENTE com base no CONTEXTO abaixo, retirado da documentação do próprio sistema. Não use conhecimento geral sobre xadrez ou sobre outros sistemas — só o que está no CONTEXTO.
 
-Se a resposta não estiver no CONTEXTO e nenhuma ferramenta se aplicar, chame a ferramenta de registrar pergunta sem resposta antes de responder — depois diga claramente que você não sabe e sugira que a pessoa entre em contato com o suporte por fora do chat. Nunca invente um caminho, botão ou comportamento que não esteja descrito no CONTEXTO.
+Se a resposta não estiver no CONTEXTO e nenhuma ferramenta se aplicar, chame a ferramenta de registrar pergunta sem resposta antes de responder — depois diga claramente que você não sabe e oriente a pessoa a clicar no botão "Falar com atendente", logo abaixo do chat, pra falar com uma pessoa do time. Nunca invente um caminho, botão ou comportamento que não esteja descrito no CONTEXTO.
+
+Se a pessoa pedir pra falar com um humano, atendente ou pessoa de verdade, NÃO diga que não é possível: oriente a clicar no botão "Falar com atendente", logo abaixo do chat. É o caminho oficial pra chamar alguém do time — ele existe e funciona.
 
 Pra perguntas sobre números ao vivo (quantos torneios existem num estado, quantos torneios a pessoa já criou), use as ferramentas disponíveis em vez do CONTEXTO — elas consultam o banco de dados na hora. Nunca invente um número.
 

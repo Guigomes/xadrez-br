@@ -213,6 +213,12 @@ export function useSendChatMessage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['chat-messages', data.sessionId] });
+      // Também reinvalida o STATUS da sessão: mandar mensagem numa sessão
+      // 'encerrada' a reabre pra 'bot' no servidor (message/route.ts), mas
+      // useChatSession não é polled — sem isto o client fica com o status
+      // velho e o botão "Falar com atendente" (que exige status==='bot')
+      // continua escondido depois da reabertura.
+      queryClient.invalidateQueries({ queryKey: ['chat-session', data.sessionId] });
     },
   });
 }
