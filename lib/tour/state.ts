@@ -14,6 +14,15 @@
  * porque storage lança em modo privado de alguns navegadores.
  */
 
+/**
+ * Interruptor TEMPORÁRIO do tour guiado (driver.js). Com `false`:
+ *   - <TournamentTour> não roda (runner desligado),
+ *   - <TourLauncher> não dispara o autostart,
+ *   - <TourTriggerButton> não renderiza (some todo botão/link do tour).
+ * Pra religar, volte pra `true` — nada mais precisa mudar.
+ */
+export const TOUR_ENABLED = false;
+
 const PROGRESS_KEY = 'xbr_tour_criar_torneio';
 const DISMISSED_KEY = 'xbr_tour_criar_torneio_dispensado';
 

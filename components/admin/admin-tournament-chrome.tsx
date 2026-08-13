@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { tournamentKeys } from '@/lib/hooks/use-tournament';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { TOUR_STEPS } from '@/lib/tour/steps';
-import { writeProgress } from '@/lib/tour/state';
+import { writeProgress, TOUR_ENABLED } from '@/lib/tour/state';
 import type { TournamentMode, TournamentStatus } from '@/types/database';
 
 interface Props {
@@ -200,15 +200,18 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
             })
           )}
         </div>
-        <button
-          type="button"
-          onClick={startTour}
-          title="Dicas de como criar um torneio"
-          aria-label="Dicas de como criar um torneio"
-          className="shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        >
-          ❔
-        </button>
+        {/* Botão de tour escondido enquanto TOUR_ENABLED = false. */}
+        {TOUR_ENABLED && (
+          <button
+            type="button"
+            onClick={startTour}
+            title="Dicas de como criar um torneio"
+            aria-label="Dicas de como criar um torneio"
+            className="shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            ❔
+          </button>
+        )}
       </div>
       {status === 'draft' && !pairingReady && (
         <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 animate-fade-in">

@@ -1,6 +1,6 @@
 'use client';
 
-import { writeProgress, TOUR_START_EVENT } from '@/lib/tour/state';
+import { writeProgress, TOUR_START_EVENT, TOUR_ENABLED } from '@/lib/tour/state';
 
 /**
  * Botão genérico de "(re)começar o tour a partir daqui" — dispara no lugar,
@@ -16,6 +16,9 @@ export function TourTriggerButton({
   /** Sobrescreve o estilo padrão (borda cinza) — telas que precisam de mais destaque, como app/admin/tournaments/new/page.tsx. */
   className?: string;
 }) {
+  // Tour desligado temporariamente: some todo botão/link que o dispara.
+  if (!TOUR_ENABLED) return null;
+
   function start() {
     writeProgress(stepId);
     window.dispatchEvent(new Event(TOUR_START_EVENT));

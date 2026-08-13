@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { TOUR_STEPS } from '@/lib/tour/steps';
-import { writeProgress, shouldAutoStart, TOUR_START_EVENT } from '@/lib/tour/state';
+import { writeProgress, shouldAutoStart, TOUR_START_EVENT, TOUR_ENABLED } from '@/lib/tour/state';
 
 /**
  * Dispara o tour sozinho para quem nunca criou um torneio. Sem botão próprio
@@ -17,6 +17,7 @@ import { writeProgress, shouldAutoStart, TOUR_START_EVENT } from '@/lib/tour/sta
  */
 export function TourLauncher({ firstTime }: { firstTime: boolean }) {
   useEffect(() => {
+    if (!TOUR_ENABLED) return;
     if (shouldAutoStart(firstTime)) {
       writeProgress(TOUR_STEPS[0].id);
       window.dispatchEvent(new Event(TOUR_START_EVENT));

@@ -13,6 +13,7 @@ import {
   clearProgress,
   dismiss,
   TOUR_START_EVENT,
+  TOUR_ENABLED,
 } from '@/lib/tour/state';
 
 const sel = (target: string) => `[data-tour="${target}"]`;
@@ -78,6 +79,8 @@ export function TournamentTour() {
   const driverRef = useRef<Driver | null>(null);
 
   useEffect(() => {
+    // Tour desligado temporariamente (TOUR_ENABLED): runner nunca monta o driver.
+    if (!TOUR_ENABLED) return;
     const route = matchRoute(pathname);
     if (!route) return;
 
