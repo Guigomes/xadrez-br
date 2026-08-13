@@ -127,7 +127,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
 
         <div className="container-app relative py-16 sm:py-24">
           <div className="max-w-2xl">
-            <div className="mb-5 flex items-center gap-3">
+            <div className="mb-5">
               <Image
                 src="/mascot/gambito-acenando.png"
                 alt="Gambito, o mascote do sistema, acenando"
@@ -135,10 +135,6 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
                 height={56}
                 className="h-14 w-14 shrink-0 rounded-full object-cover object-top ring-2 ring-white/20"
               />
-              <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-brand-100 backdrop-blur-sm">
-                <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
-                Sem instalar nada · funciona no celular
-              </p>
             </div>
             <h1 className="mb-4 text-3xl font-bold leading-tight sm:text-5xl">
               Organize seu torneio de xadrez do começo ao fim
