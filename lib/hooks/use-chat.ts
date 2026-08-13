@@ -199,13 +199,13 @@ export function useChatHistory() {
 export function useSendChatMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ message, sessionId, tournamentId }: {
-      message: string; sessionId: string | null; tournamentId?: string | null;
+    mutationFn: async ({ message, sessionId, tournamentId, tournamentSlug }: {
+      message: string; sessionId: string | null; tournamentId?: string | null; tournamentSlug?: string | null;
     }): Promise<SendChatMessageResult> => {
       const res = await fetch('/api/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, sessionId, tournamentId }),
+        body: JSON.stringify({ message, sessionId, tournamentId, tournamentSlug }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Erro ao enviar mensagem.');

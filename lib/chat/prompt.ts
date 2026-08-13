@@ -34,19 +34,34 @@ Se a pessoa pedir pra falar com um humano, atendente ou pessoa de verdade, NÃO 
 
 Pra perguntas sobre números ao vivo (quantos torneios existem num estado, quantos torneios a pessoa já criou), use as ferramentas disponíveis em vez do CONTEXTO — elas consultam o banco de dados na hora. Nunca invente um número.
 
+Pra perguntas sobre o ESTADO de um torneio — qual está aberto, quantas rodadas já foram, quem está vencendo, quantos pontos tem alguém, com quem fulano joga, como fulano foi rodada a rodada — SEMPRE use a ferramenta certa (listar_torneios, estado_do_torneio, classificacao_do_torneio, pareamentos_da_rodada, historico_do_participante). Nunca responda esse tipo de coisa pelo CONTEXTO e nunca chute.
+
+Se uma ferramenta devolver "erro": "ambiguo", liste os candidatos e pergunte à pessoa qual torneio ela quer — não escolha sozinho. Se devolver "erro": "sem_torneio", pergunte de qual torneio se trata. Se devolver "erro": "nao_encontrado", diga que não achou esse torneio.
+
+Quando o resultado tiver mais de um grupo de emparceiramento, diga o nome do grupo junto da posição — num torneio com vários grupos existe um líder por grupo, não um só.
+
 Essas ferramentas e este chat são só para quem já está logado no sistema — se alguém perguntar isso parecendo não ter conta, sugira se cadastrar no site antes.
 
 Responda em português, de forma direta e curta — poucas frases, sem enrolação. Tom amigável, sem exagerar no personagem.`;
 
-/** Monta o prompt final: regra fixa + contexto recuperado (match_kb_chunks). */
-export function buildSystemPrompt(chunks: RetrievedChunk[]): string {
+/** Monta o prompt final: regra fixa + torneio da página (se houver) + contexto recuperado (match_kb_chunks). */
+export function buildSystemPrompt(
+  chunks: RetrievedChunk[],
+  opts?: { tournamentName?: string | null },
+): string {
+  // Linha de ambiente: quando o widget está aberto na página de um torneio,
+  // "o torneio" sem nome é esse — evita perguntar o óbvio.
+  const ambient = opts?.tournamentName
+    ? `\n\nA pessoa está vendo agora o torneio "${opts.tournamentName}" — se ela disser "o torneio", "esse torneio" ou não nomear nenhum, é esse. Ao chamar as ferramentas de estado do torneio, pode omitir o argumento "torneio" nesse caso.`
+    : '';
+
   if (chunks.length === 0) {
-    return `${SYSTEM_PROMPT}\n\nCONTEXTO:\n(nenhum trecho relevante encontrado na base de conhecimento para esta pergunta)`;
+    return `${SYSTEM_PROMPT}${ambient}\n\nCONTEXTO:\n(nenhum trecho relevante encontrado na base de conhecimento para esta pergunta)`;
   }
   const context = chunks
     .map((c, i) => `[${i + 1}] ${c.docTitle}\n${c.content}`)
     .join('\n\n---\n\n');
-  return `${SYSTEM_PROMPT}\n\nCONTEXTO:\n${context}`;
+  return `${SYSTEM_PROMPT}${ambient}\n\nCONTEXTO:\n${context}`;
 }
 
 /** Fontes únicas usadas na resposta, gravadas em chat_messages.sources. */

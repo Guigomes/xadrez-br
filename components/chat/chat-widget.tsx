@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Image from 'next/image';
+import { tournamentSlugFromPathname } from '@/lib/chat/tournament-context';
+import { CHAT_ALLOW_ANONYMOUS } from '@/lib/chat/config';
 import { useUser, type InitialUser } from '@/lib/hooks/use-auth';
 import {
   useChatMessages, useSendChatMessage, useChatSession, useEscalateChat, useSubmitContactPhone,
@@ -92,6 +95,11 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
   // initialUser do servidor evita a bolha "pipocar" depois da hidratação
   // (mesma razão do header). Depois de resolver, liveUser manda.
   const user = loading ? (initialUser ?? null) : liveUser;
+  // Slug do torneio da página atual — mandado junto da mensagem pro Gambito
+  // saber "o torneio" quando a pessoa não nomeia (usePathname reage à
+  // navegação client-side, mesmo com o widget montado no layout raiz).
+  const pathname = usePathname();
+  const tournamentSlug = tournamentSlugFromPathname(pathname);
   const [open, setOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -212,7 +220,9 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
     return () => clearInterval(interval);
   }, [sessionId, status, phoneSubmitted]);
 
-  if (!user) return null;
+  // Modo anônimo (CHAT_ALLOW_ANONYMOUS): o widget aparece mesmo sem login.
+  // Reversível — flag off volta a esconder pra quem não está logado.
+  if (!user && !CHAT_ALLOW_ANONYMOUS) return null;
 
   function handleEscalate() {
     if (!sessionId || escalate.isPending) return;
@@ -233,7 +243,7 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
     lastActivityRef.current = Date.now();
     setInput('');
     setPendingUserMessage(message);
-    sendMessage.mutate({ message, sessionId }, {
+    sendMessage.mutate({ message, sessionId, tournamentSlug }, {
       onSuccess: (data) => {
         if (data.sessionId !== sessionId) {
           setSessionId(data.sessionId);
@@ -261,14 +271,19 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Suporte</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowHistory((v) => !v)}
-              className="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
-              title="Histórico de conversas"
-            >
-              Histórico
-            </button>
+            {/* Histórico só pra logado: a RLS de sessão anônima (user_id is
+                null) casa TODAS as sessões anônimas, então listar aqui vazaria
+                conversas de outros anônimos. Anônimo não tem histórico. */}
+            {user && (
+              <button
+                type="button"
+                onClick={() => setShowHistory((v) => !v)}
+                className="text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
+                title="Histórico de conversas"
+              >
+                Histórico
+              </button>
+            )}
           </div>
 
           <div ref={listRef} className={`flex-1 space-y-3 overflow-y-auto px-4 py-3 ${showHistory ? 'hidden' : ''}`}>
@@ -364,7 +379,7 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
             />
           )}
 
-          {!showHistory && status === 'bot' && sessionId && (
+          {!showHistory && status === 'bot' && sessionId && user && (
             <div className="border-t border-gray-200 px-3 py-2 dark:border-gray-800">
               <button
                 type="button"

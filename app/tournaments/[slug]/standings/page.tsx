@@ -8,6 +8,7 @@ import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-bu
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { compareGroupNames } from '@/lib/utils/chess';
+import { summarizeRounds } from '@/lib/utils/rounds';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -117,21 +118,11 @@ export default function StandingsPage({ params }: Props) {
   const isOngoing = tournament?.status === 'ongoing';
 
   // For the round status pill: with multi-group there are multiple rows per
-  // round_number; pick the highest-numbered round and aggregate the status.
-  type RS = 'pending' | 'ongoing' | 'finished';
-  const latestRound = (() => {
-    if (!rounds?.length) return null;
-    const maxNumber = rounds.reduce((m, r) => Math.max(m, r.round_number), 0);
-    const statuses = rounds
-      .filter((r) => r.round_number === maxNumber)
-      .map((r) => r.status as RS);
-    const aggregate: RS = statuses.every((s) => s === 'finished')
-      ? 'finished'
-      : statuses.some((s) => s === 'ongoing')
-        ? 'ongoing'
-        : 'pending';
-    return { round_number: maxNumber, status: aggregate };
-  })();
+  // round_number; summarizeRounds collapses them and drops drafts. The last
+  // entry is the highest-numbered non-draft round.
+  const summarized = summarizeRounds(rounds ?? []).rounds;
+  const latest = summarized[summarized.length - 1];
+  const latestRound = latest ? { round_number: latest.roundNumber, status: latest.status } : null;
 
   const roundStatusLabel: Record<string, { label: string; className: string }> = {
     pending:  { label: 'Aguardando',  className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },

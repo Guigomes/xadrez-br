@@ -4,21 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS } from '@/lib/utils/chess';
+import { summarizeRounds } from '@/lib/utils/rounds';
 import { formatDate } from '@/lib/utils/date';
 
 interface Props {
   params: Promise<{ slug: string }>;
-}
-
-type RoundStatus = 'pending' | 'ongoing' | 'finished';
-
-// Aggregate per pairing group: finished only if every group is finished;
-// ongoing if at least one is in motion; otherwise pending.
-function aggregateStatus(statuses: RoundStatus[]): RoundStatus {
-  if (statuses.length === 0) return 'pending';
-  if (statuses.every((s) => s === 'finished')) return 'finished';
-  if (statuses.some((s) => s === 'ongoing')) return 'ongoing';
-  return 'pending';
 }
 
 export default async function RoundsPage({ params }: Props) {
@@ -44,26 +34,9 @@ export default async function RoundsPage({ params }: Props) {
   }
 
   // Group by round_number so multi-group tournaments show one card per round,
-  // not one card per (round × pairing group) combination.
-  const byNumber = new Map<number, { statuses: RoundStatus[]; publishedAt: string | null; groupCount: number }>();
-  for (const r of rounds) {
-    const n = r.round_number as number;
-    const slot = byNumber.get(n) ?? { statuses: [], publishedAt: null, groupCount: 0 };
-    slot.statuses.push(r.status as RoundStatus);
-    slot.groupCount += 1;
-    const pub = r.published_at as string | null;
-    if (pub && (!slot.publishedAt || pub < slot.publishedAt)) slot.publishedAt = pub;
-    byNumber.set(n, slot);
-  }
-
-  const items = Array.from(byNumber.entries())
-    .map(([roundNumber, info]) => ({
-      roundNumber,
-      status: aggregateStatus(info.statuses),
-      publishedAt: info.publishedAt,
-      groupCount: info.groupCount,
-    }))
-    .sort((a, b) => a.roundNumber - b.roundNumber);
+  // not one card per (round × pairing group) combination. Draft rounds never
+  // reach here (RLS hides them from the public), so dropping them is a no-op.
+  const { rounds: items } = summarizeRounds(rounds);
 
   return (
     <div className="space-y-3">

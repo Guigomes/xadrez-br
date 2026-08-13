@@ -8,10 +8,14 @@ export interface ChatTurn {
 }
 
 const FALLBACK_ANSWER = 'Não consegui gerar uma resposta agora — tente de novo em instantes.';
-const MAX_TOKENS = 500;
-// Perguntas de contagem só precisam de 1 chamada de ferramenta — o teto
-// existe só pra nunca entrar num loop infinito se o modelo insistir.
+// Resposta com pódio (líder por grupo) + rótulo de grupo não cabe em 500.
+const MAX_TOKENS = 700;
+// Cada pergunta = 1 chamada de ferramenta (tiro único). O teto existe só pra
+// nunca entrar num loop infinito se o modelo insistir.
 const MAX_TOOL_ROUNDS = 2;
+// Modelo do Gambito por env var (Haiku default) — dá pra subir pra Sonnet sem
+// redeploy de código se a escolha entre as ferramentas errar muito.
+const ANTHROPIC_MODEL = process.env.CHAT_LLM_MODEL || 'claude-haiku-4-5-20251001';
 
 /**
  * Provedor trocável via CHAT_LLM_PROVIDER ('gemini' | 'anthropic') — Gemini
@@ -64,17 +68,21 @@ async function generateWithAnthropic(
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const completion = await getAnthropic().messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: ANTHROPIC_MODEL,
       max_tokens: MAX_TOKENS,
       system: systemPrompt,
       messages,
       tools,
     });
 
-    const toolUseBlock = completion.content.find(
+    // TODOS os blocos tool_use da resposta — não só o primeiro. Com 8
+    // ferramentas o Haiku pode pedir mais de uma na mesma volta; ecoar o
+    // content inteiro (abaixo) sem devolver um tool_result por bloco daria
+    // erro 400 na próxima chamada ("tool_use ids without tool_result").
+    const toolUseBlocks = completion.content.filter(
       (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
     );
-    if (!toolUseBlock || !toolContext) {
+    if (toolUseBlocks.length === 0 || !toolContext) {
       const text = completion.content
         .filter((block): block is Anthropic.TextBlock => block.type === 'text')
         .map((block) => block.text)
@@ -83,11 +91,17 @@ async function generateWithAnthropic(
       return text || FALLBACK_ANSWER;
     }
 
-    const result = await executeTool(toolUseBlock.name, (toolUseBlock.input as Record<string, unknown>) ?? {}, toolContext);
+    const results = await Promise.all(
+      toolUseBlocks.map((b) => executeTool(b.name, (b.input as Record<string, unknown>) ?? {}, toolContext)),
+    );
     messages.push({ role: 'assistant', content: completion.content });
     messages.push({
       role: 'user',
-      content: [{ type: 'tool_result', tool_use_id: toolUseBlock.id, content: JSON.stringify(result) }],
+      content: toolUseBlocks.map((b, i) => ({
+        type: 'tool_result' as const,
+        tool_use_id: b.id,
+        content: JSON.stringify(results[i]),
+      })),
     });
   }
 

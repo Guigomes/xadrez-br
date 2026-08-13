@@ -23,6 +23,17 @@ describe('buildSystemPrompt', () => {
   it('regra de "só responder com base no contexto" sempre presente', () => {
     expect(buildSystemPrompt([chunkA])).toContain('SOMENTE com base no CONTEXTO');
   });
+
+  it('cita o torneio da página quando informado', () => {
+    const prompt = buildSystemPrompt([chunkA], { tournamentName: 'Copa 2026' });
+    expect(prompt).toContain('Copa 2026');
+    expect(prompt).toContain('está vendo agora');
+  });
+
+  it('sem torneio da página, não injeta linha de ambiente', () => {
+    expect(buildSystemPrompt([chunkA])).not.toContain('está vendo agora');
+    expect(buildSystemPrompt([], { tournamentName: null })).not.toContain('está vendo agora');
+  });
 });
 
 describe('extractSources', () => {

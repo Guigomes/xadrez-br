@@ -3,6 +3,8 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { embedQuery } from '@/lib/chat/embeddings';
 import { buildSystemPrompt, extractSources, type RetrievedChunk } from '@/lib/chat/prompt';
 import { generateAnswer } from '@/lib/chat/llm';
+import { resolveTournament, type ResolvedTournament } from '@/lib/chat/tournament-context';
+import { CHAT_ALLOW_ANONYMOUS } from '@/lib/chat/config';
 import { logError } from '@/lib/log-error';
 import { sendFcmToAdmins, sendOperatorNotification } from '@/lib/push';
 
@@ -25,12 +27,19 @@ const HISTORY_LIMIT = 10;
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  // Chat anônimo é gated pelo flag CHAT_ALLOW_ANONYMOUS (reversível). Com o
+  // flag off, mantém o 401 de antes (chat só pra logado).
+  if (!user && !CHAT_ALLOW_ANONYMOUS) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const userId: string | null = user?.id ?? null;
 
   const body = await request.json().catch(() => null);
   const message: unknown = body?.message;
   const sessionId: unknown = body?.sessionId;
   const tournamentId: unknown = body?.tournamentId;
+  // Slug da página onde o widget está aberto — o Gambito usa como "torneio
+  // atual" quando a pessoa pergunta sobre "o torneio" sem nomear.
+  const tournamentSlug: string | null =
+    typeof body?.tournamentSlug === 'string' && body.tournamentSlug.trim() ? body.tournamentSlug.trim() : null;
 
   if (typeof message !== 'string' || !message.trim()) {
     return NextResponse.json({ error: 'Mensagem vazia.' }, { status: 400 });
@@ -41,17 +50,20 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Reaproveita a sessão se o id veio e é do usuário logado; senão cria uma nova.
+  // Reaproveita a sessão se o id veio e pertence a quem está pedindo. Logado:
+  // scoped por user_id. Anônimo: a sessão não tem dono, então exige user_id
+  // null — impede um anônimo de sequestrar sessão de logado adivinhando o UUID.
   let session: { id: string; status: string } | null = null;
   if (typeof sessionId === 'string' && sessionId) {
-    const { data } = await admin
-      .from('chat_sessions').select('id, status').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
+    let q = admin.from('chat_sessions').select('id, status').eq('id', sessionId);
+    q = userId ? q.eq('user_id', userId) : q.is('user_id', null);
+    const { data } = await q.maybeSingle();
     session = data;
   }
   if (!session) {
     const { data, error } = await admin
       .from('chat_sessions')
-      .insert({ user_id: user.id, tournament_id: typeof tournamentId === 'string' ? tournamentId : null })
+      .insert({ user_id: userId, tournament_id: typeof tournamentId === 'string' ? tournamentId : null })
       .select('id, status').single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     session = data;
@@ -88,7 +100,9 @@ export async function POST(request: NextRequest) {
   // mensagem de acompanhamento na mesma sessão — sem isso o admin só vê a
   // mensagem nova quando abrir o app de novo.
   if (session.status === 'aguardando_humano' || session.status === 'humano') {
-    const { data: profile } = await supabase.from('user_profiles').select('full_name').eq('id', user.id).maybeSingle();
+    const { data: profile } = userId
+      ? await supabase.from('user_profiles').select('full_name').eq('id', userId).maybeSingle()
+      : { data: null };
     const userName = profile?.full_name || 'Alguém';
     try {
       await sendOperatorNotification({
@@ -118,18 +132,35 @@ export async function POST(request: NextRequest) {
       docSlug: m.doc_slug, docTitle: m.doc_title, content: m.content, similarity: m.similarity,
     }));
 
-    const systemPrompt = buildSystemPrompt(chunks);
+    // Resolve o torneio da página UMA vez (RLS do usuário — nunca vaza
+    // rascunho alheio) pra citar o nome no prompt e evitar que cada ferramenta
+    // re-consulte quando a pessoa não nomear outro torneio.
+    let ambientTournament: ResolvedTournament | null = null;
+    if (tournamentSlug) {
+      const res = await resolveTournament(supabase, '', tournamentSlug);
+      if (res.ok) ambientTournament = res.torneio;
+    }
+
+    const systemPrompt = buildSystemPrompt(chunks, { tournamentName: ambientTournament?.name ?? null });
     const sources = extractSources(chunks);
 
     const answer = await generateAnswer(
       systemPrompt,
       history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       message,
-      // Client autenticado do próprio usuário (RLS) pras contagens — "meus
-      // torneios" só pode contar o que esse user_id realmente pode ver.
-      // admin só é usado por registrar_pergunta_sem_resposta (tabela sem
-      // policy de insert pro client comum, de propósito).
-      { supabase, admin, userId: user.id, sessionId: session.id, originalQuestion: message },
+      // Client autenticado do próprio usuário (RLS) pras leituras — nunca
+      // enxerga rascunho alheio. admin só é usado por
+      // registrar_pergunta_sem_resposta (tabela sem policy de insert pro
+      // client comum, de propósito).
+      {
+        supabase,
+        admin,
+        userId,
+        sessionId: session.id,
+        originalQuestion: message,
+        tournamentSlug,
+        tournament: ambientTournament,
+      },
     );
 
     const { error: assistantMsgError } = await admin
@@ -141,7 +172,7 @@ export async function POST(request: NextRequest) {
     console.error('[chat] erro ao gerar resposta:', err);
     await logError({
       source: 'api', message: err?.message ?? String(err), stack: err?.stack ?? null,
-      route: '/api/chat/message', method: 'POST', statusCode: 500, userId: user.id,
+      route: '/api/chat/message', method: 'POST', statusCode: 500, userId: userId ?? undefined,
     });
     return NextResponse.json({ error: 'Erro ao gerar resposta. Tente de novo.' }, { status: 500 });
   }
