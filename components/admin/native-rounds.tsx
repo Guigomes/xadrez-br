@@ -631,10 +631,10 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
       {pairings.map((p: any) => {
         const whiteWon = !p.is_bye && winnerSide(p.result, 'white') === 'winner';
         const blackWon = !p.is_bye && winnerSide(p.result, 'black') === 'winner';
+        // No celular cada jogador ocupa a própria linha (grid de 1 coluna) —
+        // antes era um flex-wrap que quebrava no meio do confronto, deixando
+        // os dois nomes emendados. De sm: pra cima volta a ser lado a lado.
         return (
-        {/* No celular cada jogador ocupa a própria linha (grid de 1 coluna) —
-            antes era um flex-wrap que quebrava no meio do confronto, deixando
-            os dois nomes emendados. De sm: pra cima volta a ser lado a lado. */}
         <div key={p.pairing_id} className="rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm">
           <div className="flex items-start gap-3">
             <span className="w-6 shrink-0 pt-0.5 text-gray-400 tabular-nums">{p.board_number ?? '—'}</span>
