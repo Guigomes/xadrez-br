@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { resolveChatRequester, findOwnChatSession } from '@/lib/chat/session-access';
 
 export const runtime = 'nodejs';
 
@@ -16,8 +17,8 @@ const CLOSE_MESSAGE =
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const requester = await resolveChatRequester(supabase);
+  if (!requester.ok) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
   const body = await request.json().catch(() => null);
   const sessionId: unknown = body?.sessionId;
@@ -26,8 +27,9 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const { data: session } = await admin
-    .from('chat_sessions').select('id, status').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
+  const session = await findOwnChatSession<{ id: string; status: string }>(
+    admin, sessionId, requester.userId, 'id, status',
+  );
   if (!session) return NextResponse.json({ error: 'Sessão não encontrada.' }, { status: 404 });
 
   // Idempotente — se dois ticks do timer do cliente chegarem quase juntos

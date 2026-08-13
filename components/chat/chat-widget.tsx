@@ -379,7 +379,7 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
             />
           )}
 
-          {!showHistory && status === 'bot' && sessionId && user && (
+          {!showHistory && status === 'bot' && sessionId && (
             <div className="border-t border-gray-200 px-3 py-2 dark:border-gray-800">
               <button
                 type="button"

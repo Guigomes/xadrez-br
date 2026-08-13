@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { resolveChatRequester, findOwnChatSession } from '@/lib/chat/session-access';
 import { sendFcmToAdmins, sendOperatorNotification } from '@/lib/push';
 
 export const runtime = 'nodejs';
@@ -15,8 +16,9 @@ export const runtime = 'nodejs';
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const requester = await resolveChatRequester(supabase);
+  if (!requester.ok) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const { userId } = requester;
 
   const body = await request.json().catch(() => null);
   const sessionId: unknown = body?.sessionId;
@@ -25,8 +27,9 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const { data: session } = await admin
-    .from('chat_sessions').select('id, status, escalated_at').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
+  const session = await findOwnChatSession<{ id: string; status: string; escalated_at: string | null }>(
+    admin, sessionId, userId, 'id, status, escalated_at',
+  );
   if (!session) return NextResponse.json({ error: 'Sessão não encontrada.' }, { status: 404 });
 
   // Idempotente — clique duplo (ou reload) não reenvia notificação nem
@@ -47,8 +50,13 @@ export async function POST(request: NextRequest) {
     .from('chat_messages').insert({ session_id: sessionId, role: 'assistant', content: ackMessage });
   if (msgError) return NextResponse.json({ error: msgError.message }, { status: 500 });
 
-  const { data: profile } = await supabase.from('user_profiles').select('full_name').eq('id', user.id).maybeSingle();
-  const userName = profile?.full_name || 'Alguém';
+  // Visitante sem login não tem perfil pra consultar — o admin precisa saber
+  // disso na notificação, porque não vai ter e-mail nem conta pra procurar
+  // (o telefone que o widget pede depois de 3 min é o único retorno possível).
+  const { data: profile } = userId
+    ? await supabase.from('user_profiles').select('full_name').eq('id', userId).maybeSingle()
+    : { data: null };
+  const userName = profile?.full_name || (userId ? 'Alguém' : 'Visitante (sem login)');
 
   // Falha de push (ex.: VAPID/Firebase não configurado neste ambiente) não
   // pode derrubar a escalada em si — o admin ainda vê no painel, só sem o

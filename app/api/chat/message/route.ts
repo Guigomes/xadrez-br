@@ -5,6 +5,7 @@ import { buildSystemPrompt, extractSources, type RetrievedChunk } from '@/lib/ch
 import { generateAnswer } from '@/lib/chat/llm';
 import { resolveTournament, type ResolvedTournament } from '@/lib/chat/tournament-context';
 import { CHAT_ALLOW_ANONYMOUS } from '@/lib/chat/config';
+import { findOwnChatSession } from '@/lib/chat/session-access';
 import { logError } from '@/lib/log-error';
 import { sendFcmToAdmins, sendOperatorNotification } from '@/lib/push';
 
@@ -50,15 +51,14 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Reaproveita a sessão se o id veio e pertence a quem está pedindo. Logado:
-  // scoped por user_id. Anônimo: a sessão não tem dono, então exige user_id
-  // null — impede um anônimo de sequestrar sessão de logado adivinhando o UUID.
+  // Reaproveita a sessão se o id veio e pertence a quem está pedindo
+  // (findOwnChatSession cuida do escopo: logado só as próprias, anônimo só as
+  // sem dono — ver lib/chat/session-access.ts).
   let session: { id: string; status: string } | null = null;
   if (typeof sessionId === 'string' && sessionId) {
-    let q = admin.from('chat_sessions').select('id, status').eq('id', sessionId);
-    q = userId ? q.eq('user_id', userId) : q.is('user_id', null);
-    const { data } = await q.maybeSingle();
-    session = data;
+    session = await findOwnChatSession<{ id: string; status: string }>(
+      admin, sessionId, userId, 'id, status',
+    );
   }
   if (!session) {
     const { data, error } = await admin

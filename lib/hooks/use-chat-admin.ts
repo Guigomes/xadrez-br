@@ -32,18 +32,26 @@ export function useAllChatSessions() {
       if (error) throw error;
       if (!sessions?.length) return [];
 
-      const userIds = [...new Set(sessions.map((s) => s.user_id))];
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('id, full_name, email')
-        .in('id', userIds);
-      if (profilesError) throw profilesError;
+      // Sessão anônima (migration 067) tem user_id null e não tem perfil pra
+      // buscar — mandar o null no .in() não casaria nada e ainda arrisca erro
+      // no PostgREST, então filtra antes.
+      const userIds = [...new Set(sessions.map((s) => s.user_id).filter((id): id is string => !!id))];
+      const profileById = new Map<string, { id: string; full_name: string | null; email: string | null }>();
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('user_profiles')
+          .select('id, full_name, email')
+          .in('id', userIds);
+        if (profilesError) throw profilesError;
+        for (const p of profiles ?? []) profileById.set(p.id, p);
+      }
 
-      const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
       return sessions.map((s) => ({
         ...s,
-        user_full_name: profileById.get(s.user_id)?.full_name || '(sem nome)',
-        user_email: profileById.get(s.user_id)?.email ?? null,
+        user_full_name: s.user_id
+          ? (profileById.get(s.user_id)?.full_name || '(sem nome)')
+          : 'Visitante (sem login)',
+        user_email: s.user_id ? (profileById.get(s.user_id)?.email ?? null) : null,
       }));
     },
   });

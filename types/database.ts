@@ -439,7 +439,8 @@ export type ChatMessageRole = 'user' | 'assistant' | 'system';
 
 export interface ChatSession {
   id: string;
-  user_id: string;
+  /** null = sessão anônima (visitante sem login) — migration 067, flag CHAT_ALLOW_ANONYMOUS. */
+  user_id: string | null;
   tournament_id: string | null;
   status: ChatSessionStatus;
   escalated_at: string | null;
