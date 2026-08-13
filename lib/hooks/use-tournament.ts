@@ -61,6 +61,12 @@ export function useTournament(slug: string) {
       return data;
     },
     staleTime: 60_000,
+    // O status do torneio muda sozinho por baixo do usuário: por data
+    // (next_status_by_date) e no auto-encerramento da última rodada
+    // (finish_round, migration 036). Sem repolar, a classificação continuava
+    // anunciando "atualiza a cada 30 segundos" num torneio já encerrado, e o
+    // card de encerramento só aparecia depois de um F5.
+    refetchInterval: 60_000,
   });
 }
 

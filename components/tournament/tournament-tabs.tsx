@@ -16,6 +16,10 @@ export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentT
   const base = `/tournaments/${slug}`;
 
   const isOngoing = status === 'ongoing' && currentRoundNumber != null;
+  // Antes de o torneio começar não existe rodada nem pontuação: as duas abas
+  // só levariam a telas vazias ("Nenhuma rodada criada" / "Classificação não
+  // disponível"). Aparecem quando há o que mostrar.
+  const hasStarted = status === 'ongoing' || status === 'finished';
 
   const tabs = isOngoing
     ? [
@@ -27,8 +31,12 @@ export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentT
     : [
         { href: base,                   label: 'Visão geral',   icon: '🏆' },
         { href: `${base}/participants`, label: 'Participantes', icon: '👥' },
-        { href: `${base}/rounds`,       label: 'Rodadas',       icon: '📋' },
-        { href: `${base}/standings`,    label: 'Classificação', icon: '📊' },
+        ...(hasStarted
+          ? [
+              { href: `${base}/rounds`,    label: 'Rodadas',       icon: '📋' },
+              { href: `${base}/standings`, label: 'Classificação', icon: '📊' },
+            ]
+          : []),
       ];
 
   return (

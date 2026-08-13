@@ -33,6 +33,13 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
 
   const groups = [...(pairingGroups ?? [])].sort((a, b) => compareGroupNames(a.name, b.name));
   const hasGroups = groups.length > 0;
+  // Todo torneio nativo nasce com UM grupo chamado "Absoluto"
+  // (lib/utils/create-tournament-setup.ts), então com um grupo só os chips
+  // seriam "Todos" e "Absoluto" filtrando exatamente o mesmo conjunto — e a
+  // coluna "Grupo" repetiria o mesmo nome em toda linha. Filtro de grupo só
+  // faz sentido a partir de dois. (Não confundir com o "Absoluto" da
+  // classificação, que é o eixo transversal `has_absolute_classification`.)
+  const showGroupFilter = groups.length > 1;
 
   // Build the players query — filter by pairing_group_id directly
   let query = supabase
@@ -73,7 +80,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
   return (
     <div>
       {/* Pairing group filter tabs */}
-      {hasGroups && (
+      {showGroupFilter && (
         <div className="flex flex-wrap gap-1.5 mb-5">
           <Link
             href={base}
@@ -128,7 +135,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                 <tr className="border-b border-gray-200 dark:border-gray-800">
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">#</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Jogador</th>
-                  {!activeGroup && hasGroups && (
+                  {!activeGroup && showGroupFilter && (
                     <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Grupo</th>
                   )}
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Categoria</th>
@@ -140,7 +147,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                 {players.map((tp) => {
                   const cat = tp.category as any;
                   // Find the group name for this player's category
-                  const playerGroup = hasGroups && !activeGroup && cat?.pairing_group_id
+                  const playerGroup = showGroupFilter && !activeGroup && cat?.pairing_group_id
                     ? groups.find((g) => g.id === cat.pairing_group_id)
                     : null;
 
@@ -165,7 +172,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                           </Badge>
                         )}
                       </td>
-                      {!activeGroup && hasGroups && (
+                      {!activeGroup && showGroupFilter && (
                         <td className="py-3 px-3">
                           {playerGroup ? (
                             <Link
@@ -201,7 +208,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
           <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800/60">
             {players.map((tp, i) => {
               const cat = tp.category as any;
-              const playerGroup = hasGroups && !activeGroup && cat?.pairing_group_id
+              const playerGroup = showGroupFilter && !activeGroup && cat?.pairing_group_id
                 ? groups.find((g) => g.id === cat.pairing_group_id)
                 : null;
 

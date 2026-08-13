@@ -155,15 +155,17 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
         )}
 
         <div className="card p-4">
-          <div className="flex items-center justify-between mb-3">
+          {/* Sem "Editar" próprio: o card Detalhes acima já leva pra mesma
+              tela (/edit), e dois links pro mesmo lugar na mesma página só
+              confundem. */}
+          <div className="mb-3">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100">
               Classificações {sortedCategories.length > 0 && `(${sortedCategories.length})`}
             </h2>
-            <Link href={`${base}/edit`} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Editar</Link>
           </div>
           {sortedCategories.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Nenhuma classificação — o torneio premia só o Absoluto. Dá pra criar faixas na aba Editar.
+              Nenhuma classificação — o torneio premia só o Absoluto. Dá pra criar faixas em “Editar torneio”, no card Detalhes.
             </p>
           ) : (
             <div className="flex flex-col gap-1.5">

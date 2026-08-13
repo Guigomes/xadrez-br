@@ -127,8 +127,7 @@ export default function AdminPlayersPage({ params }: Props) {
   // página pública). Sem grupo nenhum (importado ou nativo não configurado),
   // cai na lista chapada.
   const sortedGroups = [...(groups ?? [])].sort((a, b) => compareGroupNames(a.name, b.name));
-  const useGroupSections = isNative && sortedGroups.length > 0;
-  const groupSections = useGroupSections
+  const groupSections = isNative && sortedGroups.length > 0
     ? [
         ...sortedGroups.map((g) => ({
           key: g.id,
@@ -142,6 +141,10 @@ export default function AdminPlayersPage({ params }: Props) {
         },
       ].filter((s) => s.key !== '__none__' || s.rows.length > 0)
     : [];
+  // Uma seção só = o cabeçalho dela ("Absoluto (N)", o grupo que todo torneio
+  // nativo ganha na criação) apenas repete o "Participantes (N)" logo acima.
+  // A partir de duas seções o agrupamento passa a informar algo.
+  const useGroupSections = groupSections.length > 1;
 
   function renderRow(tp: any, i: number) {
     const tpAny = tp as any;
@@ -151,7 +154,10 @@ export default function AdminPlayersPage({ params }: Props) {
       <div key={tp.id} className="flex items-center gap-3 px-4 py-3">
         <span className="text-xs text-gray-400 w-5 text-center">{tp.initial_ranking ?? i + 1}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+          {/* line-clamp-2 em vez de truncate: nome comprido de participante
+              cortado com "..." na primeira palavra é ilegível — deixar quebrar
+              em até duas linhas mostra o nome inteiro nos casos reais. */}
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
             {tpAny.player?.full_name}
           </p>
           <p className="text-xs text-gray-400">
@@ -196,7 +202,7 @@ export default function AdminPlayersPage({ params }: Props) {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl">
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">{error}</p>
       )}

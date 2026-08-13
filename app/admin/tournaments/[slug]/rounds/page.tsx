@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { Suspense, use, useState } from 'react';
 import {
   useTournament,
   useTournamentRounds,
@@ -46,7 +46,12 @@ export default function AdminRoundsPage({ params }: Props) {
     return (
       <div className="max-w-3xl">
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Rodadas e pareamento</p>
-        <NativeRounds tournament={tournament} />
+        {/* Suspense obrigatório: NativeRounds lê ?round= via useSearchParams
+            (pra reabrir o card certo ao voltar do painel de resultados), e sem
+            a fronteira o build de produção recusa a página. */}
+        <Suspense fallback={<PageSpinner />}>
+          <NativeRounds tournament={tournament} />
+        </Suspense>
       </div>
     );
   }

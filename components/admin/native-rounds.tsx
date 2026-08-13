@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup,
-  useGenerateRound, useRoundTransition, useSetResult,
+  useGenerateRound, useRoundTransition,
   useOverridePairing, usePairingHistory, useDraftWarnings,
   useRequestedByes, useToggleRequestedBye,
 } from '@/lib/hooks/use-native-rounds';
@@ -16,17 +16,23 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageSpinner } from '@/components/ui/spinner';
 import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS, winnerSide } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
-import type { Tournament, Round, GameResult } from '@/types/database';
+import type { Tournament, Round } from '@/types/database';
 
-const RESULTS: { value: GameResult; label: string }[] = [
-  { value: '1-0', label: '1-0' },
-  { value: '1/2-1/2', label: '½-½' },
-  { value: '0-1', label: '0-1' },
-  { value: 'forfeit_black', label: 'WO pretas' },
-  { value: 'forfeit_white', label: 'WO brancas' },
-  { value: 'double_forfeit', label: 'WO duplo' },
-  { value: '*', label: '(limpar)' },
-];
+/**
+ * Rótulo do resultado. Esta lista é só de LEITURA — lançar e corrigir
+ * resultado acontece no painel de resultados, não aqui: um <select> solto no
+ * meio da lista de rodadas mudava a pontuação sem confirmação nenhuma, e
+ * competia com o painel, que é a tela feita pra isso.
+ */
+const RESULT_LABELS: Record<string, string> = {
+  '1-0': '1-0',
+  '1/2-1/2': '½-½',
+  '0-1': '0-1',
+  forfeit_black: 'WO pretas',
+  forfeit_white: 'WO brancas',
+  double_forfeit: 'WO duplo',
+  '*': 'sem resultado',
+};
 
 export function NativeRounds({ tournament }: { tournament: Tournament }) {
   const { data: groups, isLoading } = useGroups(tournament.id);
@@ -107,13 +113,18 @@ function GroupPanel({
   onError: (m: string) => void;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: rounds, isLoading } = useGroupRounds(groupId);
   const { data: tPlayers } = useTournamentPlayers(tournament.id);
   const generate = useGenerateRound(tournament.slug, tournament.id, groupId);
   const transition = useRoundTransition(tournament.id, groupId);
   // null = ainda não escolheu; o useEffect abaixo abre a rodada corrente
   // assim que os dados chegam. '' = o organizador fechou tudo na mão.
-  const [openRoundId, setOpenRoundId] = useState<string | null>(null);
+  // ?round=<id> vem de quem volta do painel de resultados — sem isso o
+  // acordeão reabria na rodada errada e exigia um clique a mais.
+  const [openRoundId, setOpenRoundId] = useState<string | null>(
+    () => searchParams.get('round') || null
+  );
 
   // A rodada que importa é sempre a última não encerrada — deixar tudo
   // fechado obrigava um clique a mais só pra ver o pareamento recém-gerado.
@@ -144,9 +155,9 @@ function GroupPanel({
     // esta guarda, cada abertura da aba jogaria um NO_PLAYERS na tela dele.
     if (!tPlayers.some((p: any) => p.pairing_group_id === groupId)) return;
     rodada1Disparada.current = true;
-    generate.mutateAsync(undefined).catch((e: any) =>
-      onError(e.message ?? 'Erro ao gerar a rodada 1 automaticamente')
-    );
+    generate.mutateAsync(undefined)
+      .then((res: any) => { if (res?.roundId) setOpenRoundId(res.roundId); })
+      .catch((e: any) => onError(e.message ?? 'Erro ao gerar a rodada 1 automaticamente'));
   }, [tournament.status, tournament.mode, rounds, tPlayers, groupId, generate, onError]);
 
   // Hooks precisam rodar antes de qualquer early return (regra dos hooks) —
@@ -164,6 +175,9 @@ function GroupPanel({
   const lastRound = rounds?.[rounds.length - 1];
   const finishedCount = (rounds ?? []).filter((r) => r.status === 'finished').length;
   const nextRoundNumber = (lastRound?.round_number ?? 0) + 1;
+  const eligibleForBye = groupPlayers.filter(
+    (p: any) => p.status === 'active' && (p.joined_at_round ?? 1) <= nextRoundNumber
+  );
   const canGenerate =
     finishedCount < groupRoundsCount &&
     (!lastRound || lastRound.status === 'finished');
@@ -218,17 +232,21 @@ function GroupPanel({
             onAction={(action) =>
               run(async () => {
                 await transition.mutateAsync({ action, roundId: round.id });
-                // Publicar a rodada leva direto ao lançamento de resultados: é
-                // o próximo passo natural do organizador, e o link "Lançar
-                // resultados" só aparecia depois de recarregar/reabrir o card.
-                if (action === 'publish') {
+                // Publicar e reabrir levam direto ao painel de resultados: são
+                // os dois casos em que o próximo passo é mexer em resultado.
+                // Reabrir, em especial, só existe pra corrigir algo — e o
+                // lugar de corrigir é o painel, não a lista.
+                if (action === 'publish' || action === 'reopen') {
                   router.push(`/admin/tournaments/${tournament.slug}/rounds/${round.id}/results`);
                 }
               })
             }
             canReopen={round.round_number === (lastRound?.round_number ?? 0)}
             busy={transition.isPending}
-            onRegenerate={() => run(() => generate.mutateAsync(round.round_number))}
+            onRegenerate={() => run(async () => {
+              const res: any = await generate.mutateAsync(round.round_number);
+              if (res?.roundId) setOpenRoundId(res.roundId);
+            })}
             regenerating={generate.isPending}
           />
         ))}
@@ -237,37 +255,14 @@ function GroupPanel({
       {finishedCount < groupRoundsCount && (
         <div className="card p-4 space-y-3">
           {!isRoundRobin && (
-            <>
-              <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Ausências na rodada {nextRoundNumber}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Marque quem não vai jogar esta rodada — recebe bye ({tournament.requested_bye_score === 0.5 ? '½ ponto' : '0 pontos'}) e não entra no pareamento.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {groupPlayers
-                  .filter((p: any) => p.status === 'active' && (p.joined_at_round ?? 1) <= nextRoundNumber)
-                  .map((p: any) => {
-                    const requested = byes.data?.has(p.id) ?? false;
-                    return (
-                      <button
-                        key={p.id}
-                        disabled={toggleBye.isPending || !canGenerate}
-                        onClick={() => run(() => toggleBye.mutateAsync({ tpId: p.id, requested: !requested }))}
-                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${
-                          requested
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        {requested ? '🚫 ' : ''}{p.player?.full_name ?? p.player_id}
-                      </button>
-                    );
-                  })}
-              </div>
-            </>
+            <ByeSelector
+              roundNumber={nextRoundNumber}
+              byeScore={tournament.requested_bye_score}
+              players={eligibleForBye}
+              requestedIds={byes.data}
+              disabled={toggleBye.isPending || !canGenerate}
+              onToggle={(tpId, requested) => run(() => toggleBye.mutateAsync({ tpId, requested }))}
+            />
           )}
 
           {isRoundRobin && (
@@ -279,7 +274,13 @@ function GroupPanel({
           <Button
             loading={generate.isPending}
             disabled={!canGenerate}
-            onClick={() => run(() => generate.mutateAsync(undefined))}
+            // Abre o card da rodada recém-criada: o efeito de auto-abrir acima
+            // só cobre a primeira carga (guarda openRoundId === null), então a
+            // rodada nova nascia fechada e o pareamento ficava escondido.
+            onClick={() => run(async () => {
+              const res: any = await generate.mutateAsync(undefined);
+              if (res?.roundId) setOpenRoundId(res.roundId);
+            })}
           >
             ♟ Gerar rodada {nextRoundNumber} de {groupRoundsCount}
           </Button>
@@ -310,6 +311,117 @@ function GroupPanel({
           >
             🖨️ Imprimir classificação
           </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Marcação de ausências (bye pedido) da próxima rodada.
+ *
+ * Faltar é exceção, não regra: listar todo mundo aberto significava rolar
+ * centenas de chips num torneio grande só pra chegar no botão de gerar. O
+ * bloco nasce recolhido mostrando só quem JÁ está marcado (a exceção de
+ * fato); a lista inteira, com busca por nome, fica a um clique.
+ */
+function ByeSelector({
+  roundNumber, byeScore, players, requestedIds, disabled, onToggle,
+}: {
+  roundNumber: number;
+  byeScore: number | null;
+  players: any[];
+  requestedIds: Set<string> | undefined;
+  disabled: boolean;
+  onToggle: (tpId: string, requested: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const nameOf = (p: any) => p.player?.full_name ?? p.player_id;
+  const marked = players.filter((p) => requestedIds?.has(p.id));
+
+  const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const q = norm(query.trim());
+  const listed = q ? players.filter((p) => norm(String(nameOf(p))).includes(q)) : players;
+
+  const chipClass = (requested: boolean) =>
+    `rounded-full px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${
+      requested
+        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+    }`;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Ausências na rodada {roundNumber}
+            {marked.length > 0 && (
+              <span className="ml-1.5 font-normal text-amber-600 dark:text-amber-400">
+                · {marked.length} marcada{marked.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Quem não vai jogar recebe bye ({byeScore === 0.5 ? '½ ponto' : '0 pontos'}) e fica fora do pareamento.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          {open ? 'Fechar' : 'Marcar ausência'}
+        </button>
+      </div>
+
+      {/* Recolhido: só quem está marcado, que é a informação que importa de relance. */}
+      {!open && marked.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {marked.map((p) => (
+            <button
+              key={p.id}
+              disabled={disabled}
+              onClick={() => onToggle(p.id, false)}
+              title="Clique para desmarcar"
+              className={chipClass(true)}
+            >
+              🚫 {nameOf(p)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div className="space-y-2">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar participante…"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+          />
+          {listed.length === 0 ? (
+            <p className="text-xs text-gray-400">Ninguém com esse nome neste grupo.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {listed.map((p) => {
+                const requested = requestedIds?.has(p.id) ?? false;
+                return (
+                  <button
+                    key={p.id}
+                    disabled={disabled}
+                    onClick={() => onToggle(p.id, !requested)}
+                    className={chipClass(requested)}
+                  >
+                    {requested ? '🚫 ' : ''}{nameOf(p)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -355,12 +467,15 @@ function RoundCard({
             )}
             {round.status === 'ongoing' && (
               <>
-                <a
+                {/* <Link> e não <a>: o <a> cru recarregava a página inteira,
+                    o que dava a sensação de passar por uma tela intermediária
+                    entre a lista e o painel. */}
+                <Link
                   href={`/admin/tournaments/${tournament.slug}/rounds/${round.id}/results`}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 h-8 text-sm font-medium text-white hover:bg-brand-700"
                 >
                   📱 Painel de resultados
-                </a>
+                </Link>
                 <Button size="sm" loading={busy} onClick={() => onAction('finish')}>
                   Encerrar rodada
                 </Button>
@@ -399,7 +514,6 @@ const WARNING_LABELS: Record<string, string> = {
 
 function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; groupId: string; round: Round }) {
   const { data: pairings, isLoading } = useRoundPairings(round.id);
-  const setResult = useSetResult(tournament.id, groupId);
   const override = useOverridePairing(tournament.id, groupId, round.id);
   const isDraft = round.status === 'draft';
   const canOverride = round.status === 'ongoing' || round.status === 'finished';
@@ -518,42 +632,50 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
         const whiteWon = !p.is_bye && winnerSide(p.result, 'white') === 'winner';
         const blackWon = !p.is_bye && winnerSide(p.result, 'black') === 'winner';
         return (
-        <div key={p.pairing_id} className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm flex-wrap">
-          <div className="min-w-0 flex items-center flex-wrap gap-y-1">
-            <span className="text-gray-400 mr-2">{p.board_number ?? '—'}</span>
-            <WhitePawn className="h-4 w-3 shrink-0 mr-1" />
-            <Seat p={p} side="w" name={p.white_name} />
-            {whiteWon && <span className="ml-0.5 text-xs">🏆</span>}
-            <span className="text-gray-400 mx-1.5">×</span>
-            <BlackPawn className="h-4 w-3 shrink-0 mr-1" />
-            <Seat p={p} side="b" name={p.black_name} />
-            {blackWon && <span className="ml-0.5 text-xs">🏆</span>}
-            {p.manual_override && (
-              <Badge className="ml-2 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+        {/* No celular cada jogador ocupa a própria linha (grid de 1 coluna) —
+            antes era um flex-wrap que quebrava no meio do confronto, deixando
+            os dois nomes emendados. De sm: pra cima volta a ser lado a lado. */}
+        <div key={p.pairing_id} className="rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm">
+          <div className="flex items-start gap-3">
+            <span className="w-6 shrink-0 pt-0.5 text-gray-400 tabular-nums">{p.board_number ?? '—'}</span>
+
+            <div className="min-w-0 flex-1 grid gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <WhitePawn className="h-4 w-3 shrink-0" />
+                <Seat p={p} side="w" name={p.white_name} />
+                {whiteWon && <span className="text-xs">🏆</span>}
+              </div>
+              <span className="hidden text-gray-400 sm:inline">×</span>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <BlackPawn className="h-4 w-3 shrink-0" />
+                <Seat p={p} side="b" name={p.black_name} />
+                {blackWon && <span className="text-xs">🏆</span>}
+              </div>
+            </div>
+
+            <div className="shrink-0 pt-0.5">
+              {p.is_bye ? (
+                <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                  Bye ({p.white_points ?? 0})
+                </Badge>
+              ) : isDraft ? (
+                <span className="text-xs text-gray-400">rascunho</span>
+              ) : (
+                <span className={`text-xs font-medium tabular-nums ${
+                  p.result === '*' ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'
+                }`}>
+                  {RESULT_LABELS[p.result] ?? p.result}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {p.manual_override && (
+            <div className="mt-1 pl-9">
+              <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
                 alterada
               </Badge>
-            )}
-          </div>
-          {p.is_bye ? (
-            <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-              Bye ({p.white_points ?? 0})
-            </Badge>
-          ) : isDraft ? (
-            <span className="text-xs text-gray-400">rascunho</span>
-          ) : (
-            <select
-              className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-1 text-xs"
-              value={p.result}
-              disabled={setResult.isPending || editing}
-              onChange={async (e) => {
-                setError('');
-                try {
-                  await setResult.mutateAsync({ pairingId: p.pairing_id, result: e.target.value });
-                } catch (err: any) { setError(err.message); }
-              }}
-            >
-              {RESULTS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
+            </div>
           )}
         </div>
         );

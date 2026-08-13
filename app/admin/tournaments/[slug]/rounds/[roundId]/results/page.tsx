@@ -3,6 +3,7 @@
 // Painel mobile do árbitro (F6): lançamento rápido de resultados por mesa.
 import { use, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useTournament, useRoundPairings } from '@/lib/hooks/use-tournament';
@@ -32,6 +33,7 @@ const WO: { value: GameResult; label: string }[] = [
 
 export default function ArbiterResultsPage({ params }: { params: Promise<{ slug: string; roundId: string }> }) {
   const { slug, roundId } = use(params);
+  const router = useRouter();
   const { data: tournament, isLoading } = useTournament(slug);
 
   const { data: round } = useQuery({
@@ -271,7 +273,7 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
       <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 p-3">
         <div className="max-w-lg mx-auto flex gap-2">
           <Link
-            href={`/admin/tournaments/${slug}/rounds`}
+            href={`/admin/tournaments/${slug}/rounds?round=${roundId}`}
             className="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 px-4 h-11 text-sm font-medium text-gray-600 dark:text-gray-400"
           >
             ← Rodadas
@@ -283,8 +285,24 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
               loading={transition.isPending}
               onClick={async () => {
                 setError('');
-                try { await transition.mutateAsync({ action: 'finish', roundId }); }
-                catch (e: any) { setError(e.message); }
+                try {
+                  await transition.mutateAsync({ action: 'finish', roundId });
+                  // Antes daqui não acontecia nada: o botão sumia (o guard de
+                  // status deixava de bater) e o árbitro ficava na mesma tela
+                  // sem saber se deu certo. Agora sai da tela — e para onde
+                  // depende de o torneio ter acabado ou não. Quem decide isso é
+                  // o banco: finish_round (migration 036) já vira o torneio pra
+                  // 'finished' quando todo grupo cumpriu suas rodadas, então
+                  // basta reler o status.
+                  const supabase = createClient();
+                  const { data: t } = await supabase
+                    .from('tournaments').select('status').eq('slug', slug).maybeSingle();
+                  router.push(
+                    t?.status === 'finished'
+                      ? `/admin/tournaments/${slug}/standings`
+                      : `/admin/tournaments/${slug}/rounds?round=${roundId}`
+                  );
+                } catch (e: any) { setError(e.message); }
               }}
             >
               {allDone ? 'Encerrar rodada' : `Faltam ${games.length - done}`}

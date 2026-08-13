@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSignIn, useSignUp } from '@/lib/hooks/use-auth';
+import { canSignUp, BETA_SIGNUP_MESSAGE } from '@/lib/auth/beta';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -30,6 +31,13 @@ export default function LoginPage() {
         await signIn.mutateAsync({ email, password });
         router.push('/admin');
       } else {
+        // Beta fechado: só a allowlist cria conta nova (lib/auth/beta.ts).
+        // Checado antes da validação de capacidade pra não pedir que a pessoa
+        // corrija um formulário que não vai ser aceito de qualquer jeito.
+        if (!canSignUp(email)) {
+          setError(BETA_SIGNUP_MESSAGE);
+          return;
+        }
         if (!wantsOrganizer && !wantsArbiter && !wantsParticipant) {
           setError('Marque pelo menos uma opção: organizar, arbitrar ou participar.');
           return;
