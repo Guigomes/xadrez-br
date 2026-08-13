@@ -79,8 +79,12 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
             </Link>
           )}
 
+          {/* Avatar+dropdown só a partir de md, que é exatamente onde o botão
+              hambúrguer some. Abaixo disso os dois apareciam lado a lado
+              abrindo menus com o mesmo conteúdo (Painel / Minha conta) — o
+              menu mobile ganhou "Sair" e passa a ser o único. */}
           {user ? (
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative hidden md:block" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
@@ -145,7 +149,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
       <div
         className={cn(
           'md:hidden overflow-hidden transition-all duration-200 ease-in-out',
-          mobileOpen ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
+          mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
         )}
       >
         <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 pb-3 pt-2">
@@ -175,6 +179,14 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
               >
                 Minha conta
               </Link>
+              {/* Único caminho de logout no mobile depois que o dropdown do
+                  avatar passou a ser md-only. */}
+              <button
+                onClick={() => { signOut.mutate(); setMobileOpen(false); }}
+                className="block w-full text-left py-2 text-sm font-medium text-red-600 dark:text-red-400"
+              >
+                Sair
+              </button>
             </>
           )}
         </div>
