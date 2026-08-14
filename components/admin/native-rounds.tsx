@@ -16,6 +16,8 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageSpinner } from '@/components/ui/spinner';
 import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS, winnerSide } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
+import { WhatsAppButton } from '@/components/ui/whatsapp-button';
+import { buildRoundMessage } from '@/lib/utils/whatsapp';
 import type { Tournament, Round } from '@/types/database';
 
 /**
@@ -99,6 +101,9 @@ export function NativeRounds({ tournament }: { tournament: Tournament }) {
         key={groupId}
         tournament={tournament}
         groupId={groupId}
+        // Nome do grupo só faz sentido no texto quando há mais de um — num
+        // torneio de grupo único ("Absoluto") citá-lo é ruído.
+        groupName={groups.length > 1 ? group.name : null}
         groupRoundsCount={group.rounds_count ?? tournament.rounds_count}
         onError={setError}
       />
@@ -107,9 +112,9 @@ export function NativeRounds({ tournament }: { tournament: Tournament }) {
 }
 
 function GroupPanel({
-  tournament, groupId, groupRoundsCount, onError,
+  tournament, groupId, groupName, groupRoundsCount, onError,
 }: {
-  tournament: Tournament; groupId: string; groupRoundsCount: number;
+  tournament: Tournament; groupId: string; groupName: string | null; groupRoundsCount: number;
   onError: (m: string) => void;
 }) {
   const router = useRouter();
@@ -224,6 +229,7 @@ function GroupPanel({
             key={round.id}
             tournament={tournament}
             groupId={groupId}
+            groupName={groupName}
             round={round}
             open={openRoundId === round.id}
             // '' e não null ao fechar: null significa "ainda não escolheu" e
@@ -429,10 +435,10 @@ function ByeSelector({
 }
 
 function RoundCard({
-  tournament, groupId, round, open, onToggle, onAction, canReopen, busy,
+  tournament, groupId, groupName, round, open, onToggle, onAction, canReopen, busy,
   onRegenerate, regenerating,
 }: {
-  tournament: Tournament; groupId: string; round: Round;
+  tournament: Tournament; groupId: string; groupName: string | null; round: Round;
   open: boolean; onToggle: () => void;
   onAction: (a: 'publish' | 'finish' | 'reopen') => void;
   canReopen: boolean; busy: boolean;
@@ -496,7 +502,7 @@ function RoundCard({
               </a>
             )}
           </div>
-          <RoundBoards tournament={tournament} groupId={groupId} round={round} />
+          <RoundBoards tournament={tournament} groupId={groupId} groupName={groupName} round={round} />
         </div>
       )}
     </div>
@@ -512,7 +518,7 @@ const WARNING_LABELS: Record<string, string> = {
   MANUAL_OVERRIDE: 'Mesa alterada à mão',
 };
 
-function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; groupId: string; round: Round }) {
+function RoundBoards({ tournament, groupId, groupName, round }: { tournament: Tournament; groupId: string; groupName: string | null; round: Round }) {
   const { data: pairings, isLoading } = useRoundPairings(round.id);
   const override = useOverridePairing(tournament.id, groupId, round.id);
   const isDraft = round.status === 'draft';
@@ -600,6 +606,35 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
 
   return (
     <div className="space-y-2">
+      {/* Divulgar no zap só depois de publicar — rascunho não tem confronto
+          definitivo pra mandar. */}
+      {!isDraft && (pairings?.length ?? 0) > 0 && (
+        <div>
+          <WhatsAppButton
+            label="Enviar mesas no WhatsApp"
+            getText={() =>
+              buildRoundMessage({
+                tournamentName: tournament.name,
+                roundNumber: round.round_number,
+                groupName,
+                statusLabel: ROUND_STATUS_LABELS[round.status],
+                resultLabels: RESULT_LABELS,
+                pairings: (pairings ?? []).map((p: any) => ({
+                  board_number: p.board_number,
+                  white_name: p.white_name,
+                  black_name: p.black_name,
+                  result: p.result,
+                  is_bye: p.is_bye,
+                  white_points: p.white_points,
+                })),
+                url: typeof window !== 'undefined'
+                  ? `${window.location.origin}/tournaments/${tournament.slug}/rounds/${round.round_number}`
+                  : undefined,
+              })
+            }
+          />
+        </div>
+      )}
       {isDraft && (warnings?.length ?? 0) > 0 && (
         <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
           Avisos do pareamento (regenere se necessário):

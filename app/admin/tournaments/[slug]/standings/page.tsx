@@ -19,7 +19,7 @@ export default function AdminStandingsPage({ params }: Props) {
   const { slug } = use(params);
   return (
     <div>
-      <StandingsView slug={slug} />
+      <StandingsView slug={slug} showExport />
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href={`/tournaments/${slug}/standings/print`}

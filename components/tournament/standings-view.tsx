@@ -7,8 +7,10 @@ import { StandingsTable } from '@/components/tournament/standings-table';
 import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import { WhatsAppButton } from '@/components/ui/whatsapp-button';
 import { compareGroupNames } from '@/lib/utils/chess';
 import { summarizeRounds } from '@/lib/utils/rounds';
+import { buildStandingsMessage } from '@/lib/utils/whatsapp';
 
 /**
  * Classificação do torneio — a MESMA tela para o público
@@ -17,7 +19,7 @@ import { summarizeRounds } from '@/lib/utils/rounds';
  * não duplicar chips de grupo/faixa, desempates e o polling de 30s; a única
  * coisa que muda entre os dois é a moldura de layout ao redor.
  */
-export function StandingsView({ slug }: { slug: string }) {
+export function StandingsView({ slug, showExport = false }: { slug: string; showExport?: boolean }) {
   const { data: tournament, isLoading: loadingTournament } = useTournament(slug);
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(
     tournament?.id ?? ''
@@ -179,6 +181,23 @@ export function StandingsView({ slug }: { slug: string }) {
                 Critérios de desempate: Buchholz · BH Corte 1 · Sonneborn-Berger
                 <TiebreakLegendButton variant="link" />
               </p>
+              {showExport && (
+                <div className="mt-2">
+                  <WhatsAppButton
+                    getText={() =>
+                      buildStandingsMessage({
+                        tournamentName: tournament?.name ?? 'Torneio',
+                        heading,
+                        roundLabel: latestRound
+                          ? `Rodada ${latestRound.round_number} · ${(roundStatusLabel[latestRound.status] ?? roundStatusLabel.pending).label}`
+                          : null,
+                        rows: displayed.map((r) => ({ rank: r.rank, full_name: r.full_name, points: r.points })),
+                        url: typeof window !== 'undefined' ? `${window.location.origin}/tournaments/${slug}/standings` : undefined,
+                      })
+                    }
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col items-start sm:items-end gap-1.5">
