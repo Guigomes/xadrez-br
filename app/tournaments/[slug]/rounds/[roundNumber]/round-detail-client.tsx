@@ -1,10 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { useRoundPairings } from '@/lib/hooks/use-tournament';
 import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { PairingsList } from '@/components/tournament/pairings-list';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SearchField } from '@/components/ui/search-field';
+import { matchesPlayerSearch } from '@/lib/utils/text';
 
 interface Props {
   roundId: string;
@@ -16,6 +19,7 @@ interface Props {
 export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOngoing }: Props) {
   const { data: pairings, isLoading } = useRoundPairings(roundId);
   const { data: followed } = useFollowedInTournament(tournamentId);
+  const [query, setQuery] = useState('');
 
   if (isLoading) return <PageSpinner />;
 
@@ -29,6 +33,10 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
     );
   }
 
+  const filteredPairings = pairings.filter(
+    (p) => matchesPlayerSearch(p.white_name, query) || matchesPlayerSearch(p.black_name, query)
+  );
+
   return (
     <div>
       {isOngoing && (
@@ -37,7 +45,14 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
           Atualizando automaticamente a cada 1 minuto
         </p>
       )}
-      <PairingsList pairings={pairings} tournamentSlug={tournamentSlug} followedTpIds={followed?.tpIds} />
+      <SearchField value={query} onChange={setQuery} className="mb-3 sm:max-w-xs" />
+      {filteredPairings.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+          Nenhum jogador encontrado com esse nome.
+        </p>
+      ) : (
+        <PairingsList pairings={filteredPairings} tournamentSlug={tournamentSlug} followedTpIds={followed?.tpIds} />
+      )}
     </div>
   );
 }

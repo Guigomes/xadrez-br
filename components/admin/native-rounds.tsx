@@ -17,7 +17,9 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS, winnerSide } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
 import { WhatsAppButton } from '@/components/ui/whatsapp-button';
+import { SearchField } from '@/components/ui/search-field';
 import { buildRoundMessage } from '@/lib/utils/whatsapp';
+import { matchesPlayerSearch, normalizeSearchText } from '@/lib/utils/text';
 import type { Tournament, Round } from '@/types/database';
 
 /**
@@ -347,9 +349,8 @@ function ByeSelector({
   const nameOf = (p: any) => p.player?.full_name ?? p.player_id;
   const marked = players.filter((p) => requestedIds?.has(p.id));
 
-  const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-  const q = norm(query.trim());
-  const listed = q ? players.filter((p) => norm(String(nameOf(p))).includes(q)) : players;
+  const q = normalizeSearchText(query.trim());
+  const listed = q ? players.filter((p) => normalizeSearchText(String(nameOf(p))).includes(q)) : players;
 
   const chipClass = (requested: boolean) =>
     `rounded-full px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40 ${
@@ -532,9 +533,14 @@ function RoundBoards({ tournament, groupId, groupName, round }: { tournament: To
   >(null);
   const [justification, setJustification] = useState('');
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
 
   if (isLoading) return <PageSpinner />;
   if (!pairings?.length) return <p className="text-sm text-gray-500">Sem mesas.</p>;
+
+  const filteredPairings = pairings.filter(
+    (p: any) => matchesPlayerSearch(p.white_name, query) || matchesPlayerSearch(p.black_name ?? '', query)
+  );
 
   function cancelEditing() {
     setEditing(false);
@@ -663,7 +669,13 @@ function RoundBoards({ tournament, groupId, groupName, round }: { tournament: To
       )}
 
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-      {pairings.map((p: any) => {
+
+      <SearchField value={query} onChange={setQuery} className="max-w-xs" />
+
+      {filteredPairings.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-2">Nenhuma mesa encontrada com esse nome.</p>
+      ) : null}
+      {filteredPairings.map((p: any) => {
         const whiteWon = !p.is_bye && winnerSide(p.result, 'white') === 'winner';
         const blackWon = !p.is_bye && winnerSide(p.result, 'black') === 'winner';
         // No celular cada jogador ocupa a própria linha (grid de 1 coluna) —

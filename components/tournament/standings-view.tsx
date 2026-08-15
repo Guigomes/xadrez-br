@@ -8,9 +8,11 @@ import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-bu
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { WhatsAppButton } from '@/components/ui/whatsapp-button';
+import { SearchField } from '@/components/ui/search-field';
 import { compareGroupNames } from '@/lib/utils/chess';
 import { summarizeRounds } from '@/lib/utils/rounds';
 import { buildStandingsMessage } from '@/lib/utils/whatsapp';
+import { matchesPlayerSearch } from '@/lib/utils/text';
 
 /**
  * Classificação do torneio — a MESMA tela para o público
@@ -28,6 +30,7 @@ export function StandingsView({ slug, showExport = false }: { slug: string; show
   const { data: followed } = useFollowedInTournament(tournament?.id ?? '');
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [query, setQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const isLoading = loadingTournament || (!!tournament && loadingStandings);
@@ -112,6 +115,11 @@ export function StandingsView({ slug, showExport = false }: { slug: string; show
     : rowsInGroup
         .filter((r) => r.category_id === effectiveCategory)
         .map((r, i) => ({ ...r, rank: (i + 1) as number }));
+
+  // A busca só filtra a TABELA — o WhatsApp e o card de campeão continuam
+  // usando `displayed` cru, senão "encerrar com a busca aberta" mandaria uma
+  // classificação incompleta ou perderia o vencedor de vista.
+  const filteredDisplayed = displayed.filter((r) => matchesPlayerSearch(r.full_name, query));
 
   const groupLabel = hasGroups ? (pairingGroups.find((g) => g.id === selectedGroupId)?.name ?? 'Grupo') : null;
   const categoryLabel = effectiveCategory === 'all'
@@ -249,9 +257,19 @@ export function StandingsView({ slug, showExport = false }: { slug: string; show
               )}
             </div>
           </div>
+
+          <div className="mt-3">
+            <SearchField value={query} onChange={setQuery} className="sm:max-w-xs" />
+          </div>
         </div>
 
-        <StandingsTable standings={displayed} tournamentSlug={slug} followedPlayerIds={followed?.playerIds} />
+        {filteredDisplayed.length === 0 ? (
+          <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            Nenhum jogador encontrado com esse nome.
+          </p>
+        ) : (
+          <StandingsTable standings={filteredDisplayed} tournamentSlug={slug} followedPlayerIds={followed?.playerIds} />
+        )}
       </div>
     </div>
   );
