@@ -125,16 +125,17 @@ function GroupPanel({
   const { data: tPlayers } = useTournamentPlayers(tournament.id);
   const generate = useGenerateRound(tournament.slug, tournament.id, groupId);
   const transition = useRoundTransition(tournament.id, groupId);
-  // null = ainda não escolheu; o useEffect abaixo abre a rodada corrente
-  // assim que os dados chegam. '' = o organizador fechou tudo na mão.
-  // ?round=<id> vem de quem volta do painel de resultados — sem isso o
-  // acordeão reabria na rodada errada e exigia um clique a mais.
+  // Rodada selecionada nos chips — sempre uma por vez, navegação tipo aba,
+  // não acordeão. null = ainda não escolheu; o useEffect abaixo seleciona a
+  // rodada corrente assim que os dados chegam. ?round=<id> vem de quem volta
+  // do painel de resultados — sem isso a seleção voltava pra rodada errada e
+  // exigia um clique a mais.
   const [openRoundId, setOpenRoundId] = useState<string | null>(
     () => searchParams.get('round') || null
   );
 
-  // A rodada que importa é sempre a última não encerrada — deixar tudo
-  // fechado obrigava um clique a mais só pra ver o pareamento recém-gerado.
+  // A rodada que importa é sempre a última não encerrada — sem isso a
+  // pessoa abria a aba e via a rodada 1 em vez do pareamento recém-gerado.
   useEffect(() => {
     if (openRoundId !== null || !rounds?.length) return;
     const atual = [...rounds].reverse().find((r) => r.status !== 'finished') ?? rounds[rounds.length - 1];
@@ -180,6 +181,7 @@ function GroupPanel({
   const groupPlayers = (tPlayers ?? []).filter((p: any) => p.pairing_group_id === groupId);
   const seededCount = groupPlayers.filter((p: any) => p.initial_ranking != null).length;
   const lastRound = rounds?.[rounds.length - 1];
+  const selectedRound = rounds?.find((r) => r.id === openRoundId);
   const finishedCount = (rounds ?? []).filter((r) => r.status === 'finished').length;
   const nextRoundNumber = (lastRound?.round_number ?? 0) + 1;
   const eligibleForBye = groupPlayers.filter(
@@ -224,41 +226,63 @@ function GroupPanel({
         </p>
       </div>
 
-      {/* Rounds */}
-      <div className="space-y-2">
-        {(rounds ?? []).map((round) => (
-          <RoundCard
-            key={round.id}
-            tournament={tournament}
-            groupId={groupId}
-            groupName={groupName}
-            round={round}
-            open={openRoundId === round.id}
-            // '' e não null ao fechar: null significa "ainda não escolheu" e
-            // faria o efeito de abrir-a-corrente reabrir o card na hora.
-            onToggle={() => setOpenRoundId(openRoundId === round.id ? '' : round.id)}
-            onAction={(action) =>
-              run(async () => {
-                await transition.mutateAsync({ action, roundId: round.id });
-                // Publicar e reabrir levam direto ao painel de resultados: são
-                // os dois casos em que o próximo passo é mexer em resultado.
-                // Reabrir, em especial, só existe pra corrigir algo — e o
-                // lugar de corrigir é o painel, não a lista.
-                if (action === 'publish' || action === 'reopen') {
-                  router.push(`/admin/tournaments/${tournament.slug}/rounds/${round.id}/results`);
-                }
-              })
-            }
-            canReopen={round.round_number === (lastRound?.round_number ?? 0)}
-            busy={transition.isPending}
-            onRegenerate={() => run(async () => {
-              const res: any = await generate.mutateAsync(round.round_number);
-              if (res?.roundId) setOpenRoundId(res.roundId);
-            })}
-            regenerating={generate.isPending}
-          />
-        ))}
-      </div>
+      {/* Rodadas — navegação por chips, não acordeão: um clique troca qual
+          rodada está visível, sempre uma só por vez (mesma linguagem visual
+          dos chips de grupo acima, e mais parecido com a navegação da visão
+          pública do que o antigo card que expandia/recolhia). */}
+      {!!rounds?.length && (
+        <div className="flex gap-2 flex-wrap">
+          {rounds.map((round) => (
+            <button
+              key={round.id}
+              type="button"
+              onClick={() => setOpenRoundId(round.id)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                openRoundId === round.id
+                  ? 'bg-brand-600 text-white'
+                  : `${ROUND_STATUS_COLORS[round.status]} hover:opacity-80`
+              }`}
+            >
+              Rodada {round.round_number}
+              {round.status === 'ongoing' && (
+                <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${openRoundId === round.id ? 'bg-white' : 'bg-amber-500'}`} />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {selectedRound && (
+        // key força RoundPanel a remontar do zero ao trocar de rodada — sem
+        // isso, estado local (busca, modo de troca de pareamento) vazava de
+        // uma rodada pra outra, porque o componente continuava o mesmo.
+        <RoundPanel
+          key={selectedRound.id}
+          tournament={tournament}
+          groupId={groupId}
+          groupName={groupName}
+          round={selectedRound}
+          onAction={(action) =>
+            run(async () => {
+              await transition.mutateAsync({ action, roundId: selectedRound.id });
+              // Publicar e reabrir levam direto ao painel de resultados: são
+              // os dois casos em que o próximo passo é mexer em resultado.
+              // Reabrir, em especial, só existe pra corrigir algo — e o
+              // lugar de corrigir é o painel, não a lista.
+              if (action === 'publish' || action === 'reopen') {
+                router.push(`/admin/tournaments/${tournament.slug}/rounds/${selectedRound.id}/results`);
+              }
+            })
+          }
+          canReopen={selectedRound.round_number === (lastRound?.round_number ?? 0)}
+          busy={transition.isPending}
+          onRegenerate={() => run(async () => {
+            const res: any = await generate.mutateAsync(selectedRound.round_number);
+            if (res?.roundId) setOpenRoundId(res.roundId);
+          })}
+          regenerating={generate.isPending}
+        />
+      )}
 
       {finishedCount < groupRoundsCount && (
         <div className="card p-4 space-y-3">
@@ -435,77 +459,75 @@ function ByeSelector({
   );
 }
 
-function RoundCard({
-  tournament, groupId, groupName, round, open, onToggle, onAction, canReopen, busy,
+/**
+ * Painel da rodada selecionada — ações + mesas. Uma só instância por vez
+ * (a que os chips acima escolheram), não mais um card por rodada que
+ * expande/recolhe. Sem cabeçalho clicável: quem troca de rodada são os
+ * chips, não isto aqui.
+ */
+function RoundPanel({
+  tournament, groupId, groupName, round, onAction, canReopen, busy,
   onRegenerate, regenerating,
 }: {
   tournament: Tournament; groupId: string; groupName: string | null; round: Round;
-  open: boolean; onToggle: () => void;
   onAction: (a: 'publish' | 'finish' | 'reopen') => void;
   canReopen: boolean; busy: boolean;
   onRegenerate: () => void; regenerating: boolean;
 }) {
   return (
-    <div className="card">
-      <button onClick={onToggle} className="w-full p-4 flex items-center justify-between gap-3 text-left">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-gray-900 dark:text-gray-100">
-            Rodada {round.round_number}
-          </span>
-          <Badge className={ROUND_STATUS_COLORS[round.status]}>
-            {ROUND_STATUS_LABELS[round.status]}
-          </Badge>
-        </div>
-        <span className="text-gray-400 text-sm">{open ? '▲' : '▼'}</span>
-      </button>
+    <div className="card p-4 space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="font-semibold text-gray-900 dark:text-gray-100">
+          Rodada {round.round_number}
+        </span>
+        <Badge className={ROUND_STATUS_COLORS[round.status]}>
+          {ROUND_STATUS_LABELS[round.status]}
+        </Badge>
+      </div>
 
-      {open && (
-        <div className="border-t border-gray-100 dark:border-gray-800 p-4 space-y-3">
-          <div className="flex gap-2 flex-wrap">
-            {round.status === 'draft' && (
-              <>
-                <Button size="sm" loading={busy} onClick={() => onAction('publish')}>
-                  Publicar rodada
-                </Button>
-                <Button size="sm" variant="secondary" loading={regenerating} onClick={onRegenerate}>
-                  Regerar pareamento
-                </Button>
-              </>
-            )}
-            {round.status === 'ongoing' && (
-              <>
-                {/* <Link> e não <a>: o <a> cru recarregava a página inteira,
-                    o que dava a sensação de passar por uma tela intermediária
-                    entre a lista e o painel. */}
-                <Link
-                  href={`/admin/tournaments/${tournament.slug}/rounds/${round.id}/results`}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 h-8 text-sm font-medium text-white hover:bg-brand-700"
-                >
-                  📱 Painel de resultados
-                </Link>
-                <Button size="sm" loading={busy} onClick={() => onAction('finish')}>
-                  Encerrar rodada
-                </Button>
-              </>
-            )}
-            {round.status === 'finished' && canReopen && (
-              <Button size="sm" variant="secondary" loading={busy} onClick={() => onAction('reopen')}>
-                Reabrir rodada
-              </Button>
-            )}
-            {round.status !== 'draft' && (
-              <a
-                href={`/tournaments/${tournament.slug}/rounds/${round.round_number}/print`}
-                target="_blank"
-                className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-8 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
-                🖨️ Imprimir mesas
-              </a>
-            )}
-          </div>
-          <RoundBoards tournament={tournament} groupId={groupId} groupName={groupName} round={round} />
-        </div>
-      )}
+      <div className="flex gap-2 flex-wrap">
+        {round.status === 'draft' && (
+          <>
+            <Button size="sm" loading={busy} onClick={() => onAction('publish')}>
+              Publicar rodada
+            </Button>
+            <Button size="sm" variant="secondary" loading={regenerating} onClick={onRegenerate}>
+              Regerar pareamento
+            </Button>
+          </>
+        )}
+        {round.status === 'ongoing' && (
+          <>
+            {/* <Link> e não <a>: o <a> cru recarregava a página inteira,
+                o que dava a sensação de passar por uma tela intermediária
+                entre a lista e o painel. */}
+            <Link
+              href={`/admin/tournaments/${tournament.slug}/rounds/${round.id}/results`}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 h-8 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              📱 Painel de resultados
+            </Link>
+            <Button size="sm" loading={busy} onClick={() => onAction('finish')}>
+              Encerrar rodada
+            </Button>
+          </>
+        )}
+        {round.status === 'finished' && canReopen && (
+          <Button size="sm" variant="secondary" loading={busy} onClick={() => onAction('reopen')}>
+            Reabrir rodada
+          </Button>
+        )}
+        {round.status !== 'draft' && (
+          <a
+            href={`/tournaments/${tournament.slug}/rounds/${round.round_number}/print`}
+            target="_blank"
+            className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-8 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            🖨️ Imprimir mesas
+          </a>
+        )}
+      </div>
+      <RoundBoards tournament={tournament} groupId={groupId} groupName={groupName} round={round} />
     </div>
   );
 }
