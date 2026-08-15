@@ -160,6 +160,79 @@ export function useRoundPairings(roundId: string) {
   });
 }
 
+export interface RoundSection {
+  roundId: string;
+  status: 'draft' | 'pending' | 'ongoing' | 'finished';
+  groupId: string | null;
+  groupName: string | null;
+}
+
+/**
+ * Uma "rodada N" pode ser várias linhas em `rounds` — uma por grupo de
+ * emparceiramento (migration 007). Resolve todas as seções dessa rodada,
+ * com status efetivo (rodada 'ongoing' sem nenhum resultado pendente conta
+ * como encerrada — cobre estado desatualizado) e nome do grupo já resolvido,
+ * ordenado do mesmo jeito que a visão geral (SUB7 < SUB9 < ...). Usado por
+ * components/tournament/round-detail-view.tsx — público e organizador de
+ * torneio importado veem exatamente o mesmo, então a lógica mora uma vez só.
+ */
+export function useRoundSections(tournamentId: string, roundNumber: number) {
+  return useQuery({
+    queryKey: ['round-sections', tournamentId, roundNumber],
+    enabled: !!tournamentId && Number.isFinite(roundNumber) && roundNumber >= 1,
+    queryFn: async (): Promise<RoundSection[] | null> => {
+      const { data: roundsRaw, error: rErr } = await supabase
+        .from('rounds')
+        .select('id, status, pairing_group_id')
+        .eq('tournament_id', tournamentId)
+        .eq('round_number', roundNumber);
+      if (rErr) throw rErr;
+      const rounds = roundsRaw ?? [];
+      if (rounds.length === 0) return null;
+
+      const roundIds = rounds.map((r) => r.id as string);
+      const { data: pendingPairings, error: pErr } = await supabase
+        .from('pairings')
+        .select('round_id')
+        .in('round_id', roundIds)
+        .eq('result', '*');
+      if (pErr) throw pErr;
+      const pendingRoundIds = new Set((pendingPairings ?? []).map((p: any) => p.round_id as string));
+
+      const groupIds = rounds.map((r) => r.pairing_group_id as string | null).filter((id): id is string => !!id);
+      let groupNameById = new Map<string, string>();
+      if (groupIds.length > 0) {
+        const { data: groups, error: gErr } = await supabase
+          .from('pairing_groups').select('id, name').in('id', groupIds);
+        if (gErr) throw gErr;
+        groupNameById = new Map((groups ?? []).map((g: any) => [g.id as string, g.name as string]));
+      }
+
+      return rounds
+        .map((r) => {
+          const groupId = r.pairing_group_id as string | null;
+          const rawStatus = r.status as RoundSection['status'];
+          const status: RoundSection['status'] =
+            rawStatus === 'ongoing' && !pendingRoundIds.has(r.id as string) ? 'finished' : rawStatus;
+          return {
+            roundId: r.id as string,
+            status,
+            groupId,
+            groupName: groupId ? (groupNameById.get(groupId) ?? null) : null,
+          };
+        })
+        .sort((a, b) => {
+          const an = parseInt(a.groupName?.match(/\d+/)?.[0] ?? '999', 10);
+          const bn = parseInt(b.groupName?.match(/\d+/)?.[0] ?? '999', 10);
+          if (an !== bn) return an - bn;
+          return (a.groupName ?? '').localeCompare(b.groupName ?? '');
+        });
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
 export function usePlayerHistory(tournamentId: string, tpId: string) {
   return useQuery({
     queryKey: tournamentKeys.playerHistory(tournamentId, tpId),
