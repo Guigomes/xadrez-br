@@ -355,6 +355,8 @@ export interface PlayerHistoryRow {
   opponent_name: string;
   opponent_rating: number | null;
   opponent_rank: number | null;
+  /** Pontuação ATUAL do adversário (standings.points) — pra conferir Buchholz/SB na mão. */
+  opponent_points: number | null;
   result: GameResult;
   points_earned: number | null;
   is_bye: boolean;

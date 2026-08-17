@@ -292,6 +292,9 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
             <p className="text-xs text-gray-400 mt-0.5">
               {row.opponent_rating ? `Rating ${row.opponent_rating}` : 'Sem rating'}
               {row.opponent_rank ? ` · ${row.opponent_rank}º colocado` : ''}
+              {/* Pontuação atual do adversário — pra conferir Buchholz/Sonneborn-Berger na mão
+                  sem precisar abrir a classificação em outra aba e cruzar nome por nome. */}
+              {row.opponent_points !== null ? ` · ${formatScore(row.opponent_points)} pts` : ''}
             </p>
           </>
         )}
