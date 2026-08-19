@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendTournamentNotification, notifyPlayerFollowers } from '@/lib/push';
+import { todayInSaoPaulo } from '@/lib/utils/chess';
 
 // Rota service-to-service: o worker cron-import chama aqui quando publica uma
 // rodada de torneio importado, para disparar o push (que só existe no app).
@@ -10,6 +11,21 @@ import { sendTournamentNotification, notifyPlayerFollowers } from '@/lib/push';
 // Dedup: o carimbo rounds.notified_at é reivindicado de forma atômica (update
 // ... where notified_at is null). Só o primeiro chamador envia; chamadas
 // repetidas do cron (roda a cada 2 min) saem sem reenviar.
+//
+// Duas guardas além do dedup, adicionadas depois que a importação de um
+// torneio de meses atrás (Festival Estadual da Criança e Juventude,
+// 11/04/2026) quase disparou push de "rodada publicada" pra quem segue esses
+// jogadores — só não disparou porque a rede falhou no ambiente que rodou o
+// import manualmente. O worker cria as 6 rodadas de uma vez, todas já
+// 'finished', e cada uma passa pelo mesmo caminho de "publicação" que uma
+// rodada ao vivo:
+//  1. Torneio precisa estar visível ao público (is_public && status ≠ draft)
+//     — sem isso a notificação aponta pra algo que ninguém consegue abrir.
+//  2. A data do torneio (end_date, ou start_date se não houver fim) não pode
+//     já ter passado — push de "rodada publicada" só faz sentido pra evento
+//     que está acontecendo. Reimportação de torneio antigo é o caso normal
+//     de quem usa este worker (chess-results não muda depois de encerrado),
+//     então isso não é uma checagem defensiva rara.
 
 export async function POST(request: NextRequest) {
   const secret = process.env.CRON_PUSH_SECRET;
@@ -45,11 +61,28 @@ export async function POST(request: NextRequest) {
 
   const { data: t } = await admin
     .from('tournaments')
-    .select('name, slug')
+    .select('name, slug, is_public, status, start_date, end_date')
     .eq('id', tournamentId)
     .single();
   if (!t) {
     return NextResponse.json({ error: 'Torneio não encontrado.' }, { status: 404 });
+  }
+
+  if (!t.is_public || t.status === 'draft') {
+    return NextResponse.json({ skipped: 'torneio não é público (rascunho ou privado)' });
+  }
+  // status='ongoing' já É a fonte de verdade de "está acontecendo agora" —
+  // a regra automática por data (next_status_by_date, migration 040) é quem
+  // decide essa transição, não este endpoint. Um torneio de vários dias sem
+  // end_date preenchido (ex.: festival em Dourados) cairia como "encerrado"
+  // se comparasse só start_date contra hoje — por isso o corte por data só
+  // entra quando o torneio NÃO está ongoing (é aí que "a data já passou"
+  // denuncia reimportação histórica, não falta de end_date).
+  if (t.status !== 'ongoing') {
+    const eventDate = t.end_date ?? t.start_date;
+    if (eventDate && eventDate < todayInSaoPaulo()) {
+      return NextResponse.json({ skipped: 'torneio já encerrado por data — provável reimportação histórica' });
+    }
   }
 
   const roundUrl = `/tournaments/${t.slug}/rounds/${roundNumber}`;
