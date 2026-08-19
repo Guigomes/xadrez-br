@@ -54,6 +54,12 @@ export default async function AdminDashboard({
               Estatísticas
             </Link>
           )}
+          <Link
+            href="/admin/series"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            🏅 Séries
+          </Link>
           {canCreateTournament && (
             <TourLauncher firstTime={!tournaments?.length} />
           )}

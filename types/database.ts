@@ -17,6 +17,9 @@ export type RatingKind = 'std' | 'rpd' | 'blz';
 export type TimeControlKind = 'bullet' | 'blitz' | 'rapid' | 'classical' | 'other';
 export type TiebreakKey = 'buchholz' | 'buchholz_cut1' | 'sonneborn_berger' | 'wins' | 'progressive';
 export type PlayerSex = 'm' | 'w';
+export type SeriesStatus = 'draft' | 'published' | 'finished';
+/** Desempate da SÉRIE — domínio diferente de TiebreakKey (que é desempate de xadrez). */
+export type SeriesTiebreakKey = 'events' | 'best_place' | 'chess_points';
 
 // ============================================================
 // Row types (raw DB rows)
@@ -521,6 +524,101 @@ export interface News {
 }
 
 // ============================================================
+// Séries de torneios (festivais / circuitos) — migrations 069/070
+// ============================================================
+
+export interface TournamentSeries {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  city: string | null;
+  state: string | null;
+  organizer_name: string | null;
+  banner_url: string | null;
+  status: SeriesStatus;
+  /** Contrato da série: toda etapa precisa ter o mesmo valor. */
+  classification_dimensions: ClassificationDimension[];
+  has_absolute_classification: boolean;
+  points_outside_table: number;
+  tiebreak_order: SeriesTiebreakKey[];
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SeriesPointsRule {
+  id: string;
+  series_id: string;
+  place: number;
+  points: number;
+}
+
+export interface SeriesTournament {
+  id: string;
+  series_id: string;
+  tournament_id: string;
+  label: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface SeriesPointsAwarded {
+  id: string;
+  series_id: string;
+  tournament_id: string;
+  pairing_group_id: string | null;
+  scope_key: string;
+  scope_name: string;
+  identity_key: string;
+  player_id: string;
+  place: number;
+  points: number;
+  chess_points: number;
+}
+
+/** Retorno de get_series_scopes. */
+export interface SeriesScopeRow {
+  scope_key: string;
+  scope_name: string;
+  events: number;
+  players: number;
+}
+
+/** Retorno de get_series_standings. */
+export interface SeriesStandingRow {
+  rank: number;
+  identity_key: string;
+  player_id: string;
+  full_name: string;
+  federation: string | null;
+  state: string | null;
+  rating_std: number | null;
+  points: number;
+  events: number;
+  best_place: number;
+  chess_points: number;
+}
+
+/** Retorno de get_series_player_breakdown. */
+export interface SeriesBreakdownRow {
+  tournament_id: string;
+  tournament_slug: string;
+  tournament_name: string;
+  label: string | null;
+  start_date: string | null;
+  pairing_group_name: string | null;
+  place: number;
+  points: number;
+  chess_points: number;
+}
+
+/** scope_key do ranking transversal (não é uma tournament_categories). */
+export const SERIES_ABSOLUTE_SCOPE = '__absoluto__';
+
+// ============================================================
 // Supabase Database type (used with createClient generic)
 // ============================================================
 
@@ -541,6 +639,11 @@ export interface Database {
       error_logs:           { Row: ErrorLog;           Insert: Omit<ErrorLog, 'id' | 'created_at'>; Update: Partial<Omit<ErrorLog, 'id'>>; };
       unanswered_questions: { Row: UnansweredQuestion; Insert: Omit<UnansweredQuestion, 'id' | 'created_at'>; Update: Partial<Omit<UnansweredQuestion, 'id'>>; };
       news:                 { Row: News;               Insert: Partial<Omit<News, 'id' | 'created_at' | 'updated_at'>> & Pick<News, 'slug' | 'title' | 'scope'>; Update: Partial<Omit<News, 'id'>>; };
+      tournament_series:    { Row: TournamentSeries;   Insert: Partial<Omit<TournamentSeries, 'id' | 'created_at' | 'updated_at'>> & Pick<TournamentSeries, 'slug' | 'name'>; Update: Partial<Omit<TournamentSeries, 'id'>>; };
+      series_points_rules:  { Row: SeriesPointsRule;   Insert: Omit<SeriesPointsRule, 'id'>; Update: Partial<Omit<SeriesPointsRule, 'id'>>; };
+      series_tournaments:   { Row: SeriesTournament;   Insert: Omit<SeriesTournament, 'id' | 'created_at'>; Update: Partial<Omit<SeriesTournament, 'id'>>; };
+      // Escrita só pelas funções security definer da 070 — sem Insert/Update úteis.
+      series_points_awarded:{ Row: SeriesPointsAwarded; Insert: never; Update: never; };
     };
     Functions: {
       recalculate_standings:        { Args: { p_tournament_id: string }; Returns: void; };
@@ -551,6 +654,13 @@ export interface Database {
       get_round_pairings:           { Args: { p_round_id: string }; Returns: RoundPairingRow[]; };
       refresh_tournament_categories:{ Args: { p_tournament_id: string }; Returns: number; };
       match_kb_chunks:               { Args: { query_embedding: number[]; match_count?: number; min_similarity?: number }; Returns: { doc_slug: string; doc_title: string; content: string; similarity: number }[]; };
+      add_tournament_to_series:      { Args: { p_series_id: string; p_tournament_id: string; p_label?: string | null; p_sort_order?: number | null }; Returns: string; };
+      remove_tournament_from_series: { Args: { p_series_id: string; p_tournament_id: string }; Returns: void; };
+      set_series_points_rules:       { Args: { p_series_id: string; p_rules: { place: number; points: number }[] }; Returns: number; };
+      recalculate_series_standings:  { Args: { p_series_id: string }; Returns: number; };
+      get_series_scopes:             { Args: { p_series_id: string }; Returns: SeriesScopeRow[]; };
+      get_series_standings:          { Args: { p_series_id: string; p_scope_key: string }; Returns: SeriesStandingRow[]; };
+      get_series_player_breakdown:   { Args: { p_series_id: string; p_identity_key: string; p_scope_key: string }; Returns: SeriesBreakdownRow[]; };
     };
     Enums: {
       user_role:                UserRole;
@@ -560,6 +670,7 @@ export interface Database {
       game_result:              GameResult;
       player_tournament_status: PlayerTournamentStatus;
       chat_session_status:      ChatSessionStatus;
+      series_status:            SeriesStatus;
     };
   };
 }

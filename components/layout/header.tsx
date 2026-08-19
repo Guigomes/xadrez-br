@@ -33,6 +33,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
 
   const navLinks = [
     { href: '/tournaments', label: 'Torneios' },
+    { href: '/series',      label: 'Séries' },
     { href: '/players',     label: 'Jogadores' },
     { href: '/noticias',    label: 'Notícias' },
   ];
