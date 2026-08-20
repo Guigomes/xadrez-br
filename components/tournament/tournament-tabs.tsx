@@ -40,7 +40,7 @@ export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentT
       ];
 
   return (
-    <nav className="grid grid-cols-2 border-b border-gray-200 dark:border-gray-800 -mx-4 sm:mx-0 sm:flex sm:overflow-x-auto sm:gap-0.5 sm:px-0">
+    <nav className="grid grid-cols-2 border-b border-gray-200 dark:border-gray-800 -mx-4 sm:mx-0 sm:flex sm:flex-wrap sm:gap-0.5 sm:px-0">
       {tabs.map((tab) => {
         const isActive = tab.href === base
           ? pathname === base

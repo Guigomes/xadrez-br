@@ -70,9 +70,9 @@ export default async function TournamentOverviewPage({ params }: Props) {
   const hasGroups = groups.length > 0;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-3">
       {/* Meta info — only shown on the overview page */}
-      <div className="lg:col-span-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-2">
+      <div className="md:col-span-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-2">
         {(tournament.venue || tournament.city) && (
           <span>📍 {[tournament.venue, `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}</span>
         )}
@@ -86,7 +86,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
         {tournament.chief_arbiter && <span>⚖️ {tournament.chief_arbiter}</span>}
       </div>
       {/* Left column */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="md:col-span-2 space-y-6">
         {/* Current round highlight */}
         {currentRound && (
           <Link

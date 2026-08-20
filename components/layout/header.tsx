@@ -49,8 +49,11 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
           <span className="hidden sm:inline tracking-tight">Torneios Xadrez BR</span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1">
+        {/* Desktop nav — só a partir de lg; em tablet (md-lg) o hambúrguer
+            continua sendo o único menu, senão a barra fica com logo, 4 links,
+            toggle de tema, botão Painel e dropdown de conta todos espremidos
+            num viewport de 768-1023px. */}
+        <nav className="hidden lg:flex items-center gap-1">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -80,12 +83,12 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
             </Link>
           )}
 
-          {/* Avatar+dropdown só a partir de md, que é exatamente onde o botão
-              hambúrguer some. Abaixo disso os dois apareciam lado a lado
+          {/* Avatar+dropdown só a partir de lg, mesmo ponto onde o botão
+              hambúrguer some agora. Abaixo disso os dois apareciam lado a lado
               abrindo menus com o mesmo conteúdo (Painel / Minha conta) — o
-              menu mobile ganhou "Sair" e passa a ser o único. */}
+              menu mobile ganhou "Sair" e passa a ser o único até 1024px. */}
           {user ? (
-            <div className="relative hidden md:block" ref={dropdownRef}>
+            <div className="relative hidden lg:block" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
@@ -132,7 +135,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menu"
           >
@@ -149,7 +152,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
       {/* Mobile nav with transition */}
       <div
         className={cn(
-          'md:hidden overflow-hidden transition-all duration-200 ease-in-out',
+          'lg:hidden overflow-hidden transition-all duration-200 ease-in-out',
           mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
         )}
       >

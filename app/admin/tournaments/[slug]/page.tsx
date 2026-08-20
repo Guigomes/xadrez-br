@@ -63,9 +63,9 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
   const hasGroups = (groups?.length ?? 0) > 0;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-3">
       {/* Card de detalhes — metadados agrupados em grid, ícones na cor da marca */}
-      <div className="lg:col-span-3 card p-4">
+      <div className="md:col-span-3 card p-4">
         <div className="flex items-start justify-between gap-3 mb-3">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Detalhes</h2>
           <Link
@@ -104,7 +104,7 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
       </div>
 
       {/* Left column */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="md:col-span-2 space-y-6">
         {currentRound && (
           <Link
             href={`${base}/rounds`}
