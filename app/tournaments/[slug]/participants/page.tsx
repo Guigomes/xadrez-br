@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getTournamentPageData } from '@/lib/data/tournament-page-data';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
@@ -14,22 +15,35 @@ interface Props {
 export default async function ParticipantsPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { group: selectedGroupId } = await searchParams;
+
+  // Mesma chamada que o layout já fez pra este slug — cache() do React
+  // dedupe dentro do request, não é uma segunda viagem ao Supabase.
+  const data = await getTournamentPageData(slug);
+  if (!data) notFound();
+  const { tournament } = data;
+
   const supabase = await createClient();
 
-  const { data: tournament } = await supabase
-    .from('tournaments')
-    .select('id, name')
-    .eq('slug', slug)
-    .single();
-
-  if (!tournament) notFound();
-
-  // Fetch pairing groups for this tournament (sorted by sort_order)
-  const { data: pairingGroups } = await supabase
-    .from('pairing_groups')
-    .select('id, name')
-    .eq('tournament_id', tournament.id)
-    .order('sort_order', { ascending: true });
+  // pairing_groups e a query de jogadores não dependem uma da outra — rodam
+  // em paralelo. O filtro por pairing_group_id (só faz sentido se o torneio
+  // TEM grupo) entra depois, em JS, porque só dá pra saber isso depois do
+  // Promise.all resolver.
+  const [{ data: pairingGroups }, { data: playersData }] = await Promise.all([
+    supabase
+      .from('pairing_groups')
+      .select('id, name')
+      .eq('tournament_id', tournament.id)
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('tournament_players')
+      .select(`
+        id, initial_ranking, current_score, current_rank, status, pairing_group_id,
+        player:players(id, full_name, rating_std, state, city, federation),
+        category:tournament_categories(id, name, pairing_group_id)
+      `)
+      .eq('tournament_id', tournament.id)
+      .order('initial_ranking', { ascending: true, nullsFirst: false }),
+  ]);
 
   const groups = [...(pairingGroups ?? [])].sort((a, b) => compareGroupNames(a.name, b.name));
   const hasGroups = groups.length > 0;
@@ -40,26 +54,14 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
   // faz sentido a partir de dois. (Não confundir com o "Absoluto" da
   // classificação, que é o eixo transversal `has_absolute_classification`.)
   const showGroupFilter = groups.length > 1;
-
-  // Build the players query — filter by pairing_group_id directly
-  let query = supabase
-    .from('tournament_players')
-    .select(`
-      id, initial_ranking, current_score, current_rank, status,
-      player:players(id, full_name, rating_std, state, city, federation),
-      category:tournament_categories(id, name, pairing_group_id)
-    `)
-    .eq('tournament_id', tournament.id)
-    .order('initial_ranking', { ascending: true, nullsFirst: false });
-
-  if (hasGroups && selectedGroupId) {
-    query = query.eq('pairing_group_id', selectedGroupId);
-  }
-
-  const { data: playersData } = await query;
   // Enquanto o seed não foi gerado (initial_ranking todo null), a ordem do
-  // banco não significa nada — reordena por rating/nome (chess.ts).
-  const players = playersData ? [...playersData].sort(compareParticipantOrder) : playersData;
+  // banco não significa nada — reordena por rating/nome (chess.ts). Filtro
+  // por grupo migrou de query SQL pra aqui (precisa saber hasGroups antes,
+  // que só existe depois do Promise.all acima).
+  const filteredPlayers = hasGroups && selectedGroupId
+    ? (playersData ?? []).filter((tp) => tp.pairing_group_id === selectedGroupId)
+    : playersData;
+  const players = filteredPlayers ? [...filteredPlayers].sort(compareParticipantOrder) : filteredPlayers;
 
   const base = `/tournaments/${slug}/participants`;
 

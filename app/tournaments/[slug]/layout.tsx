@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { getTournamentPageData } from '@/lib/data/tournament-page-data';
 import { TournamentTabs } from '@/components/tournament/tournament-tabs';
 import { SaveLastTournament } from '@/components/tournament/save-last-tournament';
 import { Badge } from '@/components/ui/badge';
@@ -17,88 +17,29 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
-  const { data } = await supabase.from('tournaments').select('name, description, city, state').eq('slug', slug).single();
+  const data = await getTournamentPageData(slug);
   if (!data) return {};
+  const { tournament } = data;
   return {
-    title: data.name,
-    description: data.description ?? `Torneio em ${data.city}, ${data.state}`,
+    title: tournament.name,
+    description: tournament.description ?? `Torneio em ${tournament.city}, ${tournament.state}`,
   };
 }
 
 export default async function TournamentLayout({ children, params }: Props) {
   const { slug } = await params;
-  const supabase = await createClient();
 
-  // get_tournament_by_slug (migration 040) corrige o status vencido por
-  // data (inscrição encerrada / torneio iniciado) antes de retornar — sem
-  // isso, quem acessa direto a página de um torneio poderia ver um status
-  // desatualizado até a próxima visita à listagem.
-  const { data: tournament } = await supabase
-    .rpc('get_tournament_by_slug', { p_slug: slug });
+  // get_tournament_page_data (migration 071) resolve tudo isto num round-trip
+  // só: status corrigido por data (get_tournament_by_slug, 040), rodada atual
+  // e status efetivo (considerando pendências de resultado), e último sync de
+  // import — tudo antes calculado aqui em Node com até 4 queries sequenciais.
+  // Ver lib/data/tournament-page-data.ts.
+  const data = await getTournamentPageData(slug);
 
-  if (!tournament) notFound();
+  if (!data) notFound();
 
-  // Last sync time from tournament_imports (if this tournament is auto-imported)
-  const { data: lastImport } = await supabase
-    .from('tournament_imports')
-    .select('last_run_at, last_status')
-    .eq('tournament_id', tournament.id)
-    .not('last_run_at', 'is', null)
-    .order('last_run_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  let currentRoundNumber: number | null = null;
-  let effectiveStatus = tournament.status;
-
-  if (tournament.status === 'ongoing') {
-    // Multi-group tournaments have one rounds row per pairing group, so several
-    // rounds can be ongoing simultaneously — .order + .limit(1) avoids the
-    // "multiple rows" error that .maybeSingle() throws on its own.
-    const { data: ongoingRound } = await supabase
-      .from('rounds')
-      .select('id, round_number')
-      .eq('tournament_id', tournament.id)
-      .eq('status', 'ongoing')
-      .order('round_number')
-      .limit(1)
-      .maybeSingle();
-
-    if (ongoingRound) {
-      // The DB says this round is ongoing — verify by checking pending pairings.
-      // A round with no '*' results is effectively finished (handles stale status).
-      const { count: pendingCount } = await supabase
-        .from('pairings')
-        .select('id', { count: 'exact', head: true })
-        .eq('tournament_id', tournament.id)
-        .eq('result', '*');
-
-      if ((pendingCount ?? 0) > 0) {
-        currentRoundNumber = ongoingRound.round_number;
-      } else {
-        // All pairings have results — tournament is effectively finished.
-        effectiveStatus = 'finished';
-        const { data: lastRound } = await supabase
-          .from('rounds')
-          .select('round_number')
-          .eq('tournament_id', tournament.id)
-          .order('round_number', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        currentRoundNumber = lastRound?.round_number ?? null;
-      }
-    } else {
-      const { data: lastRound } = await supabase
-        .from('rounds')
-        .select('round_number')
-        .eq('tournament_id', tournament.id)
-        .order('round_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      currentRoundNumber = lastRound?.round_number ?? null;
-    }
-  }
+  const { tournament, currentRoundNumber, effectiveStatus, lastImportAt, lastImportStatus } = data;
+  const lastImport = lastImportAt ? { last_run_at: lastImportAt, last_status: lastImportStatus } : null;
 
   return (
     <div>
