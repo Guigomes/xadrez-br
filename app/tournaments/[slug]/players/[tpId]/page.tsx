@@ -286,7 +286,7 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">BYE</p>
         ) : (
           <>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
               {row.opponent_name}
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
