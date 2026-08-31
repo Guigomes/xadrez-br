@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { getSessionUser, getSessionProfile } from '@/lib/data/session';
 import { MarketingHome } from '@/components/home/marketing-home';
 import { OrganizerDashboard } from '@/components/home/organizer-dashboard';
 
@@ -18,12 +18,12 @@ import { OrganizerDashboard } from '@/components/home/organizer-dashboard';
  * essa home sempre aparece pra ele.
  */
 export default async function HomePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // getSessionUser já foi chamado pelo layout raiz neste mesmo request
+  // (lib/data/session.ts) — aqui volta do cache, sem ida à rede.
+  const user = await getSessionUser();
 
   if (user) {
-    const { data: profile } = await supabase
-      .from('user_profiles').select('role, is_organizer, full_name').eq('id', user.id).maybeSingle();
+    const profile = await getSessionProfile();
     const canCreate = profile?.role === 'admin' || !!profile?.is_organizer;
     if (canCreate) {
       return (

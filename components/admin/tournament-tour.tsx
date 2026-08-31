@@ -2,10 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { driver, type Driver } from 'driver.js';
-// CSS de node_modules pode ser importado fora do layout raiz. Fica aqui, junto
-// de quem usa; os ajustes de tema estão em app/globals.css (.xbr-tour).
-import 'driver.js/dist/driver.css';
+import type { Driver } from 'driver.js';
 import { matchRoute, stepsForRoute, nextStepAfter } from '@/lib/tour/steps';
 import {
   readProgress,
@@ -93,6 +90,18 @@ export function TournamentTour() {
       const firstTarget = block[0].target;
       const ready = firstTarget ? await waitForTarget(sel(firstTarget), 5000) : true;
       if (cancelled || !ready) return;
+
+      // driver.js entra por import dinâmico, não no topo do arquivo: este
+      // componente mora no layout do admin, então um import estático levaria a
+      // lib + o CSS dela pro bundle de TODA página do painel — inclusive com
+      // TOUR_ENABLED=false, quando o tour nunca abre. Aqui só baixa quando um
+      // tour de verdade vai rodar.
+      const [{ driver }] = await Promise.all([
+        import('driver.js'),
+        // @ts-expect-error -- CSS não tem tipagem; o import é pelo efeito colateral.
+        import('driver.js/dist/driver.css'),
+      ]);
+      if (cancelled) return;
 
       const last = block[block.length - 1];
       const continues = nextStepAfter(last.id) !== null;

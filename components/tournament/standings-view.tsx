@@ -21,19 +21,34 @@ import { matchesPlayerSearch } from '@/lib/utils/text';
  * não duplicar chips de grupo/faixa, desempates e o polling de 30s; a única
  * coisa que muda entre os dois é a moldura de layout ao redor.
  */
-export function StandingsView({ slug, showExport = false }: { slug: string; showExport?: boolean }) {
+export function StandingsView({
+  slug,
+  showExport = false,
+  tournamentId,
+}: {
+  slug: string;
+  showExport?: boolean;
+  /** Id vindo do servidor (a página já o tinha em mãos). Sem ele, as queries
+   *  de classificação/rodadas ficavam ESPERANDO o useTournament resolver pra
+   *  só então disparar — waterfall de dois round-trips no cliente. Com o id
+   *  pronto, as três saem juntas no primeiro render. */
+  tournamentId?: string;
+}) {
   const { data: tournament, isLoading: loadingTournament } = useTournament(slug);
-  const { data: standings, isLoading: loadingStandings } = useTournamentStandings(
-    tournament?.id ?? ''
-  );
-  const { data: rounds } = useTournamentRounds(tournament?.id ?? '');
-  const { data: followed } = useFollowedInTournament(tournament?.id ?? '');
+  const id = tournamentId ?? tournament?.id ?? '';
+  const { data: standings, isLoading: loadingStandings } = useTournamentStandings(id);
+  const { data: rounds } = useTournamentRounds(id);
+  const { data: followed } = useFollowedInTournament(id);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [query, setQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-  const isLoading = loadingTournament || (!!tournament && loadingStandings);
+  // Com o id vindo do servidor a classificação não depende mais do
+  // useTournament ter resolvido — só espera a própria query.
+  const isLoading = tournamentId
+    ? loadingStandings
+    : loadingTournament || (!!tournament && loadingStandings);
 
   // Pairing groups present in the standings (multi-group tournament). One
   // entry per distinct pairing_group_id, ordered by name.

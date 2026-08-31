@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { getSeriesHeader } from '@/lib/data/series-page-data';
 import { SeriesTabs } from '@/components/series/series-tabs';
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
@@ -15,9 +15,7 @@ interface Props {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('tournament_series').select('name, description').eq('slug', slug).single();
+  const data = await getSeriesHeader(slug);
   if (!data) return { title: 'Série não encontrada' };
   return {
     title: data.name,
@@ -27,15 +25,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function SeriesLayout({ children, params }: Props) {
   const { slug } = await params;
-  const supabase = await createClient();
 
-  // RLS já esconde rascunho de quem não gerencia — sem linha aqui é 404 pro
-  // visitante e página normal pro organizador.
-  const { data: series } = await supabase
-    .from('tournament_series')
-    .select('name, description, status, start_date, end_date, city, state, organizer_name, classification_dimensions')
-    .eq('slug', slug)
-    .single();
+  // Mesma chamada do generateMetadata acima — memoizada por request
+  // (lib/data/series-page-data.ts), então não repete a consulta.
+  const series = await getSeriesHeader(slug);
 
   if (!series) notFound();
 

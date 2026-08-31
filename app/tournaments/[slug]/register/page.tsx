@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getTournamentPageData } from '@/lib/data/tournament-page-data';
+import { getSessionUser } from '@/lib/data/session';
 import { RegistrationForm } from '@/components/tournament/registration-form';
 import { formatDateRange } from '@/lib/utils/date';
 import { todayInSaoPaulo } from '@/lib/utils/chess';
@@ -12,12 +14,11 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
-  const { data } = await supabase.from('tournaments').select('name').eq('slug', slug).single();
+  const data = await getTournamentPageData(slug);
   if (!data) return {};
   return {
-    title: `Inscrição — ${data.name}`,
-    description: `Inscreva-se no torneio ${data.name}`,
+    title: `Inscrição — ${data.tournament.name}`,
+    description: `Inscreva-se no torneio ${data.tournament.name}`,
   };
 }
 
@@ -32,18 +33,34 @@ export default async function RegisterPage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
 
-  // get_tournament_by_slug (migration 040) corrige inscrição encerrada /
-  // torneio iniciado por data antes de decidir se o formulário abre.
-  const { data: tournament } = await supabase
-    .rpc('get_tournament_by_slug', { p_slug: slug });
+  // Mesma chamada que o layout do torneio já fez (get_tournament_page_data,
+  // migration 071) — memoizada por request, não repete o round-trip. Ela
+  // embute o get_tournament_by_slug (migration 040), que corrige inscrição
+  // encerrada / torneio iniciado por data antes de decidir se o form abre.
+  // O usuário vem memoizado do layout raiz.
+  const [pageData, user] = await Promise.all([
+    getTournamentPageData(slug),
+    getSessionUser(),
+  ]);
 
-  if (!tournament) notFound();
+  if (!pageData) notFound();
+  const { tournament } = pageData;
 
-  const { data: categoryRows } = await supabase
-    .from('tournament_categories')
-    .select('id, name, sort_order, sex, min_age, max_age, min_rating, max_rating')
-    .eq('tournament_id', tournament.id)
-    .order('name');
+  // Categorias e perfil de autofill são independentes entre si.
+  const [{ data: categoryRows }, { data: profile }] = await Promise.all([
+    supabase
+      .from('tournament_categories')
+      .select('id, name, sort_order, sex, min_age, max_age, min_rating, max_rating')
+      .eq('tournament_id', tournament.id)
+      .order('name'),
+    user
+      ? supabase
+          .from('user_profiles')
+          .select('is_participant, full_name, email, birth_year, city, state, club_or_school, federation, fide_id, cbx_id, phone')
+          .eq('id', user.id)
+          .single()
+      : Promise.resolve({ data: null }),
+  ]);
 
   // Mapeia pro shape camelCase que classification-match.ts espera (mesma
   // regra de derivação do SQL, usada aqui só pra pré-selecionar a
@@ -62,16 +79,8 @@ export default async function RegisterPage({ params }: Props) {
     ? new Date(tournament.start_date).getFullYear()
     : null;
 
-  const { data: { user } } = await supabase.auth.getUser();
-  let autofill = null;
-  if (user) {
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('is_participant, full_name, email, birth_year, city, state, club_or_school, federation, fide_id, cbx_id, phone')
-      .eq('id', user.id)
-      .single();
-    if (profile?.is_participant) autofill = profile;
-  }
+  // Autofill só pra quem marcou "sou participante" no perfil (migrations 027/028).
+  const autofill = (profile as { is_participant?: boolean } | null)?.is_participant ? profile : null;
 
   const today = todayISO();
   const beforeWindow =

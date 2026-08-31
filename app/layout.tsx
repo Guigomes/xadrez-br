@@ -6,11 +6,20 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Analytics } from '@vercel/analytics/next';
 import { PwaRegister } from '@/components/pwa-register';
-import { ChatWidget } from '@/components/chat/chat-widget';
 import { ErrorLogger } from '@/components/error-logger';
-import { createClient } from '@/lib/supabase/server';
+import dynamic from 'next/dynamic';
+import { getSessionUser } from '@/lib/data/session';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' });
+
+// O widget do Gambito (~430 linhas + hooks de chat) mora no layout raiz, ou
+// seja, entrava no bundle inicial de TODA rota do site pra ficar quase sempre
+// fechado. Em chunk próprio, ele carrega em paralelo sem atrasar o conteúdo da
+// página. Sem `ssr: false` porque isto é um Server Component — o que interessa
+// aqui é o code splitting, não pular o SSR.
+const ChatWidget = dynamic(() =>
+  import('@/components/chat/chat-widget').then((m) => m.ChatWidget)
+);
 
 export const metadata: Metadata = {
   title: {
@@ -47,9 +56,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Lê a sessão no servidor pra o primeiro paint do header/chat já sair com o
   // estado logado — sem isso, useUser() só resolve depois da hidratação e a
   // barra pisca "Entrar" antes de virar "Minha conta".
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const initialUser = user ? { id: user.id, email: user.email ?? null } : null;
+  // getSessionUser é memoizado por request (lib/data/session.ts), então as
+  // camadas abaixo (layout do admin, páginas) reusam esta mesma chamada.
+  const initialUser = await getSessionUser();
 
   return (
     <html lang="pt-BR" suppressHydrationWarning>

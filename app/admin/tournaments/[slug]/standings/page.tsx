@@ -1,7 +1,5 @@
-'use client';
-
-import { use } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
 import { StandingsView } from '@/components/tournament/standings-view';
 
 interface Props {
@@ -15,11 +13,18 @@ interface Props {
  * parte do trabalho: sem esta aba o organizador tinha que sair pro site
  * público pra ver o resultado do que acabou de lançar.
  */
-export default function AdminStandingsPage({ params }: Props) {
-  const { slug } = use(params);
+export default async function AdminStandingsPage({ params }: Props) {
+  const { slug } = await params;
+
+  // Só o id, pra StandingsView disparar a query de classificação de cara em
+  // vez de esperar o useTournament resolver primeiro (waterfall no cliente).
+  const supabase = await createClient();
+  const { data: tournament } = await supabase
+    .from('tournaments').select('id').eq('slug', slug).single();
+
   return (
     <div>
-      <StandingsView slug={slug} showExport />
+      <StandingsView slug={slug} showExport tournamentId={tournament?.id} />
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href={`/tournaments/${slug}/standings/print`}

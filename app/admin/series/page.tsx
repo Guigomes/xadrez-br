@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getSessionUser, getSessionProfile } from '@/lib/data/session';
 import { Badge } from '@/components/ui/badge';
 import {
   SERIES_STATUS_COLOR, SERIES_STATUS_LABEL, describeDimensions, formatSeriesPeriod,
@@ -7,10 +8,9 @@ import {
 
 export default async function AdminSeriesIndex() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from('user_profiles').select('role, is_organizer').eq('id', user!.id).single();
+  // Memoizados pelo layout do admin (lib/data/session.ts) — sem round-trip aqui.
+  const [user, profile] = await Promise.all([getSessionUser(), getSessionProfile()]);
   const canCreate = profile?.role === 'admin' || !!profile?.is_organizer;
 
   const { data: series } = await supabase

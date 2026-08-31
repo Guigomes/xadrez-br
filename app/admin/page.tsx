@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getSessionUser, getSessionProfile } from '@/lib/data/session';
 import { Badge } from '@/components/ui/badge';
 import { FlashMessage } from '@/components/ui/flash-message';
 import { TourLauncher } from '@/components/admin/tour-launcher';
@@ -14,10 +15,10 @@ export default async function AdminDashboard({
 }) {
   const { excluido } = await searchParams;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from('user_profiles').select('role, is_organizer').eq('id', user!.id).single();
+  // Usuário e perfil vêm memoizados do layout do admin (lib/data/session.ts) —
+  // aqui não custa round-trip nenhum. Sobra só a lista de torneios.
+  const [user, profile] = await Promise.all([getSessionUser(), getSessionProfile()]);
   const isAdmin = profile?.role === 'admin';
   const canCreateTournament = isAdmin || !!profile?.is_organizer;
 

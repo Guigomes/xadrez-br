@@ -1,21 +1,17 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 import { TournamentTour } from '@/components/admin/tournament-tour';
-import type { UserRole } from '@/types/database';
+import { getSessionUser, getSessionProfile } from '@/lib/data/session';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Ambos memoizados por request (lib/data/session.ts): o layout raiz já pediu
+  // o usuário, e as páginas abaixo pedem o perfil — nenhuma dessas repete o
+  // round-trip dentro do mesmo render.
+  const user = await getSessionUser();
 
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('role, full_name')
-    .eq('id', user.id)
-    .single() as unknown as { data: { role: UserRole; full_name: string | null } | null; error: unknown };
-  const typedProfile = profile as { role: UserRole; full_name: string | null } | null;
+  const typedProfile = await getSessionProfile();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
