@@ -6,6 +6,7 @@ import { Markdown } from '@/components/news/markdown';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils/date';
 import { newsCoverUrl, newsScopeLabel } from '@/lib/utils/news';
+import type { NewsScope } from '@/types/database';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -32,7 +33,7 @@ export default async function NewsDetailPage({ params }: Props) {
       <article className="mx-auto mt-4 max-w-2xl">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300">
-            {newsScopeLabel(news.scope, news.state)}
+            {newsScopeLabel(news.scope as NewsScope, news.state)}
           </Badge>
           {news.published_at && (
             <span className="text-xs text-gray-400 dark:text-gray-500">

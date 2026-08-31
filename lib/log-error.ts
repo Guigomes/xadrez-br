@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import type { Json } from '@/types/database.generated';
 
 export interface LogErrorInput {
   source: 'client' | 'server' | 'api';
@@ -30,7 +31,10 @@ export async function logError(input: LogErrorInput): Promise<void> {
       method: input.method ?? null,
       status_code: input.statusCode ?? null,
       user_id: input.userId ?? null,
-      context: input.context ?? null,
+      // Record<string, unknown> não satisfaz Json estruturalmente (unknown
+      // pode ser qualquer coisa, inclusive não-serializável) — o chamador é
+      // quem garante que só passa dado serializável aqui.
+      context: (input.context ?? null) as Json,
     });
   } catch (err) {
     console.error('[log-error] falhou ao gravar em error_logs:', err);

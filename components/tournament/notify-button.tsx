@@ -108,7 +108,10 @@ export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        // lib.dom tornou TypedArray genérico sobre o buffer (TS 5.7+):
+        // Uint8Array<ArrayBufferLike> não satisfaz BufferSource
+        // (ArrayBufferView<ArrayBuffer>) mesmo sendo o mesmo dado em runtime.
+        applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
       });
 
       const res = await fetch('/api/push/subscribe', {

@@ -34,7 +34,8 @@ export default function AdminHistoryPage({ params }: { params: Promise<{ slug: s
         .order('created_at', { ascending: false })
         .limit(200);
       if (error) throw error;
-      return data ?? [];
+      // payload é jsonb no banco (Json); a app espera objeto ou null.
+      return (data ?? []) as AuditLogEntry[];
     },
   });
 

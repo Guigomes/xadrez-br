@@ -8,6 +8,8 @@ import { CHAT_ALLOW_ANONYMOUS } from '@/lib/chat/config';
 import { findOwnChatSession } from '@/lib/chat/session-access';
 import { logError } from '@/lib/log-error';
 import { sendFcmToAdmins, sendOperatorNotification } from '@/lib/push';
+import type { TablesUpdate } from '@/types/database';
+import type { Json } from '@/types/database.generated';
 
 export const runtime = 'nodejs';
 
@@ -98,7 +100,7 @@ export async function POST(request: NextRequest) {
   // 'humano' NÃO desescala — ali alguém do time já entrou na conversa, e o bot
   // atropelar a resposta de uma pessoa seria pior que esperar.
   const voltandoPraBot = session.status === 'encerrada' || session.status === 'aguardando_humano';
-  const sessionUpdate: Record<string, string> = { last_message_at: new Date().toISOString() };
+  const sessionUpdate: TablesUpdate<'chat_sessions'> = { last_message_at: new Date().toISOString() };
   if (voltandoPraBot) sessionUpdate.status = 'bot';
   await admin.from('chat_sessions').update(sessionUpdate).eq('id', session.id);
 
@@ -173,8 +175,10 @@ export async function POST(request: NextRequest) {
       },
     );
 
+    // ChatSource é interface (sem index signature) — não satisfaz Json
+    // estruturalmente mesmo sendo um objeto plano serializável.
     const { error: assistantMsgError } = await admin
-      .from('chat_messages').insert({ session_id: session.id, role: 'assistant', content: answer, sources });
+      .from('chat_messages').insert({ session_id: session.id, role: 'assistant', content: answer, sources: sources as unknown as Json });
     if (assistantMsgError) throw assistantMsgError;
 
     return NextResponse.json({ sessionId: session.id, answer, sources });

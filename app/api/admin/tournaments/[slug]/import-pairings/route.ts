@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/server';
 import { sendTournamentNotification, notifyPlayerFollowers } from '@/lib/push';
+import type { TablesInsert } from '@/types/database';
 
 type GameResult = '1-0' | '0-1' | '1/2-1/2' | '*' | 'bye';
 
@@ -148,7 +149,7 @@ export async function POST(
 
   const byInitial = new Map((tPlayers ?? []).map((tp) => [tp.initial_ranking, tp.id]));
 
-  const toInsert: object[] = [];
+  const toInsert: TablesInsert<'pairings'>[] = [];
   const unmatched: string[] = [];
 
   for (const p of pairings) {

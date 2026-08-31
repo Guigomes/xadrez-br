@@ -58,7 +58,8 @@ export function useTournament(slug: string) {
       const { data, error } = await supabase
         .rpc('get_tournament_by_slug', { p_slug: slug });
       if (error) throw error;
-      return data;
+      // tiebreak_order é `text[]` no banco; a app restringe a TiebreakKey[].
+      return data as Tournament | null;
     },
     staleTime: 60_000,
     // O status do torneio muda sozinho por baixo do usuário: por data
@@ -81,7 +82,8 @@ export function useTournamentCategories(tournamentId: string) {
         .eq('tournament_id', tournamentId)
         .order('name');
       if (error) throw error;
-      return data ?? [];
+      // `sex` é `text` no banco; a app restringe a 'm'|'w'|null.
+      return (data ?? []) as TournamentCategory[];
     },
     staleTime: 300_000,
   });
@@ -257,7 +259,12 @@ export function usePlayerHistory(tournamentId: string, tpId: string) {
 export function useCreateTournament() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (values: TournamentFormValues & { created_by: string }) => {
+    // Sem call site hoje (a criação real passa por
+    // lib/utils/create-tournament-setup.ts, que já calcula `slug`) — o
+    // type-check pegou que `tournaments.slug` é obrigatório e não está em
+    // `TournamentFormValues`. Se este hook voltar a ser usado, `values`
+    // precisa incluir `slug` antes do cast parar de ser seguro.
+    mutationFn: async (values: TournamentFormValues & { created_by: string; slug: string }) => {
       const { data, error } = await supabase
         .from('tournaments')
         .insert(values)

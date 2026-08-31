@@ -622,55 +622,24 @@ export const SERIES_ABSOLUTE_SCOPE = '__absoluto__';
 // Supabase Database type (used with createClient generic)
 // ============================================================
 
-export interface Database {
-  public: {
-    Tables: {
-      user_profiles:        { Row: UserProfile;        Insert: Partial<UserProfile> & Pick<UserProfile, 'id'>; Update: Partial<UserProfile>; };
-      players:              { Row: Player;             Insert: Omit<Player, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Player, 'id'>>; };
-      tournaments:          { Row: Tournament;         Insert: Omit<Tournament, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Tournament, 'id'>>; };
-      tournament_categories:{ Row: TournamentCategory; Insert: Omit<TournamentCategory, 'id' | 'created_at'>; Update: Partial<Omit<TournamentCategory, 'id'>>; };
-      tournament_players:   { Row: TournamentPlayer;   Insert: Omit<TournamentPlayer, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<TournamentPlayer, 'id'>>; };
-      rounds:               { Row: Round;              Insert: Omit<Round, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Round, 'id'>>; };
-      pairings:             { Row: Pairing;            Insert: Omit<Pairing, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Pairing, 'id'>>; };
-      standings:            { Row: Standing;           Insert: Omit<Standing, 'id'>; Update: Partial<Omit<Standing, 'id'>>; };
-      player_follows:       { Row: PlayerFollow;       Insert: Omit<PlayerFollow, 'id' | 'created_at'>; Update: Partial<Omit<PlayerFollow, 'id'>>; };
-      chat_sessions:        { Row: ChatSession;        Insert: Partial<Omit<ChatSession, 'id' | 'created_at'>> & { user_id: string }; Update: Partial<Omit<ChatSession, 'id'>>; };
-      chat_messages:        { Row: ChatMessage;        Insert: Omit<ChatMessage, 'id' | 'created_at' | 'is_human'> & { is_human?: boolean }; Update: Partial<Omit<ChatMessage, 'id'>>; };
-      error_logs:           { Row: ErrorLog;           Insert: Omit<ErrorLog, 'id' | 'created_at'>; Update: Partial<Omit<ErrorLog, 'id'>>; };
-      unanswered_questions: { Row: UnansweredQuestion; Insert: Omit<UnansweredQuestion, 'id' | 'created_at'>; Update: Partial<Omit<UnansweredQuestion, 'id'>>; };
-      news:                 { Row: News;               Insert: Partial<Omit<News, 'id' | 'created_at' | 'updated_at'>> & Pick<News, 'slug' | 'title' | 'scope'>; Update: Partial<Omit<News, 'id'>>; };
-      tournament_series:    { Row: TournamentSeries;   Insert: Partial<Omit<TournamentSeries, 'id' | 'created_at' | 'updated_at'>> & Pick<TournamentSeries, 'slug' | 'name'>; Update: Partial<Omit<TournamentSeries, 'id'>>; };
-      series_points_rules:  { Row: SeriesPointsRule;   Insert: Omit<SeriesPointsRule, 'id'>; Update: Partial<Omit<SeriesPointsRule, 'id'>>; };
-      series_tournaments:   { Row: SeriesTournament;   Insert: Omit<SeriesTournament, 'id' | 'created_at'>; Update: Partial<Omit<SeriesTournament, 'id'>>; };
-      // Escrita só pelas funções security definer da 070 — sem Insert/Update úteis.
-      series_points_awarded:{ Row: SeriesPointsAwarded; Insert: never; Update: never; };
-    };
-    Functions: {
-      recalculate_standings:        { Args: { p_tournament_id: string }; Returns: void; };
-      get_tournament_standings:     { Args: { p_tournament_id: string }; Returns: StandingRow[]; };
-      get_player_tournament_history:{ Args: { p_tournament_id: string; p_tp_id: string }; Returns: PlayerHistoryRow[]; };
-      search_tournaments:           { Args: { p_query?: string; p_state?: string; p_status?: TournamentStatus; p_limit?: number; p_offset?: number }; Returns: TournamentListItem[]; };
-      get_tournament_by_slug:       { Args: { p_slug: string }; Returns: Tournament; };
-      get_round_pairings:           { Args: { p_round_id: string }; Returns: RoundPairingRow[]; };
-      refresh_tournament_categories:{ Args: { p_tournament_id: string }; Returns: number; };
-      match_kb_chunks:               { Args: { query_embedding: number[]; match_count?: number; min_similarity?: number }; Returns: { doc_slug: string; doc_title: string; content: string; similarity: number }[]; };
-      add_tournament_to_series:      { Args: { p_series_id: string; p_tournament_id: string; p_label?: string | null; p_sort_order?: number | null }; Returns: string; };
-      remove_tournament_from_series: { Args: { p_series_id: string; p_tournament_id: string }; Returns: void; };
-      set_series_points_rules:       { Args: { p_series_id: string; p_rules: { place: number; points: number }[] }; Returns: number; };
-      recalculate_series_standings:  { Args: { p_series_id: string }; Returns: number; };
-      get_series_scopes:             { Args: { p_series_id: string }; Returns: SeriesScopeRow[]; };
-      get_series_standings:          { Args: { p_series_id: string; p_scope_key: string }; Returns: SeriesStandingRow[]; };
-      get_series_player_breakdown:   { Args: { p_series_id: string; p_identity_key: string; p_scope_key: string }; Returns: SeriesBreakdownRow[]; };
-    };
-    Enums: {
-      user_role:                UserRole;
-      tournament_status:        TournamentStatus;
-      tournament_type:          TournamentType;
-      round_status:             RoundStatus;
-      game_result:              GameResult;
-      player_tournament_status: PlayerTournamentStatus;
-      chat_session_status:      ChatSessionStatus;
-      series_status:            SeriesStatus;
-    };
-  };
-}
+// `Database` era mantido à mão aqui (~50 linhas, cobrindo só as tabelas/RPCs
+// que alguém lembrou de registrar) e toda consulta resolvia pra `never`: o
+// supabase-js exige que `Row` satisfaça `Record<string, unknown>`, e uma
+// `interface` (Tournament, Player, …) não satisfaz isso por não ter index
+// signature — só um `type` de objeto literal satisfaz. As `interface`s deste
+// arquivo continuam existindo pra tipar retorno de RPC manualmente noutros
+// lugares; só o generic passado ao client trocou de fonte.
+//
+// Agora vem de `supabase gen types typescript --project-id qpgaoydgzyybakoaagzb`
+// (docs/pendencia-tipos-supabase.md) — schema completo, Row como type inline.
+// Pra regenerar depois de uma migration nova:
+//   npx supabase gen types typescript --project-id qpgaoydgzyybakoaagzb > types/database.generated.ts
+export type { Database } from './database.generated';
+import type { Database as Db } from './database.generated';
+
+/** Atalhos no padrão que a própria doc do Supabase recomenda pros tipos
+ *  gerados — evita `Database['public']['Tables']['x']['Row']` repetido em
+ *  cada arquivo que faz `.insert()`/`.update()` com um payload dinâmico. */
+export type Tables<T extends keyof Db['public']['Tables']> = Db['public']['Tables'][T]['Row'];
+export type TablesInsert<T extends keyof Db['public']['Tables']> = Db['public']['Tables'][T]['Insert'];
+export type TablesUpdate<T extends keyof Db['public']['Tables']> = Db['public']['Tables'][T]['Update'];

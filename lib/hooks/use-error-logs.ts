@@ -17,7 +17,8 @@ export function useErrorLogs(limit = 100) {
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return data ?? [];
+      // `source` é `text` no banco; a app restringe a ErrorLogSource.
+      return (data ?? []) as ErrorLog[];
     },
   });
 }

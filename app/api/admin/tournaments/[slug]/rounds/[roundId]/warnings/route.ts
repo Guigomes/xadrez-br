@@ -19,6 +19,9 @@ export async function GET(
     .from('rounds').select('id, round_number, pairing_group_id, tournament_id')
     .eq('id', roundId).single();
   if (!round) return NextResponse.json({ error: 'Rodada não encontrada' }, { status: 404 });
+  // pairing_group_id é nullable no banco (torneio importado não usa grupo) —
+  // sem grupo não tem como calcular avisos entre rodadas do mesmo grupo.
+  if (!round.pairing_group_id) return NextResponse.json({ warnings: [] });
 
   const { data: rounds } = await supabase
     .from('rounds').select('id, round_number')

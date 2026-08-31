@@ -259,7 +259,7 @@ export function useAddStage(seriesId: string) {
       const { data, error } = await supabase.rpc('add_tournament_to_series', {
         p_series_id: seriesId,
         p_tournament_id: tournamentId,
-        p_label: label || null,
+        p_label: label || undefined,
       });
       if (error) throw error;
       return data as string;

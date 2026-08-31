@@ -69,7 +69,8 @@ export function useChatSessionMessages(sessionId: string | null, poll = false) {
         .eq('session_id', sessionId!)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      // `role` é `text` no banco; a app restringe a ChatMessageRole.
+      return (data ?? []) as ChatMessage[];
     },
   });
 }

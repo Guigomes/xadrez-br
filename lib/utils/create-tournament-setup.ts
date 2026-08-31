@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { generateClassificationCells } from './classification-match';
 import type { AgePreset, RatingPreset } from '@/lib/constants/classification-presets';
-import type { ClassificationDimension } from '@/types/database';
+import type { ClassificationDimension, TablesUpdate } from '@/types/database';
 
 export interface ClassificationDraft {
   ageOn: boolean;
@@ -46,7 +46,7 @@ export async function applyClassificationDraft(tournamentId: string, draft: Clas
   // classificação que existe e o torneio ficaria sem ranking pra mostrar. A
   // tela de criação já esconde a pergunta nesse caso — isto aqui é o cinto de
   // segurança pra qualquer caminho que mande absoluteOn=false sem faixa.
-  const patch: Record<string, unknown> = {
+  const patch: TablesUpdate<'tournaments'> = {
     has_absolute_classification: cells.length > 0 ? draft.absoluteOn : true,
   };
   if (dims.length > 0) patch.classification_dimensions = dims;

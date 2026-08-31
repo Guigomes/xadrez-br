@@ -30,7 +30,8 @@ export function useMyTournamentRole(tournamentId: string) {
         p_tournament_id: tournamentId,
       });
       if (error) throw error;
-      return data;
+      // A RPC devolve `text`; a app restringe ao union.
+      return data as 'organizer' | 'arbiter' | null;
     },
   });
 }

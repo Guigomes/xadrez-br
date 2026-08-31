@@ -11,7 +11,7 @@ import { tournamentKeys } from '@/lib/hooks/use-tournament';
 import { getTournamentStatusColor, getTournamentStatusLabel, todayInSaoPaulo } from '@/lib/utils/chess';
 import { TOUR_STEPS } from '@/lib/tour/steps';
 import { writeProgress, TOUR_ENABLED } from '@/lib/tour/state';
-import type { TournamentMode, TournamentStatus } from '@/types/database';
+import type { TournamentMode, TournamentStatus, TablesUpdate } from '@/types/database';
 
 interface Props {
   id: string;
@@ -93,7 +93,7 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
       // Inscrições" não surtir efeito nenhum. A guarda da 056 só protege o
       // DIA DA CRIAÇÃO do torneio, não o dia da ação manual. Um clique de
       // hoje é uma intenção mais recente que uma data que já passou.
-      const patch = { status: newStatus, ...extra };
+      const patch: Record<string, unknown> = { status: newStatus, ...extra };
       if (
         newStatus === 'registration' &&
         patch.registration_closes_by_date === true &&
@@ -102,7 +102,7 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
       ) {
         patch.registration_closes_by_date = false;
       }
-      const { error: updErr } = await supabase.from('tournaments').update(patch).eq('id', id);
+      const { error: updErr } = await supabase.from('tournaments').update(patch as TablesUpdate<'tournaments'>).eq('id', id);
       if (updErr) throw updErr;
 
       // Ranking inicial não tem mais botão manual — gera sozinho aqui (clique

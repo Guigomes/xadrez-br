@@ -197,6 +197,8 @@ export async function notifyPlayerFollowers(
   });
   const userToSubs = new Map<string, typeof subs>();
   subs.forEach((s) => {
+    // user_id é nullable no banco; sem usuário não tem pra quem notificar.
+    if (!s.user_id) return;
     if (!userToSubs.has(s.user_id)) userToSubs.set(s.user_id, []);
     userToSubs.get(s.user_id)!.push(s);
   });

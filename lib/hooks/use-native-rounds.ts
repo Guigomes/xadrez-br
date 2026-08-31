@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { tournamentKeys } from './use-tournament';
-import type { Round, PairingGroup } from '@/types/database';
+import type { Round, PairingGroup, GameResult, TablesUpdate } from '@/types/database';
 
 const supabase = createClient();
 
@@ -90,7 +90,7 @@ export function useUpdateGroup(tournamentId: string) {
     mutationFn: async ({ id, name, rounds_count, sort_order }: {
       id: string; name?: string; rounds_count?: number | null; sort_order?: number;
     }) => {
-      const patch: Record<string, unknown> = {};
+      const patch: TablesUpdate<'pairing_groups'> = {};
       if (name !== undefined) patch.name = name.trim();
       if (rounds_count !== undefined) patch.rounds_count = rounds_count;
       if (sort_order !== undefined) patch.sort_order = sort_order;
@@ -266,7 +266,7 @@ export function usePairingHistory(roundId: string, enabled: boolean) {
 export function useSetResult(tournamentId: string, groupId: string) {
   const invalidate = useInvalidate(tournamentId, groupId);
   return useMutation({
-    mutationFn: async ({ pairingId, result }: { pairingId: string; result: string }) => {
+    mutationFn: async ({ pairingId, result }: { pairingId: string; result: GameResult }) => {
       const { error } = await supabase.rpc('set_pairing_result', {
         p_pairing_id: pairingId, p_result: result,
       });

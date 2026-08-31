@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import type { TournamentCategory, PairingMode, ClassificationDimension } from '@/types/database';
+import type { TournamentCategory, PairingMode, ClassificationDimension, TablesUpdate } from '@/types/database';
 
 const supabase = createClient();
 
@@ -21,7 +21,8 @@ export function useCategories(tournamentId: string) {
         .eq('tournament_id', tournamentId)
         .order('name');
       if (error) throw error;
-      return data ?? [];
+      // `sex` é `text` no banco; a app restringe a 'm'|'w'|null.
+      return (data ?? []) as TournamentCategory[];
     },
   });
 }
@@ -196,8 +197,8 @@ function normalize(input: CategoryInput) {
   };
 }
 
-function normalizePartial(patch: Partial<CategoryInput> & { pairing_group_id?: string | null }) {
-  const out: Record<string, unknown> = {};
+function normalizePartial(patch: Partial<CategoryInput> & { pairing_group_id?: string | null }): TablesUpdate<'tournament_categories'> {
+  const out: TablesUpdate<'tournament_categories'> = {};
   if (patch.name !== undefined) out.name = patch.name.trim();
   if (patch.min_age !== undefined) out.min_age = patch.min_age;
   if (patch.max_age !== undefined) out.max_age = patch.max_age;

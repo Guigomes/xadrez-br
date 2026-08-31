@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NEWS_COVERS_BUCKET } from '@/lib/utils/news';
-import type { NewsScope } from '@/types/database';
+import type { NewsScope, TablesUpdate } from '@/types/database';
 
 export const runtime = 'nodejs';
 
@@ -41,7 +41,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .from('news').select('id, slug, cover_path, published_at, status').eq('id', id).maybeSingle();
   if (!current) return NextResponse.json({ error: 'Notícia não encontrada.' }, { status: 404 });
 
-  const patch: Record<string, unknown> = {};
+  const patch: TablesUpdate<'news'> = {};
   const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
   if ('title' in body) {

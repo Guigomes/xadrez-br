@@ -23,6 +23,9 @@ export function useNextRoundByGroup(tournamentId: string) {
       if (error) throw error;
       const map = new Map<string, number>();
       for (const r of data ?? []) {
+        // pairing_group_id é nullable no banco (torneio importado não usa
+        // grupo) — sem grupo não tem "próxima rodada DESSE grupo" pra calcular.
+        if (!r.pairing_group_id) continue;
         const cur = map.get(r.pairing_group_id) ?? 0;
         if (r.round_number > cur) map.set(r.pairing_group_id, r.round_number);
       }
