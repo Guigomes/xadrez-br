@@ -55,3 +55,5 @@ public/workbox-*.js.map
 
 # supabase cli local cache
 supabase/.temp/
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json
