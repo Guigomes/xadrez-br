@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 /**
  * Moldura de impressão: CSS @media print + botão que dispara window.print().
@@ -30,12 +31,7 @@ export function PrintFrame({ title, children }: { title: string; children: React
         }
       `}</style>
       <div className="print-toolbar">
-        <button
-          onClick={() => window.print()}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-        >
-          🖨️ Imprimir / Salvar PDF
-        </button>
+        <Button onClick={() => window.print()}>🖨️ Imprimir / Salvar PDF</Button>
       </div>
       <h1>{title}</h1>
       {children}

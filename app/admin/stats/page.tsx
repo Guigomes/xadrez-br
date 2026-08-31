@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getSessionUser } from '@/lib/data/session';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -9,7 +10,7 @@ export const revalidate = 300; // revalidate every 5 minutes
 
 export default async function StatsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect('/login');
 
   const [
@@ -89,7 +90,7 @@ export default async function StatsPage() {
       </div>
 
       {/* Global counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Torneios', value: totalTournaments ?? 0, icon: '🏆' },
           { label: 'Jogadores', value: totalPlayers ?? 0, icon: '♟️' },

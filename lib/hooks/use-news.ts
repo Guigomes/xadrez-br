@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { NEWS_COVERS_BUCKET } from '@/lib/utils/news';
 import type { News, NewsScope } from '@/types/database';
+import type { NewsCardData } from '@/components/news/news-card';
 
 const supabase = createClient();
 
@@ -31,10 +32,12 @@ export function useNewsList(filter: NewsFilter) {
   return useQuery({
     queryKey: newsKeys.public(filter.scope, filter.state),
     staleTime: 30_000,
-    queryFn: async (): Promise<News[]> => {
+    queryFn: async (): Promise<NewsCardData[]> => {
+      // Só as colunas que NewsCard usa — a lista pode ter até 20 itens, cada
+      // um carregando body_md inteiro à toa se pedisse a notícia completa.
       let query = supabase
         .from('news')
-        .select('*')
+        .select('id, slug, cover_path, cover_alt, scope, state, published_at, title, summary')
         .order('published_at', { ascending: false })
         .limit(LIST_LIMIT);
 
@@ -43,7 +46,10 @@ export function useNewsList(filter: NewsFilter) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data ?? [];
+      // `scope` é `text` no banco (o CHECK que restringe os valores não vira
+      // union type na geração automática) — a app é que sabe que só grava um
+      // dos valores de NewsScope. Mesmo cast no ponto abaixo.
+      return (data ?? []) as NewsCardData[];
     },
   });
 }
@@ -56,7 +62,7 @@ export function useAdminNewsList() {
       const { data, error } = await supabase
         .from('news').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as News[];
     },
   });
 }
@@ -68,7 +74,7 @@ export function useAdminNews(id: string) {
     queryFn: async (): Promise<News | null> => {
       const { data, error } = await supabase.from('news').select('*').eq('id', id).maybeSingle();
       if (error) throw error;
-      return data;
+      return data as News | null;
     },
   });
 }

@@ -15,14 +15,17 @@ export const playerKeys = {
   tournaments: (id: string) => [...playerKeys.all, id, 'tournaments'] as const,
 };
 
+export type PlayerSearchResult = Pick<Player, 'id' | 'full_name' | 'state' | 'rating_std' | 'cbx_id'>;
+
 export function usePlayerSearch(query: string) {
   return useQuery({
     queryKey: playerKeys.search(query),
-    queryFn: async (): Promise<Player[]> => {
+    queryFn: async (): Promise<PlayerSearchResult[]> => {
       if (!query.trim()) return [];
+      // Só as colunas que o card de resultado da busca mostra.
       const { data, error } = await supabase
         .from('players')
-        .select('*')
+        .select('id, full_name, state, rating_std, cbx_id')
         .ilike('full_name', `%${query}%`)
         .order('full_name')
         .limit(20);
@@ -44,7 +47,7 @@ export function usePlayer(playerId: string) {
         .eq('id', playerId)
         .single();
       if (error) throw error;
-      return data;
+      return data as Player | null;
     },
     staleTime: 300_000,
   });

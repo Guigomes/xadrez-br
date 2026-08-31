@@ -654,7 +654,7 @@ function Setup({
         {showManual && (
           <div className="card p-4 space-y-3">
             <Input label="Nome" placeholder="Ex: Sub-7 Masculino" value={name} onChange={(e) => setName(e.target.value)} />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <Select label="Sexo" value={sex} onChange={(e) => setSex(e.target.value)}>
                 <option value="">—</option>
                 <option value="m">Masculino</option>

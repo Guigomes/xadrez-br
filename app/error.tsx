@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { reportClientError } from '@/lib/log-error-client';
+import { Button } from '@/components/ui/button';
 
 export default function GlobalError({
   error,
@@ -24,12 +25,7 @@ export default function GlobalError({
       <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">
         {error.message ?? 'Ocorreu um erro inesperado.'}
       </p>
-      <button
-        onClick={reset}
-        className="rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white hover:bg-brand-700 transition-colors"
-      >
-        Tentar novamente
-      </button>
+      <Button onClick={reset}>Tentar novamente</Button>
     </div>
   );
 }

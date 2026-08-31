@@ -5,8 +5,13 @@ import { formatDate } from '@/lib/utils/date';
 import { newsCoverUrl, newsScopeLabel } from '@/lib/utils/news';
 import type { News } from '@/types/database';
 
-/** Card da lista pública de notícias. */
-export function NewsCard({ news }: { news: News }) {
+/** Card da lista pública de notícias — só as colunas que o card renderiza,
+ *  não a notícia inteira (quem busca a lista não precisa de body_md/fonte). */
+export type NewsCardData = Pick<News,
+  'id' | 'slug' | 'cover_path' | 'cover_alt' | 'scope' | 'state' | 'published_at' | 'title' | 'summary'
+>;
+
+export function NewsCard({ news }: { news: NewsCardData }) {
   const cover = newsCoverUrl(news.cover_path);
 
   return (

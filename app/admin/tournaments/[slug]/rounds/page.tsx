@@ -3,6 +3,7 @@
 import { Suspense, use, useState } from 'react';
 import { useTournament } from '@/lib/hooks/use-tournament';
 import { PageSpinner } from '@/components/ui/spinner';
+import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { ImportStandings } from '@/components/admin/import-standings';
 import { ImportPairings } from '@/components/admin/import-pairings';
@@ -80,14 +81,14 @@ export default function AdminRoundsPage({ params }: Props) {
               Inicie o torneio para que os participantes vejam a rodada atual em destaque.
             </p>
           </div>
-          <button
+          <Button
             onClick={() => handleTournamentStatus('ongoing')}
             disabled={statusLoading}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors disabled:opacity-50 shrink-0"
+            className="shrink-0"
           >
             <span className="inline-block h-2 w-2 rounded-full bg-green-400 animate-pulse" />
             Iniciar torneio
-          </button>
+          </Button>
         </div>
       )}
       {tournament.status === 'ongoing' && (

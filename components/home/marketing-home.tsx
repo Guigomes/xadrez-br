@@ -3,7 +3,8 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 import { TournamentCard } from '@/components/tournament/tournament-card';
 import { NewsCard } from '@/components/news/news-card';
-import type { News, TournamentListItem } from '@/types/database';
+import type { TournamentListItem } from '@/types/database';
+import type { NewsCardData } from '@/components/news/news-card';
 
 /**
  * Home pública de marketing. O produto nasceu como "acompanhe torneios ao vivo"
@@ -101,10 +102,15 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
 
   // RLS (news_select_public, migration 059) já esconde rascunho — não precisa
   // filtrar status aqui.
-  const { data: news } = await supabase
-    .from('news').select('*')
+  // Só as colunas que NewsCard usa — sem isso o corpo inteiro (body_md, às
+  // vezes grande) viajava pra montar 3 cards que só mostram capa+resumo.
+  const { data: newsRaw } = await supabase
+    .from('news')
+    .select('id, slug, cover_path, cover_alt, scope, state, published_at, title, summary')
     .order('published_at', { ascending: false })
     .limit(3);
+  // `scope` é `text` no banco; a app restringe a NewsScope.
+  const news = newsRaw as NewsCardData[] | null;
 
   return (
     <div>
@@ -274,7 +280,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
             </Link>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {(news as News[]).map((n) => (
+            {(news ?? []).map((n) => (
               <NewsCard key={n.id} news={n} />
             ))}
           </div>

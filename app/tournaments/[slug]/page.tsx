@@ -19,15 +19,20 @@ export default async function TournamentOverviewPage({ params }: Props) {
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('*')
+    .select(`
+      id, slug, status, tournament_type, rating_kind, description,
+      venue, city, state, organizer_name, chief_arbiter,
+      start_date, end_date, start_time, registration_start_date, registration_end_date,
+      time_control, rounds_count, requested_bye_score, tiebreak_order
+    `)
     .eq('slug', slug)
     .single();
 
   if (!tournament) notFound();
 
   const [{ data: rounds }, { data: categories }, { data: pairingGroups }, { count: participantCount }] = await Promise.all([
-    supabase.from('rounds').select('*').eq('tournament_id', tournament.id).order('round_number'),
-    supabase.from('tournament_categories').select('*').eq('tournament_id', tournament.id),
+    supabase.from('rounds').select('round_number, status').eq('tournament_id', tournament.id).order('round_number'),
+    supabase.from('tournament_categories').select('id, name').eq('tournament_id', tournament.id),
     supabase.from('pairing_groups').select('id, name').eq('tournament_id', tournament.id).order('sort_order'),
     supabase.from('tournament_players').select('id', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
   ]);
