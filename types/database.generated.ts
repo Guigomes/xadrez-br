@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       admin_fcm_tokens: {
@@ -116,6 +121,121 @@ export type Database = {
           },
         ]
       }
+      broadcast_keys: {
+        Row: {
+          broadcast_id: string
+          key_hash: string
+        }
+        Insert: {
+          broadcast_id: string
+          key_hash: string
+        }
+        Update: {
+          broadcast_id?: string
+          key_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_keys_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: true
+            referencedRelation: "broadcasts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcast_moves: {
+        Row: {
+          broadcast_id: string
+          confidence: number | null
+          created_at: string
+          fen_after: string
+          ply: number
+          san: string
+          uci: string
+          video_timestamp: number | null
+        }
+        Insert: {
+          broadcast_id: string
+          confidence?: number | null
+          created_at?: string
+          fen_after: string
+          ply: number
+          san: string
+          uci: string
+          video_timestamp?: number | null
+        }
+        Update: {
+          broadcast_id?: string
+          confidence?: number | null
+          created_at?: string
+          fen_after?: string
+          ply?: number
+          san?: string
+          uci?: string
+          video_timestamp?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_moves_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "broadcasts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcasts: {
+        Row: {
+          black_player: string
+          created_at: string
+          current_fen: string
+          event: string | null
+          id: string
+          pgn: string
+          ply_count: number
+          result: string
+          revision: number
+          share_code: string
+          site: string | null
+          status: string
+          updated_at: string
+          white_player: string
+        }
+        Insert: {
+          black_player?: string
+          created_at?: string
+          current_fen?: string
+          event?: string | null
+          id?: string
+          pgn?: string
+          ply_count?: number
+          result?: string
+          revision?: number
+          share_code: string
+          site?: string | null
+          status?: string
+          updated_at?: string
+          white_player?: string
+        }
+        Update: {
+          black_player?: string
+          created_at?: string
+          current_fen?: string
+          event?: string | null
+          id?: string
+          pgn?: string
+          ply_count?: number
+          result?: string
+          revision?: number
+          share_code?: string
+          site?: string | null
+          status?: string
+          updated_at?: string
+          white_player?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -194,6 +314,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cron_import_lock: {
+        Row: {
+          id: number
+          locked_at: string | null
+        }
+        Insert: {
+          id?: number
+          locked_at?: string | null
+        }
+        Update: {
+          id?: number
+          locked_at?: string | null
+        }
+        Relationships: []
       }
       error_logs: {
         Row: {
@@ -444,6 +579,77 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plan_entitlements: {
+        Row: {
+          enabled: boolean
+          key: string
+          limit_int: number | null
+          plan_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          key: string
+          limit_int?: number | null
+          plan_id: string
+        }
+        Update: {
+          enabled?: boolean
+          key?: string
+          limit_int?: number | null
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_entitlements_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          billing_interval: string | null
+          code: string
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          is_public: boolean
+          name: string
+          price_cents: number | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          billing_interval?: string | null
+          code: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          name: string
+          price_cents?: number | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_interval?: string | null
+          code?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          name?: string
+          price_cents?: number | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       player_follows: {
         Row: {
@@ -1475,6 +1681,7 @@ export type Database = {
           is_organizer: boolean
           is_participant: boolean
           phone: string | null
+          plan_id: string | null
           role: Database["public"]["Enums"]["user_role"]
           state: string | null
           updated_at: string
@@ -1495,6 +1702,7 @@ export type Database = {
           is_organizer?: boolean
           is_participant?: boolean
           phone?: string | null
+          plan_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           state?: string | null
           updated_at?: string
@@ -1515,11 +1723,20 @@ export type Database = {
           is_organizer?: boolean
           is_participant?: boolean
           phone?: string | null
+          plan_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           state?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1580,6 +1797,7 @@ export type Database = {
         Args: { p_tournament_id: string; p_tp_id: string }
         Returns: string
       }
+      entitlement_limit: { Args: { p_key: string }; Returns: number }
       finish_round: { Args: { p_round_id: string }; Returns: undefined }
       generate_initial_ranking: {
         Args: { p_group_id: string }
@@ -1588,6 +1806,15 @@ export type Database = {
       generate_test_players: {
         Args: { p_count: number; p_group_id: string; p_tournament_id: string }
         Returns: number
+      }
+      get_my_entitlements: {
+        Args: never
+        Returns: {
+          enabled: boolean
+          key: string
+          limit_int: number
+          used: number
+        }[]
       }
       get_my_tournament_role: {
         Args: { p_tournament_id: string }
@@ -1772,6 +1999,7 @@ export type Database = {
           wins: number
         }[]
       }
+      has_entitlement: { Args: { p_key: string }; Returns: boolean }
       is_arbiter_or_admin: { Args: never; Returns: boolean }
       is_organizer_or_admin: { Args: never; Returns: boolean }
       is_series_manager: { Args: { p_series_id: string }; Returns: boolean }
@@ -1796,6 +2024,7 @@ export type Database = {
           similarity: number
         }[]
       }
+      my_plan_id: { Args: never; Returns: string }
       next_status_by_date: {
         Args: {
           p_created_at: string
@@ -1870,6 +2099,16 @@ export type Database = {
           tournament_type: Database["public"]["Enums"]["tournament_type"]
         }[]
       }
+      search_users_for_plan: {
+        Args: { p_query: string }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+          plan_code: string
+          plan_name: string
+        }[]
+      }
       series_identity_key: { Args: { p_player_id: string }; Returns: string }
       set_my_capabilities: {
         Args: {
@@ -1889,6 +2128,10 @@ export type Database = {
       set_series_points_rules: {
         Args: { p_rules: Json; p_series_id: string }
         Returns: number
+      }
+      set_user_plan: {
+        Args: { p_plan_code: string; p_user_id: string }
+        Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
@@ -1954,12 +2197,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1983,11 +2226,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2008,11 +2251,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2033,11 +2276,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2050,11 +2293,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

@@ -130,6 +130,16 @@ function DevPanel() {
       </div>
 
       <div className="card p-5 space-y-2 mb-4">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Planos</h2>
+        <Link
+          href="/admin/dev/plans"
+          className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          → Trocar o plano de assinatura de um usuário
+        </Link>
+      </div>
+
+      <div className="card p-5 space-y-2 mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Notícias</h2>
         <Link
           href="/admin/dev/noticias"

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionUser, getSessionProfile } from '@/lib/data/session';
+import { getEntitlements } from '@/lib/data/entitlements';
 import { Badge } from '@/components/ui/badge';
 import { FlashMessage } from '@/components/ui/flash-message';
 import { TourLauncher } from '@/components/admin/tour-launcher';
@@ -18,9 +19,18 @@ export default async function AdminDashboard({
 
   // Usuário e perfil vêm memoizados do layout do admin (lib/data/session.ts) —
   // aqui não custa round-trip nenhum. Sobra só a lista de torneios.
-  const [user, profile] = await Promise.all([getSessionUser(), getSessionProfile()]);
+  const [user, profile, entitlements] = await Promise.all([
+    getSessionUser(), getSessionProfile(), getEntitlements(),
+  ]);
   const isAdmin = profile?.role === 'admin';
   const canCreateTournament = isAdmin || !!profile?.is_organizer;
+  // Papel (is_organizer) diz SE pode criar torneio; plano diz QUANTOS ao
+  // mesmo tempo — dois eixos independentes, mesma tela junta os dois. O
+  // banco (trg_tournament_plan_limit, migration 073) barra de qualquer
+  // jeito; aqui é só pra não deixar o organizador bater num erro cru do
+  // Postgres achando que o botão simplesmente não funciona.
+  const atTournamentLimit = canCreateTournament && entitlements.atLimit('tournaments.active');
+  const tournamentLimit = entitlements.limitOf('tournaments.active');
 
   const { data: tournaments } = await supabase
     .from('tournaments')
@@ -68,16 +78,25 @@ export default async function AdminDashboard({
             <TourTriggerButton stepId="boas-vindas" label="❔ Dicas de como criar um torneio" />
           )}
           {canCreateTournament && (
-            <Link
-              href="/admin/tournaments/new"
-              data-tour="novo-torneio"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Novo torneio
-            </Link>
+            atTournamentLimit ? (
+              <span
+                title={`Seu plano permite ${tournamentLimit} torneio(s) ativo(s) ao mesmo tempo.`}
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
+              >
+                🔒 Limite do plano atingido
+              </span>
+            ) : (
+              <Link
+                href="/admin/tournaments/new"
+                data-tour="novo-torneio"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Novo torneio
+              </Link>
+            )
           )}
         </div>
       </div>
@@ -91,7 +110,7 @@ export default async function AdminDashboard({
               ? 'Crie seu primeiro torneio para começar.'
               : 'Você aparece aqui quando for adicionado à equipe de um torneio, ou ative "Organizador" em Minha conta para criar o seu.'}
           </p>
-          {canCreateTournament && (
+          {canCreateTournament && !atTournamentLimit && (
             <Link
               href="/admin/tournaments/new"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
