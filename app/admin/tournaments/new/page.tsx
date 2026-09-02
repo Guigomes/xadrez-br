@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { slugify } from '@/lib/utils/chess';
 import type { TournamentFormValues } from '@/types/database';
 import { useUser, useProfile } from '@/lib/hooks/use-auth';
+import { useEntitlements } from '@/lib/hooks/use-entitlements';
 
 const FORM_ID = 'new-tournament-form';
 
@@ -24,6 +25,7 @@ export default function NewTournamentPage() {
   const router = useRouter();
   const { user } = useUser();
   const { data: profile, isLoading: loadingProfile } = useProfile();
+  const { atLimit, isLoading: loadingEntitlements } = useEntitlements();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -55,12 +57,15 @@ export default function NewTournamentPage() {
   const customRatingBands = ratingBands.filter((b) => !RATING_PRESETS.some((p) => p.name === b.name));
 
   const canCreate = profile?.role === 'admin' || !!profile?.is_organizer;
+  // Admin não tem teto (mesmo critério do trigger enforce_tournament_plan_limit).
+  const blockedByPlan = profile?.role !== 'admin' && atLimit('tournaments.active');
+  const ready = !loadingProfile && !loadingEntitlements;
 
   useEffect(() => {
-    if (!loadingProfile && profile && !canCreate) router.replace('/admin');
-  }, [loadingProfile, profile, canCreate, router]);
+    if (ready && profile && (!canCreate || blockedByPlan)) router.replace('/admin');
+  }, [ready, profile, canCreate, blockedByPlan, router]);
 
-  if (loadingProfile || !profile || !canCreate) return <PageSpinner />;
+  if (!ready || !profile || !canCreate || blockedByPlan) return <PageSpinner />;
 
   function toggleAgePreset(preset: AgePreset) {
     setAgeBands((prev) => (prev.some((b) => b.name === preset.name) ? prev.filter((b) => b.name !== preset.name) : [...prev, preset]));

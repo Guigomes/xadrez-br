@@ -361,7 +361,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           torneio (nativo/importado) é implícito: toda criação é nativa. */}
       <div className="card p-5 space-y-4" data-tour="gerenciamento">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Gerenciamento</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Select
             label="Rating para seed"
             {...register('rating_kind', { onChange: () => setRatingTouched(true) })}
