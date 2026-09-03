@@ -345,6 +345,44 @@ async function toolEstadoDoTorneio(args: Record<string, unknown>, ctx: ToolConte
   };
 }
 
+/**
+ * `standings.games_played/wins/draws/losses` fica zerado pra torneio
+ * importado — o worker cron-import só grava points/tiebreaks no upsert
+ * (import-standings.ts), nunca esses quatro campos, que ficam travados no
+ * default. `points` bate porque vem direto da planilha do chess-results;
+ * "jogos"/"vitórias" não. Mesmo contorno já usado na tela pública do
+ * jogador (`players/[tpId]/page.tsx`, "Derive from history instead of
+ * stale recalculation data"): recalcula na hora, direto de `pairings`, em
+ * vez de confiar no campo.
+ */
+async function deriveGameCounts(
+  ctx: ToolContext,
+  tournamentId: string
+): Promise<Map<string, { games: number; wins: number; draws: number; losses: number }>> {
+  const { data } = await ctx.supabase
+    .from('pairings')
+    .select('white_tp_id, black_tp_id, result, is_bye')
+    .eq('tournament_id', tournamentId)
+    .neq('result', '*');
+
+  const counts = new Map<string, { games: number; wins: number; draws: number; losses: number }>();
+  const bump = (tpId: string | null, field: 'games' | 'wins' | 'draws' | 'losses') => {
+    if (!tpId) return;
+    const c = counts.get(tpId) ?? { games: 0, wins: 0, draws: 0, losses: 0 };
+    c[field]++;
+    counts.set(tpId, c);
+  };
+  for (const p of (data ?? []) as { white_tp_id: string | null; black_tp_id: string | null; result: string; is_bye: boolean }[]) {
+    if (p.is_bye) continue;
+    bump(p.white_tp_id, 'games');
+    bump(p.black_tp_id, 'games');
+    if (p.result === '1-0') { bump(p.white_tp_id, 'wins'); bump(p.black_tp_id, 'losses'); }
+    else if (p.result === '0-1') { bump(p.black_tp_id, 'wins'); bump(p.white_tp_id, 'losses'); }
+    else if (p.result === '1/2-1/2') { bump(p.white_tp_id, 'draws'); bump(p.black_tp_id, 'draws'); }
+  }
+  return counts;
+}
+
 /** Agrupa linhas da classificação por grupo de emparceiramento, preservando a ordem (rank) do RPC. */
 function groupStandings(rows: StandingRow[]): { grupo: string | null; linhas: StandingRow[] }[] {
   const order: string[] = [];
@@ -373,6 +411,11 @@ async function toolClassificacaoDoTorneio(args: Record<string, unknown>, ctx: To
   const rows = (data ?? []) as StandingRow[];
   if (rows.length === 0) return { torneio: t.name, mensagem: 'Ainda não há classificação (nenhuma rodada pontuada).' };
 
+  // games_played/wins/draws/losses da standings não presta pra torneio
+  // importado (deriveGameCounts, comentário acima) — recalcula de pairings.
+  const gameCounts = await deriveGameCounts(ctx, t.id);
+  const counts = (r: StandingRow) => gameCounts.get(r.tp_id) ?? { games: 0, wins: 0, draws: 0, losses: 0 };
+
   // Filtro por participante: posição e pontos dessa pessoa.
   const participante = typeof args.participante === 'string' ? args.participante.trim() : '';
   if (participante) {
@@ -383,17 +426,20 @@ async function toolClassificacaoDoTorneio(args: Record<string, unknown>, ctx: To
     }
     return {
       torneio: t.name,
-      encontrados: matches.map((r) => ({
-        nome: r.full_name,
-        grupo: r.pairing_group_name,
-        posicao: r.rank,
-        pontos: r.points,
-        jogos: r.games_played,
-        vitorias: r.wins,
-        empates: r.draws,
-        derrotas: r.losses,
-        categoria: r.category_name,
-      })),
+      encontrados: matches.map((r) => {
+        const c = counts(r);
+        return {
+          nome: r.full_name,
+          grupo: r.pairing_group_name,
+          posicao: r.rank,
+          pontos: r.points,
+          jogos: c.games,
+          vitorias: c.wins,
+          empates: c.draws,
+          derrotas: c.losses,
+          categoria: r.category_name,
+        };
+      }),
     };
   }
 
@@ -408,7 +454,7 @@ async function toolClassificacaoDoTorneio(args: Record<string, unknown>, ctx: To
         posicao: r.rank,
         nome: r.full_name,
         pontos: r.points,
-        jogos: r.games_played,
+        jogos: counts(r).games,
       })),
     })),
   };
