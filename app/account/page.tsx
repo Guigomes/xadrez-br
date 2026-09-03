@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  useUser, useProfile, useUpdateMyCapabilities, useUpdateMyParticipantData,
+  useUser, useProfile, useUpdateMyCapabilities, useUpdateMyParticipantData, useUpdateMyName,
 } from '@/lib/hooks/use-auth';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,9 @@ export default function AccountPage() {
   const { data: profile, isLoading: loadingProfile } = useProfile();
   const updateCapabilities = useUpdateMyCapabilities();
   const updateParticipantData = useUpdateMyParticipantData();
+  const updateName = useUpdateMyName();
 
+  const [fullName, setFullName] = useState('');
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isArbiter, setIsArbiter] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
@@ -35,6 +37,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (profile) {
+      setFullName(profile.full_name ?? '');
       setIsOrganizer(profile.is_organizer);
       setIsArbiter(profile.is_arbiter);
       setIsParticipant(profile.is_participant);
@@ -58,11 +61,16 @@ export default function AccountPage() {
   async function handleSave() {
     setError('');
     setSaved(false);
+    if (!fullName.trim()) {
+      setError('Informe seu nome completo.');
+      return;
+    }
     if (!isOrganizer && !isArbiter && !isParticipant) {
       setError('Mantenha pelo menos uma opção marcada: organizador, árbitro ou participante.');
       return;
     }
     try {
+      await updateName.mutateAsync(fullName);
       await updateCapabilities.mutateAsync({ isOrganizer, isArbiter, isParticipant });
       if (isParticipant) {
         await updateParticipantData.mutateAsync({
@@ -83,6 +91,14 @@ export default function AccountPage() {
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{profile.full_name || profile.email}</p>
 
       <div className="card p-5 space-y-4">
+        <Input
+          label="Nome completo"
+          placeholder="Seu nome"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          hint="Usado nos torneios em que você se inscrever e pelo Gambito pra saber quem está falando com ele."
+        />
+
         <div>
           <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">O que você faz aqui</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -143,7 +159,7 @@ export default function AccountPage() {
         <div className="flex items-center gap-3">
           <Button
             onClick={handleSave}
-            loading={updateCapabilities.isPending || updateParticipantData.isPending}
+            loading={updateName.isPending || updateCapabilities.isPending || updateParticipantData.isPending}
           >
             Salvar
           </Button>

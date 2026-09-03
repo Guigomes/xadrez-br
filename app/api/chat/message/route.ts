@@ -153,7 +153,16 @@ export async function POST(request: NextRequest) {
       if (res.ok) ambientTournament = res.torneio;
     }
 
-    const systemPrompt = buildSystemPrompt(chunks, { tournamentName: ambientTournament?.name ?? null });
+    // Mesma ideia pro nome de quem está logado — evita o Gambito perguntar
+    // "qual é o seu nome no sistema" quando a pessoa já está autenticada.
+    const { data: selfProfile } = userId
+      ? await supabase.from('user_profiles').select('full_name').eq('id', userId).maybeSingle()
+      : { data: null };
+
+    const systemPrompt = buildSystemPrompt(chunks, {
+      tournamentName: ambientTournament?.name ?? null,
+      userName: selfProfile?.full_name ?? null,
+    });
     const sources = extractSources(chunks);
 
     const answer = await generateAnswer(

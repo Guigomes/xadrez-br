@@ -133,6 +133,22 @@ export function useUpdateMyParticipantData() {
   });
 }
 
+/** Nome de conta — independente de is_participant: vale pro organizador/árbitro também, e é o que o Gambito usa pra saber quem está conversando. */
+export function useUpdateMyName() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (fullName: string) => {
+      const { data: { user } } = await getClient().auth.getUser();
+      if (!user) throw new Error('Não autenticado.');
+      const { error } = await getClient().from('user_profiles').update({
+        full_name: fullName.trim(),
+      }).eq('id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),
+  });
+}
+
 export function useSignOut() {
   const qc = useQueryClient();
   return useMutation({

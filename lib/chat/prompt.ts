@@ -44,16 +44,25 @@ Essas ferramentas e este chat são só para quem já está logado no sistema —
 
 Responda em português, de forma direta e curta — poucas frases, sem enrolação. Tom amigável, sem exagerar no personagem.`;
 
-/** Monta o prompt final: regra fixa + torneio da página (se houver) + contexto recuperado (match_kb_chunks). */
+/** Monta o prompt final: regra fixa + torneio da página (se houver) + quem está logado + contexto recuperado (match_kb_chunks). */
 export function buildSystemPrompt(
   chunks: RetrievedChunk[],
-  opts?: { tournamentName?: string | null },
+  opts?: { tournamentName?: string | null; userName?: string | null },
 ): string {
   // Linha de ambiente: quando o widget está aberto na página de um torneio,
   // "o torneio" sem nome é esse — evita perguntar o óbvio.
-  const ambient = opts?.tournamentName
+  const ambientTournament = opts?.tournamentName
     ? `\n\nA pessoa está vendo agora o torneio "${opts.tournamentName}" — se ela disser "o torneio", "esse torneio" ou não nomear nenhum, é esse. Ao chamar as ferramentas de estado do torneio, pode omitir o argumento "torneio" nesse caso.`
     : '';
+
+  // Mesma ideia pro nome: sem isso o Gambito pedia "qual é o seu nome
+  // exato no sistema" toda vez que alguém perguntava algo sobre si mesmo
+  // ("como estou indo?", "em que torneios estou jogando?") — a pessoa já
+  // está logada, o nome já existe em user_profiles.full_name.
+  const ambientUser = opts?.userName
+    ? `\n\nA pessoa logada se chama "${opts.userName}". Se ela disser "eu", "meu", "estou jogando" ou não nomear ninguém em pergunta sobre participante/jogador (classificação, histórico, pareamento, buscar jogador), use esse nome — não peça o nome de novo.`
+    : '';
+  const ambient = `${ambientTournament}${ambientUser}`;
 
   if (chunks.length === 0) {
     return `${SYSTEM_PROMPT}${ambient}\n\nCONTEXTO:\n(nenhum trecho relevante encontrado na base de conhecimento para esta pergunta)`;
