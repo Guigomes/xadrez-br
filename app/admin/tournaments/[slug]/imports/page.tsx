@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import { useTournament } from '@/lib/hooks/use-tournament';
+import { useProfile } from '@/lib/hooks/use-auth';
 import { createClient } from '@/lib/supabase/client';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
@@ -17,11 +18,14 @@ const supabase = createClient();
 export default function AdminImportsPage({ params }: Props) {
   const { slug } = use(params);
   const { data: tournament, isLoading } = useTournament(slug);
+  const { data: profile } = useProfile();
 
   const [imports, setImports] = useState<TournamentImport[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const [forcingSync, setForcingSync] = useState(false);
+  const [forceSyncResult, setForceSyncResult] = useState('');
 
   // Form state for creating a new entry
   const [newUrl, setNewUrl] = useState('');
@@ -103,6 +107,30 @@ export default function AdminImportsPage({ params }: Props) {
     setBusy(null);
   }
 
+  async function handleForceSync() {
+    if (!tournament?.id) return;
+    setForcingSync(true);
+    setForceSyncResult('');
+    try {
+      const res = await fetch('/api/admin/dev/force-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: tournament.id }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Erro ao sincronizar.');
+      const summary = (body.results as { pairingGroupName: string | null; ok: boolean; message: string }[])
+        .map((r) => `${r.pairingGroupName ?? 'Único grupo'}: ${r.ok ? r.message : `ERRO — ${r.message}`}`)
+        .join(' | ');
+      setForceSyncResult(summary);
+      await loadImports(tournament.id);
+    } catch (err) {
+      setForceSyncResult(`Erro: ${(err as Error).message}`);
+    } finally {
+      setForcingSync(false);
+    }
+  }
+
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p>Torneio não encontrado.</p>;
 
@@ -137,6 +165,25 @@ export default function AdminImportsPage({ params }: Props) {
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}
         </p>
+      )}
+
+      {profile?.role === 'admin' && (
+        <div className="card p-4 mb-4 border-dashed">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+            Dev: forçar sincronização agora
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Roda agora a importação deste torneio (jogadores, rodadas, classificação), sem esperar
+            o próximo ciclo do sync automático (a cada 1-2 min). Mesma lógica do worker
+            agendado, só que mirando só este torneio.
+          </p>
+          <Button onClick={handleForceSync} loading={forcingSync} variant="secondary">
+            Forçar sincronização agora
+          </Button>
+          {forceSyncResult && (
+            <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">{forceSyncResult}</p>
+          )}
+        </div>
       )}
 
       <div className="card p-4 mb-4">
