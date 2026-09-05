@@ -9,6 +9,10 @@ export function winnerSide(result: GameResult, side: 'white' | 'black'): 'winner
   if (result === '*') return 'pending';
   if (result === '1/2-1/2') return 'draw';
   if (result === 'bye') return side === 'white' ? 'winner' : 'pending';
+  // Ponto de "não emparceirado" varia (0, ½ ou cheio — ver import-pairings.ts)
+  // e mora em white_points/black_points, não dá pra derivar vitória/derrota
+  // só do enum. Neutro nos dois lados.
+  if (result === 'not_paired') return 'pending';
   if (result === '1-0') return side === 'white' ? 'winner' : 'loser';
   if (result === '0-1') return side === 'black' ? 'winner' : 'loser';
   if (result === 'forfeit_white') return side === 'black' ? 'winner' : 'loser';
@@ -23,6 +27,9 @@ export function resultLabel(result: GameResult, forWhite: boolean): string {
     case '0-1':       return forWhite ? 'Derrota' : 'Vitória';
     case '1/2-1/2':  return 'Empate';
     case 'bye':       return 'BYE';
+    // Diferente de BYE: jogador ficou sem adversário por decisão/ausência,
+    // não pela sobra ímpar do sistema suíço — ver import-pairings.ts.
+    case 'not_paired': return 'NÃO EMPARC.';
     case 'forfeit_white': return forWhite ? 'WO' : 'WO adversário';
     case 'forfeit_black': return forWhite ? 'WO adversário' : 'WO';
     case 'double_forfeit': return 'Duplo WO';
@@ -46,6 +53,7 @@ export function resultBadgeColor(result: GameResult, forWhite: boolean): string 
   if (result === '*') return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
   if (result === '1/2-1/2') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
   if (result === 'bye') return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+  if (result === 'not_paired') return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
   const isWin = (result === '1-0' && forWhite) || (result === '0-1' && !forWhite);
   return isWin
     ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'

@@ -33,7 +33,7 @@ export default function PlayerTournamentPage({ params }: Props) {
       const supabase = createClient();
       const { data } = await supabase
         .from('tournament_players')
-        .select('player_id, initial_ranking, players(full_name, rating_std, state), tournament_categories(name)')
+        .select('player_id, initial_ranking, players(full_name, title, rating_std, state), tournament_categories(name)')
         .eq('id', tpId)
         .single();
       return data;
@@ -64,8 +64,9 @@ export default function PlayerTournamentPage({ params }: Props) {
   if (!tournament || (!playerRow && loadingTpBasic)) return <PageSpinner />;
 
   // Build a display object from standings (if available) or fallback to tp basic info
-  const tp = tpBasic as { player_id: string; initial_ranking: number | null; players: { full_name: string; rating_std: number | null; state: string | null } | null; tournament_categories: { name: string } | null } | null | undefined;
+  const tp = tpBasic as { player_id: string; initial_ranking: number | null; players: { full_name: string; title: string | null; rating_std: number | null; state: string | null } | null; tournament_categories: { name: string } | null } | null | undefined;
   const displayName = playerRow?.full_name ?? (tp?.players as { full_name: string } | null)?.full_name ?? '';
+  const displayTitle = playerRow?.title ?? (tp?.players as { title: string | null } | null)?.title ?? null;
   const displayRating = playerRow?.rating_std ?? (tp?.players as { rating_std: number | null } | null)?.rating_std ?? null;
   const displayState = playerRow?.state ?? (tp?.players as { state: string | null } | null)?.state ?? null;
   const displayCategory = playerRow?.category_name ?? (tp?.tournament_categories as { name: string } | null)?.name ?? null;
@@ -89,7 +90,10 @@ export default function PlayerTournamentPage({ params }: Props) {
               </span>
               {standings?.length ? <span className="text-xs text-gray-400">de {standings.length}</span> : null}
             </div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{displayName}</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              {displayTitle && <span className="text-gray-400 dark:text-gray-500 font-normal">{displayTitle} </span>}
+              {displayName}
+            </h1>
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
               {displayState && <span className="text-xs text-gray-500">{displayState}</span>}
               {displayRating && (
@@ -285,10 +289,13 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
       {/* Opponent */}
       <div className="flex-1 min-w-0">
         {row.is_bye ? (
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">BYE</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            {row.result === 'not_paired' ? 'NÃO EMPARC.' : 'BYE'}
+          </p>
         ) : (
           <>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
+              {row.opponent_title && <span className="text-gray-400 dark:text-gray-500 font-normal">{row.opponent_title} </span>}
               {row.opponent_name}
             </p>
             <p className="text-xs text-gray-400 mt-0.5">

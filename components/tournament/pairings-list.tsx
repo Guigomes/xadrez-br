@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { formatScore, winnerSide } from '@/lib/utils/chess';
+import { formatScore, winnerSide, resultLabel, resultBadgeColor } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
 import type { RoundPairingRow } from '@/types/database';
 
@@ -47,13 +47,16 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds }: Pairin
         {pairing.is_bye ? (
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <PlayerLink tpId={pairing.white_tp_id} name={pairing.white_name} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state="winner" followed={!!followedWhite} />
+              <PlayerLink tpId={pairing.white_tp_id} name={pairing.white_name} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state="winner" followed={!!followedWhite} />
             </div>
-            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">BYE</Badge>
+            {/* 'bye' (sobra do suíço) e 'not_paired' (fora por decisão/
+                ausência) usam o mesmo is_bye pra não contar como jogo, mas
+                merecem selo diferente — ver import-pairings.ts. */}
+            <Badge className={resultBadgeColor(pairing.result, true)}>{resultLabel(pairing.result, true)}</Badge>
           </div>
         ) : (
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <PlayerLink tpId={pairing.white_tp_id} name={pairing.white_name} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state={whiteState} followed={!!followedWhite} />
+            <PlayerLink tpId={pairing.white_tp_id} name={pairing.white_name} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state={whiteState} followed={!!followedWhite} />
 
             <div className="flex flex-col items-center gap-0.5 min-w-[3rem]">
               {hasResult ? (
@@ -71,7 +74,7 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds }: Pairin
               )}
             </div>
 
-            <PlayerLink tpId={pairing.black_tp_id} name={pairing.black_name} rating={pairing.black_rating} score={pairing.black_score} tournamentSlug={tournamentSlug} color="black" state={blackState} alignRight followed={!!followedBlack} />
+            <PlayerLink tpId={pairing.black_tp_id} name={pairing.black_name} title={pairing.black_title} rating={pairing.black_rating} score={pairing.black_score} tournamentSlug={tournamentSlug} color="black" state={blackState} alignRight followed={!!followedBlack} />
           </div>
         )}
       </div>
@@ -92,9 +95,9 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds }: Pairin
 }
 
 function PlayerLink({
-  tpId, name, rating, score, tournamentSlug, color, state, alignRight, followed,
+  tpId, name, title, rating, score, tournamentSlug, color, state, alignRight, followed,
 }: {
-  tpId: string | null; name: string; rating: number | null;
+  tpId: string | null; name: string; title?: string | null; rating: number | null;
   score: number | null; tournamentSlug: string;
   color: 'white' | 'black';
   state: 'winner' | 'loser' | 'draw' | 'pending';
@@ -117,7 +120,10 @@ function PlayerLink({
           ? <WhitePawn className="h-4 w-3 shrink-0" />
           : <BlackPawn className="h-4 w-3 shrink-0" />
         }
-        <span className={`text-xs leading-tight ${nameClass}`}>{name}</span>
+        <span className={`text-xs leading-tight ${nameClass}`}>
+          {title && <span className="text-gray-400 dark:text-gray-500 font-normal">{title} </span>}
+          {name}
+        </span>
         {isWinner && <span className="text-xs">🏆</span>}
         {followed && alignRight && <span className="text-brand-500 text-xs">★</span>}
       </div>

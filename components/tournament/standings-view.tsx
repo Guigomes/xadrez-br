@@ -175,7 +175,7 @@ export function StandingsView({
               Todas as rodadas foram encerradas — este é o resultado definitivo.
             </p>
             {first && (
-              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1.5">🥇 {first.full_name}</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1.5">🥇 {first.title ? `${first.title} ` : ''}{first.full_name}</p>
             )}
           </div>
         );

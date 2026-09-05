@@ -52,6 +52,7 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds }:
               href={`/tournaments/${tournamentSlug}/players/${row.tp_id}`}
               className="font-medium text-gray-900 dark:text-gray-100 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
             >
+              {row.title && <span className="text-gray-400 dark:text-gray-500 font-normal">{row.title} </span>}
               {row.full_name}
             </Link>
             {row.category_name && (

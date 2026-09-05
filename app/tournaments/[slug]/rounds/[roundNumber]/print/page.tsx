@@ -43,9 +43,11 @@ export default async function RoundPrintPage({ params }: Props) {
               {s.pairings.map((p: any) => (
                 <tr key={p.pairing_id}>
                   <td>{p.board_number ?? '—'}</td>
-                  <td className="name">{p.white_name}</td>
-                  <td className="result">{p.is_bye ? 'BYE' : resultLabel(p.result)}</td>
-                  <td className="name">{p.black_name ?? '—'}</td>
+                  <td className="name">{p.white_title ? `${p.white_title} ` : ''}{p.white_name}</td>
+                  <td className="result">
+                    {p.result === 'bye' ? 'BYE' : p.result === 'not_paired' ? 'NÃO EMPARC.' : resultLabel(p.result)}
+                  </td>
+                  <td className="name">{p.black_title ? `${p.black_title} ` : ''}{p.black_name ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

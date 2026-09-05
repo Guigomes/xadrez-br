@@ -7,6 +7,7 @@ import { normalize, normalizeNameKey, colIndex } from './normalize';
 
 interface ImportedParticipant {
   fullName: string;
+  title?: string;
   fideId?: string;
   federation?: string;
   ratingStd?: number;
@@ -33,6 +34,12 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
   const eloIdx = colIndex(headers, ['elo', 'elon', 'elof', 'rtg', 'rating']);
   const typeIdx = colIndex(headers, ['tipo']);
   const cityIdx = colIndex(headers, ['clube/cidade', 'clube / cidade', 'clube cidade']);
+  // Título (CM, AFM, WCM, GM...) vem numa coluna SEM cabeçalho, sempre logo
+  // antes de "Nome" — visto ao vivo num torneio (tnr1485382): header
+  // ["Nº.", "", "Nome", "EloI", "EloN", "sexo", "Tipo"]. Só assume essa
+  // posição quando a célula ali é realmente vazia, pra não confundir com
+  // uma coluna de verdade numa fonte com layout diferente.
+  const titleIdx = nameIdx > 0 && headers[nameIdx - 1] === '' ? nameIdx - 1 : -1;
 
   if (nameIdx < 0) throw new Error('Coluna "Nome" não encontrada.');
 
@@ -51,6 +58,7 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
 
     out.push({
       fullName,
+      title: titleIdx >= 0 ? row[titleIdx] || undefined : undefined,
       fideId: fideIdx >= 0 ? row[fideIdx] || undefined : undefined,
       federation: fedIdx >= 0 ? row[fedIdx] || undefined : undefined,
       ratingStd: Number.isFinite(ratingStd) && ratingStd > 0 ? ratingStd : undefined,
@@ -103,7 +111,7 @@ export async function importPlayers(
   //     grafia do nome entre uma execução e outra (ver byNameKey abaixo).
   let existingTPsQuery = supabase
     .from('tournament_players')
-    .select('id, player_id, player:players(full_name)')
+    .select('id, player_id, player:players(full_name, title)')
     .eq('tournament_id', tournamentId);
   if (pairingGroupId) {
     existingTPsQuery = existingTPsQuery.eq('pairing_group_id', pairingGroupId);
@@ -136,10 +144,13 @@ export async function importPlayers(
   // arriscar casar gente errada em outro torneio.
   const byNameKey = new Map<string, string>();
   const storedNameByPlayerId = new Map<string, string>();
+  const storedTitleByPlayerId = new Map<string, string | null>();
   for (const tp of existingTPs ?? []) {
     const playerIdX = tp.player_id as string;
-    const fullName = ((tp.player as unknown) as { full_name?: string } | null)?.full_name ?? '';
+    const playerRow = (tp.player as unknown) as { full_name?: string; title?: string | null } | null;
+    const fullName = playerRow?.full_name ?? '';
     storedNameByPlayerId.set(playerIdX, fullName);
+    storedTitleByPlayerId.set(playerIdX, playerRow?.title ?? null);
     const key = normalizeNameKey(fullName);
     if (key && !byNameKey.has(key)) byNameKey.set(key, playerIdX);
   }
@@ -204,10 +215,10 @@ export async function importPlayers(
         if (match?.id) {
           playerId = match.id as string;
           reused++;
-          if (p.city || p.ratingStd || p.federation) {
+          if (p.city || p.ratingStd || p.federation || p.title) {
             await supabase
               .from('players')
-              .update({ city: p.city, rating_std: p.ratingStd, federation: p.federation })
+              .update({ city: p.city, rating_std: p.ratingStd, federation: p.federation, title: p.title })
               .eq('id', playerId);
           }
         }
@@ -219,8 +230,12 @@ export async function importPlayers(
           playerId = candidate;
           reused++;
           const stored = storedNameByPlayerId.get(candidate);
-          if (stored !== p.fullName) {
-            await supabase.from('players').update({ full_name: p.fullName }).eq('id', playerId);
+          const storedTitle = storedTitleByPlayerId.get(candidate);
+          if (stored !== p.fullName || (p.title && p.title !== storedTitle)) {
+            await supabase
+              .from('players')
+              .update({ full_name: p.fullName, title: p.title })
+              .eq('id', playerId);
           }
         } else if (candidate) {
           homonyms++;
@@ -251,7 +266,7 @@ export async function importPlayers(
         if (exact) {
           playerId = exact.id as string;
           reused++;
-          if (p.fideId || p.city || p.ratingStd) {
+          if (p.fideId || p.city || p.ratingStd || p.title) {
             await supabase
               .from('players')
               .update({
@@ -259,6 +274,7 @@ export async function importPlayers(
                 city: p.city,
                 rating_std: p.ratingStd,
                 federation: p.federation,
+                title: p.title,
               })
               .eq('id', playerId);
           }
@@ -270,6 +286,7 @@ export async function importPlayers(
           .from('players')
           .insert({
             full_name: p.fullName,
+            title: p.title,
             fide_id: p.fideId,
             federation: p.federation ?? 'BRA',
             rating_std: p.ratingStd,

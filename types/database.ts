@@ -8,7 +8,7 @@ export type TournamentType = 'swiss' | 'round_robin' | 'knockout' | 'other';
 export type RoundStatus = 'draft' | 'pending' | 'ongoing' | 'finished';
 export type ByeKind = 'pairing' | 'requested_half' | 'requested_zero' | 'late_entry';
 export type StaffRole = 'organizer' | 'arbiter';
-export type GameResult = '1-0' | '0-1' | '1/2-1/2' | '*' | 'bye' | 'forfeit_white' | 'forfeit_black' | 'double_forfeit';
+export type GameResult = '1-0' | '0-1' | '1/2-1/2' | '*' | 'bye' | 'not_paired' | 'forfeit_white' | 'forfeit_black' | 'double_forfeit';
 export type PlayerTournamentStatus = 'active' | 'withdrawn' | 'absent';
 export type RegistrationStatus = 'pending' | 'approved' | 'rejected';
 export type TournamentMode = 'native' | 'imported';
@@ -348,6 +348,7 @@ export interface StandingRow {
   pairing_group_name: string | null;
   tp_id: string;
   player_status: PlayerTournamentStatus;
+  title: string | null;
 }
 
 export interface PlayerHistoryRow {
@@ -364,6 +365,7 @@ export interface PlayerHistoryRow {
   points_earned: number | null;
   is_bye: boolean;
   cumulative_pts: number | null;
+  opponent_title: string | null;
 }
 
 export interface RoundPairingRow {
@@ -384,6 +386,8 @@ export interface RoundPairingRow {
   black_points: number | null;
   is_bye: boolean;
   manual_override: boolean;
+  white_title: string | null;
+  black_title: string | null;
 }
 
 // ============================================================
