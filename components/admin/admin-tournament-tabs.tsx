@@ -43,10 +43,12 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
           { href: `${base}/standings`, label: 'Classificação', icon: '📊' },
         ]
       : []),
-    { href: `${base}/staff`,   label: 'Árbitros',      icon: '⚖️' },
-    ...(mode === 'imported'
-      ? [{ href: `${base}/imports`, label: 'Importações', icon: '🔄' }]
-      : []),
+    // Torneio importado não tem arbitragem local (é espelho do chess-results,
+    // ninguém pareia/lança resultado por aqui) nem precisa da aba de import —
+    // a sincronização mora no botão do cabeçalho (AdminTournamentChrome). A
+    // rota /imports continua existindo pra quem editar a URL/grupo (mesmo
+    // padrão de "some a navegação, não o acesso" já usado acima pro hasStarted).
+    ...(mode === 'imported' ? [] : [{ href: `${base}/staff`, label: 'Árbitros', icon: '⚖️' }]),
   ];
 
   return (

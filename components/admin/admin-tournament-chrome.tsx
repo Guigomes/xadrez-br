@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { createClient } from '@/lib/supabase/client';
 import { tournamentKeys } from '@/lib/hooks/use-tournament';
+import { useProfile } from '@/lib/hooks/use-auth';
 import { getTournamentStatusColor, getTournamentStatusLabel, todayInSaoPaulo } from '@/lib/utils/chess';
 import { TOUR_STEPS } from '@/lib/tour/steps';
 import { writeProgress, TOUR_ENABLED } from '@/lib/tour/state';
@@ -69,9 +70,12 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
   const pathname = usePathname();
   const router = useRouter();
   const qc = useQueryClient();
+  const { data: profile } = useProfile();
   const [statusSaving, setStatusSaving] = useState<TournamentStatus | null>(null);
   const [statusSaved, setStatusSaved] = useState(false);
   const [error, setError] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState('');
   // router.refresh() dentro de startTransition mantém a árvore atual montada
   // enquanto o novo payload RSC carrega, em vez de desmontar/remontar de uma
   // vez (que era o "pulo" dos componentes na troca de situação).
@@ -160,6 +164,29 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
     }
   }
 
+  async function handleForceSync() {
+    setSyncing(true);
+    setSyncResult('');
+    try {
+      const res = await fetch('/api/admin/dev/force-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: id }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Erro ao sincronizar.');
+      const summary = (body.results as { ok: boolean; message: string }[])
+        .map((r) => (r.ok ? r.message : `ERRO — ${r.message}`))
+        .join(' | ');
+      setSyncResult(summary);
+      startTransition(() => router.refresh());
+    } catch (err: any) {
+      setSyncResult(`Erro: ${err.message ?? 'falha ao sincronizar'}`);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   function startTour() {
     writeProgress(TOUR_STEPS[0].id);
     router.push('/admin');
@@ -216,6 +243,20 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
               );
             })
           )}
+          {/* Sync sob demanda — antes vivia na aba Importações (removida pra
+              torneio importado, sem ação de arbitragem/emparceiramento
+              local). Só admin: dispara pra TODOS os grupos deste torneio de
+              uma vez (ver app/api/admin/dev/force-import). */}
+          {mode === 'imported' && profile?.role === 'admin' && (
+            <button
+              onClick={handleForceSync}
+              disabled={syncing}
+              title="Roda agora a importação do chess-results (jogadores, rodadas, classificação) sem esperar o próximo ciclo automático."
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+            >
+              {syncing && <Spinner className="h-3 w-3" />} 🔄 Sincronizar agora
+            </button>
+          )}
         </div>
         {/* Botão de tour escondido enquanto TOUR_ENABLED = false. */}
         {TOUR_ENABLED && (
@@ -230,6 +271,9 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
           </button>
         )}
       </div>
+      {syncResult && (
+        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400 animate-fade-in">{syncResult}</p>
+      )}
       {status === 'draft' && !pairingReady && (
         <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 animate-fade-in">
           Emparceiramento personalizado incompleto — falta criar grupo ou mapear classificação na
