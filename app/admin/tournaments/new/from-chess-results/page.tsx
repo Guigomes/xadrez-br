@@ -89,7 +89,12 @@ export default function NewFromChessResultsPage() {
     organizer_name: preview.organizerName || '',
     time_control:   preview.timeControl || '',
     tournament_type: 'swiss',
-    is_public: false,
+    // Torneio importado nasce público por padrão — pedido do usuário depois
+    // de um torneio real ficar privado sem querer e os pushes de rodada
+    // saírem calados o dia inteiro (guarda em api/internal/notify-round
+    // exige is_public=true). Continua um checkbox no formulário, dá pra
+    // desmarcar antes de criar se quiser revisar primeiro.
+    is_public: true,
   } : {};
 
   if (loadingProfile) return <PageSpinner />;
