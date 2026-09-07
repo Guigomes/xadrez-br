@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
+import { Gambito } from '@/components/mascot/gambito';
 
 /**
  * Dashboard do organizador (role=admin ou is_organizer) — os próprios torneios,
@@ -81,7 +82,13 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
 
   return (
     <div className="container-app py-8 sm:py-10">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-50 to-transparent p-5 pr-28 dark:from-brand-950/40 sm:pr-44">
+        <Gambito
+          pose={totalPending > 0 ? 'alerta' : all.length > 0 ? 'comemorando' : 'acenando'}
+          alt=""
+          className="absolute -bottom-5 right-1 w-28 sm:-bottom-10 sm:right-5 sm:w-44"
+        />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {firstName ? `Olá, ${firstName}` : 'Meus torneios'}
@@ -101,6 +108,7 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
           </svg>
           Novo torneio
         </Link>
+        </div>
       </div>
 
       {totalPending > 0 && (
@@ -111,7 +119,7 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
 
       {all.length === 0 ? (
         <div className="card p-10 text-center">
-          <p className="mb-3 text-4xl">♟</p>
+          <Gambito pose="pareamento" alt="Gambito pronto para montar o primeiro torneio" className="mx-auto mb-3 w-36" />
           <p className="mb-1 font-semibold text-gray-700 dark:text-gray-300">Nenhum torneio ainda</p>
           <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
             Monte a estrutura uma vez e deixe o sistema cuidar de pareamento e classificação.

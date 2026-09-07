@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { TiebreakOrderPicker } from '@/components/tournament/tiebreak-order-picker';
+import { Gambito } from '@/components/mascot/gambito';
 import { BR_STATES } from '@/lib/utils/chess';
 import {
   TIME_CONTROL_PRESETS, TIME_CONTROL_OTHER, findPresetByValue,
@@ -222,6 +223,21 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       }, onInvalid)}
       className="space-y-5"
     >
+      <div className="relative overflow-hidden rounded-xl border border-brand-100 bg-brand-50/70 px-4 py-4 pr-24 dark:border-brand-900 dark:bg-brand-950/25 sm:pr-36">
+        <div className="max-w-lg">
+          <p className="font-semibold text-brand-900 dark:text-brand-100">
+            {readOnly ? 'O Gambito está de olho nos detalhes' : 'Vamos montar este torneio juntos'}
+          </p>
+          <p className="mt-1 text-sm text-brand-800/80 dark:text-brand-200/80">
+            Comece pelo essencial. As regras avançadas ficam recolhidas e podem ser ajustadas quando precisar.
+          </p>
+        </div>
+        <Gambito
+          pose={readOnly ? 'investigando' : 'pareamento'}
+          alt=""
+          className="absolute -bottom-5 right-1 w-24 sm:-bottom-8 sm:right-4 sm:w-36"
+        />
+      </div>
       {/* min-w-0: fieldset tem `min-width: min-content` por padrão, o que
           estoura os grids de 2 colunas de dentro em tela estreita. */}
       <fieldset disabled={readOnly} className="min-w-0 space-y-5">

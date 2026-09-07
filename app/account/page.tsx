@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { BR_STATES } from '@/lib/utils/chess';
+import { Gambito } from '@/components/mascot/gambito';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -104,8 +105,17 @@ export default function AccountPage() {
 
   return (
     <div className="container-app py-8 max-w-lg">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Minha conta</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{profile.full_name || profile.email}</p>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Minha conta</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{profile.full_name || profile.email}</p>
+        </div>
+        <Gambito
+          pose={hasChanges ? 'alerta' : 'aprovado'}
+          alt={hasChanges ? 'Gambito lembra que há alterações para salvar' : 'Gambito confirma que a conta está atualizada'}
+          className="w-20 shrink-0 sm:w-28"
+        />
+      </div>
 
       <div className="card p-5 space-y-4">
         <Input

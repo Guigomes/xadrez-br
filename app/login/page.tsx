@@ -7,6 +7,7 @@ import { useSignIn, useSignUp, useSignInWithGoogle } from '@/lib/hooks/use-auth'
 import { canSignUp, BETA_SIGNUP_MESSAGE } from '@/lib/auth/beta';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Gambito } from '@/components/mascot/gambito';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -74,8 +75,13 @@ export default function LoginPage() {
   return (
     <div className="container-app py-16 flex justify-center">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <span className="text-4xl">♟</span>
+        <div className="relative mb-8 text-center">
+          <Gambito
+            pose="acenando"
+            alt="Gambito dando boas-vindas"
+            priority
+            className="mx-auto w-32 drop-shadow-lg sm:w-40"
+          />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">Torneios Xadrez BR</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {mode === 'signin' ? 'Entrar no Xadrez BR' : 'Criar sua conta'}
