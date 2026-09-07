@@ -65,6 +65,29 @@ export function useSignIn() {
   });
 }
 
+/**
+ * Login padrão do produto — signInWithOAuth já redireciona o navegador
+ * sozinho (data.url), então esta mutation nunca resolve de verdade num login
+ * bem-sucedido. Primeiro login de uma conta Google nova É o cadastro: sem
+ * trava de beta aqui, ao contrário do e-mail/senha (lib/auth/beta.ts) —
+ * decisão consciente do usuário, Google abre o cadastro pra qualquer conta.
+ * `redirectTo` aponta pro route handler que troca o `code` por sessão.
+ */
+export function useSignInWithGoogle() {
+  return useMutation({
+    mutationFn: async (next?: string) => {
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      if (next) callbackUrl.searchParams.set('next', next);
+      const { data, error } = await getClient().auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: callbackUrl.toString() },
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useSignUp() {
   return useMutation({
     mutationFn: async ({ email, password, fullName, isOrganizer, isArbiter, isParticipant }: {

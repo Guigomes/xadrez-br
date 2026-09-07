@@ -242,7 +242,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
 
       {/* Basic info */}
       <div className="card p-5 space-y-4" data-tour="info-basica">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Informações básicas</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">1. Informações do evento</h2>
         <Input label="Nome do torneio *" error={errors.name?.message} {...register('name')} />
         <div>
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
@@ -267,14 +267,14 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
 
       {/* Organizer */}
       <div className="card p-5 space-y-4" data-tour="organizacao">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Organização</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">2. Organização</h2>
         <Input label="Organizador *" error={errors.organizer_name?.message} {...register('organizer_name')} />
         <Input label="Árbitro-chefe" {...register('chief_arbiter')} />
       </div>
 
       {/* Format */}
       <div className="card p-5 space-y-4" data-tour="formato">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Formato</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">3. Formato e datas</h2>
         <div className="grid grid-cols-2 gap-3">
           <Select label="Sistema *" {...register('tournament_type')}>
             <option value="swiss">Suíço</option>
@@ -359,8 +359,14 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       {/* Gerenciamento — antes de Cobrança: são as decisões de operação do
           torneio (rating de seed, desempate, exigência de ID). O modo do
           torneio (nativo/importado) é implícito: toda criação é nativa. */}
-      <div className="card p-5 space-y-4" data-tour="gerenciamento">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Gerenciamento</h2>
+      <details className="card group p-5" data-tour="gerenciamento">
+        <summary className="cursor-pointer list-none font-semibold text-gray-900 dark:text-gray-100">
+          <span className="flex items-center justify-between gap-3">
+            <span>4. Regras avançadas <span className="font-normal text-gray-500">(opcional)</span></span>
+            <span className="text-gray-400 transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+          </span>
+        </summary>
+        <div className="mt-4 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Select
             label="Rating para seed"
@@ -399,11 +405,12 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             </p>
           </div>
         </label>
-      </div>
+        </div>
+      </details>
 
       {/* Cobrança — card próprio, depois de Gerenciamento. */}
       <div className="card p-5 space-y-3" data-tour="pergunta-gratuita" data-field="is_free">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Cobrança</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">5. Cobrança</h2>
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Seu torneio tem inscrição gratuita?</p>
           <div className="flex gap-1.5 shrink-0">
@@ -437,7 +444,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                className="h-4 w-4 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                className="h-5 w-5 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                 {...register('require_payment_receipt')}
               />
               <div>
@@ -456,7 +463,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
         <label className="flex items-center gap-3 cursor-pointer">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            className="h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
             {...register('is_public')}
           />
           <div>
@@ -486,7 +493,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+      className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
         active
           ? 'bg-brand-600 text-white'
           : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'

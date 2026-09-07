@@ -120,7 +120,7 @@ function PlayerLink({
           ? <WhitePawn className="h-4 w-3 shrink-0" />
           : <BlackPawn className="h-4 w-3 shrink-0" />
         }
-        <span className={`text-xs leading-tight ${nameClass}`}>
+        <span className={`text-sm leading-tight ${nameClass}`}>
           {title && <span className="text-gray-400 dark:text-gray-500 font-normal">{title} </span>}
           {name}
         </span>

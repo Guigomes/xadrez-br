@@ -230,7 +230,7 @@ export function StandingsView({
                     <button
                       key={g.id}
                       onClick={() => { setSelectedGroupId(g.id); setSelectedCategory('all'); }}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`min-h-10 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
                         selectedGroupId === g.id
                           ? 'bg-brand-600 text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -246,7 +246,7 @@ export function StandingsView({
                   {showAbsolute && (
                     <button
                       onClick={() => setSelectedCategory('all')}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`min-h-10 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
                         effectiveCategory === 'all'
                           ? 'bg-gray-700 text-white dark:bg-gray-600'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -259,7 +259,7 @@ export function StandingsView({
                     <button
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`min-h-10 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
                         effectiveCategory === cat.id
                           ? 'bg-gray-700 text-white dark:bg-gray-600'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils/cn';
-import { useUser, useSignOut, type InitialUser } from '@/lib/hooks/use-auth';
+import { useUser, useProfile, useSignOut, type InitialUser } from '@/lib/hooks/use-auth';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export function Header({ initialUser }: { initialUser?: InitialUser }) {
@@ -15,6 +15,8 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
   // confiar no liveUser, que reage a login/logout via onAuthStateChange.
   const user = loading ? (initialUser ?? null) : liveUser;
   const signOut = useSignOut();
+  const { data: profile } = useProfile();
+  const canManage = profile?.role === 'admin' || profile?.is_organizer || profile?.is_arbiter;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -74,7 +76,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
         <div className="flex items-center gap-2">
           <ThemeToggle />
 
-          {user && (
+          {user && canManage && (
             <Link
               href="/admin"
               className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
@@ -91,7 +93,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
             <div className="relative hidden lg:block" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                className="flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-xs font-bold">
                   {user.email?.[0]?.toUpperCase()}
@@ -100,16 +102,18 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
               </button>
               {dropdownOpen && (
                 <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-800 dark:bg-gray-900">
-                  <Link
-                    href="/admin"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    Painel do organizador
-                  </Link>
+                  {canManage && (
+                    <Link
+                      href="/admin"
+                      className="block min-h-11 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      Gerenciar torneios
+                    </Link>
+                  )}
                   <Link
                     href="/account"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                    className="block min-h-11 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Minha conta
@@ -117,7 +121,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                   <hr className="my-1 border-gray-200 dark:border-gray-800" />
                   <button
                     onClick={() => { signOut.mutate(); setDropdownOpen(false); }}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                    className="block min-h-11 w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                   >
                     Sair
                   </button>
@@ -135,7 +139,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
 
           {/* Mobile menu button */}
           <button
-            className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="lg:hidden min-h-11 min-w-11 p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menu"
           >
@@ -161,7 +165,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
             <Link
               key={link.href}
               href={link.href}
-              className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+              className="block min-h-11 py-3 text-sm font-medium text-gray-700 dark:text-gray-300"
               onClick={() => setMobileOpen(false)}
             >
               {link.label}
@@ -169,16 +173,18 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
           ))}
           {user && (
             <>
-              <Link
-                href="/admin"
-                className="block py-2 text-sm font-medium text-brand-600 dark:text-brand-400"
-                onClick={() => setMobileOpen(false)}
-              >
-                Painel do organizador
-              </Link>
+              {canManage && (
+                <Link
+                  href="/admin"
+                  className="block min-h-11 py-3 text-sm font-medium text-brand-600 dark:text-brand-400"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Gerenciar torneios
+                </Link>
+              )}
               <Link
                 href="/account"
-                className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="block min-h-11 py-3 text-sm font-medium text-gray-700 dark:text-gray-300"
                 onClick={() => setMobileOpen(false)}
               >
                 Minha conta
@@ -187,7 +193,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                   avatar passou a ser md-only. */}
               <button
                 onClick={() => { signOut.mutate(); setMobileOpen(false); }}
-                className="block w-full text-left py-2 text-sm font-medium text-red-600 dark:text-red-400"
+                className="block min-h-11 w-full py-3 text-left text-sm font-medium text-red-600 dark:text-red-400"
               >
                 Sair
               </button>

@@ -270,8 +270,10 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
       <ChatBubble open={open} pulse={!everOpened} onClick={() => { markOpened(); setOpen((v) => !v); }} />
       {open && (
         <div
-          className="fixed bottom-20 right-4 z-40 flex w-[calc(100vw-2rem)] max-w-sm flex-col rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900"
-          style={{ height: 'min(32rem, 70vh)' }}
+          className="fixed inset-0 z-50 flex h-[100dvh] flex-col bg-white shadow-xl dark:bg-gray-900 sm:inset-auto sm:bottom-20 sm:right-4 sm:z-40 sm:h-[min(32rem,70vh)] sm:w-[calc(100vw-2rem)] sm:max-w-sm sm:rounded-xl sm:border sm:border-gray-200 sm:dark:border-gray-800"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Conversa com o Gambito"
         >
           <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
             {status === 'humano' ? <HumanAvatar /> : <GambitoAvatar />}
@@ -294,6 +296,16 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
                 Histórico
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 sm:hidden"
+              aria-label="Fechar conversa"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           <div ref={listRef} className={`flex-1 space-y-3 overflow-y-auto px-4 py-3 ${showHistory ? 'hidden' : ''}`}>
@@ -403,7 +415,7 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
           )}
 
           {!showHistory && (
-          <div className="flex items-end gap-2 border-t border-gray-200 p-3 dark:border-gray-800">
+          <div className="flex items-end gap-2 border-t border-gray-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-gray-800">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -415,7 +427,7 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
               }}
               rows={1}
               placeholder="Digite sua pergunta…"
-              className="flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+              className="min-h-11 flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
             />
             <Button size="sm" onClick={handleSend} loading={sendMessage.isPending} disabled={!input.trim()}>
               Enviar

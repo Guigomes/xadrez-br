@@ -216,7 +216,7 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
             <button
               onClick={() => handleStatusChange('draft')}
               disabled={!!statusSaving}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
             >
               {statusSaving === 'draft' && <Spinner className="h-3 w-3" />} Reativar torneio
             </button>
@@ -233,8 +233,8 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
                   title={blocked ? 'Defina o emparceiramento na aba própria antes de publicar.' : undefined}
                   className={
                     action.primary
-                      ? 'inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50'
-                      : 'inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50'
+                      ? 'inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50'
+                      : 'inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50'
                   }
                 >
                   {statusSaving === action.to && <Spinner className="h-3 w-3" />}
@@ -243,21 +243,24 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
               );
             })
           )}
-          {/* Sync sob demanda — antes vivia na aba Importações (removida pra
-              torneio importado, sem ação de arbitragem/emparceiramento
-              local). Só admin: dispara pra TODOS os grupos deste torneio de
-              uma vez (ver app/api/admin/dev/force-import). */}
-          {mode === 'imported' && profile?.role === 'admin' && (
-            <button
-              onClick={handleForceSync}
-              disabled={syncing}
-              title="Roda agora a importação do chess-results (jogadores, rodadas, classificação) sem esperar o próximo ciclo automático."
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
-            >
-              {syncing && <Spinner className="h-3 w-3" />} 🔄 Sincronizar agora
-            </button>
-          )}
         </div>
+        {mode === 'imported' && profile?.role === 'admin' && (
+          <details className="relative ml-auto">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
+              Mais ações
+            </summary>
+            <div className="absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+              <button
+                onClick={handleForceSync}
+                disabled={syncing}
+                title="Atualiza jogadores, rodadas e classificação a partir do chess-results."
+                className="flex min-h-11 w-full items-center rounded-md px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                {syncing && <Spinner className="mr-2 h-4 w-4" />} Sincronizar dados importados
+              </button>
+            </div>
+          </details>
+        )}
         {/* Botão de tour escondido enquanto TOUR_ENABLED = false. */}
         {TOUR_ENABLED && (
           <button

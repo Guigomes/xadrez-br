@@ -33,6 +33,16 @@ const STATUS_PRIORITY: Record<string, number> = {
 
 const MAX_SHOWN = 6;
 
+function nextAction(slug: string, status: string, pending: number) {
+  const base = `/admin/tournaments/${slug}`;
+  if (pending > 0) return { href: `${base}/registrations`, label: `Revisar ${pending} inscrição${pending > 1 ? 'ões' : ''}` };
+  if (status === 'ongoing') return { href: `${base}/rounds`, label: 'Abrir rodadas' };
+  if (status === 'draft') return { href: `${base}/edit`, label: 'Continuar configuração' };
+  if (status === 'registration_closed') return { href: `${base}/players`, label: 'Conferir participantes' };
+  if (status === 'finished') return { href: `${base}/standings`, label: 'Ver classificação final' };
+  return { href: base, label: 'Abrir painel' };
+}
+
 export async function OrganizerDashboard({ userId, userName }: { userId: string; userName: string | null }) {
   const supabase = await createClient();
 
@@ -118,11 +128,12 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {shown.map((t) => {
               const pending = pendingByTournament.get(t.id) ?? 0;
+              const action = nextAction(t.slug, t.status, pending);
               return (
                 <Link
                   key={t.id}
-                  href={`/admin/tournaments/${t.slug}`}
-                  className="card flex flex-col gap-1 p-4 transition-colors hover:border-gray-300 dark:hover:border-gray-600"
+                  href={action.href}
+                  className="card group flex min-h-40 flex-col gap-1 p-4 transition-colors hover:border-gray-300 dark:hover:border-gray-600"
                 >
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <Badge className={getTournamentStatusColor(t.status, t.registration_end_date, t.registration_closes_by_date)}>
@@ -138,8 +149,11 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
                     )}
                   </div>
                   <p className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     {t.city}, {t.state} · {formatDateRange(t.start_date, t.end_date)} · {t.rounds_count} rodadas
+                  </p>
+                  <p className="mt-auto pt-4 text-sm font-semibold text-brand-600 dark:text-brand-400">
+                    {action.label} <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5 inline-block">→</span>
                   </p>
                 </Link>
               );

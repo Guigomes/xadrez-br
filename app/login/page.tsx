@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useSignIn, useSignUp } from '@/lib/hooks/use-auth';
+import { useSignIn, useSignUp, useSignInWithGoogle } from '@/lib/hooks/use-auth';
 import { canSignUp, BETA_SIGNUP_MESSAGE } from '@/lib/auth/beta';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -22,6 +23,7 @@ export default function LoginPage() {
 
   const signIn = useSignIn();
   const signUp = useSignUp();
+  const signInWithGoogle = useSignInWithGoogle();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,6 +57,18 @@ export default function LoginPage() {
     }
   }
 
+  async function handleGoogle() {
+    setError('');
+    try {
+      await signInWithGoogle.mutateAsync(undefined);
+      // Não chega a resolver em caso de sucesso — signInWithOAuth já
+      // navegou o browser pro Google. Erro (provider indisponível, etc.)
+      // é o único caso que cai aqui de fato.
+    } catch (err: any) {
+      setError(err.message ?? 'Erro ao entrar com Google.');
+    }
+  }
+
   const loading = signIn.isPending || signUp.isPending;
 
   return (
@@ -64,11 +78,47 @@ export default function LoginPage() {
           <span className="text-4xl">♟</span>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">Torneios Xadrez BR</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {mode === 'signin' ? 'Acesso para organizadores' : 'Criar conta de organizador'}
+            {mode === 'signin' ? 'Entrar no Xadrez BR' : 'Criar sua conta'}
           </p>
         </div>
 
         <div className="card p-6">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            size="lg"
+            loading={signInWithGoogle.isPending}
+            onClick={handleGoogle}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+              <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.48a5.54 5.54 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.56-5.17 3.56-8.82Z" />
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.07 7.94-2.9l-3.88-3.01c-1.08.72-2.45 1.15-4.06 1.15-3.13 0-5.78-2.11-6.73-4.96H1.26v3.11A12 12 0 0 0 12 24Z" />
+              <path fill="#FBBC05" d="M5.27 14.28A7.2 7.2 0 0 1 4.89 12c0-.79.14-1.56.38-2.28V6.61H1.26A12 12 0 0 0 0 12c0 1.94.47 3.77 1.26 5.39l4.01-3.11Z" />
+              <path fill="#EA4335" d="M12 4.75c1.76 0 3.34.6 4.58 1.79l3.44-3.44C17.94 1.19 15.24 0 12 0 7.31 0 3.26 2.69 1.26 6.61l4.01 3.11C6.22 6.86 8.87 4.75 12 4.75Z" />
+            </svg>
+            Entrar com Google
+          </Button>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setShowEmailForm((v) => !v)}
+              className="text-sm text-gray-500 dark:text-gray-400 hover:underline"
+            >
+              {showEmailForm ? 'Esconder login por e-mail' : 'Entrar com e-mail'}
+            </button>
+          </div>
+
+          {error && !showEmailForm && (
+            <p className="mt-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+        </div>
+
+        {showEmailForm && (
+        <div className="card p-6 mt-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
               <>
@@ -163,9 +213,10 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+        )}
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          Apenas para organizadores e árbitros de torneios.{' '}
+          Organize, arbitre ou acompanhe seus torneios. A consulta pública continua disponível sem conta.{' '}
           <Link href="/tournaments" className="text-brand-600 dark:text-brand-400 hover:underline">
             Consulta pública aqui.
           </Link>

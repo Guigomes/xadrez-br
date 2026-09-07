@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useUser, useProfile, useUpdateMyCapabilities, useUpdateMyParticipantData, useUpdateMyName,
@@ -56,6 +56,23 @@ export default function AccountPage() {
     if (!loadingUser && !user) router.push('/login');
   }, [loadingUser, user, router]);
 
+  const hasChanges = useMemo(() => !!profile && (
+    fullName !== (profile.full_name ?? '') ||
+    isOrganizer !== profile.is_organizer ||
+    isArbiter !== profile.is_arbiter ||
+    isParticipant !== profile.is_participant ||
+    birthYear !== (profile.birth_year ? String(profile.birth_year) : '') ||
+    city !== (profile.city ?? '') ||
+    state !== (profile.state ?? '') ||
+    clubOrSchool !== (profile.club_or_school ?? '') ||
+    federation !== (profile.federation || 'BRA') ||
+    fideId !== (profile.fide_id ?? '') ||
+    cbxId !== (profile.cbx_id ?? '') ||
+    phone !== (profile.phone ?? '')
+  ), [birthYear, cbxId, city, clubOrSchool, federation, fideId, fullName, isArbiter, isOrganizer, isParticipant, phone, profile, state]);
+
+  const saving = updateName.isPending || updateCapabilities.isPending || updateParticipantData.isPending;
+
   if (loadingUser || loadingProfile || !profile) return <PageSpinner />;
 
   async function handleSave() {
@@ -101,7 +118,7 @@ export default function AccountPage() {
 
         <div>
           <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">O que você faz aqui</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             As três podem estar ativas ao mesmo tempo, mas é preciso manter pelo menos uma marcada.
             Inscrever-se para jogar um torneio não exige nenhuma delas.
           </p>
@@ -112,11 +129,11 @@ export default function AccountPage() {
             type="checkbox"
             checked={isOrganizer}
             onChange={(e) => setIsOrganizer(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            className="h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
           />
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Organizador</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Pode criar e gerenciar torneios.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Pode criar e gerenciar torneios.</p>
           </div>
         </label>
 
@@ -125,11 +142,11 @@ export default function AccountPage() {
             type="checkbox"
             checked={isArbiter}
             onChange={(e) => setIsArbiter(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            className="h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
           />
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Árbitro</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Pode cadastrar jogadores e ser adicionado à equipe de torneios de outros organizadores.
             </p>
           </div>
@@ -140,11 +157,11 @@ export default function AccountPage() {
             type="checkbox"
             checked={isParticipant}
             onChange={(e) => setIsParticipant(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            className="h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
           />
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Participante</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Não é preciso estar cadastrado para se inscrever em um torneio
             </p>
           </div>
@@ -159,7 +176,8 @@ export default function AccountPage() {
         <div className="flex items-center gap-3">
           <Button
             onClick={handleSave}
-            loading={updateName.isPending || updateCapabilities.isPending || updateParticipantData.isPending}
+            loading={saving}
+            disabled={!hasChanges}
           >
             Salvar
           </Button>
@@ -177,9 +195,9 @@ export default function AccountPage() {
             <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
               Dados para inscrição automática
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Preencha aqui, ou deixe em branco e complete na primeira inscrição — a partir daí fica
-              salvo pra ser reaproveitado nos próximos torneios. Salva junto com o botão acima.
+              salvo para ser reaproveitado nos próximos torneios.
             </p>
           </div>
 
@@ -240,6 +258,19 @@ export default function AccountPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+            <Button onClick={handleSave} loading={saving} disabled={!hasChanges}>
+              Salvar dados da conta
+            </Button>
+            {hasChanges && !saving && (
+              <span className="text-sm text-amber-700 dark:text-amber-400">Alterações não salvas</span>
+            )}
+            {saved && (
+              <span className="text-sm font-medium text-green-600 dark:text-green-400" aria-live="polite">
+                ✓ Salvo
+              </span>
+            )}
           </div>
         </div>
       )}
