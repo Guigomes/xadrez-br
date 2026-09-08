@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
+import { TournamentTabIcon, type TournamentTabIconName } from './tournament-tab-icon';
 
 interface TournamentTabsProps {
   slug: string;
@@ -23,18 +24,18 @@ export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentT
 
   const tabs = isOngoing
     ? [
-        { href: `${base}/rounds/${currentRoundNumber}`, label: 'Rodada atual' },
-        { href: `${base}/standings`,                    label: 'Classificação' },
-        { href: `${base}/participants`,                 label: 'Participantes' },
-        { href: base,                                   label: 'Visão geral' },
+        { href: `${base}/rounds/${currentRoundNumber}`, label: 'Rodada atual', icon: 'current-round' as TournamentTabIconName },
+        { href: `${base}/standings`,                    label: 'Classificação', icon: 'standings' as TournamentTabIconName },
+        { href: `${base}/participants`,                 label: 'Participantes', icon: 'participants' as TournamentTabIconName },
+        { href: base,                                   label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
       ]
     : [
-        { href: base,                   label: 'Visão geral' },
-        { href: `${base}/participants`, label: 'Participantes' },
+        { href: base,                   label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
+        { href: `${base}/participants`, label: 'Participantes', icon: 'participants' as TournamentTabIconName },
         ...(hasStarted
           ? [
-              { href: `${base}/rounds`,    label: 'Rodadas' },
-              { href: `${base}/standings`, label: 'Classificação' },
+              { href: `${base}/rounds`,    label: 'Rodadas', icon: 'rounds' as TournamentTabIconName },
+              { href: `${base}/standings`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
             ]
           : []),
       ];
@@ -57,6 +58,7 @@ export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentT
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200'
             )}
           >
+            <TournamentTabIcon name={tab.icon} />
             {tab.label}
           </Link>
         );

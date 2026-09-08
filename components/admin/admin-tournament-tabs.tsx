@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
+import { TournamentTabIcon, type TournamentTabIconName } from '@/components/tournament/tournament-tab-icon';
 import type { TournamentMode, TournamentStatus } from '@/types/database';
 
 interface Props {
@@ -29,18 +30,18 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
   const hasStarted = status === 'ongoing' || status === 'finished';
 
   const tabs = [
-    { href: base,              label: 'Visão geral' },
+    { href: base,              label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
     ...(hasStarted
       ? []
       : [
-          { href: `${base}/groups`,        label: 'Emparceiramento' },
-          { href: `${base}/registrations`, label: 'Inscrições' },
+          { href: `${base}/groups`,        label: 'Emparceiramento', icon: 'pairing' as TournamentTabIconName },
+          { href: `${base}/registrations`, label: 'Inscrições', icon: 'registrations' as TournamentTabIconName },
         ]),
-    { href: `${base}/players`, label: 'Participantes' },
+    { href: `${base}/players`, label: 'Participantes', icon: 'participants' as TournamentTabIconName },
     ...(hasStarted
       ? [
-          { href: `${base}/rounds`,    label: 'Rodadas' },
-          { href: `${base}/standings`, label: 'Classificação' },
+          { href: `${base}/rounds`,    label: 'Rodadas', icon: 'rounds' as TournamentTabIconName },
+          { href: `${base}/standings`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
         ]
       : []),
     // Torneio importado não tem arbitragem local (é espelho do chess-results,
@@ -48,7 +49,7 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
     // a sincronização mora no botão do cabeçalho (AdminTournamentChrome). A
     // rota /imports continua existindo pra quem editar a URL/grupo (mesmo
     // padrão de "some a navegação, não o acesso" já usado acima pro hasStarted).
-    ...(mode === 'imported' ? [] : [{ href: `${base}/staff`, label: 'Árbitros' }]),
+    ...(mode === 'imported' ? [] : [{ href: `${base}/staff`, label: 'Árbitros', icon: 'staff' as TournamentTabIconName }]),
   ];
 
   return (
@@ -74,6 +75,7 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200'
             )}
           >
+            <TournamentTabIcon name={tab.icon} />
             <span>{tab.label}</span>
           </Link>
         );
