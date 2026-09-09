@@ -269,13 +269,14 @@ async function toolBuscarJogador(args: Record<string, unknown>, ctx: ToolContext
   const nome = typeof args.nome === 'string' ? args.nome.trim() : '';
   if (nome.length < 3) return { erro: 'nome_curto', mensagem: 'Preciso de pelo menos 3 letras do nome pra procurar.' };
 
-  let { data: players, error: pErr } = await ctx.supabase
+  const { data: initialPlayers, error: pErr } = await ctx.supabase
     .from('players')
     .select('id, full_name, city, state')
     .ilike('full_name', `%${nome}%`)
     .order('full_name')
     .limit(8);
   if (pErr) return { error: pErr.message };
+  let players = initialPlayers;
 
   // Nada bateu a string inteira — tenta por partes (nome incompleto, ordem
   // trocada, ou uma palavra com grafia diferente). Cada palavra vira um
