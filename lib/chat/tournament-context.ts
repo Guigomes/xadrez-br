@@ -23,12 +23,39 @@ export function normalizeName(s: string): string {
     .trim();
 }
 
-/** Casa `query` contra full_name de forma tolerante a acento/caixa. Casamento em memória. */
-export function matchPlayerNames<T extends { full_name: string }>(rows: T[], query: string, limit = 5): T[] {
+export interface NameMatchResult<T> {
+  rows: T[];
+  /** false = achou por partes do nome, não a string inteira digitada — a
+   * ferramenta deve confirmar com a pessoa antes de assumir que é essa. */
+  exact: boolean;
+}
+
+/**
+ * Casa `query` contra full_name de forma tolerante a acento/caixa. Casamento
+ * em memória, em duas passadas:
+ * 1. Substring exata (like antes) — cobre "Guilherme" batendo em "Guilherme
+ *    Gomes da Silva".
+ * 2. Sem nada na primeira: cada PALAVRA da busca precisa aparecer em algum
+ *    lugar do nome, em qualquer ordem — cobre nome incompleto sem uma palavra
+ *    do meio, ordem trocada ("Silva Guilherme"), ou uma palavra digitada com
+ *    grafia diferente do resto. `exact: false` avisa a ferramenta que é
+ *    achado por aproximação — confirmar com a pessoa antes de responder como
+ *    se fosse certeza (pedido do usuário: nunca assumir calado).
+ */
+export function matchPlayerNames<T extends { full_name: string }>(rows: T[], query: string, limit = 5): NameMatchResult<T> {
   const q = normalizeName(query);
-  if (!q) return [];
-  const matches = rows.filter((r) => normalizeName(r.full_name).includes(q));
-  return matches.slice(0, limit);
+  if (!q) return { rows: [], exact: true };
+
+  const exactMatches = rows.filter((r) => normalizeName(r.full_name).includes(q));
+  if (exactMatches.length > 0) return { rows: exactMatches.slice(0, limit), exact: true };
+
+  const words = q.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return { rows: [], exact: true };
+  const partialMatches = rows.filter((r) => {
+    const name = normalizeName(r.full_name);
+    return words.every((w) => name.includes(w));
+  });
+  return { rows: partialMatches.slice(0, limit), exact: false };
 }
 
 const RESERVED_SLUGS = new Set(['new']);

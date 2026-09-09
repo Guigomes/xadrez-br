@@ -40,22 +40,36 @@ describe('matchPlayerNames', () => {
     { full_name: 'João Silva' },
     { full_name: 'Joana Souza' },
     { full_name: 'Carlos Pereira' },
+    { full_name: 'Guilherme Gomes da Silva' },
   ];
 
-  it('casa por trecho, tolerante a acento/caixa', () => {
-    expect(matchPlayerNames(rows, 'joao').map((r) => r.full_name)).toEqual(['João Silva']);
-    expect(matchPlayerNames(rows, 'JOA').map((r) => r.full_name)).toEqual(['João Silva', 'Joana Souza']);
+  it('casa por trecho, tolerante a acento/caixa — exact: true', () => {
+    const r1 = matchPlayerNames(rows, 'joao');
+    expect(r1.rows.map((r) => r.full_name)).toEqual(['João Silva']);
+    expect(r1.exact).toBe(true);
+
+    const r2 = matchPlayerNames(rows, 'JOA');
+    expect(r2.rows.map((r) => r.full_name)).toEqual(['João Silva', 'Joana Souza']);
+    expect(r2.exact).toBe(true);
   });
 
-  it('sem casamento, lista vazia', () => {
-    expect(matchPlayerNames(rows, 'zzz')).toEqual([]);
+  it('sem trecho exato, cai pra partes do nome — exact: false', () => {
+    // "Silva Guilherme" não é substring de "Guilherme Gomes da Silva", mas
+    // as duas palavras aparecem (em qualquer ordem).
+    const r = matchPlayerNames(rows, 'Silva Guilherme');
+    expect(r.rows.map((row) => row.full_name)).toEqual(['Guilherme Gomes da Silva']);
+    expect(r.exact).toBe(false);
+  });
+
+  it('nem trecho nem partes batem, lista vazia', () => {
+    expect(matchPlayerNames(rows, 'zzz').rows).toEqual([]);
   });
 
   it('query vazia, lista vazia', () => {
-    expect(matchPlayerNames(rows, '   ')).toEqual([]);
+    expect(matchPlayerNames(rows, '   ').rows).toEqual([]);
   });
 
   it('respeita o limite', () => {
-    expect(matchPlayerNames(rows, 'a', 1)).toHaveLength(1);
+    expect(matchPlayerNames(rows, 'a', 1).rows).toHaveLength(1);
   });
 });

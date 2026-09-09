@@ -269,13 +269,30 @@ async function toolBuscarJogador(args: Record<string, unknown>, ctx: ToolContext
   const nome = typeof args.nome === 'string' ? args.nome.trim() : '';
   if (nome.length < 3) return { erro: 'nome_curto', mensagem: 'Preciso de pelo menos 3 letras do nome pra procurar.' };
 
-  const { data: players, error: pErr } = await ctx.supabase
+  let { data: players, error: pErr } = await ctx.supabase
     .from('players')
     .select('id, full_name, city, state')
     .ilike('full_name', `%${nome}%`)
     .order('full_name')
     .limit(8);
   if (pErr) return { error: pErr.message };
+
+  // Nada bateu a string inteira — tenta por partes (nome incompleto, ordem
+  // trocada, ou uma palavra com grafia diferente). Cada palavra vira um
+  // ilike próprio, todos AND (word order-independent). aproximado=true avisa
+  // pra confirmar com a pessoa antes de responder como certeza.
+  let aproximado = false;
+  if (!players?.length) {
+    const words = nome.split(/\s+/).filter((w) => w.length >= 2);
+    if (words.length > 1) {
+      let query = ctx.supabase.from('players').select('id, full_name, city, state');
+      for (const w of words) query = query.ilike('full_name', `%${w}%`);
+      const { data: fuzzy, error: fErr } = await query.order('full_name').limit(8);
+      if (fErr) return { error: fErr.message };
+      players = fuzzy;
+      aproximado = true;
+    }
+  }
   if (!players?.length) return { encontrados: [], mensagem: 'Nenhum jogador com esse nome no sistema.' };
 
   const { data: entries, error: tpErr } = await ctx.supabase
@@ -312,7 +329,7 @@ async function toolBuscarJogador(args: Record<string, unknown>, ctx: ToolContext
   if (encontrados.length === 0) {
     return { encontrados: [], mensagem: 'Achei o nome no cadastro, mas ele não está inscrito em nenhum torneio visível.' };
   }
-  return { total: encontrados.length, encontrados };
+  return { total: encontrados.length, ...(aproximado ? { aproximado: true } : {}), encontrados };
 }
 
 async function toolEstadoDoTorneio(args: Record<string, unknown>, ctx: ToolContext): Promise<Record<string, unknown>> {
@@ -419,13 +436,16 @@ async function toolClassificacaoDoTorneio(args: Record<string, unknown>, ctx: To
   // Filtro por participante: posição e pontos dessa pessoa.
   const participante = typeof args.participante === 'string' ? args.participante.trim() : '';
   if (participante) {
-    const matches = matchPlayerNames(rows, participante, 6);
+    const { rows: matches, exact } = matchPlayerNames(rows, participante, 6);
     if (matches.length === 0) return { torneio: t.name, encontrados: [], mensagem: 'Nenhum participante com esse nome.' };
     if (matches.length > 5) {
       return { torneio: t.name, mensagem: 'Muitos jogadores com esse nome — peça o nome completo.' };
     }
     return {
       torneio: t.name,
+      // aproximado=true: achou por partes do nome, não a string inteira —
+      // confirme com a pessoa qual é antes de tratar como certeza.
+      ...(exact ? {} : { aproximado: true }),
       encontrados: matches.map((r) => {
         const c = counts(r);
         return {
@@ -492,12 +512,27 @@ async function toolPareamentosDaRodada(args: Record<string, unknown>, ctx: ToolC
 
   const participante = typeof args.participante === 'string' ? args.participante.trim() : '';
   let partidas = pairings;
+  let aproximado = false;
   if (participante) {
     // Filtra as mesas em que o jogador aparece de qualquer lado (tolerante a acento/caixa).
     const q = normalizeName(participante);
     partidas = pairings.filter(
       (p) => normalizeName(p.white_name).includes(q) || normalizeName(p.black_name).includes(q),
     );
+    if (partidas.length === 0) {
+      // Nada bateu a string inteira — tenta por partes (nome incompleto,
+      // ordem trocada). aproximado=true avisa a ferramenta pra confirmar
+      // com a pessoa antes de responder como certeza.
+      const words = q.split(/\s+/).filter(Boolean);
+      if (words.length > 1) {
+        partidas = pairings.filter((p) => {
+          const white = normalizeName(p.white_name);
+          const black = normalizeName(p.black_name);
+          return words.every((w) => white.includes(w)) || words.every((w) => black.includes(w));
+        });
+        if (partidas.length > 0) aproximado = true;
+      }
+    }
   }
 
   const statusRodada = summarizeRounds(idsAlvo.map((r: any) => ({ round_number: r.round_number, status: r.status }))).rounds[0]?.status ?? 'pending';
@@ -506,6 +541,7 @@ async function toolPareamentosDaRodada(args: Record<string, unknown>, ctx: ToolC
     torneio: t.name,
     rodada: alvo,
     status: statusRodada,
+    ...(aproximado ? { aproximado: true } : {}),
     partidas: partidas.slice(0, 10).map((p) => ({
       mesa: p.board_number,
       brancas: p.white_name,
@@ -528,12 +564,21 @@ async function toolHistoricoDoParticipante(args: Record<string, unknown>, ctx: T
   const { data: stData, error: stErr } = await ctx.supabase.rpc('get_tournament_standings', { p_tournament_id: t.id });
   if (stErr) return { error: stErr.message };
   const rows = (stData ?? []) as StandingRow[];
-  const matches = matchPlayerNames(rows, participante, 6);
+  const { rows: matches, exact } = matchPlayerNames(rows, participante, 6);
   if (matches.length === 0) return { torneio: t.name, mensagem: 'Nenhum participante com esse nome.' };
   if (matches.length > 1) {
     return {
       torneio: t.name,
       mensagem: 'Mais de um jogador com esse nome — peça o nome completo.',
+      candidatos: matches.map((r) => r.full_name),
+    };
+  }
+  if (!exact) {
+    // Achado por partes do nome, não a string inteira — confirma antes de
+    // devolver o histórico como se fosse certeza (pedido do usuário).
+    return {
+      torneio: t.name,
+      mensagem: 'Não achei esse nome exato. O mais parecido foi este — confirme com a pessoa antes de responder.',
       candidatos: matches.map((r) => r.full_name),
     };
   }
