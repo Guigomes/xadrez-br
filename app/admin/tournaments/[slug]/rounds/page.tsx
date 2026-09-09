@@ -5,8 +5,6 @@ import { useTournament } from '@/lib/hooks/use-tournament';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
-import { ImportStandings } from '@/components/admin/import-standings';
-import { ImportPairings } from '@/components/admin/import-pairings';
 import { NativeRounds } from '@/components/admin/native-rounds';
 import { RoundsList } from '@/components/tournament/rounds-list';
 
@@ -43,10 +41,11 @@ export default function AdminRoundsPage({ params }: Props) {
   // 2 min). O organizador não pareia nem lança resultado por aqui — editar
   // manualmente não tinha efeito nenhum além de ser sobrescrito no próximo
   // ciclo, então a visão vira a MESMA do público (components/tournament/
-  // rounds-list.tsx), só dentro do painel admin. "Status do torneio" e os
-  // importadores manuais continuam: são ação real (o primeiro não é tocado
-  // pelo cron; o segundo só adianta a sincronização que já ia acontecer
-  // sozinha, não finge um controle que não existe).
+  // rounds-list.tsx), só dentro do painel admin. "Status do torneio"
+  // continua: é ação real, não é tocado pelo cron. Import manual (colar URL
+  // do chess-results direto nesta tela) foi removido — só o próprio usuário
+  // importa daqui pra frente, via agente (skill import-chess-results + botão
+  // "Sincronizar agora" no cabeçalho).
   async function handleTournamentStatus(newStatus: 'ongoing' | 'finished') {
     setStatusLoading(true);
     setError('');
@@ -106,11 +105,6 @@ export default function AdminRoundsPage({ params }: Props) {
           </button>
         </div>
       )}
-
-      <div className="mb-6 space-y-3">
-        <ImportPairings slug={slug} />
-        <ImportStandings slug={slug} />
-      </div>
 
       {/* Mesmo componente que o público vê — ver comentário acima. */}
       <RoundsList slug={slug} basePath={`/admin/tournaments/${slug}/rounds`} />
