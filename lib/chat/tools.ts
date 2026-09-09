@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { StandingRow, RoundPairingRow, PlayerHistoryRow } from '@/types/database';
 import { summarizeRounds } from '@/lib/utils/rounds';
-import { isRegistrationClosed } from '@/lib/utils/chess';
+import { isRegistrationClosed, winnerSide } from '@/lib/utils/chess';
 import {
   resolveTournament,
   matchPlayerNames,
@@ -552,6 +552,25 @@ async function toolPareamentosDaRodada(args: Record<string, unknown>, ctx: ToolC
   };
 }
 
+/**
+ * Vitória/derrota relativa ao jogador — não deixa a IA deduzir sozinha a
+ * partir de result ('1-0'/'0-1') + cor. Testado ao vivo (30 perguntas):
+ * Claude Haiku errava toda vez que a cor era "pretas" e o resultado "1-0"
+ * — lia "1-0" como "ganhei" sem checar de qual lado jogava. Confirmado
+ * contra pareamento real: 2 vitórias/4 derrotas viraram "5 vitórias/1
+ * derrota" na narração. Pré-calcular aqui elimina a ambiguidade.
+ */
+function desfechoParaJogador(h: PlayerHistoryRow): string {
+  if (h.result === '*') return 'em_andamento';
+  if (h.result === 'bye') return 'bye';
+  if (h.result === 'not_paired') return 'nao_emparceirado';
+  const side = winnerSide(h.result, h.color);
+  if (side === 'winner') return 'vitoria';
+  if (side === 'loser') return 'derrota';
+  if (side === 'draw') return 'empate';
+  return 'em_andamento';
+}
+
 async function toolHistoricoDoParticipante(args: Record<string, unknown>, ctx: ToolContext): Promise<Record<string, unknown>> {
   const participante = typeof args.participante === 'string' ? args.participante.trim() : '';
   if (!participante) return { error: 'Participante não informado.' };
@@ -598,7 +617,10 @@ async function toolHistoricoDoParticipante(args: Record<string, unknown>, ctx: T
       rodada: h.round_number,
       cor: h.color === 'white' ? 'brancas' : 'pretas',
       adversario: h.is_bye ? null : h.opponent_name,
-      bye: h.is_bye,
+      // Já calculado relativo ao jogador — não deduza vitória/derrota a
+      // partir de "resultado" (esse é o placar cru, ex. "1-0", que só faz
+      // sentido junto com "cor"). Use "desfecho" direto.
+      desfecho: desfechoParaJogador(h),
       resultado: h.result === '*' ? null : h.result,
       pontos_acumulados: h.cumulative_pts,
     })),
