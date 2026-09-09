@@ -119,3 +119,44 @@ export async function getLatestSubscriptionPayment(
   );
   return list.data[0] ?? null;
 }
+
+// Cobrança avulsa (taxa de inscrição paga na hora pelo inscrito, migration
+// 078) — diferente de createAsaasSubscription: gera 1 pagamento só, sem
+// ciclo recorrente. Mesma conta Asaas (a do dono da API key) que recebe a
+// mensalidade do organizador; v1 não faz split entre torneios.
+export async function createAsaasPayment(input: {
+  customer: string;
+  billingType: AsaasBillingType;
+  value: number;
+  dueDate: string;
+  description?: string;
+}): Promise<AsaasPayment> {
+  if (isMockMode()) {
+    return {
+      id: mockId('pay'),
+      status: 'PENDING',
+      dueDate: input.dueDate,
+      invoiceUrl: null as unknown as string,
+    };
+  }
+  return asaasFetch<AsaasPayment>('/payments', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export interface AsaasRefund {
+  status: string;
+}
+
+// Estorna uma cobrança avulsa já paga (rejeição de inscrição paga). A Asaas
+// reverte o valor pro pagador; taxa de transação da cobrança em si
+// normalmente não volta — ver aviso dado ao usuário na conversa que definiu
+// esta feature, não modelado aqui (é política de tarifa da Asaas, não algo
+// que o app calcula).
+export async function refundAsaasPayment(paymentId: string): Promise<AsaasRefund> {
+  if (isMockMode()) return { status: 'REFUNDED' };
+  return asaasFetch<AsaasRefund>(`/payments/${paymentId}/refund`, {
+    method: 'POST',
+  });
+}

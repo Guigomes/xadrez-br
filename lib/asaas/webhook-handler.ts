@@ -21,8 +21,8 @@ const CANCEL_EVENTS = new Set(['PAYMENT_REFUNDED', 'PAYMENT_DELETED', 'PAYMENT_C
 
 export type ApplyEventResult =
   | { outcome: 'duplicate' }
-  | { outcome: 'no_subscription' }
   | { outcome: 'unknown_subscription' }
+  | { outcome: 'unmatched' }
   | { outcome: 'applied'; status: string };
 
 /**
@@ -45,44 +45,67 @@ export async function applyAsaasPaymentEvent(
     throw dedupError;
   }
 
-  if (!payment.subscription) {
-    return { outcome: 'no_subscription' };
+  if (payment.subscription) {
+    const { data: subscription } = await admin
+      .from('subscriptions')
+      .select('id, user_id, plan_id')
+      .eq('asaas_subscription_id', payment.subscription)
+      .maybeSingle();
+    if (!subscription) {
+      return { outcome: 'unknown_subscription' };
+    }
+
+    if (ACTIVATE_EVENTS.has(event)) {
+      await admin
+        .from('subscriptions')
+        .update({ status: 'active', next_due_date: payment.dueDate ?? null })
+        .eq('id', subscription.id);
+      // UPDATE direto, não via RPC set_user_plan: aquele RPC exige
+      // auth_user_role() = 'admin', e o client service_role usado aqui não
+      // autentica como usuário nenhum (auth.uid() nulo) — é o contexto que
+      // trg_prevent_plan_self_upgrade (migration 073) já deixa passar sem
+      // checar admin, pensado exatamente pra webhook de cobrança.
+      await admin.from('user_profiles').update({ plan_id: subscription.plan_id }).eq('id', subscription.user_id);
+      return { outcome: 'applied', status: 'active' };
+    }
+    if (OVERDUE_EVENTS.has(event)) {
+      await admin.from('subscriptions').update({ status: 'overdue' }).eq('id', subscription.id);
+      return { outcome: 'applied', status: 'overdue' };
+    }
+    if (CANCEL_EVENTS.has(event)) {
+      await admin.from('subscriptions').update({ status: 'canceled' }).eq('id', subscription.id);
+      const { data: freePlan } = await admin.from('plans').select('id').eq('code', 'free').maybeSingle();
+      if (freePlan) {
+        await admin.from('user_profiles').update({ plan_id: freePlan.id }).eq('id', subscription.user_id);
+      }
+      return { outcome: 'applied', status: 'canceled' };
+    }
+    return { outcome: 'applied', status: 'ignored' };
   }
 
-  const { data: subscription } = await admin
-    .from('subscriptions')
-    .select('id, user_id, plan_id')
-    .eq('asaas_subscription_id', payment.subscription)
+  // Sem `subscription`: pode ser cobrança avulsa de taxa de inscrição
+  // (migration 078, createAsaasPayment) — casada pelo id do pagamento salvo
+  // em tournament_registrations.asaas_payment_id na hora da cobrança.
+  const { data: registration } = await admin
+    .from('tournament_registrations')
+    .select('id')
+    .eq('asaas_payment_id', payment.id)
     .maybeSingle();
-  if (!subscription) {
-    return { outcome: 'unknown_subscription' };
+  if (!registration) {
+    return { outcome: 'unmatched' };
   }
 
   if (ACTIVATE_EVENTS.has(event)) {
-    await admin
-      .from('subscriptions')
-      .update({ status: 'active', next_due_date: payment.dueDate ?? null })
-      .eq('id', subscription.id);
-    // UPDATE direto, não via RPC set_user_plan: aquele RPC exige
-    // auth_user_role() = 'admin', e o client service_role usado aqui não
-    // autentica como usuário nenhum (auth.uid() nulo) — é o contexto que
-    // trg_prevent_plan_self_upgrade (migration 073) já deixa passar sem
-    // checar admin, pensado exatamente pra webhook de cobrança.
-    await admin.from('user_profiles').update({ plan_id: subscription.plan_id }).eq('id', subscription.user_id);
-    return { outcome: 'applied', status: 'active' };
+    await admin.from('tournament_registrations').update({ payment_status: 'paid' }).eq('id', registration.id);
+    return { outcome: 'applied', status: 'paid' };
   }
   if (OVERDUE_EVENTS.has(event)) {
-    await admin.from('subscriptions').update({ status: 'overdue' }).eq('id', subscription.id);
+    await admin.from('tournament_registrations').update({ payment_status: 'overdue' }).eq('id', registration.id);
     return { outcome: 'applied', status: 'overdue' };
   }
   if (CANCEL_EVENTS.has(event)) {
-    await admin.from('subscriptions').update({ status: 'canceled' }).eq('id', subscription.id);
-    const { data: freePlan } = await admin.from('plans').select('id').eq('code', 'free').maybeSingle();
-    if (freePlan) {
-      await admin.from('user_profiles').update({ plan_id: freePlan.id }).eq('id', subscription.user_id);
-    }
-    return { outcome: 'applied', status: 'canceled' };
+    await admin.from('tournament_registrations').update({ payment_status: 'refunded' }).eq('id', registration.id);
+    return { outcome: 'applied', status: 'refunded' };
   }
-
   return { outcome: 'applied', status: 'ignored' };
 }

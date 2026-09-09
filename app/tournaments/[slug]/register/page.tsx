@@ -117,6 +117,8 @@ export default async function RegisterPage({ params }: Props) {
           requirePaymentReceipt={tournament.require_payment_receipt}
           registrationFeeText={tournament.registration_fee_text}
           isFree={tournament.is_free}
+          acceptOnlinePayment={tournament.accept_online_payment}
+          registrationFeeCents={tournament.registration_fee_cents}
           requireCbxId={tournament.require_cbx_id}
           hasAbsoluteClassification={tournament.has_absolute_classification ?? true}
           autofill={autofill}

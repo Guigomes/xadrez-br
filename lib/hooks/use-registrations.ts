@@ -92,16 +92,24 @@ export function useApproveRegistration(tournamentId: string) {
   });
 }
 
+/**
+ * Rejeita via API route (não update direto do client): inscrição paga
+ * online (migration 078) precisa de estorno na Asaas antes, e isso exige
+ * ASAAS_API_KEY — que só existe no servidor (app/api/admin/registrations/
+ * [id]/reject/route.ts).
+ */
 export function useRejectRegistration(tournamentId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ registrationId, reason }: { registrationId: string; reason: string }) => {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('tournament_registrations')
-        .update({ status: 'rejected', rejected_reason: reason || null })
-        .eq('id', registrationId);
-      if (error) throw error;
+      const res = await fetch(`/api/admin/registrations/${registrationId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? 'Erro ao rejeitar inscrição.');
+      return body;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registrations', tournamentId] });

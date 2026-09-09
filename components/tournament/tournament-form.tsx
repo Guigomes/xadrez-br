@@ -49,8 +49,18 @@ const schema = z.object({
   require_payment_receipt: z.boolean(),
   registration_fee_text: z.string().optional(),
   is_free: z.boolean({ required_error: 'Responda se a inscrição é gratuita' }),
+  accept_online_payment: z.boolean(),
+  registration_fee_cents: z.coerce.number().int().min(0).optional(),
   require_cbx_id: z.boolean(),
 }).superRefine((values, ctx) => {
+  if (values.accept_online_payment && !(values.registration_fee_cents && values.registration_fee_cents > 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['registration_fee_cents'],
+      message: 'Informe o valor da inscrição para aceitar pagamento online',
+    });
+  }
+
   if (values.registration_start_date && values.registration_end_date
     && values.registration_end_date < values.registration_start_date) {
     ctx.addIssue({
@@ -143,6 +153,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       requested_bye_score: 0.5,
       tiebreak_order: ['buchholz', 'buchholz_cut1', 'sonneborn_berger'],
       require_payment_receipt: false,
+      accept_online_payment: false,
       require_cbx_id: false,
       // Sem default de propósito — obriga o organizador a responder em vez
       // de herdar "gratuito" silenciosamente (ver zod required_error acima).
@@ -160,6 +171,8 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
 
   const isFree = watch('is_free');
   const requireCbxId = watch('require_cbx_id');
+  const acceptOnlinePayment = watch('accept_online_payment');
+  const registrationFeeCents = watch('registration_fee_cents');
 
   // Estado do select de ritmo: valor do preset, sentinela "Outro" ou vazio.
   const initialPreset = findPresetByValue(defaultValues?.time_control);
@@ -445,24 +458,62 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
         )}
         {isFree === false && (
           <div className="space-y-4 pt-1">
-            <Input
-              label="Valor da inscrição"
-              placeholder='Ex: R$50 (Absoluto) / R$30 (Sub-14)'
-              {...register('registration_fee_text')}
-            />
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 className="h-5 w-5 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                {...register('require_payment_receipt')}
+                {...register('accept_online_payment', {
+                  onChange: (e) => {
+                    if (e.target.checked) setValue('require_payment_receipt', false, { shouldDirty: true });
+                  },
+                })}
               />
               <div>
-                <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Exigir comprovante de pagamento</p>
+                <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Aceitar pagamento online na inscrição</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  A inscrição só é aceita com o comprovante anexado.
+                  O inscrito paga a taxa na hora via Pix/cartão (Asaas), sem precisar anexar comprovante. Requer plano com essa funcionalidade liberada.
                 </p>
               </div>
             </label>
+
+            {acceptOnlinePayment ? (
+              <Input
+                label="Valor da inscrição (R$)"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="50.00"
+                value={registrationFeeCents != null ? (registrationFeeCents / 100).toFixed(2) : ''}
+                onChange={(e) => {
+                  const reais = parseFloat(e.target.value);
+                  setValue('registration_fee_cents', Number.isFinite(reais) ? Math.round(reais * 100) : undefined, {
+                    shouldDirty: true, shouldValidate: true,
+                  });
+                }}
+                error={errors.registration_fee_cents?.message}
+              />
+            ) : (
+              <>
+                <Input
+                  label="Valor da inscrição"
+                  placeholder='Ex: R$50 (Absoluto) / R$30 (Sub-14)'
+                  {...register('registration_fee_text')}
+                />
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    {...register('require_payment_receipt')}
+                  />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Exigir comprovante de pagamento</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      A inscrição só é aceita com o comprovante anexado.
+                    </p>
+                  </div>
+                </label>
+              </>
+            )}
           </div>
         )}
       </div>

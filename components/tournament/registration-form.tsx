@@ -36,6 +36,7 @@ const schema = z.object({
   email:      z.string().email('E-mail inválido').optional().or(z.literal('')),
   phone:      z.string().optional(),
   category_id: z.string().optional(),
+  cpf_cnpj:   z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -66,6 +67,9 @@ interface Props {
   requirePaymentReceipt?: boolean;
   registrationFeeText?: string | null;
   isFree?: boolean;
+  /** migration 078: inscrito paga a taxa na hora via Asaas — substitui o comprovante manual quando true. */
+  acceptOnlinePayment?: boolean;
+  registrationFeeCents?: number | null;
   requireCbxId?: boolean;
   /** migration 065: false = o torneio premia só as faixas, então o aviso de "vai concorrer em" não menciona o absoluto. */
   hasAbsoluteClassification?: boolean;
@@ -78,9 +82,11 @@ interface Props {
 export function RegistrationForm({
   tournamentId, tournamentSlug, classifications, tournamentStartYear,
   requirePaymentReceipt = false, registrationFeeText, isFree = false, requireCbxId = false,
+  acceptOnlinePayment = false, registrationFeeCents = null,
   hasAbsoluteClassification = true,
   autofill, saveAutofillOnSubmit = false,
 }: Props) {
+  const payOnline = acceptOnlinePayment && !isFree;
   const [receipt, setReceipt] = useState<File | null>(null);
   const [receiptError, setReceiptError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -106,6 +112,7 @@ export function RegistrationForm({
       email: autofill?.email || '',
       phone: autofill?.phone || '',
       category_id: undefined,
+      cpf_cnpj: '',
     },
   });
 
@@ -161,7 +168,16 @@ export function RegistrationForm({
       setError('Este torneio exige o ID CBX para concluir a inscrição.');
       return;
     }
-    if (!isFree && requirePaymentReceipt && !receipt) {
+    if (payOnline) {
+      if (!values.cpf_cnpj?.trim()) {
+        setError('Informe seu CPF ou CNPJ para pagar a inscrição.');
+        return;
+      }
+      if (!values.email?.trim()) {
+        setError('Informe seu e-mail para pagar a inscrição.');
+        return;
+      }
+    } else if (!isFree && requirePaymentReceipt && !receipt) {
       setError('Este torneio exige o comprovante de pagamento para concluir a inscrição.');
       return;
     }
@@ -181,7 +197,7 @@ export function RegistrationForm({
         payment_receipt_path = data.path;
       }
 
-      const { error: insErr } = await supabase.from('tournament_registrations').insert({
+      const { data: inserted, error: insErr } = await supabase.from('tournament_registrations').insert({
         tournament_id: tournamentId,
         category_id: values.category_id || null,
         full_name: values.full_name.trim(),
@@ -195,8 +211,9 @@ export function RegistrationForm({
         cbx_id: values.cbx_id || null,
         email: values.email || null,
         phone: values.phone?.trim() || null,
+        cpf_cnpj: values.cpf_cnpj?.replace(/\D/g, '') || null,
         payment_receipt_path,
-      });
+      }).select('id, payment_status').single();
       if (insErr) {
         if (insErr.message.includes('row-level security')) {
           throw new Error('As inscrições não estão abertas para este torneio.');
@@ -207,7 +224,31 @@ export function RegistrationForm({
         if (insErr.message.includes('CBX_ID_REQUIRED')) {
           throw new Error('Este torneio exige o ID CBX para concluir a inscrição.');
         }
+        if (insErr.message.includes('CPF_CNPJ_REQUIRED')) {
+          throw new Error('Informe seu CPF ou CNPJ para pagar a inscrição.');
+        }
+        if (insErr.message.includes('EMAIL_REQUIRED')) {
+          throw new Error('Informe seu e-mail para pagar a inscrição.');
+        }
         throw insErr;
+      }
+
+      // Torneio cobra online (payment_status='pending', decidido pelo
+      // trigger enforce_registration_payment_status no banco, não aqui) —
+      // inicia a cobrança na Asaas e manda o inscrito pro checkout em vez
+      // de mostrar a tela "inscrição enviada".
+      if (inserted?.payment_status === 'pending') {
+        const payRes = await fetch(`/api/registrations/${inserted.id}/pay`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        const payBody = await payRes.json().catch(() => ({}));
+        if (!payRes.ok) throw new Error(payBody.error ?? 'Erro ao iniciar pagamento.');
+        if (payBody.invoiceUrl) {
+          window.location.href = payBody.invoiceUrl;
+          return;
+        }
       }
 
       if (saveAutofillOnSubmit) {
@@ -339,12 +380,30 @@ export function RegistrationForm({
           Visível apenas para a organização do torneio.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="E-mail" type="email" placeholder="voce@exemplo.com" {...register('email')} error={errors.email?.message} />
+          <Input label={`E-mail${payOnline ? ' *' : ''}`} type="email" placeholder="voce@exemplo.com" {...register('email')} error={errors.email?.message} />
           <Input label="Telefone / WhatsApp" type="tel" placeholder="(11) 99999-9999" {...register('phone')} error={errors.phone?.message} />
         </div>
       </div>
 
-      {!isFree && (
+      {payOnline && (
+        <div className="card p-5 space-y-4">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Pagamento</h2>
+          {registrationFeeCents != null && (
+            <p className="text-sm text-gray-700 dark:text-gray-300 -mt-1">
+              💰 Valor da inscrição:{' '}
+              <strong>
+                {(registrationFeeCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </strong>
+            </p>
+          )}
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+            Ao enviar a inscrição, você será levado ao checkout (Pix ou cartão) para pagar na hora.
+          </p>
+          <Input label="CPF ou CNPJ *" placeholder="Só números" {...register('cpf_cnpj')} />
+        </div>
+      )}
+
+      {!isFree && !payOnline && (
         <div className="card p-5 space-y-3">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">
             Comprovante de pagamento{requirePaymentReceipt && ' *'}
@@ -376,7 +435,7 @@ export function RegistrationForm({
       )}
 
       <Button type="submit" size="lg" loading={submitting} className="w-full">
-        Enviar inscrição
+        {payOnline ? 'Ir para pagamento' : 'Enviar inscrição'}
       </Button>
     </form>
   );

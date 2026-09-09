@@ -32,6 +32,14 @@ const STATUS_BADGE: Record<RegistrationStatus, string> = {
   rejected: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400',
 };
 
+/** migration 078 — pagamento online. 'not_required' não vira badge (comprovante manual ou gratuito). */
+const PAYMENT_BADGE: Partial<Record<string, { label: string; className: string }>> = {
+  pending:  { label: '💳 aguardando pagamento', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' },
+  paid:     { label: '💳 pago', className: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400' },
+  overdue:  { label: '💳 vencido', className: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' },
+  refunded: { label: '💳 estornado', className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
+};
+
 interface Props {
   params: Promise<{ slug: string }>;
 }
@@ -105,7 +113,10 @@ export default function AdminRegistrationsPage({ params }: Props) {
   }
 
   async function handleReject(registration: RegistrationRow) {
-    const reason = window.prompt('Motivo da rejeição (opcional):') ?? '';
+    const promptLabel = registration.payment_status === 'paid'
+      ? 'Motivo da rejeição (opcional) — o pagamento já feito será estornado na Asaas:'
+      : 'Motivo da rejeição (opcional):';
+    const reason = window.prompt(promptLabel) ?? '';
     setActingId(registration.id);
     setError('');
     try {
@@ -228,6 +239,11 @@ export default function AdminRegistrationsPage({ params }: Props) {
                     {declared && (
                       <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
                         🏷️ {declared}
+                      </Badge>
+                    )}
+                    {PAYMENT_BADGE[r.payment_status] && (
+                      <Badge className={PAYMENT_BADGE[r.payment_status]!.className}>
+                        {PAYMENT_BADGE[r.payment_status]!.label}
                       </Badge>
                     )}
                     {diverges && (

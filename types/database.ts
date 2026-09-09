@@ -11,6 +11,8 @@ export type StaffRole = 'organizer' | 'arbiter';
 export type GameResult = '1-0' | '0-1' | '1/2-1/2' | '*' | 'bye' | 'not_paired' | 'forfeit_white' | 'forfeit_black' | 'double_forfeit';
 export type PlayerTournamentStatus = 'active' | 'withdrawn' | 'absent';
 export type RegistrationStatus = 'pending' | 'approved' | 'rejected';
+/** migration 078. 'not_required' = torneio não cobra online (comprovante manual ou gratuito). */
+export type RegistrationPaymentStatus = 'not_required' | 'pending' | 'paid' | 'overdue' | 'refunded';
 export type TournamentMode = 'native' | 'imported';
 export type InitialColor = 'white1' | 'black1';
 export type RatingKind = 'std' | 'rpd' | 'blz';
@@ -98,6 +100,9 @@ export interface Tournament {
   require_payment_receipt: boolean;
   registration_fee_text: string | null;
   is_free: boolean;
+  /** migration 078: inscrito paga a taxa na hora via Asaas, em vez do comprovante manual acima. */
+  accept_online_payment: boolean;
+  registration_fee_cents: number | null;
   require_cbx_id: boolean;
   pairing_mode: PairingMode;
   /** Respostas das 3 perguntas de classificação (idade/rating/feminina) — migration 035. */
@@ -290,6 +295,12 @@ export interface TournamentRegistration {
   email: string | null;
   phone: string | null;
   payment_receipt_path: string | null;
+  /** migration 078: CPF/CNPJ pra pagamento online — só preenchido quando o torneio aceita pagar na hora. */
+  cpf_cnpj: string | null;
+  payment_status: RegistrationPaymentStatus;
+  asaas_customer_id: string | null;
+  asaas_payment_id: string | null;
+  asaas_invoice_url: string | null;
   status: RegistrationStatus;
   player_id: string | null;
   tournament_player_id: string | null;
@@ -420,6 +431,8 @@ export interface TournamentFormValues {
   require_payment_receipt: boolean;
   registration_fee_text?: string;
   is_free: boolean;
+  accept_online_payment: boolean;
+  registration_fee_cents?: number;
   require_cbx_id: boolean;
 }
 
