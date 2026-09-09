@@ -122,6 +122,12 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
   // Pulso de atenção na bolha só até o primeiro clique (flag em localStorage,
   // lida depois de montar pra não divergir do server render).
   const [everOpened, setEverOpened] = useState(true);
+  // Enquanto false, esconde a lista de mensagens atrás de um spinner — pedido
+  // do usuário: abrir o widget com uma sessão salva mostrava a conversa
+  // antiga inteira por um instante e ela sumia na hora seguinte, quando o
+  // efeito de expiração (abaixo) decidia encerrar. Sem sessão salva não tem
+  // nada pra decidir, começa true.
+  const [sessionReady, setSessionReady] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
   const lastActivityRef = useRef<number>(Date.now());
   const closingRef = useRef(false);
@@ -151,30 +157,39 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
   const closeInactive = useCloseInactiveChat();
   const queryClient = useQueryClient();
 
-  // Ao abrir o widget: se há sessão e a última mensagem foi há mais de
-  // OPEN_EXPIRY_MS, encerrar silenciosamente e limpar o localStorage pra
-  // a próxima mensagem criar uma nova conversa. Nunca encerra se o status
-  // indica atendimento humano em curso.
+  // Ao abrir o widget com uma sessão salva, esconde a conversa (sessionReady
+  // = false) até decidir se ela expirou — o efeito seguinte resolve assim
+  // que a sessão carregar. Sem isso a tela mostrava a conversa antiga
+  // inteira por um instante antes de sumir.
   useEffect(() => {
-    if (!open || !sessionId || !sessionQuery.data) return;
-    const { status: s, last_message_at } = sessionQuery.data;
-    if (s === 'humano' || s === 'aguardando_humano' || s === 'encerrada') return;
-    if (!last_message_at) return;
-    const elapsed = Date.now() - new Date(last_message_at).getTime();
-    if (elapsed <= OPEN_EXPIRY_MS) return;
-    // Encerrar assincronamente — sem bloquear abertura do widget.
-    closeInactive.mutate(sessionId, {
-      onSuccess: () => {
-        queryClient.removeQueries({ queryKey: ['chat-session', sessionId] });
-        setSessionId(null);
-        writeStoredSessionId('');
-      },
-    });
-  // Só deve disparar quando `open` muda pra true (na abertura), não a cada
-  // re-render — sessionQuery.data é lido na hora, não como dependência de
-  // disparo, para evitar encerrar em re-renders posteriores com dados novos.
+    if (!open) return;
+    setSessionReady(!sessionId);
+  // Só na abertura (mesmo motivo do efeito de expiração abaixo) — reagir a
+  // sessionId aqui criaria loop com o próprio efeito que o zera.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Ao abrir o widget: se há sessão e a última mensagem foi há mais de
+  // OPEN_EXPIRY_MS, encerrar e iniciar uma nova. Nunca encerra se o status
+  // indica atendimento humano em curso. Decide e troca pra sessão nova NA
+  // HORA (não espera o mutate terminar) — o encerramento no servidor roda
+  // em paralelo; esperar por ele era o que causava a conversa antiga
+  // aparecer e sumir em seguida.
+  useEffect(() => {
+    if (!open || !sessionId || sessionReady) return;
+    if (!sessionQuery.data) return; // ainda carregando o status da sessão
+    const { status: s, last_message_at } = sessionQuery.data;
+    if (s === 'humano' || s === 'aguardando_humano' || s === 'encerrada') { setSessionReady(true); return; }
+    if (!last_message_at) { setSessionReady(true); return; }
+    const elapsed = Date.now() - new Date(last_message_at).getTime();
+    if (elapsed <= OPEN_EXPIRY_MS) { setSessionReady(true); return; }
+    const expiredId = sessionId;
+    queryClient.removeQueries({ queryKey: ['chat-session', expiredId] });
+    setSessionId(null);
+    writeStoredSessionId('');
+    setSessionReady(true);
+    closeInactive.mutate(expiredId);
+  }, [open, sessionId, sessionReady, sessionQuery.data, queryClient, closeInactive]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -309,8 +324,8 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
           </div>
 
           <div ref={listRef} className={`flex-1 space-y-3 overflow-y-auto px-4 py-3 ${showHistory ? 'hidden' : ''}`}>
-            {isLoading && <Spinner className="mx-auto h-5 w-5" />}
-            {!isLoading && (!messages || messages.length === 0) && (
+            {(!sessionReady || isLoading) && <Spinner className="mx-auto h-5 w-5" />}
+            {sessionReady && !isLoading && (!messages || messages.length === 0) && (
               <div className="flex gap-2">
                 <GambitoAvatar />
                 <p className="max-w-[85%] rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">
@@ -319,7 +334,7 @@ export function ChatWidget({ initialUser }: { initialUser?: InitialUser }) {
                 </p>
               </div>
             )}
-            {messages?.map((m) => (
+            {sessionReady && messages?.map((m) => (
               <div key={m.id} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {m.role !== 'user' && (m.is_human ? <HumanAvatar /> : <GambitoAvatar />)}
                 <div
