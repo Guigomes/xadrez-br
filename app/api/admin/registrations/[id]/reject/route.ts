@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { refundAsaasPayment } from '@/lib/asaas/client';
+import { sendUserNotification } from '@/lib/push';
 
 // Rejeita uma inscrição pendente. Se ela já tinha sido paga online
 // (migration 078), estorna na Asaas ANTES de marcar como rejeitada — dinheiro
@@ -14,6 +15,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const operationStartedAt = new Date().toISOString();
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -66,5 +68,26 @@ export async function POST(
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, refunded: paymentStatus === 'refunded' });
+  const { data: promoted } = await admin
+    .from('tournament_registrations')
+    .select('user_id, tournaments(slug, name)')
+    .eq('tournament_id', registration.tournament_id)
+    .gte('promoted_at', operationStartedAt)
+    .not('user_id', 'is', null);
+
+  await Promise.all((promoted ?? []).map(async (item) => {
+    if (!item.user_id) return;
+    const tournament = item.tournaments as unknown as { slug: string; name: string } | null;
+    try {
+      await sendUserNotification(item.user_id, {
+        title: 'Uma vaga foi liberada para você',
+        body: tournament ? `Sua inscrição em ${tournament.name} saiu da lista de espera.` : 'Sua inscrição saiu da lista de espera.',
+        url: '/minha-area',
+      });
+    } catch (error) {
+      console.error('[registrations/reject] push da lista de espera falhou:', error);
+    }
+  }));
+
+  return NextResponse.json({ ok: true, refunded: paymentStatus === 'refunded', promoted: promoted?.length ?? 0 });
 }

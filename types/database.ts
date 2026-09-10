@@ -103,6 +103,11 @@ export interface Tournament {
   /** migration 078: inscrito paga a taxa na hora via Asaas, em vez do comprovante manual acima. */
   accept_online_payment: boolean;
   registration_fee_cents: number | null;
+  max_participants: number | null;
+  waitlist_enabled: boolean;
+  checkin_enabled: boolean;
+  checkin_opens_at: string | null;
+  checkin_closes_at: string | null;
   require_cbx_id: boolean;
   pairing_mode: PairingMode;
   /** Respostas das 3 perguntas de classificação (idade/rating/feminina) — migration 035. */
@@ -302,6 +307,10 @@ export interface TournamentRegistration {
   asaas_payment_id: string | null;
   asaas_invoice_url: string | null;
   status: RegistrationStatus;
+  user_id: string | null;
+  is_waitlisted: boolean;
+  waitlisted_at: string | null;
+  promoted_at: string | null;
   player_id: string | null;
   tournament_player_id: string | null;
   approved_by: string | null;
@@ -433,6 +442,11 @@ export interface TournamentFormValues {
   is_free: boolean;
   accept_online_payment: boolean;
   registration_fee_cents?: number;
+  max_participants?: number;
+  waitlist_enabled: boolean;
+  checkin_enabled: boolean;
+  checkin_opens_at?: string;
+  checkin_closes_at?: string;
   require_cbx_id: boolean;
 }
 

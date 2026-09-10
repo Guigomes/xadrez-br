@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      asaas_webhook_events: {
+        Row: { event: string; id: string; payload: Json; payment_id: string; processed_at: string }
+        Insert: { event: string; id?: string; payload: Json; payment_id: string; processed_at?: string }
+        Update: { event?: string; id?: string; payload?: Json; payment_id?: string; processed_at?: string }
+        Relationships: []
+      }
       admin_fcm_tokens: {
         Row: {
           created_at: string
@@ -1095,6 +1101,45 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          asaas_subscription_id: string
+          billing_type: string
+          created_at: string
+          id: string
+          next_due_date: string | null
+          plan_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asaas_subscription_id: string
+          billing_type?: string
+          created_at?: string
+          id?: string
+          next_due_date?: string | null
+          plan_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asaas_subscription_id?: string
+          billing_type?: string
+          created_at?: string
+          id?: string
+          next_due_date?: string | null
+          plan_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "subscriptions_plan_id_fkey"; columns: ["plan_id"]; isOneToOne: false; referencedRelation: "plans"; referencedColumns: ["id"] },
+          { foreignKeyName: "subscriptions_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "user_profiles"; referencedColumns: ["id"] },
+        ]
+      }
       tournament_categories: {
         Row: {
           created_at: string
@@ -1204,6 +1249,8 @@ export type Database = {
           buchholz: number | null
           buchholz_cut1: number | null
           category_id: string | null
+          checked_in_at: string | null
+          checkin_status: string
           created_at: string
           current_rank: number | null
           current_score: number
@@ -1224,6 +1271,8 @@ export type Database = {
           buchholz?: number | null
           buchholz_cut1?: number | null
           category_id?: string | null
+          checked_in_at?: string | null
+          checkin_status?: string
           created_at?: string
           current_rank?: number | null
           current_score?: number
@@ -1244,6 +1293,8 @@ export type Database = {
           buchholz?: number | null
           buchholz_cut1?: number | null
           category_id?: string | null
+          checked_in_at?: string | null
+          checkin_status?: string
           created_at?: string
           current_rank?: number | null
           current_score?: number
@@ -1293,6 +1344,9 @@ export type Database = {
       }
       tournament_registrations: {
         Row: {
+          asaas_customer_id: string | null
+          asaas_invoice_url: string | null
+          asaas_payment_id: string | null
           approved_at: string | null
           approved_by: string | null
           birth_year: number | null
@@ -1300,16 +1354,20 @@ export type Database = {
           cbx_id: string | null
           city: string | null
           club_or_school: string | null
+          cpf_cnpj: string | null
           created_at: string
           email: string | null
           federation: string
           fide_id: string | null
           full_name: string
           id: string
+          is_waitlisted: boolean
           pairing_group_id: string | null
           payment_receipt_path: string | null
+          payment_status: string
           phone: string | null
           player_id: string | null
+          promoted_at: string | null
           rating_std: number | null
           rejected_reason: string | null
           sex: string | null
@@ -1318,8 +1376,13 @@ export type Database = {
           tournament_id: string
           tournament_player_id: string | null
           updated_at: string
+          user_id: string | null
+          waitlisted_at: string | null
         }
         Insert: {
+          asaas_customer_id?: string | null
+          asaas_invoice_url?: string | null
+          asaas_payment_id?: string | null
           approved_at?: string | null
           approved_by?: string | null
           birth_year?: number | null
@@ -1327,16 +1390,20 @@ export type Database = {
           cbx_id?: string | null
           city?: string | null
           club_or_school?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           email?: string | null
           federation?: string
           fide_id?: string | null
           full_name: string
           id?: string
+          is_waitlisted?: boolean
           pairing_group_id?: string | null
           payment_receipt_path?: string | null
+          payment_status?: string
           phone?: string | null
           player_id?: string | null
+          promoted_at?: string | null
           rating_std?: number | null
           rejected_reason?: string | null
           sex?: string | null
@@ -1345,8 +1412,13 @@ export type Database = {
           tournament_id: string
           tournament_player_id?: string | null
           updated_at?: string
+          user_id?: string | null
+          waitlisted_at?: string | null
         }
         Update: {
+          asaas_customer_id?: string | null
+          asaas_invoice_url?: string | null
+          asaas_payment_id?: string | null
           approved_at?: string | null
           approved_by?: string | null
           birth_year?: number | null
@@ -1354,16 +1426,20 @@ export type Database = {
           cbx_id?: string | null
           city?: string | null
           club_or_school?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           email?: string | null
           federation?: string
           fide_id?: string | null
           full_name?: string
           id?: string
+          is_waitlisted?: boolean
           pairing_group_id?: string | null
           payment_receipt_path?: string | null
+          payment_status?: string
           phone?: string | null
           player_id?: string | null
+          promoted_at?: string | null
           rating_std?: number | null
           rejected_reason?: string | null
           sex?: string | null
@@ -1372,6 +1448,8 @@ export type Database = {
           tournament_id?: string
           tournament_player_id?: string | null
           updated_at?: string
+          user_id?: string | null
+          waitlisted_at?: string | null
         }
         Relationships: [
           {
@@ -1511,8 +1589,12 @@ export type Database = {
       }
       tournaments: {
         Row: {
+          accept_online_payment: boolean
           banner_url: string | null
           chief_arbiter: string | null
+          checkin_closes_at: string | null
+          checkin_enabled: boolean
+          checkin_opens_at: string | null
           city: string
           classification_dimensions: string[]
           created_at: string
@@ -1524,6 +1606,7 @@ export type Database = {
           initial_color: Database["public"]["Enums"]["initial_color"]
           is_free: boolean
           is_public: boolean
+          max_participants: number | null
           mode: Database["public"]["Enums"]["tournament_mode"]
           name: string
           organizer_name: string
@@ -1532,6 +1615,7 @@ export type Database = {
           rating_kind: Database["public"]["Enums"]["rating_kind"]
           registration_closes_by_date: boolean
           registration_end_date: string | null
+          registration_fee_cents: number | null
           registration_fee_text: string | null
           registration_start_date: string | null
           requested_bye_score: number
@@ -1549,10 +1633,15 @@ export type Database = {
           tournament_type: Database["public"]["Enums"]["tournament_type"]
           updated_at: string
           venue: string | null
+          waitlist_enabled: boolean
         }
         Insert: {
+          accept_online_payment?: boolean
           banner_url?: string | null
           chief_arbiter?: string | null
+          checkin_closes_at?: string | null
+          checkin_enabled?: boolean
+          checkin_opens_at?: string | null
           city: string
           classification_dimensions?: string[]
           created_at?: string
@@ -1564,6 +1653,7 @@ export type Database = {
           initial_color?: Database["public"]["Enums"]["initial_color"]
           is_free?: boolean
           is_public?: boolean
+          max_participants?: number | null
           mode?: Database["public"]["Enums"]["tournament_mode"]
           name: string
           organizer_name: string
@@ -1572,6 +1662,7 @@ export type Database = {
           rating_kind?: Database["public"]["Enums"]["rating_kind"]
           registration_closes_by_date?: boolean
           registration_end_date?: string | null
+          registration_fee_cents?: number | null
           registration_fee_text?: string | null
           registration_start_date?: string | null
           requested_bye_score?: number
@@ -1589,10 +1680,15 @@ export type Database = {
           tournament_type?: Database["public"]["Enums"]["tournament_type"]
           updated_at?: string
           venue?: string | null
+          waitlist_enabled?: boolean
         }
         Update: {
+          accept_online_payment?: boolean
           banner_url?: string | null
           chief_arbiter?: string | null
+          checkin_closes_at?: string | null
+          checkin_enabled?: boolean
+          checkin_opens_at?: string | null
           city?: string
           classification_dimensions?: string[]
           created_at?: string
@@ -1604,6 +1700,7 @@ export type Database = {
           initial_color?: Database["public"]["Enums"]["initial_color"]
           is_free?: boolean
           is_public?: boolean
+          max_participants?: number | null
           mode?: Database["public"]["Enums"]["tournament_mode"]
           name?: string
           organizer_name?: string
@@ -1612,6 +1709,7 @@ export type Database = {
           rating_kind?: Database["public"]["Enums"]["rating_kind"]
           registration_closes_by_date?: boolean
           registration_end_date?: string | null
+          registration_fee_cents?: number | null
           registration_fee_text?: string | null
           registration_start_date?: string | null
           requested_bye_score?: number
@@ -1629,6 +1727,7 @@ export type Database = {
           tournament_type?: Database["public"]["Enums"]["tournament_type"]
           updated_at?: string
           venue?: string | null
+          waitlist_enabled?: boolean
         }
         Relationships: []
       }
@@ -1664,13 +1763,66 @@ export type Database = {
           },
         ]
       }
+      user_player_links: {
+        Row: {
+          created_at: string
+          evidence_tournament_id: string | null
+          id: string
+          player_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_tournament_id?: string | null
+          id?: string
+          player_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          evidence_tournament_id?: string | null
+          id?: string
+          player_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_player_links_evidence_tournament_id_fkey"
+            columns: ["evidence_tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_player_links_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
+          asaas_customer_id: string | null
           avatar_url: string | null
           birth_year: number | null
           cbx_id: string | null
           city: string | null
           club_or_school: string | null
+          cpf_cnpj: string | null
           created_at: string
           email: string | null
           federation: string
@@ -1687,11 +1839,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          asaas_customer_id?: string | null
           avatar_url?: string | null
           birth_year?: number | null
           cbx_id?: string | null
           city?: string | null
           club_or_school?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           email?: string | null
           federation?: string
@@ -1708,11 +1862,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          asaas_customer_id?: string | null
           avatar_url?: string | null
           birth_year?: number | null
           cbx_id?: string | null
           city?: string | null
           club_or_school?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           email?: string | null
           federation?: string
@@ -1743,6 +1899,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      set_my_checkin: {
+        Args: { p_tournament_player_id: string }
+        Returns: string
+      }
+      set_player_checkin: {
+        Args: { p_checked_in: boolean; p_tournament_player_id: string }
+        Returns: string
+      }
       _audit: {
         Args: {
           p_action: string
@@ -1831,6 +1995,7 @@ export type Database = {
           opponent_points: number
           opponent_rank: number
           opponent_rating: number
+          opponent_title: string
           points_earned: number
           result: Database["public"]["Enums"]["game_result"]
           round_number: number
@@ -1845,6 +2010,7 @@ export type Database = {
           black_rank: number
           black_rating: number
           black_score: number
+          black_title: string
           black_tp_id: string
           board_number: number
           is_bye: boolean
@@ -1856,6 +2022,7 @@ export type Database = {
           white_rank: number
           white_rating: number
           white_score: number
+          white_title: string
           white_tp_id: string
         }[]
       }
@@ -1996,6 +2163,7 @@ export type Database = {
           sonneborn_berger: number
           state: string
           tp_id: string
+          title: string
           wins: number
         }[]
       }
@@ -2159,6 +2327,7 @@ export type Database = {
         | "1/2-1/2"
         | "*"
         | "bye"
+        | "not_paired"
         | "forfeit_white"
         | "forfeit_black"
         | "double_forfeit"
@@ -2323,6 +2492,7 @@ export const Constants = {
         "1/2-1/2",
         "*",
         "bye",
+        "not_paired",
         "forfeit_white",
         "forfeit_black",
         "double_forfeit",

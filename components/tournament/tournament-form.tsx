@@ -39,6 +39,14 @@ const schema = z.object({
   end_date:        z.string().optional(),
   registration_start_date: z.string().optional(),
   registration_end_date:   z.string().optional(),
+  max_participants: z.preprocess(
+    (value) => value === '' || value == null ? undefined : value,
+    z.coerce.number().int().min(2, 'Informe pelo menos 2 participantes').optional()
+  ),
+  waitlist_enabled: z.boolean(),
+  checkin_enabled: z.boolean(),
+  checkin_opens_at: z.string().optional(),
+  checkin_closes_at: z.string().optional(),
   rounds_count:    z.coerce.number().int().min(1).max(20),
   is_public:       z.boolean(),
   mode:            z.enum(['native', 'imported']),
@@ -78,6 +86,12 @@ const schema = z.object({
       message: 'Inscrições devem encerrar até a data de início do torneio',
     });
   }
+  if (values.waitlist_enabled && !values.max_participants) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['max_participants'], message: 'Defina o limite para usar lista de espera' });
+  }
+  if (values.checkin_opens_at && values.checkin_closes_at && values.checkin_opens_at > values.checkin_closes_at) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['checkin_closes_at'], message: 'O encerramento deve ser depois da abertura' });
+  }
 });
 
 /** Converte null -> undefined em todo o objeto (ver comentário de uso abaixo). */
@@ -86,6 +100,14 @@ function stripNulls<T extends object>(obj: T | undefined): Partial<T> {
   const out: any = {};
   for (const [k, v] of Object.entries(obj)) out[k] = v === null ? undefined : v;
   return out;
+}
+
+function toLocalDateTime(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
 
 /**
@@ -138,6 +160,9 @@ interface Props {
 }
 
 export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar', formId, readOnly = false }: Props) {
+  const normalizedDefaults = stripNulls(defaultValues);
+  normalizedDefaults.checkin_opens_at = toLocalDateTime(normalizedDefaults.checkin_opens_at);
+  normalizedDefaults.checkin_closes_at = toLocalDateTime(normalizedDefaults.checkin_closes_at);
   const {
     register, handleSubmit, watch, setValue, getValues,
     formState: { errors, isSubmitted },
@@ -154,6 +179,8 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       tiebreak_order: ['buchholz', 'buchholz_cut1', 'sonneborn_berger'],
       require_payment_receipt: false,
       accept_online_payment: false,
+      waitlist_enabled: false,
+      checkin_enabled: false,
       require_cbx_id: false,
       // Sem default de propósito — obriga o organizador a responder em vez
       // de herdar "gratuito" silenciosamente (ver zod required_error acima).
@@ -164,7 +191,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       // (z.string().optional() rejeita null). Sem isso, editar um torneio
       // sem data de inscrição preenchida, por exemplo, falhava a validação
       // sem nenhum aviso visível e "Salvar alterações" nunca completava.
-      ...stripNulls(defaultValues),
+      ...normalizedDefaults,
       initial_color: 'white1',
     },
   });
@@ -173,6 +200,8 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
   const requireCbxId = watch('require_cbx_id');
   const acceptOnlinePayment = watch('accept_online_payment');
   const registrationFeeCents = watch('registration_fee_cents');
+  const maxParticipants = watch('max_participants');
+  const checkinEnabled = watch('checkin_enabled');
 
   // Estado do select de ritmo: valor do preset, sentinela "Outro" ou vazio.
   const initialPreset = findPresetByValue(defaultValues?.time_control);
@@ -231,6 +260,9 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           end_date: values.end_date || undefined,
           registration_start_date: values.registration_start_date || undefined,
           registration_end_date: values.registration_end_date || undefined,
+          max_participants: values.max_participants || undefined,
+          checkin_opens_at: values.checkin_opens_at ? new Date(values.checkin_opens_at).toISOString() : undefined,
+          checkin_closes_at: values.checkin_closes_at ? new Date(values.checkin_closes_at).toISOString() : undefined,
         };
         onSubmit(payload);
       }, onInvalid)}
@@ -383,6 +415,34 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             />
           </div>
         </div>
+
+        <div className="space-y-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+          <Input
+            label="Limite de participantes"
+            type="number"
+            min={2}
+            placeholder="Sem limite"
+            hint="Pode ser alterado depois. Deixe vazio para aceitar inscrições sem limite."
+            error={errors.max_participants?.message}
+            {...register('max_participants', {
+              onChange: (event) => {
+                if (!event.target.value) setValue('waitlist_enabled', false, { shouldDirty: true });
+              },
+            })}
+          />
+          <label className={`flex items-start gap-3 ${maxParticipants ? 'cursor-pointer' : 'opacity-50'}`}>
+            <input
+              type="checkbox"
+              className="mt-0.5 h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              disabled={!maxParticipants}
+              {...register('waitlist_enabled')}
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Ativar lista de espera</span>
+              <span className="block text-sm text-gray-500 dark:text-gray-400">Novas inscrições entram na fila quando as vagas acabarem.</span>
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* Gerenciamento — antes de Cobrança: são as decisões de operação do
@@ -428,6 +488,23 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             </p>
           </div>
         </label>
+        <label className="flex items-start gap-3 cursor-pointer pt-2 border-t border-gray-100 dark:border-gray-800">
+          <input
+            type="checkbox"
+            className="h-5 w-5 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            {...register('checkin_enabled')}
+          />
+          <span>
+            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Check-in digital</span>
+            <span className="block text-sm text-gray-500 dark:text-gray-400">Jogadores vinculados à conta poderão confirmar presença.</span>
+          </span>
+        </label>
+        {checkinEnabled && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Input label="Abertura do check-in" type="datetime-local" {...register('checkin_opens_at')} />
+            <Input label="Encerramento do check-in" type="datetime-local" error={errors.checkin_closes_at?.message} {...register('checkin_closes_at')} />
+          </div>
+        )}
       </div>
 
       {/* Cobrança — card próprio, depois de Gerenciamento. */}

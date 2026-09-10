@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
 import { getSessionUser } from '@/lib/data/session';
 import { RegistrationForm } from '@/components/tournament/registration-form';
@@ -32,6 +32,7 @@ const todayISO = todayInSaoPaulo;
 export default async function RegisterPage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   // Mesma chamada que o layout do torneio já fez (get_tournament_page_data,
   // migration 071) — memoizada por request, não repete o round-trip. Ela
@@ -47,7 +48,7 @@ export default async function RegisterPage({ params }: Props) {
   const { tournament } = pageData;
 
   // Categorias e perfil de autofill são independentes entre si.
-  const [{ data: categoryRows }, { data: profile }] = await Promise.all([
+  const [{ data: categoryRows }, { data: profile }, { count: pendingCount }, { count: playerCount }] = await Promise.all([
     supabase
       .from('tournament_categories')
       .select('id, name, sort_order, sex, min_age, max_age, min_rating, max_rating')
@@ -60,6 +61,14 @@ export default async function RegisterPage({ params }: Props) {
           .eq('id', user.id)
           .single()
       : Promise.resolve({ data: null }),
+    tournament.max_participants
+      ? admin.from('tournament_registrations').select('id', { count: 'exact', head: true })
+          .eq('tournament_id', tournament.id).eq('status', 'pending').eq('is_waitlisted', false)
+      : Promise.resolve({ count: null }),
+    tournament.max_participants
+      ? admin.from('tournament_players').select('id', { count: 'exact', head: true })
+          .eq('tournament_id', tournament.id).eq('status', 'active')
+      : Promise.resolve({ count: null }),
   ]);
 
   // Mapeia pro shape camelCase que classification-match.ts espera (mesma
@@ -123,6 +132,9 @@ export default async function RegisterPage({ params }: Props) {
           hasAbsoluteClassification={tournament.has_absolute_classification ?? true}
           autofill={autofill}
           saveAutofillOnSubmit={!!autofill}
+          maxParticipants={tournament.max_participants}
+          reservedParticipants={(pendingCount ?? 0) + (playerCount ?? 0)}
+          waitlistEnabled={tournament.waitlist_enabled}
         />
       ) : (
         <div className="card p-6 text-center space-y-3">

@@ -39,6 +39,12 @@ Repo separado: `cron-import` (Cloud Run Job, worker de importação) — vive em
 
 Trigger `trg_prevent_role_escalation` (migration 026) bloqueia usuário comum de alterar o próprio `role` via update direto — só passa se quem está autenticado já for admin, ou se não houver `auth.uid()` (contexto de serviço).
 
+### Identidade do jogador, vagas e check-in (migration 079)
+
+- `user_player_links` é a ponte entre a conta autenticada e o cadastro global em `players`. Aprovar uma inscrição autenticada cria o vínculo verificado; IDs CBX/FIDE idênticos foram retroalimentados com segurança. A Central do Jogador nunca deve inferir identidade apenas pelo nome.
+- O limite conta participantes ativos mais inscrições pendentes fora da fila. A alocação e a promoção FIFO da lista de espera são serializadas com lock na linha de `tournaments`; não reproduzir essa conta apenas no cliente.
+- Check-in do próprio jogador usa `set_my_checkin`; alteração pela organização usa `set_player_checkin`. Ambos são RPCs com autorização no banco — não fazer update direto de `tournament_players` para presença.
+
 ## Convenções deste projeto
 
 - **Migrations**: numeração sequencial (`NNN_nome.sql`), sempre idempotentes (`if not exists`, `create or replace`). Há uma colisão histórica de dois arquivos `011_*` (renomeado, ver migration 012) — não repetir número.

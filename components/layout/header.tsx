@@ -112,6 +112,13 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                     </Link>
                   )}
                   <Link
+                    href="/minha-area"
+                    className="block min-h-11 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    Minha área de jogador
+                  </Link>
+                  <Link
                     href="/account"
                     className="block min-h-11 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                     onClick={() => setDropdownOpen(false)}
@@ -182,6 +189,13 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                   Gerenciar torneios
                 </Link>
               )}
+              <Link
+                href="/minha-area"
+                className="block min-h-11 py-3 text-sm font-medium text-gray-700 dark:text-gray-300"
+                onClick={() => setMobileOpen(false)}
+              >
+                Minha área de jogador
+              </Link>
               <Link
                 href="/account"
                 className="block min-h-11 py-3 text-sm font-medium text-gray-700 dark:text-gray-300"

@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory } from '@/lib/hooks/use-tournament';
+import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory, useSetPlayerCheckin } from '@/lib/hooks/use-tournament';
 import { useCreatePlayer, useUpdatePlayer, useSyncCbxRating } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { useCategories } from '@/lib/hooks/use-classifications';
@@ -35,6 +35,7 @@ export default function AdminPlayersPage({ params }: Props) {
   const isNative = tournament?.mode === 'native';
   const { data: groups, isLoading: loadingGroups } = useGroups(isNative ? tournament!.id : '');
   const createGroup = useCreateDefaultGroup(tournament?.id ?? '');
+  const setCheckin = useSetPlayerCheckin(tournament?.id ?? '');
 
   const [importing, setImporting] = useState(false);
   const [importReport, setImportReport] = useState('');
@@ -189,6 +190,16 @@ export default function AdminPlayersPage({ params }: Props) {
         <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums shrink-0">
           {formatScore(tp.current_score)}
         </span>
+        {tournament?.checkin_enabled && (
+          <button
+            type="button"
+            disabled={setCheckin.isPending}
+            onClick={() => setCheckin.mutate({ id: tp.id, checkedIn: tpAny.checkin_status !== 'checked_in' })}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${tpAny.checkin_status === 'checked_in' ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'}`}
+          >
+            {tpAny.checkin_status === 'checked_in' ? '✓ Presente' : 'Pendente'}
+          </button>
+        )}
         <Button
           type="button"
           variant="secondary"
@@ -275,6 +286,7 @@ export default function AdminPlayersPage({ params }: Props) {
         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
           <p className="font-semibold text-gray-900 dark:text-gray-100">
             Participantes ({tPlayers?.length ?? 0})
+            {tournament.checkin_enabled && ` · ${(tPlayers ?? []).filter((tp) => (tp as any).checkin_status === 'checked_in').length} presentes`}
           </p>
         </div>
         {loadingPlayers ? (

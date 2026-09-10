@@ -10,6 +10,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { Button } from '@/components/ui/button';
+import { ShareResultButton } from '@/components/player-hub/share-result-button';
 import { formatScore, formatTiebreak, resultBadgeColor, resultLabel, TIEBREAK_INFO } from '@/lib/utils/chess';
 import type { PlayerHistoryRow } from '@/types/database';
 
@@ -43,7 +44,7 @@ export default function PlayerTournamentPage({ params }: Props) {
 
   const playerId = playerRow?.player_id ?? (tpBasic?.player_id as string | undefined);
   const { data: history, isLoading: loadingHistory } = usePlayerHistory(tournament?.id ?? '', tpId);
-  const { isFollowing, toggleFollow, user } = usePlayerFollow(playerId ?? '', tournament?.id);
+  const { isFollowing, toggleFollow } = usePlayerFollow(playerId ?? '', tournament?.id);
 
   const { data: playerProfile } = useQuery({
     queryKey: ['player-profile', playerId],
@@ -208,8 +209,14 @@ export default function PlayerTournamentPage({ params }: Props) {
         })() : null}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 mt-3">
+        <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 mt-3">
           <ShareButton title={`${displayName} – ${tournament.name}`} />
+          <ShareResultButton tournamentPlayerId={tpId} playerName={displayName} />
+          {tournament.status === 'finished' && (
+            <a href={`/api/certificates/${tpId}`} className="inline-flex min-h-9 items-center rounded-lg border border-gray-200 px-3 text-sm font-semibold text-brand-600 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
+              Certificado
+            </a>
+          )}
           <Button
             variant={isFollowing ? 'secondary' : 'primary'}
             size="sm"

@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
   }
 
   const document: string | undefined = cpfCnpj || profile.cpf_cnpj || undefined;
+  const customerEmail = profile.email || user.email;
   let asaasCustomerId: string | null = profile.asaas_customer_id;
   if (!asaasCustomerId && !document) {
     return NextResponse.json(
@@ -72,12 +73,15 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+  if (!asaasCustomerId && !customerEmail) {
+    return NextResponse.json({ error: 'E-mail é obrigatório para criar a assinatura.' }, { status: 400 });
+  }
 
   try {
     if (!asaasCustomerId) {
       const customer = await createAsaasCustomer({
         name: profile.full_name || profile.email || 'Cliente Xadrez BR',
-        email: profile.email,
+        email: customerEmail!,
         cpfCnpj: document!,
       });
       asaasCustomerId = customer.id;

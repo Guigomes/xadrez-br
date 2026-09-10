@@ -32,6 +32,8 @@ const STATUS_BADGE: Record<RegistrationStatus, string> = {
   rejected: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400',
 };
 
+type RegistrationFilter = RegistrationStatus | 'waitlist';
+
 /** migration 078 — pagamento online. 'not_required' não vira badge (comprovante manual ou gratuito). */
 const PAYMENT_BADGE: Partial<Record<string, { label: string; className: string }>> = {
   pending:  { label: '💳 aguardando pagamento', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' },
@@ -54,7 +56,7 @@ export default function AdminRegistrationsPage({ params }: Props) {
   const approve = useApproveRegistration(tournament?.id ?? '');
   const reject = useRejectRegistration(tournament?.id ?? '');
 
-  const [filter, setFilter] = useState<RegistrationStatus>('pending');
+  const [filter, setFilter] = useState<RegistrationFilter>('pending');
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
@@ -77,8 +79,14 @@ export default function AdminRegistrationsPage({ params }: Props) {
   }
 
   const all = registrations ?? [];
-  const filtered = all.filter((r) => r.status === filter);
-  const pendingCount = all.filter((r) => r.status === 'pending').length;
+  const waitlisted = all
+    .filter((r) => r.status === 'pending' && r.is_waitlisted)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  const waitlistPosition = new Map(waitlisted.map((r, index) => [r.id, index + 1]));
+  const filtered = filter === 'waitlist'
+    ? waitlisted
+    : all.filter((r) => r.status === filter && (filter !== 'pending' || !r.is_waitlisted));
+  const pendingCount = all.filter((r) => r.status === 'pending' && !r.is_waitlisted).length;
 
   const candidates: (CategoryCandidate & { name: string })[] = (categories ?? []).map((c) => ({
     id: c.id, name: c.name, sortOrder: c.sort_order, sex: c.sex,
@@ -201,9 +209,15 @@ export default function AdminRegistrationsPage({ params }: Props) {
                 : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
           >
-            {STATUS_LABELS[s]} ({all.filter((r) => r.status === s).length})
+            {STATUS_LABELS[s]} ({all.filter((r) => r.status === s && (s !== 'pending' || !r.is_waitlisted)).length})
           </button>
         ))}
+        <button
+          onClick={() => setFilter('waitlist')}
+          className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${filter === 'waitlist' ? 'bg-brand-600 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+        >
+          Lista de espera ({waitlisted.length})
+        </button>
       </div>
 
       {loadingRegs ? (
@@ -211,7 +225,9 @@ export default function AdminRegistrationsPage({ params }: Props) {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="📝"
-          title={`Nenhuma inscrição ${STATUS_LABELS[filter].toLowerCase().replace('s', '')}`}
+          title={filter === 'waitlist'
+            ? 'Lista de espera vazia'
+            : `Nenhuma inscrição ${STATUS_LABELS[filter].toLowerCase().replace('s', '')}`}
           description={
             filter === 'pending'
               ? 'Compartilhe o link público de inscrição para receber participantes.'
@@ -231,6 +247,11 @@ export default function AdminRegistrationsPage({ params }: Props) {
                     <Badge className={STATUS_BADGE[r.status]}>
                       {STATUS_LABELS[r.status].replace(/s$/, '')}
                     </Badge>
+                    {r.is_waitlisted && (
+                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400">
+                        Lista de espera · {waitlistPosition.get(r.id)}º
+                      </Badge>
+                    )}
                     {r.pairing_groups?.name && (
                       <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
                         {r.pairing_groups.name}
@@ -295,13 +316,15 @@ export default function AdminRegistrationsPage({ params }: Props) {
                           entra na rodada {nextRoundByGroup?.get(r.pairing_group_id) ?? '?'}
                         </span>
                       )}
-                      <Button
-                        size="sm"
-                        loading={actingId === r.id && approve.isPending}
-                        onClick={() => handleApprove(r)}
-                      >
-                        Aprovar
-                      </Button>
+                      {!r.is_waitlisted && (
+                        <Button
+                          size="sm"
+                          loading={actingId === r.id && approve.isPending}
+                          onClick={() => handleApprove(r)}
+                        >
+                          Aprovar
+                        </Button>
+                      )}
                       <Button
                         variant="danger"
                         size="sm"

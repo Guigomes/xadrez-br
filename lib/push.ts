@@ -125,6 +125,19 @@ export async function sendTournamentNotification(
   await sendToSubscriptions(admin, subs ?? [], payload);
 }
 
+export async function sendUserNotification(
+  userId: string,
+  payload: { title: string; body: string; url?: string }
+) {
+  initVapid();
+  const admin = createAdminClient();
+  const { data: subs } = await admin
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .eq('user_id', userId);
+  await sendToSubscriptions(admin, subs ?? [], payload);
+}
+
 // Notify admin(s) that a user escalated a chat to a human (chat/escalate route).
 // Reuses the same push_subscriptions table — subscription made without a
 // tournamentId (ver EnableChatNotifications), então filtra só por user_id.
@@ -169,15 +182,16 @@ export async function notifyPlayerFollowers(
 
   const playerIds = tps.map((tp) => tp.player_id);
 
-  const { data: follows } = await admin
-    .from('player_follows')
-    .select('user_id, player_id')
-    .eq('tournament_id', tournamentId)
-    .in('player_id', playerIds);
+  const [{ data: follows }, { data: linkedAccounts }] = await Promise.all([
+    admin.from('player_follows').select('user_id, player_id')
+      .eq('tournament_id', tournamentId).in('player_id', playerIds),
+    admin.from('user_player_links').select('user_id, player_id')
+      .eq('status', 'verified').in('player_id', playerIds),
+  ]);
+  const recipients = [...(follows ?? []), ...(linkedAccounts ?? [])];
+  if (!recipients.length) return;
 
-  if (!follows?.length) return;
-
-  const userIds = [...new Set(follows.map((f) => f.user_id))];
+  const userIds = [...new Set(recipients.map((f) => f.user_id))];
 
   const { data: subs } = await admin
     .from('push_subscriptions')
@@ -191,9 +205,9 @@ export async function notifyPlayerFollowers(
     { playerId: tp.player_id, name: (tp as any).players?.full_name ?? '' },
   ]));
   const playerToUsers = new Map<string, string[]>();
-  follows.forEach((f) => {
+  recipients.forEach((f) => {
     if (!playerToUsers.has(f.player_id)) playerToUsers.set(f.player_id, []);
-    playerToUsers.get(f.player_id)!.push(f.user_id);
+    if (!playerToUsers.get(f.player_id)!.includes(f.user_id)) playerToUsers.get(f.player_id)!.push(f.user_id);
   });
   const userToSubs = new Map<string, typeof subs>();
   subs.forEach((s) => {

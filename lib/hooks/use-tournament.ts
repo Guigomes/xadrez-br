@@ -112,6 +112,20 @@ export function useTournamentPlayers(tournamentId: string) {
   });
 }
 
+export function useSetPlayerCheckin(tournamentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, checkedIn }: { id: string; checkedIn: boolean }) => {
+      const { error } = await supabase.rpc('set_player_checkin', {
+        p_tournament_player_id: id,
+        p_checked_in: checkedIn,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) }),
+  });
+}
+
 export function useTournamentRounds(tournamentId: string) {
   return useQuery({
     queryKey: tournamentKeys.rounds(tournamentId),
@@ -322,6 +336,9 @@ export function useUpdateRoundStatus(tournamentId: string) {
         .update({ status, published_at: status === 'ongoing' ? new Date().toISOString() : undefined })
         .eq('id', roundId);
       if (error) throw error;
+      if (status === 'ongoing') {
+        await fetch(`/api/admin/rounds/${roundId}/notify`, { method: 'POST' }).catch(() => undefined);
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.rounds(tournamentId) }),
   });
@@ -337,6 +354,7 @@ export function useUpdatePairingResult(tournamentId: string) {
         '1/2-1/2':     [0.5, 0.5],
         '*':            [null, null],
         'bye':          [1, null],
+        'not_paired':   [0, null],
         'forfeit_white':[0, 1],
         'forfeit_black':[1, 0],
         'double_forfeit':[0, 0],
@@ -378,6 +396,16 @@ export function useAddTournamentPlayer(tournamentId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: { player_id: string; category_id?: string; initial_ranking?: number; pairing_group_id?: string }) => {
+      const { data: tournament } = await supabase.from('tournaments').select('max_participants').eq('id', tournamentId).single();
+      if (tournament?.max_participants) {
+        const [{ count: active }, { count: pending }] = await Promise.all([
+          supabase.from('tournament_players').select('id', { count: 'exact', head: true }).eq('tournament_id', tournamentId).eq('status', 'active'),
+          supabase.from('tournament_registrations').select('id', { count: 'exact', head: true }).eq('tournament_id', tournamentId).eq('status', 'pending').eq('is_waitlisted', false),
+        ]);
+        if ((active ?? 0) + (pending ?? 0) >= tournament.max_participants) {
+          throw new Error('O limite de participantes foi atingido. Libere uma vaga antes de cadastrar outro jogador.');
+        }
+      }
       const { data, error } = await supabase
         .from('tournament_players')
         .insert({ tournament_id: tournamentId, ...payload, current_score: 0 })

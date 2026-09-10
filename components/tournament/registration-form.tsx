@@ -77,6 +77,9 @@ interface Props {
   autofill?: AutofillData | null;
   /** Se true, a inscrição enviada é salva de volta no perfil para alimentar o autopreenchimento da próxima vez. */
   saveAutofillOnSubmit?: boolean;
+  maxParticipants?: number | null;
+  reservedParticipants?: number;
+  waitlistEnabled?: boolean;
 }
 
 export function RegistrationForm({
@@ -85,12 +88,14 @@ export function RegistrationForm({
   acceptOnlinePayment = false, registrationFeeCents = null,
   hasAbsoluteClassification = true,
   autofill, saveAutofillOnSubmit = false,
+  maxParticipants = null, reservedParticipants = 0, waitlistEnabled = false,
 }: Props) {
   const payOnline = acceptOnlinePayment && !isFree;
   const [receipt, setReceipt] = useState<File | null>(null);
   const [receiptError, setReceiptError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [joinedWaitlist, setJoinedWaitlist] = useState(false);
   const [error, setError] = useState('');
   // Enquanto o inscrito não mexe manualmente no dropdown, ele segue a
   // pré-seleção derivada de ano de nascimento/sexo. Depois que ele escolhe,
@@ -213,7 +218,7 @@ export function RegistrationForm({
         phone: values.phone?.trim() || null,
         cpf_cnpj: values.cpf_cnpj?.replace(/\D/g, '') || null,
         payment_receipt_path,
-      }).select('id, payment_status').single();
+      }).select('id, payment_status, is_waitlisted').single();
       if (insErr) {
         if (insErr.message.includes('row-level security')) {
           throw new Error('As inscrições não estão abertas para este torneio.');
@@ -229,6 +234,9 @@ export function RegistrationForm({
         }
         if (insErr.message.includes('EMAIL_REQUIRED')) {
           throw new Error('Informe seu e-mail para pagar a inscrição.');
+        }
+        if (insErr.message.includes('TOURNAMENT_FULL')) {
+          throw new Error('As vagas deste torneio já foram preenchidas.');
         }
         throw insErr;
       }
@@ -274,6 +282,7 @@ export function RegistrationForm({
         }
       }
 
+      setJoinedWaitlist(!!inserted?.is_waitlisted);
       setSubmitted(true);
     } catch (err: any) {
       setError(err.message ?? 'Erro ao enviar inscrição.');
@@ -287,11 +296,12 @@ export function RegistrationForm({
       <div className="card p-6 text-center space-y-3">
         <span className="text-4xl">✅</span>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Inscrição enviada!
+          {joinedWaitlist ? 'Você entrou na lista de espera!' : 'Inscrição enviada!'}
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Sua inscrição foi recebida e está aguardando a confirmação da organização.
-          Você aparecerá na lista de participantes assim que for aprovada.
+          {joinedWaitlist
+            ? 'As vagas estão preenchidas. Sua inscrição ficou na fila e será promovida automaticamente quando uma vaga abrir.'
+            : 'Sua inscrição foi recebida e está aguardando a confirmação da organização. Você aparecerá na lista de participantes assim que for aprovada.'}
         </p>
         <Link
           href={`/tournaments/${tournamentSlug}`}
@@ -305,6 +315,12 @@ export function RegistrationForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {maxParticipants && (
+        <div className={`rounded-xl border px-4 py-3 text-sm ${reservedParticipants >= maxParticipants ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300' : 'border-brand-200 bg-brand-50 text-brand-800 dark:border-brand-900 dark:bg-brand-950/30 dark:text-brand-300'}`}>
+          <strong>{Math.max(0, maxParticipants - reservedParticipants)} {maxParticipants - reservedParticipants === 1 ? 'vaga disponível' : 'vagas disponíveis'}</strong>
+          {reservedParticipants >= maxParticipants && waitlistEnabled && ' · Você pode entrar na lista de espera.'}
+        </div>
+      )}
       {error && (
         <p className="rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}

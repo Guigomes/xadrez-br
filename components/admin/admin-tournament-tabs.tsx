@@ -42,6 +42,7 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
       ? [
           { href: `${base}/rounds`,    label: 'Rodadas', icon: 'rounds' as TournamentTabIconName },
           { href: `${base}/standings`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
+          ...(status === 'finished' ? [{ href: `${base}/report`, label: 'Relatório', icon: 'report' as TournamentTabIconName }] : []),
         ]
       : []),
     // Torneio importado não tem arbitragem local (é espelho do chess-results,
