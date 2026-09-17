@@ -29,7 +29,13 @@ function apiUrl(): string {
 function apiKey(): string {
   const key = process.env.ASAAS_API_KEY;
   if (!key) throw new Error('ASAAS_API_KEY não configurada no servidor.');
-  return key;
+  // A chave da Asaas começa com "$" de verdade, e o loader de env do Next
+  // (@next/env) expande "$algo" como variável — então no .env.local ela
+  // precisa estar escapada ("\$aact_..."). Só que `node --env-file` NÃO
+  // processa esse escape e devolve a barra literal, o que viraria um 401
+  // difícil de rastrear em qualquer script que importe daqui. Na Vercel o
+  // valor é cru, sem barra, e esse replace não faz nada.
+  return key.replace(/^\\/, '');
 }
 
 async function asaasFetch<T>(path: string, init?: RequestInit): Promise<T> {
