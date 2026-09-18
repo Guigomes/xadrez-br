@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils/cn';
 import { TournamentTabIcon, type TournamentTabIconName } from './tournament-tab-icon';
 

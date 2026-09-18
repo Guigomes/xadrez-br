@@ -1,0 +1,330 @@
+import type React from 'react';
+import { redirect, Link } from '@/i18n/navigation';
+import { notFound } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import {
+  ROUND_STATUS_LABELS, ROUND_STATUS_COLORS, TOURNAMENT_TYPE_LABELS, RATING_KIND_LABELS, TIEBREAK_INFO,
+} from '@/lib/utils/chess';
+import type { TiebreakKey } from '@/types/database';
+import { formatDateRange } from '@/lib/utils/date';
+import { Badge } from '@/components/ui/badge';
+
+interface Props {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function TournamentOverviewPage({ params }: Props) {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select(`
+      id, slug, status, tournament_type, rating_kind, description,
+      venue, city, state, organizer_name, chief_arbiter,
+      start_date, end_date, start_time, registration_start_date, registration_end_date,
+      time_control, rounds_count, requested_bye_score, tiebreak_order
+    `)
+    .eq('slug', slug)
+    .single();
+
+  if (!tournament) notFound();
+
+  const [{ data: rounds }, { data: categories }, { data: pairingGroups }, { count: participantCount }] = await Promise.all([
+    supabase.from('rounds').select('round_number, status').eq('tournament_id', tournament.id).order('round_number'),
+    supabase.from('tournament_categories').select('id, name').eq('tournament_id', tournament.id),
+    supabase.from('pairing_groups').select('id, name').eq('tournament_id', tournament.id).order('sort_order'),
+    supabase.from('tournament_players').select('id', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
+  ]);
+
+  // Dedupe by round_number so multi-group tournaments don't count each group's
+  // round separately (10 groups × 6 rounds would otherwise look like 60).
+  // A round is "completed" only when every group has finished it.
+  type RS = 'pending' | 'ongoing' | 'finished';
+  const roundsByNumber = new Map<number, RS[]>();
+  for (const r of rounds ?? []) {
+    const list = roundsByNumber.get(r.round_number) ?? [];
+    list.push(r.status as RS);
+    roundsByNumber.set(r.round_number, list);
+  }
+  const aggregatedRounds = Array.from(roundsByNumber.entries())
+    .map(([n, statuses]) => ({
+      round_number: n,
+      status: (statuses.every((s) => s === 'finished')
+        ? 'finished'
+        : statuses.some((s) => s === 'ongoing')
+          ? 'ongoing'
+          : 'pending') as RS,
+    }))
+    .sort((a, b) => a.round_number - b.round_number);
+
+  const completedRounds = aggregatedRounds.filter((r) => r.status === 'finished').length;
+  const currentRound = aggregatedRounds.find((r) => r.status === 'ongoing');
+
+  if (tournament.status === 'ongoing' && currentRound) {
+    redirect(`/tournaments/${slug}/rounds/${currentRound.round_number}`);
+  }
+
+  // Sort groups by the age number in their name (SUB7 < SUB9 < SUB11 …),
+  // then alphabetically within the same number (FEM < MASC < MISTO).
+  const groups = [...(pairingGroups ?? [])].sort((a, b) => {
+    const nA = parseInt(a.name.match(/\d+/)?.[0] ?? '999', 10);
+    const nB = parseInt(b.name.match(/\d+/)?.[0] ?? '999', 10);
+    return nA !== nB ? nA - nB : a.name.localeCompare(b.name);
+  });
+  const hasGroups = groups.length > 0;
+
+  return (
+    <div className="grid gap-6 md:grid-cols-3">
+      {/* Meta info — only shown on the overview page */}
+      <div className="md:col-span-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-2">
+        {(tournament.venue || tournament.city) && (
+          <span>📍 {[tournament.venue, `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}</span>
+        )}
+        <span>📅 {formatDateRange(tournament.start_date, tournament.end_date)}{tournament.start_time && ` às ${tournament.start_time.slice(0, 5)}`}</span>
+        {tournament.registration_start_date && (
+          <span>📝 Inscrições: {formatDateRange(tournament.registration_start_date, tournament.registration_end_date)}</span>
+        )}
+        <span>⏱ {tournament.time_control}</span>
+        <span>🔄 {tournament.rounds_count} rodadas</span>
+        {tournament.organizer_name && <span>👤 {tournament.organizer_name}</span>}
+        {tournament.chief_arbiter && <span>⚖️ {tournament.chief_arbiter}</span>}
+      </div>
+      {/* Left column */}
+      <div className="md:col-span-2 space-y-6">
+        {/* Current round highlight */}
+        {currentRound && (
+          <Link
+            href={`/tournaments/${slug}/rounds/${currentRound.round_number}`}
+            className="card p-4 flex items-center justify-between gap-4 bg-amber-50 border-amber-200 hover:border-amber-300 dark:bg-amber-950/20 dark:border-amber-900 transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="inline-block h-3 w-3 rounded-full bg-amber-500 animate-pulse" />
+              <div>
+                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Rodada em andamento</p>
+                <p className="font-semibold text-gray-900 dark:text-gray-100">
+                  Rodada {currentRound.round_number}
+                </p>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        )}
+
+        {/* Before tournament starts: show participants / group cards */}
+        {!currentRound && hasGroups && (
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Participantes por grupo</h2>
+              <Link href={`/tournaments/${slug}/participants`} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
+                Ver todos
+              </Link>
+            </div>
+            <div className="flex flex-col gap-1">
+              {groups.map((g) => (
+                <Link
+                  key={g.id}
+                  href={`/tournaments/${slug}/participants?group=${g.id}`}
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
+                >
+                  <span>{g.name}</span>
+                  <svg className="h-4 w-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Before tournament starts without groups: simple participants link */}
+        {!currentRound && !hasGroups && (participantCount ?? 0) > 0 && (
+          <Link
+            href={`/tournaments/${slug}/participants`}
+            className="card p-4 flex items-center justify-between gap-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">👥</span>
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-gray-100">Participantes</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{participantCount} inscritos</p>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        )}
+
+        {/* Description */}
+        {tournament.description && (
+          <div className="card p-4 overflow-hidden">
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Sobre o torneio</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed break-words">
+              <DescriptionText text={tournament.description} />
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Right sidebar */}
+      <div className="space-y-4">
+        {/* Rounds progress */}
+        <div className="card p-4">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            Rodadas ({completedRounds}/{tournament.rounds_count})
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {aggregatedRounds.map((round) => (
+              <Link
+                key={round.round_number}
+                href={`/tournaments/${slug}/rounds/${round.round_number}`}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold transition-colors
+                  ${ROUND_STATUS_COLORS[round.status]}
+                  hover:opacity-80
+                `}
+                title={ROUND_STATUS_LABELS[round.status]}
+              >
+                {round.round_number}
+              </Link>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-green-500" /> Finalizada
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-amber-500" /> Em andamento
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600" /> Pendente
+            </span>
+          </div>
+        </div>
+
+        {/* Pairing groups in sidebar — só quando a coluna principal não já
+            mostra a mesma lista em "Participantes por grupo" (antes do
+            torneio começar, currentRound null — ver bloco lá em cima). Sem
+            grupo nenhum, mostra Categorias no lugar (nunca os dois juntos). */}
+        {hasGroups && currentRound && (
+          <div className="card p-4">
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Grupos</h2>
+            <div className="flex flex-col gap-1">
+              {groups.map((g) => (
+                <Link
+                  key={g.id}
+                  href={`/tournaments/${slug}/participants?group=${g.id}`}
+                  className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
+                >
+                  <span>{g.name}</span>
+                  <svg className="h-4 w-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+        {!hasGroups && (categories?.length ?? 0) > 0 && (
+          <div className="card p-4">
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Categorias</h2>
+            <div className="flex flex-wrap gap-2">
+              {(categories ?? []).map((cat) => (
+                <Badge key={cat.id} className="bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300">
+                  {cat.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Info card */}
+        <div className="card p-4 space-y-3 text-sm">
+          <InfoRow label="Organização" value={tournament.organizer_name} />
+          {tournament.chief_arbiter && <InfoRow label="Árbitro-chefe" value={tournament.chief_arbiter} />}
+          {tournament.venue && <InfoRow label="Local" value={tournament.venue} />}
+          <InfoRow label="Ritmo" value={tournament.time_control} />
+          <InfoRow label="Sistema" value={TOURNAMENT_TYPE_LABELS[tournament.tournament_type]} />
+        </div>
+
+        {/* Regras — visão geral do que foi configurado na criação, exceto o
+            que é só gate de inscrição (CBX obrigatório, comprovante de
+            pagamento) — esse fica só na própria tela de inscrição. */}
+        <details className="card p-4 space-y-3 text-sm group" open>
+          <summary className="font-semibold text-gray-900 dark:text-gray-100 cursor-pointer list-none flex items-center justify-between">
+            Regras do torneio
+            <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+          <div className="space-y-3 pt-1">
+          <InfoRow
+            label="Ranking inicial por rating"
+            value={RATING_KIND_LABELS[tournament.rating_kind]}
+          />
+          <InfoRow
+            label="Bye solicitado vale"
+            value={tournament.requested_bye_score === 0 ? '0 pontos' : '½ ponto'}
+          />
+          {tournament.tiebreak_order.length > 0 && (
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-xs text-gray-400 dark:text-gray-500">Critérios de desempate (ordem)</span>
+              <ol className="mt-1 space-y-1.5">
+                {(tournament.tiebreak_order as TiebreakKey[]).map((key, i) => (
+                  <li key={key} className="text-gray-800 dark:text-gray-200">
+                    <span className="font-medium">{i + 1}. {TIEBREAK_INFO[key]?.label ?? key}</span>
+                    {TIEBREAK_INFO[key]?.description && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{TIEBREAK_INFO[key].description}</p>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span className="text-xs text-gray-400 dark:text-gray-500">{label}</span>
+      <span className="text-gray-800 dark:text-gray-200 break-words">{value}</span>
+    </div>
+  );
+}
+
+/** Renders plain text, turning http(s) URLs into styled clickable links. */
+function DescriptionText({ text }: { text: string }) {
+  const URL_RE = /https?:\/\/[^\s]+/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = URL_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const url = match[0];
+    parts.push(
+      <a
+        key={match.index}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-brand-600 hover:underline dark:text-brand-400 break-all"
+      >
+        {url}
+      </a>,
+    );
+    lastIndex = match.index + url.length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+
+  return <>{parts}</>;
+}

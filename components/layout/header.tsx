@@ -1,14 +1,18 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, Link } from '@/i18n/navigation';
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import { useUser, useProfile, useSignOut, type InitialUser } from '@/lib/hooks/use-auth';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { LocaleSwitcher } from '@/components/ui/locale-switcher';
 
 export function Header({ initialUser }: { initialUser?: InitialUser }) {
   const pathname = usePathname();
+  const tBrand = useTranslations('brand');
+  const tNav = useTranslations('nav');
+  const tAccount = useTranslations('account');
   const { user: liveUser, loading } = useUser();
   // Enquanto o hook do cliente não resolveu (SSR + pré-hidratação), usa o
   // initialUser do servidor pra o primeiro paint sair correto. Depois passa a
@@ -34,10 +38,10 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
   }, [dropdownOpen]);
 
   const navLinks = [
-    { href: '/tournaments', label: 'Torneios' },
-    { href: '/series',      label: 'Séries' },
-    { href: '/players',     label: 'Jogadores' },
-    { href: '/noticias',    label: 'Notícias' },
+    { href: '/tournaments', label: tNav('tournaments') },
+    { href: '/series',      label: tNav('series') },
+    { href: '/players',     label: tNav('players') },
+    { href: '/noticias',    label: tNav('news') },
   ];
 
   return (
@@ -48,7 +52,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
           <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-brand-600 text-white shadow-sm text-lg leading-none">
             ♞
           </span>
-          <span className="hidden sm:inline tracking-tight">Torneios Xadrez BR</span>
+          <span className="hidden sm:inline tracking-tight">{tBrand('name')}</span>
         </Link>
 
         {/* Desktop nav — só a partir de lg; em tablet (md-lg) o hambúrguer
@@ -74,6 +78,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          <LocaleSwitcher />
           <ThemeToggle />
 
           {user && canManage && (
@@ -81,7 +86,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
               href="/admin"
               className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
             >
-              Painel
+              {tNav('panel')}
             </Link>
           )}
 
@@ -98,7 +103,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-xs font-bold">
                   {user.email?.[0]?.toUpperCase()}
                 </span>
-                <span className="hidden sm:inline">Minha conta</span>
+                <span className="hidden sm:inline">{tAccount('myAccount')}</span>
               </button>
               {dropdownOpen && (
                 <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-800 dark:bg-gray-900">
@@ -130,7 +135,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                     onClick={() => { signOut.mutate(); setDropdownOpen(false); }}
                     className="block min-h-11 w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                   >
-                    Sair
+                    {tAccount('signOut')}
                   </button>
                 </div>
               )}
@@ -140,7 +145,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
               href="/login"
               className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 transition-colors"
             >
-              Entrar
+              {tNav('signIn')}
             </Link>
           )}
 
@@ -148,7 +153,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
           <button
             className="lg:hidden min-h-11 min-w-11 p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
             onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Menu"
+            aria-label={tNav('menu')}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {mobileOpen
@@ -201,7 +206,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                 className="block min-h-11 py-3 text-sm font-medium text-gray-700 dark:text-gray-300"
                 onClick={() => setMobileOpen(false)}
               >
-                Minha conta
+                {tAccount('myAccount')}
               </Link>
               {/* Único caminho de logout no mobile depois que o dropdown do
                   avatar passou a ser md-only. */}
@@ -209,7 +214,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                 onClick={() => { signOut.mutate(); setMobileOpen(false); }}
                 className="block min-h-11 w-full py-3 text-left text-sm font-medium text-red-600 dark:text-red-400"
               >
-                Sair
+                {tAccount('signOut')}
               </button>
             </>
           )}

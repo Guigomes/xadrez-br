@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, Link } from '@/i18n/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup,
   useGenerateRound, useRoundTransition,

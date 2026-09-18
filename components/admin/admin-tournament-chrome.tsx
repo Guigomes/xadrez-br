@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from '@/i18n/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { AdminTournamentTabs } from './admin-tournament-tabs';
 import { Badge } from '@/components/ui/badge';

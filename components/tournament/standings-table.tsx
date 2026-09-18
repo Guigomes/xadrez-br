@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
 import { formatScore, formatTiebreak } from '@/lib/utils/chess';
 import type { StandingRow } from '@/types/database';
@@ -58,10 +58,14 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds }:
             {row.category_name && (
               <span className="ml-1 text-xs text-gray-400">{row.category_name}</span>
             )}
+            {row.state && (
+              <span className="ml-1 text-xs text-gray-400">{row.state}</span>
+            )}
           </div>
           <p className="mt-0.5 text-xs text-gray-400 sm:hidden">
             BH: {formatTiebreak(row.buchholz)} · BH-1: {formatTiebreak(row.buchholz_cut1)} · SB: {formatTiebreak(row.sonneborn_berger)}
             {row.rating_std && ` · ${row.rating_std}`}
+            {row.state && ` · ${row.state}`}
           </p>
         </td>
         <td className="py-3 px-3 text-center font-bold text-gray-900 dark:text-gray-100">{formatScore(row.points)}</td>

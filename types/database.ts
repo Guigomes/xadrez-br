@@ -56,6 +56,8 @@ export interface Player {
   federation: string | null;
   state: string | null;
   city: string | null;
+  /** migration 080: sincronizado de tournament_registrations.club_or_school na aprovação (enriquecimento, nunca sobrescreve valor já existente). */
+  club_or_school: string | null;
   birth_year: number | null;
   sex: PlayerSex | null;
   rating_std: number | null;

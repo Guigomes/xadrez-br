@@ -14,3 +14,35 @@ export const routing = defineRouting({
 });
 
 export type AppLocale = (typeof routing.locales)[number];
+
+/**
+ * Remove o prefixo de locale de um pathname, se houver (`/en/admin` ->
+ * `/admin`; `/en` -> `/`; `/admin` -> `/admin`, sem mudança). Usada pelo
+ * middleware pra comparar rota (proteção de /admin, redirect do
+ * last_tournament) sem se importar com o idioma da URL — ver
+ * docs/plano-i18n.md §2.3 ponto 2.
+ */
+export function stripLocale(pathname: string): string {
+  for (const locale of routing.locales) {
+    if (pathname === `/${locale}`) return '/';
+    if (pathname.startsWith(`/${locale}/`)) return pathname.slice(locale.length + 1);
+  }
+  return pathname;
+}
+
+/**
+ * O prefixo de locale de um pathname, se houver (`/en/admin` -> `/en`;
+ * `/en` -> `/en`; `/admin` -> `''`, pt-BR sem prefixo). Complementar a
+ * `stripLocale` — junto, `getLocalePrefix(p) + stripLocale(p)` reconstrói o
+ * pathname original só quando `stripLocale` não é `/` (ver a pegadinha
+ * abaixo). Existe separado de `stripLocale` porque subtrair comprimentos
+ * (`pathname.length - bare.length`) quebra exatamente no caso `/en` ->
+ * `/` (bare tem 1 char de sobra, o `/` — um redirect pra `/tournaments/x`
+ * virava `/e/tournaments/x`, sumindo o "n"). Não redescobrir esse bug.
+ */
+export function getLocalePrefix(pathname: string): string {
+  for (const locale of routing.locales) {
+    if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) return `/${locale}`;
+  }
+  return '';
+}

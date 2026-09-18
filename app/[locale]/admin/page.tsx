@@ -1,0 +1,146 @@
+import { Link } from '@/i18n/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { getSessionUser, getSessionProfile } from '@/lib/data/session';
+import { getEntitlements } from '@/lib/data/entitlements';
+import { Badge } from '@/components/ui/badge';
+import { FlashMessage } from '@/components/ui/flash-message';
+import { TourLauncher } from '@/components/admin/tour-launcher';
+import { TourTriggerButton } from '@/components/admin/tour-trigger-button';
+import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
+import { formatDateRange } from '@/lib/utils/date';
+
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ excluido?: string }>;
+}) {
+  const { excluido } = await searchParams;
+  const supabase = await createClient();
+
+  // Usuário e perfil vêm memoizados do layout do admin (lib/data/session.ts) —
+  // aqui não custa round-trip nenhum. Sobra só a lista de torneios.
+  const [user, profile, entitlements] = await Promise.all([
+    getSessionUser(), getSessionProfile(), getEntitlements(),
+  ]);
+  const isAdmin = profile?.role === 'admin';
+  const canCreateTournament = isAdmin || !!profile?.is_organizer;
+  // Papel (is_organizer) diz SE pode criar torneio; plano diz QUANTOS ao
+  // mesmo tempo — dois eixos independentes, mesma tela junta os dois. O
+  // banco (trg_tournament_plan_limit, migration 073) barra de qualquer
+  // jeito; aqui é só pra não deixar o organizador bater num erro cru do
+  // Postgres achando que o botão simplesmente não funciona.
+  const atTournamentLimit = canCreateTournament && entitlements.atLimit('tournaments.active');
+  const tournamentLimit = entitlements.limitOf('tournaments.active');
+
+  const { data: tournaments } = await supabase
+    .from('tournaments')
+    .select('id, slug, name, status, start_date, end_date, registration_end_date, registration_closes_by_date, rounds_count, is_public, city, state')
+    .eq('created_by', user!.id)
+    .order('created_at', { ascending: false });
+
+  return (
+    <div>
+      {excluido && (
+        <FlashMessage message={`Torneio "${excluido}" excluído com sucesso.`} />
+      )}
+      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Meus torneios</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <Link
+              href="/admin/dev"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              🛠 Dev
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              href="/admin/stats"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Estatísticas
+            </Link>
+          )}
+          <Link
+            href="/admin/series"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            🏅 Séries
+          </Link>
+          {canCreateTournament && (
+            <TourLauncher firstTime={!tournaments?.length} />
+          )}
+          {canCreateTournament && (
+            <TourTriggerButton stepId="boas-vindas" label="❔ Dicas de como criar um torneio" />
+          )}
+          {canCreateTournament && (
+            atTournamentLimit ? (
+              <span
+                title={`Seu plano permite ${tournamentLimit} torneio(s) ativo(s) ao mesmo tempo.`}
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
+              >
+                🔒 Limite do plano atingido
+              </span>
+            ) : (
+              <Link
+                href="/admin/tournaments/new"
+                data-tour="novo-torneio"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Novo torneio
+              </Link>
+            )
+          )}
+        </div>
+      </div>
+
+      {(!tournaments?.length) ? (
+        <div className="card p-10 text-center">
+          <p className="text-4xl mb-3">♟</p>
+          <p className="font-semibold text-gray-700 dark:text-gray-300 mb-1">Nenhum torneio criado</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            {canCreateTournament
+              ? 'Crie seu primeiro torneio para começar.'
+              : 'Você aparece aqui quando for adicionado à equipe de um torneio, ou ative "Organizador" em Minha conta para criar o seu.'}
+          </p>
+          {canCreateTournament && !atTournamentLimit && (
+            <Link
+              href="/admin/tournaments/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+            >
+              Criar torneio
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {tournaments.map((t) => (
+            <Link
+              key={t.id}
+              href={`/admin/tournaments/${t.slug}`}
+              className="card p-4 flex flex-col gap-1 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+            >
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <Badge className={getTournamentStatusColor(t.status, t.registration_end_date, t.registration_closes_by_date)}>{getTournamentStatusLabel(t.status, t.registration_end_date, t.registration_closes_by_date)}</Badge>
+                {!t.is_public && t.status !== 'draft' && (
+                  <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Privado</Badge>
+                )}
+              </div>
+              <p className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t.city}, {t.state} · {formatDateRange(t.start_date, t.end_date)} · {t.rounds_count} rodadas
+              </p>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

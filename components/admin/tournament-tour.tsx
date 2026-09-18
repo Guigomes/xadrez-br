@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '@/i18n/navigation';
 import type { Driver } from 'driver.js';
 import { matchRoute, stepsForRoute, nextStepAfter } from '@/lib/tour/steps';
 import {

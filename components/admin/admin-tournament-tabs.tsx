@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils/cn';
 import { TournamentTabIcon, type TournamentTabIconName } from '@/components/tournament/tournament-tab-icon';
 import type { TournamentMode, TournamentStatus } from '@/types/database';
@@ -54,7 +53,7 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
   ];
 
   return (
-    <nav className="grid grid-cols-3 border-b border-gray-200 dark:border-gray-800 -mx-4 sm:mx-0 sm:flex sm:flex-wrap sm:overflow-x-auto sm:gap-0.5 sm:px-0">
+    <nav className="grid grid-cols-2 border-b border-gray-200 dark:border-gray-800 -mx-4 sm:mx-0 sm:flex sm:flex-wrap sm:overflow-x-auto sm:gap-0.5 sm:px-0">
       {tabs.map((tab) => {
         // "Visão geral" mora na raiz (href === base), que é PREFIXO de todas
         // as outras abas (${base}/edit, ${base}/groups, ...) — sem esse

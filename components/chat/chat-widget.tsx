@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '@/i18n/navigation';
 import Image from 'next/image';
 import { tournamentSlugFromPathname } from '@/lib/chat/tournament-context';
 import { CHAT_ALLOW_ANONYMOUS } from '@/lib/chat/config';

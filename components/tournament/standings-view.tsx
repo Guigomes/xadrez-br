@@ -167,15 +167,26 @@ export function StandingsView({
       )}
 
       {tournament?.status === 'finished' && (() => {
-        const first = displayed.find((r) => r.rank === 1);
+        const podium = [
+          { rank: 1, medal: '🥇' },
+          { rank: 2, medal: '🥈' },
+          { rank: 3, medal: '🥉' },
+        ].map(({ rank, medal }) => ({ medal, row: displayed.find((r) => r.rank === rank) }))
+          .filter((p) => p.row);
         return (
           <div className="card p-4 mb-4 border-2 border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-center">
             <p className="font-semibold text-gray-900 dark:text-gray-100">🏆 Classificação final</p>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
               Todas as rodadas foram encerradas — este é o resultado definitivo.
             </p>
-            {first && (
-              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1.5">🥇 {first.title ? `${first.title} ` : ''}{first.full_name}</p>
+            {podium.length > 0 && (
+              <div className="mt-1.5 space-y-0.5">
+                {podium.map(({ medal, row }) => (
+                  <p key={row!.rank} className="text-sm text-gray-700 dark:text-gray-300">
+                    {medal} {row!.title ? `${row!.title} ` : ''}{row!.full_name}
+                  </p>
+                ))}
+              </div>
             )}
           </div>
         );

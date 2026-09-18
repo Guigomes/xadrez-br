@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 import { TournamentCard } from '@/components/tournament/tournament-card';
@@ -99,6 +99,9 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
   const { data: upcoming } = await supabase.rpc('search_tournaments', {
     p_status: 'registration', p_limit: 3,
   });
+  const { data: finished } = await supabase.rpc('search_tournaments', {
+    p_status: 'finished', p_limit: 3,
+  });
 
   // RLS (news_select_public, migration 059) já esconde rascunho — não precisa
   // filtrar status aqui.
@@ -171,6 +174,70 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
       </section>
       )}
 
+      {/* Torneios reais — prova de que tem torneio rodando, logo depois do
+          hero: pedido do usuário pra quem chega aqui ver isso antes das
+          seções de venda (Como funciona/Recursos). Ordem de prioridade:
+          inscrição aberta (o que dá pra agir agora) → em andamento → só por
+          último os finalizados, pra fechar a prova sem ser o primeiro
+          destaque. Cada bloco mostra até 3 e manda pra aba (/tournaments?
+          status=...) pra ver todos — não é lista completa aqui. */}
+      {((upcoming?.length ?? 0) > 0 || (ongoing?.length ?? 0) > 0 || (finished?.length ?? 0) > 0) && (
+        <section className="border-b border-gray-200 dark:border-gray-800">
+          <div className="container-app space-y-10 py-12 sm:py-16">
+            {(upcoming?.length ?? 0) > 0 && (
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Inscrições abertas</h2>
+                  <Link href="/tournaments?status=registration" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                    Ver todos
+                  </Link>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {(upcoming as unknown as TournamentListItem[]).map((t) => (
+                    <TournamentCard key={t.id} tournament={t} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(ongoing?.length ?? 0) > 0 && (
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-green-500" />
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Acontecendo agora</h2>
+                  </div>
+                  <Link href="/tournaments?status=ongoing" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                    Ver todos
+                  </Link>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {(ongoing as unknown as TournamentListItem[]).map((t) => (
+                    <TournamentCard key={t.id} tournament={t} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(finished?.length ?? 0) > 0 && (
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Finalizados</h2>
+                  <Link href="/tournaments?status=finished" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                    Ver todos
+                  </Link>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {(finished as unknown as TournamentListItem[]).map((t) => (
+                    <TournamentCard key={t.id} tournament={t} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Como funciona — dá o modelo mental do fluxo antes de qualquer clique.
           É o mesmo caminho que o tour guiado percorre dentro do painel. */}
       <section className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
@@ -223,49 +290,6 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
           ))}
         </div>
       </section>
-
-      {/* Torneios reais — prova de que a coisa roda, e a porta de entrada de
-          quem chegou aqui pra jogar/acompanhar, não pra organizar. */}
-      {((ongoing?.length ?? 0) > 0 || (upcoming?.length ?? 0) > 0) && (
-        <section className="border-t border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
-          <div className="container-app space-y-10 py-12 sm:py-16">
-            {(ongoing?.length ?? 0) > 0 && (
-              <div>
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-green-500" />
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Acontecendo agora</h2>
-                  </div>
-                  <Link href="/tournaments?status=ongoing" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
-                    Ver todos
-                  </Link>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {(ongoing as unknown as TournamentListItem[]).map((t) => (
-                    <TournamentCard key={t.id} tournament={t} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(upcoming?.length ?? 0) > 0 && (
-              <div>
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Inscrições abertas</h2>
-                  <Link href="/tournaments?status=registration" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
-                    Ver todos
-                  </Link>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {(upcoming as unknown as TournamentListItem[]).map((t) => (
-                    <TournamentCard key={t.id} tournament={t} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
 
       {/* Notícias — depois dos torneios de propósito: quem chegou aqui pra
           organizar já passou pelo CTA, e a notícia é o motivo de voltar entre
