@@ -66,6 +66,9 @@ export async function generateMetadata({
       title: 'Torneios BR',
     },
     formatDetection: { telephone: false },
+    other: {
+      'google-adsense-account': 'ca-pub-3737758644488199',
+    },
     openGraph: {
       type: 'website',
       siteName: name,
@@ -128,7 +131,7 @@ export default async function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3737758644488199"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
         />
       </body>
     </html>
