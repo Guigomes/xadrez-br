@@ -29,8 +29,18 @@ const nextConfig = {
   // antes do middleware, então cobre pt-BR (sem prefixo) e /es, /en.
   // /admin/tournaments NÃO muda — a origem só casa caminho que começa em
   // /tournaments.
+  //
+  // Domínio antigo (torneios-xadrez-br.com.br, com ou sem www) -> domínio novo.
+  // Por host, no app, porque o domínio antigo continua atribuído a este mesmo
+  // projeto da Vercel. Pra desfazer, é só remover esta regra.
   async redirects() {
     return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: '(?:www\\.)?torneios-xadrez-br\\.com\\.br' }],
+        destination: 'https://www.gambitotorneios.com.br/:path*',
+        permanent: true,
+      },
       { source: '/tournaments', destination: '/torneios', permanent: true },
       { source: '/tournaments/:path*', destination: '/torneios/:path*', permanent: true },
       { source: '/:locale(es|en)/tournaments', destination: '/:locale/torneios', permanent: true },
