@@ -64,7 +64,7 @@ export default function AdminRegistrationsPage({ params }: Props) {
   if (isLoading) return <PageSpinner />;
   if (!tournament) return <p>Torneio não encontrado.</p>;
 
-  const registrationPath = `/tournaments/${slug}/register`;
+  const registrationPath = `/torneios/${slug}/register`;
   const registrationUrl = typeof window !== 'undefined'
     ? `${window.location.origin}${registrationPath}` : registrationPath;
 

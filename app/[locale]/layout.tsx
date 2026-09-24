@@ -63,7 +63,7 @@ export async function generateMetadata({
     appleWebApp: {
       capable: true,
       statusBarStyle: 'default',
-      title: 'Torneios BR',
+      title: 'Gambito',
     },
     formatDetection: { telephone: false },
     other: {

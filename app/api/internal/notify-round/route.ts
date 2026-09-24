@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const roundUrl = `/tournaments/${t.slug}/rounds/${roundNumber}`;
+  const roundUrl = `/torneios/${t.slug}/rounds/${roundNumber}`;
 
   // round_id já é por grupo — pega só os emparceiramentos desta rodada/grupo.
   const { data: pairings } = await admin

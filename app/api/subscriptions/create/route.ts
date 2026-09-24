@@ -8,6 +8,7 @@ import {
   type AsaasCycle,
 } from '@/lib/asaas/client';
 import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { isBillingEnabled } from '@/lib/data/billing';
 
 // Cria a assinatura recorrente na Asaas pro plano escolhido e devolve o link
 // da primeira cobrança (invoiceUrl — checkout hospedado da Asaas, onde o
@@ -18,6 +19,10 @@ import { todayInSaoPaulo } from '@/lib/utils/chess';
 const CYCLE_BY_INTERVAL: Record<string, AsaasCycle> = { month: 'MONTHLY', year: 'YEARLY' };
 
 export async function POST(request: NextRequest) {
+  if (!(await isBillingEnabled())) {
+    return NextResponse.json({ error: 'Assinaturas estão desativadas: todo o sistema está gratuito.' }, { status: 404 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -80,7 +85,7 @@ export async function POST(request: NextRequest) {
   try {
     if (!asaasCustomerId) {
       const customer = await createAsaasCustomer({
-        name: profile.full_name || profile.email || 'Cliente Xadrez BR',
+        name: profile.full_name || profile.email || 'Cliente Gambito Torneios',
         email: customerEmail!,
         cpfCnpj: document!,
       });
@@ -97,7 +102,7 @@ export async function POST(request: NextRequest) {
       value: plan.price_cents / 100,
       cycle,
       nextDueDate: todayInSaoPaulo(),
-      description: `Xadrez BR — plano ${plan.name}`,
+      description: `Gambito Torneios — plano ${plan.name}`,
     });
 
     const firstPayment = await getLatestSubscriptionPayment(subscription.id);

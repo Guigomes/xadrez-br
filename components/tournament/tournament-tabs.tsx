@@ -13,7 +13,7 @@ interface TournamentTabsProps {
 
 export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentTabsProps) {
   const pathname = usePathname();
-  const base = `/tournaments/${slug}`;
+  const base = `/torneios/${slug}`;
 
   const isOngoing = status === 'ongoing' && currentRoundNumber != null;
   // Antes de o torneio começar não existe rodada nem pontuação: as duas abas

@@ -268,7 +268,7 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
 
   return (
     <Link
-      href={`/tournaments/${tournamentSlug}/rounds/${row.round_number}`}
+      href={`/torneios/${tournamentSlug}/rounds/${row.round_number}`}
       className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
     >
       {/* Round number */}

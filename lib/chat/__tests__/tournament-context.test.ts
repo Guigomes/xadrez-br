@@ -3,8 +3,8 @@ import { tournamentSlugFromPathname, normalizeName, matchPlayerNames } from '../
 
 describe('tournamentSlugFromPathname', () => {
   it('extrai slug de página pública de torneio', () => {
-    expect(tournamentSlugFromPathname('/tournaments/copa-2026/standings')).toBe('copa-2026');
-    expect(tournamentSlugFromPathname('/tournaments/copa-2026')).toBe('copa-2026');
+    expect(tournamentSlugFromPathname('/torneios/copa-2026/standings')).toBe('copa-2026');
+    expect(tournamentSlugFromPathname('/torneios/copa-2026')).toBe('copa-2026');
   });
 
   it('extrai slug de página admin de torneio', () => {
@@ -24,7 +24,7 @@ describe('tournamentSlugFromPathname', () => {
   });
 
   it('descarta query string e hash do slug', () => {
-    expect(tournamentSlugFromPathname('/tournaments/copa-2026?tab=x')).toBe('copa-2026');
+    expect(tournamentSlugFromPathname('/torneios/copa-2026?tab=x')).toBe('copa-2026');
   });
 });
 

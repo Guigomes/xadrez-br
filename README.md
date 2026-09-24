@@ -1,4 +1,4 @@
-# XadrezBR – Torneios de Xadrez
+# Gambito Torneios
 
 MVP de sistema web para torneios de xadrez com foco em usabilidade mobile, acompanhamento de jogadores e experiência para público e organizadores.
 

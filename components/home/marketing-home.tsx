@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 import { TournamentCard } from '@/components/tournament/tournament-card';
 import { NewsCard } from '@/components/news/news-card';
+import { WhatsappFeedback } from '@/components/feedback/whatsapp-feedback';
 import type { TournamentListItem } from '@/types/database';
 import type { NewsCardData } from '@/components/news/news-card';
 
@@ -163,7 +164,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
                 </svg>
               </Link>
               <Link
-                href="/tournaments"
+                href="/torneios"
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 font-semibold text-white transition-colors hover:bg-white/10"
               >
                 <span aria-hidden="true">♟</span> Acompanhar torneios
@@ -174,12 +175,16 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
       </section>
       )}
 
+      <div className="container-app pt-6">
+        <WhatsappFeedback />
+      </div>
+
       {/* Torneios reais — prova de que tem torneio rodando, logo depois do
           hero: pedido do usuário pra quem chega aqui ver isso antes das
           seções de venda (Como funciona/Recursos). Ordem de prioridade:
           inscrição aberta (o que dá pra agir agora) → em andamento → só por
           último os finalizados, pra fechar a prova sem ser o primeiro
-          destaque. Cada bloco mostra até 3 e manda pra aba (/tournaments?
+          destaque. Cada bloco mostra até 3 e manda pra aba (/torneios?
           status=...) pra ver todos — não é lista completa aqui. */}
       {((upcoming?.length ?? 0) > 0 || (ongoing?.length ?? 0) > 0 || (finished?.length ?? 0) > 0) && (
         <section className="border-b border-gray-200 dark:border-gray-800">
@@ -188,7 +193,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
               <div>
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Inscrições abertas</h2>
-                  <Link href="/tournaments?status=registration" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                  <Link href="/torneios?status=registration" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
                     Ver todos
                   </Link>
                 </div>
@@ -207,7 +212,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
                     <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-green-500" />
                     <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Acontecendo agora</h2>
                   </div>
-                  <Link href="/tournaments?status=ongoing" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                  <Link href="/torneios?status=ongoing" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
                     Ver todos
                   </Link>
                 </div>
@@ -223,7 +228,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
               <div>
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Finalizados</h2>
-                  <Link href="/tournaments?status=finished" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                  <Link href="/torneios?status=finished" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
                     Ver todos
                   </Link>
                 </div>

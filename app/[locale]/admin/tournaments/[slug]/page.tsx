@@ -69,7 +69,7 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
         <div className="flex items-start justify-between gap-3 mb-3">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Detalhes</h2>
           <div className="flex flex-wrap gap-2">
-            {tournament.is_public && <Link href={`/tournaments/${slug}/painel`} target="_blank" className="inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">Painel para TV</Link>}
+            {tournament.is_public && <Link href={`/torneios/${slug}/painel`} target="_blank" className="inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">Painel para TV</Link>}
             <Link
               href={`${base}/edit`}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 shrink-0"

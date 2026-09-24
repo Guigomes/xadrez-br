@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Torneios Xadrez BR",
-  "short_name": "Torneios BR",
+  "name": "Gambito Torneios",
+  "short_name": "Gambito",
   "description": "Acompanhe torneios de xadrez, resultados e classificações em tempo real.",
   "start_url": "/?home=1",
   "scope": "/",
@@ -79,7 +79,7 @@
       "name": "Torneios",
       "short_name": "Torneios",
       "description": "Ver lista de torneios",
-      "url": "/tournaments",
+      "url": "/torneios",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {

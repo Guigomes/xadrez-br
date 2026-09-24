@@ -61,12 +61,12 @@ export function matchPlayerNames<T extends { full_name: string }>(rows: T[], que
 const RESERVED_SLUGS = new Set(['new']);
 
 /**
- * Extrai o slug do torneio de um pathname tipo /tournaments/<slug>/... ou
+ * Extrai o slug do torneio de um pathname tipo /torneios/<slug>/... ou
  * /admin/tournaments/<slug>/... . Descarta segmentos reservados (ex.: /new).
  */
 export function tournamentSlugFromPathname(pathname: string | null | undefined): string | null {
   if (!pathname) return null;
-  const m = pathname.match(/^\/(?:admin\/)?tournaments\/([^/?#]+)/);
+  const m = pathname.match(/^\/(?:admin\/tournaments|torneios)\/([^/?#]+)/);
   if (!m) return null;
   const slug = m[1];
   if (RESERVED_SLUGS.has(slug)) return null;

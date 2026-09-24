@@ -47,9 +47,9 @@ Só a chrome (header/footer) foi extraída. As ~700–900 chaves restantes (supe
 
 ## 3. Pontos de preocupação abertos (precisam de decisão do dono)
 
-### 3.1 O nome da marca é "Torneios Xadrez BR" — português puro, em todos os idiomas
+### 3.1 ~~O nome da marca é "Torneios Xadrez BR"~~ — resolvido: "Gambito Torneios"
 
-Deixei `brand.name` = `"Torneios Xadrez BR"` **igual nos 3 arquivos**, tratando como nome próprio (o plano manda proper names ficarem). Mas ele literalmente lê "Chess Tournaments BR" em português — um inglês/argentino vê um nome que não entende. **Decisão pendente:** a marca é intocável (fica pt em tudo) ou ganha versão localizada ("BR Chess Tournaments" / "Torneos de Ajedrez BR")? Se for localizar, o `copyright` do footer também muda. Não decidi por você.
+Decisão do dono (2026-09-24): a marca virou **"Gambito Torneios"**, igual nos 3 arquivos (`brand.name` e `footer.copyright`), sem versão localizada. Resolve o problema original: "Torneios Xadrez BR" lia como descrição em português, "Gambito" é nome próprio e reaproveita o mascote. Domínio (`torneios-xadrez-br.com.br`) e nomes de infra (`xadrez-br-cron`) não mudaram junto.
 
 ### 3.2 "Painel" → "Dashboard" (en) / "Panel" (es) — conferir tom
 

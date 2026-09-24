@@ -31,6 +31,8 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // Os testes logam pelo form de e-mail/senha, que em produção fica escondido.
+    env: { ...process.env, NEXT_PUBLIC_EMAIL_LOGIN: 'true' } as Record<string, string>,
   },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
 });

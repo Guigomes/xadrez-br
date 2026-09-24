@@ -62,7 +62,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
   const currentRound = aggregatedRounds.find((r) => r.status === 'ongoing');
 
   if (tournament.status === 'ongoing' && currentRound) {
-    redirect(`/tournaments/${slug}/rounds/${currentRound.round_number}`);
+    redirect(`/torneios/${slug}/rounds/${currentRound.round_number}`);
   }
 
   // Sort groups by the age number in their name (SUB7 < SUB9 < SUB11 …),
@@ -95,7 +95,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
         {/* Current round highlight */}
         {currentRound && (
           <Link
-            href={`/tournaments/${slug}/rounds/${currentRound.round_number}`}
+            href={`/torneios/${slug}/rounds/${currentRound.round_number}`}
             className="card p-4 flex items-center justify-between gap-4 bg-amber-50 border-amber-200 hover:border-amber-300 dark:bg-amber-950/20 dark:border-amber-900 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -118,7 +118,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">Participantes por grupo</h2>
-              <Link href={`/tournaments/${slug}/participants`} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
+              <Link href={`/torneios/${slug}/participants`} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
                 Ver todos
               </Link>
             </div>
@@ -126,7 +126,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
               {groups.map((g) => (
                 <Link
                   key={g.id}
-                  href={`/tournaments/${slug}/participants?group=${g.id}`}
+                  href={`/torneios/${slug}/participants?group=${g.id}`}
                   className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
                 >
                   <span>{g.name}</span>
@@ -142,7 +142,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
         {/* Before tournament starts without groups: simple participants link */}
         {!currentRound && !hasGroups && (participantCount ?? 0) > 0 && (
           <Link
-            href={`/tournaments/${slug}/participants`}
+            href={`/torneios/${slug}/participants`}
             className="card p-4 flex items-center justify-between gap-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -180,7 +180,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
             {aggregatedRounds.map((round) => (
               <Link
                 key={round.round_number}
-                href={`/tournaments/${slug}/rounds/${round.round_number}`}
+                href={`/torneios/${slug}/rounds/${round.round_number}`}
                 className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold transition-colors
                   ${ROUND_STATUS_COLORS[round.status]}
                   hover:opacity-80
@@ -215,7 +215,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
               {groups.map((g) => (
                 <Link
                   key={g.id}
-                  href={`/tournaments/${slug}/participants?group=${g.id}`}
+                  href={`/torneios/${slug}/participants?group=${g.id}`}
                   className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
                 >
                   <span>{g.name}</span>

@@ -23,7 +23,7 @@ export function buildCertificatePdf(input: {
   const content = [
     '0.10 0.28 0.20 rg 0 0 842 595 re f',
     '0.96 0.91 0.70 rg 18 18 806 559 re S',
-    '1 1 1 rg BT /F1 20 Tf 265 500 Td (TORNEIOS XADREZ BR) Tj ET',
+    '1 1 1 rg BT /F1 20 Tf 276 500 Td (GAMBITO TORNEIOS) Tj ET',
     '0.96 0.91 0.70 rg BT /F1 38 Tf 250 425 Td (CERTIFICADO) Tj ET',
     '1 1 1 rg BT /F1 16 Tf 240 365 Td (Certificamos a participacao de) Tj ET',
     `BT /F1 30 Tf 90 310 Td (${pdfText(input.playerName)}) Tj ET`,

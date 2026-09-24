@@ -158,7 +158,7 @@ export default async function RegisterPage({ params }: Props) {
                     : 'Acompanhe esta página — a organização abrirá as inscrições em breve.'}
           </p>
           <Link
-            href={`/tournaments/${slug}`}
+            href={`/torneios/${slug}`}
             className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
           >
             ← Voltar ao torneio

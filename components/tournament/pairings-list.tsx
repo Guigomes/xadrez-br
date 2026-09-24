@@ -136,7 +136,7 @@ function PlayerLink({
 
   if (!tpId) return <div>{content}</div>;
   return (
-    <Link href={`/tournaments/${tournamentSlug}/players/${tpId}`} className="block hover:opacity-80 transition-opacity">
+    <Link href={`/torneios/${tournamentSlug}/players/${tpId}`} className="block hover:opacity-80 transition-opacity">
       {content}
     </Link>
   );

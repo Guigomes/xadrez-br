@@ -118,7 +118,7 @@ export default async function StatsPage() {
                 <div key={t.id} className="flex items-center gap-3 px-4 py-3">
                   <div className="flex-1 min-w-0">
                     <Link
-                      href={`/tournaments/${t.slug}`}
+                      href={`/torneios/${t.slug}`}
                       className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-brand-600 dark:hover:text-brand-400 truncate block"
                     >
                       {t.name}

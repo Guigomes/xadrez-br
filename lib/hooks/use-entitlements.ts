@@ -35,6 +35,9 @@ export function useEntitlements() {
 
   return {
     isLoading,
+    can(key: EntitlementKey): boolean {
+      return byKey[key]?.enabled ?? false;
+    },
     atLimit(key: EntitlementKey): boolean {
       const e = byKey[key];
       if (!e || e.limit_int === null || e.used === null) return false;

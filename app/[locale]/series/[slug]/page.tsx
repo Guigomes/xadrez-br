@@ -47,7 +47,7 @@ export default async function SeriesOverview({ params }: { params: Promise<{ slu
               <li key={s.tournament?.slug ?? i} className="flex flex-wrap items-center gap-2 py-3">
                 <span className="text-sm tabular-nums text-gray-400 dark:text-gray-500">{i + 1}.</span>
                 <Link
-                  href={`/tournaments/${s.tournament?.slug}`}
+                  href={`/torneios/${s.tournament?.slug}`}
                   className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 hover:underline dark:text-gray-100"
                 >
                   {s.label || s.tournament?.name}

@@ -71,7 +71,7 @@ export function NativeRounds({ tournament }: { tournament: Tournament }) {
           <p className="font-semibold text-gray-900 dark:text-gray-100">🏆 Torneio encerrado!</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
             Todas as rodadas terminaram.{' '}
-            <Link href={`/tournaments/${tournament.slug}/standings`} className="underline font-medium">
+            <Link href={`/torneios/${tournament.slug}/standings`} className="underline font-medium">
               Ver classificação final →
             </Link>
           </p>
@@ -337,7 +337,7 @@ function GroupPanel({
             ⬇️ Exportar TRF (homologação)
           </a>
           <a
-            href={`/tournaments/${tournament.slug}/standings/print`}
+            href={`/torneios/${tournament.slug}/standings/print`}
             target="_blank"
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-9 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
@@ -519,7 +519,7 @@ function RoundPanel({
         )}
         {round.status !== 'draft' && (
           <a
-            href={`/tournaments/${tournament.slug}/rounds/${round.round_number}/print`}
+            href={`/torneios/${tournament.slug}/rounds/${round.round_number}/print`}
             target="_blank"
             className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-8 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
@@ -656,7 +656,7 @@ function RoundBoards({ tournament, groupId, groupName, round }: { tournament: To
                   white_points: p.white_points,
                 })),
                 url: typeof window !== 'undefined'
-                  ? `${window.location.origin}/tournaments/${tournament.slug}/rounds/${round.round_number}`
+                  ? `${window.location.origin}/torneios/${tournament.slug}/rounds/${round.round_number}`
                   : undefined,
               })
             }

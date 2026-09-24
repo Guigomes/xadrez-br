@@ -168,7 +168,7 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
             })}
           </div>
 
-          {/* Só "ver todos os meus" — a antiga chamada pra /tournaments saiu:
+          {/* Só "ver todos os meus" — a antiga chamada pra /torneios saiu:
               embutido na home, as seções "Acontecendo agora"/"Inscrições
               abertas" logo abaixo já são essa porta. */}
           {all.length > MAX_SHOWN && (

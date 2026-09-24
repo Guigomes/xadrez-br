@@ -4,7 +4,7 @@ import { stripLocale, getLocalePrefix } from '../routing';
 describe('stripLocale', () => {
   it('remove o prefixo de locale quando presente', () => {
     expect(stripLocale('/en/admin')).toBe('/admin');
-    expect(stripLocale('/es/tournaments/xyz')).toBe('/tournaments/xyz');
+    expect(stripLocale('/es/torneios/xyz')).toBe('/torneios/xyz');
   });
   it('locale sozinho vira raiz', () => {
     expect(stripLocale('/en')).toBe('/');
@@ -23,7 +23,7 @@ describe('stripLocale', () => {
 describe('getLocalePrefix', () => {
   it('devolve o prefixo com barra quando presente', () => {
     expect(getLocalePrefix('/en/admin')).toBe('/en');
-    expect(getLocalePrefix('/es/tournaments/xyz')).toBe('/es');
+    expect(getLocalePrefix('/es/torneios/xyz')).toBe('/es');
   });
   it('locale sozinho também devolve o prefixo (não a raiz)', () => {
     // Regressão: pathname.length - stripLocale(pathname).length quebra aqui

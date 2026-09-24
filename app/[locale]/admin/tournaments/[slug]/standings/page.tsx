@@ -27,14 +27,14 @@ export default async function AdminStandingsPage({ params }: Props) {
       <StandingsView slug={slug} showExport tournamentId={tournament?.id} />
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
-          href={`/tournaments/${slug}/standings/print`}
+          href={`/torneios/${slug}/standings/print`}
           target="_blank"
           className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-9 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           🖨️ Imprimir classificação
         </Link>
         <Link
-          href={`/tournaments/${slug}/standings`}
+          href={`/torneios/${slug}/standings`}
           target="_blank"
           className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-9 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
         >

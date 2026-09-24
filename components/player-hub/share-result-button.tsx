@@ -6,7 +6,7 @@ export function ShareResultButton({ tournamentPlayerId, playerName }: { tourname
   const imageUrl = `/api/share/player/${tournamentPlayerId}`;
   async function share() {
     if (navigator.share) {
-      await navigator.share({ title: `Resultado de ${playerName}`, text: 'Veja meu resultado no Torneios Xadrez BR', url: new URL(imageUrl, window.location.origin).toString() }).catch(() => undefined);
+      await navigator.share({ title: `Resultado de ${playerName}`, text: 'Veja meu resultado no Gambito Torneios', url: new URL(imageUrl, window.location.origin).toString() }).catch(() => undefined);
     } else {
       window.open(imageUrl, '_blank', 'noopener,noreferrer');
     }

@@ -6,8 +6,8 @@ import type { RoundStatus } from '@/types/database';
  * então "a rodada 3" na verdade são N linhas, uma por grupo. Estas funções
  * colapsam isso num único status/resumo por número de rodada.
  *
- * Antes essa lógica vivia duplicada em app/tournaments/[slug]/rounds/page.tsx
- * e app/tournaments/[slug]/standings/page.tsx; a ferramenta do Gambito
+ * Antes essa lógica vivia duplicada em app/torneios/[slug]/rounds/page.tsx
+ * e app/torneios/[slug]/standings/page.tsx; a ferramenta do Gambito
  * (lib/chat/tools.ts) precisava da mesma coisa, então virou helper.
  *
  * `draft` é DELIBERADAMENTE excluído do resumo (summarizeRounds) — rascunho é

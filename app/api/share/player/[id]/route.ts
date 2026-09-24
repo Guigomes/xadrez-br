@@ -22,7 +22,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return new ImageResponse(
     h('div', { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '72px', color: '#fff', background: 'linear-gradient(135deg,#071b13,#123c2b 60%,#8a5a13)', fontFamily: 'sans-serif' } },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-        h('div', { style: { fontSize: 26, fontWeight: 800, letterSpacing: 3, color: '#9be7bd' } }, 'TORNEIOS XADREZ BR'),
+        h('div', { style: { fontSize: 26, fontWeight: 800, letterSpacing: 3, color: '#9be7bd' } }, 'GAMBITO TORNEIOS'),
         h('div', { style: { fontSize: 48 } }, '♞')
       ),
       h('div', { style: { display: 'flex', flexDirection: 'column' } },

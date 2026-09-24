@@ -37,8 +37,8 @@ export function stripLocale(pathname: string): string {
  * pathname original só quando `stripLocale` não é `/` (ver a pegadinha
  * abaixo). Existe separado de `stripLocale` porque subtrair comprimentos
  * (`pathname.length - bare.length`) quebra exatamente no caso `/en` ->
- * `/` (bare tem 1 char de sobra, o `/` — um redirect pra `/tournaments/x`
- * virava `/e/tournaments/x`, sumindo o "n"). Não redescobrir esse bug.
+ * `/` (bare tem 1 char de sobra, o `/` — um redirect pra `/torneios/x`
+ * virava `/e/torneios/x`, sumindo o "n"). Não redescobrir esse bug.
  */
 export function getLocalePrefix(pathname: string): string {
   for (const locale of routing.locales) {

@@ -24,7 +24,7 @@ describe('matchRoute', () => {
   it('ignora o resto do admin e o site público', () => {
     expect(matchRoute('/admin/tournaments/x/rounds')).toBeNull();
     expect(matchRoute('/admin/stats')).toBeNull();
-    expect(matchRoute('/tournaments/x/players')).toBeNull();
+    expect(matchRoute('/torneios/x/players')).toBeNull();
     expect(matchRoute('/')).toBeNull();
   });
 });

@@ -15,7 +15,7 @@
  * isso também bloquearia a criação de usuário dos testes e2e
  * (e2e/utils/test-user.ts, que usa a Admin API).
  */
-export const BETA_SIGNUP_ALLOWLIST: string[] | null = ['chesskingbr@gmail.com'];
+export const BETA_SIGNUP_ALLOWLIST: string[] | null = null;
 
 export const BETA_SIGNUP_MESSAGE =
   'O sistema ainda está em fase de testes fechada — por enquanto não é possível criar contas novas. Se você já tem conta, é só entrar.';

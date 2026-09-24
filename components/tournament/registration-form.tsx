@@ -304,7 +304,7 @@ export function RegistrationForm({
             : 'Sua inscrição foi recebida e está aguardando a confirmação da organização. Você aparecerá na lista de participantes assim que for aprovada.'}
         </p>
         <Link
-          href={`/tournaments/${tournamentSlug}`}
+          href={`/torneios/${tournamentSlug}`}
           className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
         >
           ← Voltar ao torneio

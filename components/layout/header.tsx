@@ -38,7 +38,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
   }, [dropdownOpen]);
 
   const navLinks = [
-    { href: '/tournaments', label: tNav('tournaments') },
+    { href: '/torneios', label: tNav('tournaments') },
     { href: '/series',      label: tNav('series') },
     { href: '/players',     label: tNav('players') },
     { href: '/noticias',    label: tNav('news') },

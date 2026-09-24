@@ -8,6 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Gambito } from '@/components/mascot/gambito';
 
+// Produção entra só com Google (primeiro login já cria a conta). E-mail/senha
+// continua existindo atrás desta flag porque os testes e2e e o teste manual
+// com conta inventada dependem dele — e serve de volta rápida se precisar.
+const EMAIL_LOGIN_ENABLED = process.env.NEXT_PUBLIC_EMAIL_LOGIN === 'true';
+
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -81,9 +86,9 @@ export default function LoginPage() {
             priority
             className="mx-auto w-32 drop-shadow-lg sm:w-40"
           />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">Torneios Xadrez BR</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">Gambito Torneios</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {mode === 'signin' ? 'Entrar no Xadrez BR' : 'Criar sua conta'}
+            {mode === 'signin' ? 'Entrar no Gambito Torneios' : 'Criar sua conta'}
           </p>
         </div>
 
@@ -105,6 +110,7 @@ export default function LoginPage() {
             Entrar com Google
           </Button>
 
+          {EMAIL_LOGIN_ENABLED ? (
           <div className="mt-4 flex flex-col items-center gap-2 text-center">
             <button
               type="button"
@@ -124,6 +130,11 @@ export default function LoginPage() {
               Não tem conta? Cadastre-se
             </button>
           </div>
+          ) : (
+            <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+              Não tem conta? Entre com Google — o primeiro acesso já cria sua conta.
+            </p>
+          )}
 
           {error && !showEmailForm && (
             <p className="mt-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">
@@ -132,7 +143,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        {showEmailForm && (
+        {EMAIL_LOGIN_ENABLED && showEmailForm && (
         <div className="card p-6 mt-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
@@ -232,7 +243,7 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-gray-400 mt-4">
           Organize, arbitre ou acompanhe seus torneios. A consulta pública continua disponível sem conta.{' '}
-          <Link href="/tournaments" className="text-brand-600 dark:text-brand-400 hover:underline">
+          <Link href="/torneios" className="text-brand-600 dark:text-brand-400 hover:underline">
             Consulta pública aqui.
           </Link>
         </p>

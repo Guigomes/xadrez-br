@@ -24,6 +24,20 @@ const nextConfig = {
     ],
   },
 
+  // A rota pública era /tournaments; virou /torneios. Redirect permanente pra
+  // quem tem o link antigo (PWA instalado, push já enviado, favorito). Roda
+  // antes do middleware, então cobre pt-BR (sem prefixo) e /es, /en.
+  // /admin/tournaments NÃO muda — a origem só casa caminho que começa em
+  // /tournaments.
+  async redirects() {
+    return [
+      { source: '/tournaments', destination: '/torneios', permanent: true },
+      { source: '/tournaments/:path*', destination: '/torneios/:path*', permanent: true },
+      { source: '/:locale(es|en)/tournaments', destination: '/:locale/torneios', permanent: true },
+      { source: '/:locale(es|en)/tournaments/:path*', destination: '/:locale/torneios/:path*', permanent: true },
+    ];
+  },
+
   images: {
     remotePatterns: [
       {

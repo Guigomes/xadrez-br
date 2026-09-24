@@ -183,7 +183,7 @@ function PlayerRow({
                 {breakdown.map((b) => (
                   <li key={b.tournament_id} className="flex flex-wrap items-center gap-2 text-xs">
                     <Link
-                      href={`/tournaments/${b.tournament_slug}/standings`}
+                      href={`/torneios/${b.tournament_slug}/standings`}
                       className="text-brand-600 hover:underline dark:text-brand-400"
                     >
                       {b.label || b.tournament_name}

@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "Torneios Xadrez BR"
+    "name": "Gambito Torneios"
   },
   "nav": {
     "tournaments": "Tournaments",
@@ -20,6 +20,6 @@
     "tournaments": "Tournaments",
     "players": "Players",
     "organizers": "Organizers",
-    "copyright": "Torneios Xadrez BR © {year}"
+    "copyright": "Gambito Torneios © {year}"
   }
 }

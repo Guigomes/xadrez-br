@@ -55,7 +55,7 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
           </div>
         </>
       )}
-      <p className="mt-8 text-center text-sm text-gray-500">Acompanhe no celular: /tournaments/{slug}</p>
+      <p className="mt-8 text-center text-sm text-gray-500">Acompanhe no celular: /torneios/{slug}</p>
     </main>
   );
 }

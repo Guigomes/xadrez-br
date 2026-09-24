@@ -28,7 +28,7 @@ function slugFromUrl(page: Page): string {
 }
 
 async function register(page: Page, slug: string, opts: { fullName: string; birthYear: number; sex?: 'm' | 'w' }) {
-  await page.goto(`/tournaments/${slug}/register`);
+  await page.goto(`/torneios/${slug}/register`);
   await page.getByLabel('Nome completo *').fill(opts.fullName);
   await page.getByLabel('Ano de nascimento').fill(String(opts.birthYear));
   if (opts.sex) await page.getByLabel('Sexo').selectOption(opts.sex);
@@ -85,7 +85,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     // --- Publicar e abrir inscrições: torneio nasce 'draft'. Sequência
     //     agora é draft → published → registration → registration_closed →
     //     ongoing → finished (migration 038); /register só abre inscrição
-    //     com status === 'registration' (app/tournaments/[slug]/register/
+    //     com status === 'registration' (app/torneios/[slug]/register/
     //     page.tsx). Botão nomeado por status (migration 040 cobre o avanço
     //     automático por data; aqui é o caminho manual mesmo) — precisa dos
     //     dois cliques pra sair de draft. Espera o toast entre eles porque

@@ -16,7 +16,7 @@ export function Footer() {
           <span>{t('copyright', { year: new Date().getFullYear() })}</span>
         </div>
         <div className="flex gap-4">
-          <Link href="/tournaments" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+          <Link href="/torneios" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
             {t('tournaments')}
           </Link>
           <Link href="/players" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">

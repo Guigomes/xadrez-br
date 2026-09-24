@@ -10,7 +10,7 @@ import type { TournamentStatus } from '@/types/database';
 
 /**
  * Só os controles são client — a lista em si passou a ser renderizada no
- * servidor (app/tournaments/page.tsx). O estado dos filtros vive na URL, então
+ * servidor (app/torneios/page.tsx). O estado dos filtros vive na URL, então
  * o resultado é compartilhável, sobrevive ao "voltar" do navegador e chega
  * pronto no primeiro HTML em vez de depender de hidratar pra buscar.
  */
@@ -32,7 +32,7 @@ export function TournamentFilters() {
       const next = new URLSearchParams(params.toString());
       if (query) next.set('q', query);
       else next.delete('q');
-      startTransition(() => router.replace(`/tournaments?${next.toString()}`, { scroll: false }));
+      startTransition(() => router.replace(`/torneios?${next.toString()}`, { scroll: false }));
     }, 350);
     return () => clearTimeout(t);
   }, [query, params, router]);
@@ -41,7 +41,7 @@ export function TournamentFilters() {
     const next = new URLSearchParams(params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
-    startTransition(() => router.replace(`/tournaments?${next.toString()}`, { scroll: false }));
+    startTransition(() => router.replace(`/torneios?${next.toString()}`, { scroll: false }));
   }
 
   return (

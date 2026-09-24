@@ -15,7 +15,7 @@ import { RoundDetailClient } from '@/components/tournament/round-detail-client';
  * via cron-import, não é editável por aqui).
  *
  * `basePath` monta os links de navegação (anterior/próxima rodada, filtro de
- * grupo) — `/tournaments/{slug}/rounds` no público, `/admin/tournaments/
+ * grupo) — `/torneios/{slug}/rounds` no público, `/admin/tournaments/
  * {slug}/rounds` no admin.
  */
 function aggregateStatus(statuses: string[]): 'draft' | 'pending' | 'ongoing' | 'finished' {

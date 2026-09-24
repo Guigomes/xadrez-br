@@ -80,7 +80,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
 
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const base = `/tournaments/${slug}/participants`;
+  const base = `/torneios/${slug}/participants`;
 
   /** Preserva o filtro de grupo ao paginar, e omite `page=1` da URL. */
   function pageHref(n: number) {
@@ -211,7 +211,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                       </td>
                       <td className="py-3 px-3">
                         <Link
-                          href={`/tournaments/${slug}/players/${tp.id}`}
+                          href={`/torneios/${slug}/players/${tp.id}`}
                           className="font-medium text-gray-900 dark:text-gray-100 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
                         >
                           {player?.full_name}

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { TiebreakOrderPicker } from '@/components/tournament/tiebreak-order-picker';
 import { Gambito } from '@/components/mascot/gambito';
 import { BR_STATES } from '@/lib/utils/chess';
+import { useEntitlements } from '@/lib/hooks/use-entitlements';
 import {
   TIME_CONTROL_PRESETS, TIME_CONTROL_OTHER, findPresetByValue,
 } from '@/lib/utils/time-control';
@@ -160,6 +161,8 @@ interface Props {
 }
 
 export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar', formId, readOnly = false }: Props) {
+  const entitlements = useEntitlements();
+  const lacksOnlinePayment = !entitlements.isLoading && !entitlements.can('registration.payment');
   const normalizedDefaults = stripNulls(defaultValues);
   normalizedDefaults.checkin_opens_at = toLocalDateTime(normalizedDefaults.checkin_opens_at);
   normalizedDefaults.checkin_closes_at = toLocalDateTime(normalizedDefaults.checkin_closes_at);
@@ -548,7 +551,8 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Aceitar pagamento online na inscrição</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  O inscrito paga a taxa na hora via Pix/cartão (Asaas), sem precisar anexar comprovante. Requer plano com essa funcionalidade liberada.
+                  O inscrito paga a taxa na hora via Pix/cartão (Asaas), sem precisar anexar comprovante.
+                  {lacksOnlinePayment && ' Requer plano com essa funcionalidade liberada.'}
                 </p>
               </div>
             </label>

@@ -91,7 +91,7 @@ export default function PlayerProfilePage({ params }: Props) {
             return (
               <Link
                 key={tp.id}
-                href={`/tournaments/${t.slug}/players/${tp.id}`}
+                href={`/torneios/${t.slug}/players/${tp.id}`}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
               >
                 <div className="flex-1 min-w-0">

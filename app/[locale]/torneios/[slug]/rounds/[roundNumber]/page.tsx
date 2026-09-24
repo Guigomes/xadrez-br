@@ -21,7 +21,7 @@ export default async function RoundPage({ params, searchParams }: Props) {
       slug={slug}
       roundNumber={roundNumber}
       groupParam={groupParam}
-      basePath={`/tournaments/${slug}/rounds`}
+      basePath={`/torneios/${slug}/rounds`}
     />
   );
 }

@@ -87,7 +87,7 @@ export async function middleware(request: NextRequest) {
         // '/e'). Ver i18n/routing.ts.
         const localePrefix = getLocalePrefix(pathname);
         return NextResponse.redirect(
-          new URL(`${localePrefix}/tournaments/${lastTournament}`, request.url)
+          new URL(`${localePrefix}/torneios/${lastTournament}`, request.url)
         );
       }
     }

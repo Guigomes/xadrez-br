@@ -15,7 +15,7 @@ self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data.json(); } catch { data = { body: event.data.text() }; }
 
-  const title = data.title ?? 'Torneios Xadrez BR';
+  const title = data.title ?? 'Gambito Torneios';
   const options = {
     body: data.body ?? '',
     icon: '/icons/icon-192x192.png',
