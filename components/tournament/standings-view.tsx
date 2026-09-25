@@ -15,6 +15,7 @@ import { compareGroupNames } from '@/lib/utils/chess';
 import { summarizeRounds } from '@/lib/utils/rounds';
 import { buildStandingsMessage } from '@/lib/utils/whatsapp';
 import { matchesPlayerSearch } from '@/lib/utils/text';
+import { useTournamentGroupPreference } from '@/lib/hooks/use-tournament-group-preference';
 
 /**
  * Classificação do torneio — a MESMA tela para o público
@@ -68,13 +69,17 @@ export function StandingsView({
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => compareGroupNames(a.name, b.name));
   }, [standings]);
+  const pairingGroupIds = useMemo(() => pairingGroups.map((group) => group.id), [pairingGroups]);
   const hasGroups = pairingGroups.length > 0;
-  const selectedGroupId = hasGroups
-    ? (pairingGroups.some((group) => group.id === groupFromUrl) ? groupFromUrl : pairingGroups[0].id)
-    : null;
+  const { selectedGroupId, rememberGroup } = useTournamentGroupPreference(
+    slug,
+    groupFromUrl,
+    pairingGroupIds,
+  );
 
   function selectGroup(groupId: string) {
     setSelectedCategory('all');
+    rememberGroup(groupId);
     const params = new URLSearchParams(searchParams.toString());
     params.set('group', groupId);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });

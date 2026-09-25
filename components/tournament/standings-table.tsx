@@ -94,7 +94,7 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, i
   );
 
   return (
-    <div className="overflow-x-auto -mx-4 sm:mx-0">
+    <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
         {thead}
         <tbody>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Link } from '@/i18n/navigation';
 import { useTournament, useRoundSections } from '@/lib/hooks/use-tournament';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +8,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS } from '@/lib/utils/chess';
 import { RoundDetailClient } from '@/components/tournament/round-detail-client';
+import { useTournamentGroupPreference } from '@/lib/hooks/use-tournament-group-preference';
 
 /**
  * Conteúdo de UMA rodada (mesa a mesa) — client component, mesmo caso de uso
@@ -36,6 +38,11 @@ export function RoundDetailView({
   const { data: tournament, isLoading: loadingTournament } = useTournament(slug);
   const rn = parseInt(roundNumber);
   const { data: sections, isLoading: loadingSections } = useRoundSections(tournament?.id ?? '', rn);
+  const groupIds = useMemo(
+    () => [...new Set((sections ?? []).map((section) => section.groupId).filter((id): id is string => Boolean(id)))],
+    [sections],
+  );
+  const { selectedGroupId, rememberGroup } = useTournamentGroupPreference(slug, groupParam, groupIds);
 
   if (loadingTournament || (!!tournament && loadingSections)) return <PageSpinner />;
   if (!tournament) return <p className="text-sm text-gray-500 dark:text-gray-400">Torneio não encontrado.</p>;
@@ -45,15 +52,6 @@ export function RoundDetailView({
 
   const headerStatus = aggregateStatus(sections.map((s) => s.status));
   const isMultiGroup = sections.length > 1 || sections.some((s) => s.groupName);
-
-  // Pick which group's pairings to render. ?group=<id> wins when it matches a
-  // known group; otherwise default to the first group so users don't get a
-  // wall of every section by default (most follow only one or two groups).
-  const selectedGroupId = isMultiGroup
-    ? (groupParam && sections.some((s) => s.groupId === groupParam)
-        ? groupParam
-        : sections[0]?.groupId ?? null)
-    : null;
 
   const visibleSections = isMultiGroup
     ? sections.filter((s) => s.groupId === selectedGroupId)
@@ -115,6 +113,7 @@ export function RoundDetailView({
             <Link
               key={s.groupId}
               href={`${basePath}/${rn}?group=${s.groupId}`}
+              onClick={() => s.groupId && rememberGroup(s.groupId)}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 s.groupId === selectedGroupId
                   ? 'bg-brand-600 text-white'
