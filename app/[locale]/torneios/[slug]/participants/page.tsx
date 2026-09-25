@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
+import { StateBadge } from '@/components/player/state-badge';
 import { cn } from '@/lib/utils/cn';
 import { compareParticipantOrder, compareGroupNames } from '@/lib/utils/chess';
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ group?: string; page?: string }>;
+  searchParams: Promise<{ group?: string; page?: string; q?: string }>;
 }
 
 /** Um torneio grande passa de 250 inscritos; renderizar tudo de uma vez era o
@@ -18,7 +19,8 @@ const PAGE_SIZE = 50;
 
 export default async function ParticipantsPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { group: selectedGroupId, page: pageParam } = await searchParams;
+  const { group: selectedGroupId, page: pageParam, q } = await searchParams;
+  const searchQuery = q?.trim().slice(0, 80) ?? '';
 
   const pageNum = Math.max(1, Number.parseInt(pageParam ?? '1', 10) || 1);
   const from = (pageNum - 1) * PAGE_SIZE;
@@ -40,8 +42,8 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
     .from('tournament_players')
     .select(
       `
-        id, initial_ranking, current_score, current_rank, status, pairing_group_id,
-        player:players(id, full_name, rating_std, state, city, federation, cbx_id, fide_id, club_or_school),
+        id, player_id, initial_ranking, current_score, current_rank, status, pairing_group_id,
+        player:players(id, full_name, title, rating_std, state, city, federation, cbx_id, fide_id, club_or_school),
         category:tournament_categories(id, name, pairing_group_id)
       `,
       { count: 'exact' },
@@ -50,6 +52,29 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
 
   if (selectedGroupId) {
     playersQuery = playersQuery.eq('pairing_group_id', selectedGroupId);
+  }
+
+  // A busca fica no banco, mas em duas etapas para não depender de filtros
+  // PostgREST em relações aninhadas: encontra os jogadores e depois restringe
+  // as inscrições deste torneio aos ids encontrados.
+  if (searchQuery) {
+    const term = searchQuery.replace(/[,%_()."'\\]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (term) {
+      const filter = [
+        'full_name', 'title', 'fide_id', 'cbx_id', 'club_or_school', 'city', 'state', 'federation',
+      ].map((field) => `${field}.ilike.%${term}%`).join(',');
+      const { data: matchingPlayers } = await supabase
+        .from('players')
+        .select('id')
+        .or(filter)
+        .limit(2000);
+      const matchingIds = (matchingPlayers ?? []).map((player) => player.id);
+      playersQuery = matchingIds.length > 0
+        ? playersQuery.in('player_id', matchingIds)
+        : playersQuery.eq('player_id', '00000000-0000-0000-0000-000000000000');
+    } else {
+      playersQuery = playersQuery.eq('player_id', '00000000-0000-0000-0000-000000000000');
+    }
   }
 
   const [{ data: pairingGroups }, { data: playersData, count }] = await Promise.all([
@@ -86,6 +111,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
   function pageHref(n: number) {
     const qs = new URLSearchParams();
     if (selectedGroupId) qs.set('group', selectedGroupId);
+    if (searchQuery) qs.set('q', searchQuery);
     if (n > 1) qs.set('page', String(n));
     const s = qs.toString();
     return s ? `${base}?${s}` : base;
@@ -109,42 +135,40 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
 
   return (
     <div>
-      {/* Pairing group filter tabs */}
-      {showGroupFilter && (
-        <div className="flex flex-wrap gap-1.5 mb-5">
-          <Link
-            href={base}
-            className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-              !selectedGroupId
-                ? 'bg-brand-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
-            )}
-          >
-            Todos
-          </Link>
-          {groups.map((g) => (
-            <Link
-              key={g.id}
-              href={`${base}?group=${g.id}`}
-              className={cn(
-                'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                selectedGroupId === g.id
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
-              )}
+      <form action={base} className="card mb-5 grid gap-3 p-3 sm:grid-cols-[minmax(12rem,1fr)_minmax(16rem,2fr)_auto] sm:items-end">
+        {showGroupFilter && (
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Grupo</span>
+            <select
+              name="group"
+              defaultValue={selectedGroupId ?? ''}
+              className="min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
             >
-              {g.name}
-            </Link>
-          ))}
-        </div>
-      )}
+              <option value="">Todos os grupos</option>
+              {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+            </select>
+          </label>
+        )}
+        <label className={cn('block', !showGroupFilter && 'sm:col-span-2')}>
+          <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Buscar participante</span>
+          <input
+            type="search"
+            name="q"
+            defaultValue={searchQuery}
+            placeholder="Nome, FIDE, CBX, escola, cidade ou UF"
+            className="min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+          />
+        </label>
+        <button type="submit" className="min-h-10 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600">
+          Buscar
+        </button>
+      </form>
 
       {!players?.length ? (
         <EmptyState
           icon="👥"
-          title="Nenhum participante neste grupo"
-          description="Nenhum jogador foi inscrito neste grupo ainda."
+          title={searchQuery ? 'Nenhum participante encontrado' : 'Nenhum participante neste grupo'}
+          description={searchQuery ? 'Tente outro nome, identificador, escola, cidade ou UF.' : 'Nenhum jogador foi inscrito neste grupo ainda.'}
         />
       ) : (
         <>
@@ -155,11 +179,21 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                 {' — '}
               </>
             ) : null}
-            {total} participante{total !== 1 ? 's' : ''} inscrito{total !== 1 ? 's' : ''}
+            {searchQuery
+              ? `${total} resultado${total !== 1 ? 's' : ''}`
+              : `${total} participante${total !== 1 ? 's' : ''} inscrito${total !== 1 ? 's' : ''}`}
             {totalPages > 1 && (
               <span className="text-gray-400 dark:text-gray-500">
                 {' · '}página {pageNum} de {totalPages}
               </span>
+            )}
+            {searchQuery && (
+              <Link
+                href={selectedGroupId ? `${base}?group=${selectedGroupId}` : base}
+                className="ml-2 font-medium text-brand-600 hover:underline dark:text-brand-400"
+              >
+                Limpar busca
+              </Link>
             )}
           </p>
 
@@ -173,29 +207,35 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
             <table className="min-w-full text-sm">
               <thead className="hidden sm:table-header-group">
                 <tr className="border-b border-gray-200 dark:border-gray-800">
-                  <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">#</th>
+                  <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">{activeGroup ? 'Inicial' : '#'}</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Jogador</th>
                   {showGroupColumn && (
                     <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Grupo</th>
                   )}
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Categoria</th>
                   <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Rating</th>
-                  <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Cidade/UF</th>
+                  <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Cidade</th>
+                  <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">UF</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Escola/Clube</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">IDs</th>
                 </tr>
               </thead>
               <tbody>
                 {players.map((tp, i) => {
-                  const cat = tp.category as any;
-                  const player = tp.player as any;
-                  const playerGroup = showGroupColumn && cat?.pairing_group_id
-                    ? groups.find((g) => g.id === cat.pairing_group_id)
+                  const cat = tp.category;
+                  const player = tp.player;
+                  const playerGroup = tp.pairing_group_id
+                    ? groups.find((g) => g.id === tp.pairing_group_id)
                     : null;
-                  // Cidade e UF juntos — antes só um dos dois aparecia (o
-                  // primeiro que existisse), então "estado" nunca ficava
-                  // visível quando a cidade também estava preenchida.
-                  const place = [player?.city, player?.state].filter(Boolean).join('/');
+                  // Importações antigas gravavam "Clube/Cidade" em `city`.
+                  // Até a próxima sincronização preencher club_or_school,
+                  // apresenta o dado no rótulo correto sem duplicá-lo.
+                  const displayClub = player?.club_or_school
+                    ?? (tournament.mode === 'imported' ? player?.city : null);
+                  const displayCity = tournament.mode === 'imported'
+                    && displayClub?.trim().toLocaleLowerCase('pt-BR') === player?.city?.trim().toLocaleLowerCase('pt-BR')
+                    ? null
+                    : player?.city;
                   const ids = [
                     player?.cbx_id ? `CBX ${player.cbx_id}` : null,
                     player?.fide_id ? `FIDE ${player.fide_id}` : null,
@@ -207,13 +247,14 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                       className="border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
                     >
                       <td className="py-3 px-3 align-top text-gray-400 dark:text-gray-500 tabular-nums sm:align-middle">
-                        {tp.initial_ranking ?? from + i + 1}
+                        {activeGroup ? (tp.initial_ranking ?? from + i + 1) : from + i + 1}
                       </td>
                       <td className="py-3 px-3">
                         <Link
-                          href={`/torneios/${slug}/players/${tp.id}`}
+                          href={`/torneios/${slug}/players/${tp.id}${tp.pairing_group_id ? `?group=${tp.pairing_group_id}` : ''}`}
                           className="font-medium text-gray-900 dark:text-gray-100 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
                         >
+                          {player?.title && <span className="mr-1 text-gray-400 dark:text-gray-500">{player.title}</span>}
                           {player?.full_name}
                         </Link>
                         {tp.status === 'withdrawn' && (
@@ -223,15 +264,14 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                         )}
                         {/* Só no mobile: o resumo do que as colunas escondidas
                             à direita mostrariam. */}
-                        <span className="mt-0.5 block text-xs text-gray-400 sm:hidden">
-                          {[
-                            playerGroup?.name,
-                            cat?.name,
-                            place,
-                            player?.club_or_school,
-                            player?.rating_std,
-                            ids,
-                          ].filter(Boolean).join(' · ')}
+                        <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400 sm:hidden">
+                          {playerGroup?.name && <span className="font-medium text-brand-600 dark:text-brand-400">{playerGroup.name}</span>}
+                          <StateBadge state={player?.state} />
+                          {cat?.name && <span>{cat.name}</span>}
+                          {displayCity && <span>{displayCity}</span>}
+                          {displayClub && <span>{displayClub}</span>}
+                          {player?.rating_std && <span>Rating {player.rating_std}</span>}
+                          {ids && <span>{ids}</span>}
                         </span>
                       </td>
                       {showGroupColumn && (
@@ -257,10 +297,13 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                         {player?.rating_std ?? '–'}
                       </td>
                       <td className="hidden py-3 px-3 text-gray-500 dark:text-gray-400 sm:table-cell">
-                        {place || '–'}
+                        {displayCity || '–'}
+                      </td>
+                      <td className="hidden py-3 px-3 text-center sm:table-cell">
+                        <StateBadge state={player?.state} />
                       </td>
                       <td className="hidden py-3 px-3 text-gray-500 dark:text-gray-400 sm:table-cell">
-                        {player?.club_or_school || '–'}
+                        {displayClub || '–'}
                       </td>
                       <td className="hidden py-3 px-3 text-gray-500 dark:text-gray-400 sm:table-cell whitespace-nowrap">
                         {ids || '–'}

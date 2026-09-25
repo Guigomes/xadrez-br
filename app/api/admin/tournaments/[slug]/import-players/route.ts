@@ -9,8 +9,15 @@ interface ImportedParticipant {
   ratingStd?: number;
   initialRanking?: number;
   category?: string;
-  city?: string;
+  state?: string;
+  clubOrSchool?: string;
 }
+
+const BR_STATE_CODES = new Set([
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
+  'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
+  'SP', 'SE', 'TO',
+]);
 
 function normalize(value: string) {
   return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -36,7 +43,8 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
   const fedIdx  = colIndex(headers, ['fed', 'federation']);
   const eloIdx  = colIndex(headers, ['elo', 'eloi', 'elon', 'elof', 'rtg', 'rtgi', 'rtgn', 'rating', 'ratingi', 'ratingn']);
   const typeIdx = colIndex(headers, ['tipo', 'type', 'title']);
-  const cityIdx = colIndex(headers, ['clube/cidade', 'clube / cidade', 'clube cidade', 'club/city', 'club']);
+  const stateIdx = colIndex(headers, ['gr', 'uf', 'estado', 'state']);
+  const clubIdx = colIndex(headers, ['clube/cidade', 'clube / cidade', 'clube cidade', 'club/city', 'club']);
 
   if (nameIdx < 0) throw new Error('Coluna "Nome" não encontrada.');
 
@@ -53,6 +61,7 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
     const ratingStd = parseInt(eloIdx >= 0 ? row[eloIdx] : '', 10);
     const initialRanking = parseInt(numIdx >= 0 ? row[numIdx] : '', 10);
 
+    const rawState = stateIdx >= 0 ? row[stateIdx].toUpperCase() : '';
     participants.push({
       fullName,
       fideId: fideIdx >= 0 ? row[fideIdx] || undefined : undefined,
@@ -60,7 +69,8 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
       ratingStd: Number.isFinite(ratingStd) && ratingStd > 0 ? ratingStd : undefined,
       initialRanking: Number.isFinite(initialRanking) && initialRanking > 0 ? initialRanking : undefined,
       category: typeIdx >= 0 ? row[typeIdx] || undefined : undefined,
-      city: cityIdx >= 0 ? row[cityIdx] || undefined : undefined,
+      state: BR_STATE_CODES.has(rawState) ? rawState : undefined,
+      clubOrSchool: clubIdx >= 0 ? row[clubIdx] || undefined : undefined,
     });
   }
 
@@ -155,9 +165,9 @@ export async function POST(
         if (match?.id) {
           playerId = match.id;
           reused++;
-          if (p.city || p.ratingStd || p.federation) {
+          if (p.state || p.clubOrSchool || p.ratingStd || p.federation) {
             await supabase.from('players').update({
-              city: p.city, rating_std: p.ratingStd, federation: p.federation,
+              state: p.state, club_or_school: p.clubOrSchool, rating_std: p.ratingStd, federation: p.federation,
             }).eq('id', match.id);
           }
         }
@@ -171,9 +181,9 @@ export async function POST(
         if (exact) {
           playerId = exact.id;
           reused++;
-          if (p.fideId || p.city || p.ratingStd) {
+          if (p.fideId || p.state || p.clubOrSchool || p.ratingStd) {
             await supabase.from('players').update({
-              fide_id: p.fideId, city: p.city, rating_std: p.ratingStd, federation: p.federation,
+              fide_id: p.fideId, state: p.state, club_or_school: p.clubOrSchool, rating_std: p.ratingStd, federation: p.federation,
             }).eq('id', exact.id);
           }
         }
@@ -183,7 +193,7 @@ export async function POST(
       if (!playerId) {
         const { data: np } = await supabase
           .from('players')
-          .insert({ full_name: p.fullName, fide_id: p.fideId, federation: p.federation ?? 'BRA', rating_std: p.ratingStd, city: p.city })
+          .insert({ full_name: p.fullName, fide_id: p.fideId, federation: p.federation ?? 'BRA', rating_std: p.ratingStd, state: p.state, club_or_school: p.clubOrSchool })
           .select('id').single();
         if (np) { playerId = np.id; created++; }
       }
@@ -209,8 +219,8 @@ export async function POST(
 
       existingPlayerIds.add(playerId);
       added++;
-    } catch (err: any) {
-      const msg = String(err?.message ?? '');
+    } catch (err: unknown) {
+      const msg = String((err as Error)?.message ?? '');
       if (msg.includes('duplicate key') || msg.includes('unique')) skipped++;
       else failed++;
     }

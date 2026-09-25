@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from '@/i18n/navigation';
 import { useTournament, useTournamentStandings, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { StandingsTable } from '@/components/tournament/standings-table';
@@ -39,10 +41,13 @@ export function StandingsView({
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(id);
   const { data: rounds } = useTournamentRounds(id);
   const { data: followed } = useFollowedInTournament(id);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const groupFromUrl = searchParams.get('group');
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [query, setQuery] = useState('');
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   // Com o id vindo do servidor a classificação não depende mais do
   // useTournament ter resolvido — só espera a própria query.
@@ -52,7 +57,7 @@ export function StandingsView({
 
   // Pairing groups present in the standings (multi-group tournament). One
   // entry per distinct pairing_group_id, ordered by name.
-  const pairingGroups = (() => {
+  const pairingGroups = useMemo(() => {
     const seen = new Map<string, string>();
     for (const r of standings ?? []) {
       if (r.pairing_group_id && r.pairing_group_name && !seen.has(r.pairing_group_id)) {
@@ -62,20 +67,18 @@ export function StandingsView({
     return Array.from(seen.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => compareGroupNames(a.name, b.name));
-  })();
+  }, [standings]);
   const hasGroups = pairingGroups.length > 0;
+  const selectedGroupId = hasGroups
+    ? (pairingGroups.some((group) => group.id === groupFromUrl) ? groupFromUrl : pairingGroups[0].id)
+    : null;
 
-  // Default to the first group once standings load. Done in an effect so the
-  // selection sticks across refetches but resets if the groups list changes.
-  useEffect(() => {
-    if (!hasGroups) {
-      if (selectedGroupId !== null) setSelectedGroupId(null);
-      return;
-    }
-    if (!selectedGroupId || !pairingGroups.some((g) => g.id === selectedGroupId)) {
-      setSelectedGroupId(pairingGroups[0].id);
-    }
-  }, [hasGroups, pairingGroups.map((g) => g.id).join('|'), selectedGroupId]);
+  function selectGroup(groupId: string) {
+    setSelectedCategory('all');
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('group', groupId);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
 
   if (isLoading) return <PageSpinner />;
 
@@ -140,9 +143,11 @@ export function StandingsView({
   const categoryLabel = effectiveCategory === 'all'
     ? 'Absoluto'
     : (categories.find((c) => c.id === effectiveCategory)?.name ?? 'Absoluto');
-  const heading = groupLabel ? `${groupLabel} · ${categoryLabel}` : categoryLabel;
+  const isInitialRanking = rowsInGroup.every((row) => (row.games_played ?? 0) === 0);
+  const rankingLabel = isInitialRanking ? 'Ranking inicial' : categoryLabel;
+  const heading = groupLabel ? `${groupLabel} · ${rankingLabel}` : rankingLabel;
 
-  const isOngoing = tournament?.status === 'ongoing';
+  const isOngoing = tournament?.status === 'ongoing' && !isInitialRanking;
 
   // For the round status pill: with multi-group there are multiple rows per
   // round_number; summarizeRounds collapses them and drops drafts. The last
@@ -202,7 +207,7 @@ export function StandingsView({
                   {' · '}
                   {displayed.length} jogador{displayed.length !== 1 ? 'es' : ''}
                 </h2>
-                {latestRound && (() => {
+                {!isInitialRanking && latestRound && (() => {
                   const s = roundStatusLabel[latestRound.status] ?? roundStatusLabel.pending;
                   return (
                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${s.className}`}>
@@ -211,10 +216,16 @@ export function StandingsView({
                   );
                 })()}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                Critérios de desempate: Buchholz · BH Corte 1 · Sonneborn-Berger
-                <TiebreakLegendButton variant="link" />
-              </p>
+              {isInitialRanking ? (
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  Ordem de largada antes da primeira rodada. Pontos e desempates aparecerão após os resultados.
+                </p>
+              ) : (
+                <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  Critérios de desempate: Buchholz · BH Corte 1 · Sonneborn-Berger
+                  <TiebreakLegendButton variant="link" />
+                </p>
+              )}
               {showExport && (
                 <div className="mt-2">
                   <WhatsAppButton
@@ -236,21 +247,16 @@ export function StandingsView({
 
             <div className="flex flex-col items-start sm:items-end gap-1.5">
               {hasGroups && (
-                <div className="flex flex-wrap gap-1.5">
-                  {pairingGroups.map((g) => (
-                    <button
-                      key={g.id}
-                      onClick={() => { setSelectedGroupId(g.id); setSelectedCategory('all'); }}
-                      className={`min-h-10 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                        selectedGroupId === g.id
-                          ? 'bg-brand-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {g.name}
-                    </button>
-                  ))}
-                </div>
+                <label className="block min-w-48 text-left">
+                  <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Grupo</span>
+                  <select
+                    value={selectedGroupId ?? ''}
+                    onChange={(event) => selectGroup(event.target.value)}
+                    className="min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                  >
+                    {pairingGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+                  </select>
+                </label>
               )}
               {hasCategories && (
                 <div className="flex flex-wrap gap-1.5">
@@ -294,7 +300,12 @@ export function StandingsView({
             Nenhum jogador encontrado com esse nome.
           </p>
         ) : (
-          <StandingsTable standings={filteredDisplayed} tournamentSlug={slug} followedPlayerIds={followed?.playerIds} />
+          <StandingsTable
+            standings={filteredDisplayed}
+            tournamentSlug={slug}
+            followedPlayerIds={followed?.playerIds}
+            isInitialRanking={isInitialRanking}
+          />
         )}
       </div>
     </div>

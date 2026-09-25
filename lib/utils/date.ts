@@ -1,4 +1,4 @@
-import { format, parseISO, formatDistanceToNow, isAfter, isBefore, isToday } from 'date-fns';
+import { format, parseISO, formatDistanceToNow, isAfter, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function formatDate(date: string | Date, pattern = 'dd/MM/yyyy'): string {
@@ -25,4 +25,27 @@ export function isTournamentActive(startDate: string, endDate: string | null): b
   const end = endDate ? parseISO(endDate) : start;
   const now = new Date();
   return !isAfter(start, now) && !isBefore(end, now);
+}
+
+export function todayInBrazil(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
+
+/** Mensagem curta e estável para o período anterior ao torneio. Datas no
+ * formato ISO são convertidas em UTC para a diferença não variar com o fuso
+ * horário do servidor. */
+export function getTournamentStartLabel(startDate: string, today = todayInBrazil()): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(today)) return null;
+
+  const start = Date.parse(`${startDate}T00:00:00Z`);
+  const current = Date.parse(`${today}T00:00:00Z`);
+  const days = Math.round((start - current) / 86_400_000);
+
+  if (days < 0) return null;
+  if (days === 0) return 'Começa hoje';
+  if (days === 1) return 'Começa amanhã';
+  return `Começa em ${days} dias`;
 }

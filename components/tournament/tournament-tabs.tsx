@@ -1,43 +1,34 @@
 'use client';
 
 import { usePathname, Link } from '@/i18n/navigation';
+import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 import { TournamentTabIcon, type TournamentTabIconName } from './tournament-tab-icon';
 
 interface TournamentTabsProps {
   slug: string;
   roundsCount: number;
-  status?: string;
-  currentRoundNumber?: number | null;
 }
 
-export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentTabsProps) {
+export function TournamentTabs({ slug, roundsCount }: TournamentTabsProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const base = `/torneios/${slug}`;
+  const selectedGroupId = searchParams.get('group');
 
-  const isOngoing = status === 'ongoing' && currentRoundNumber != null;
-  // Antes de o torneio começar não existe rodada nem pontuação: as duas abas
-  // só levariam a telas vazias ("Nenhuma rodada criada" / "Classificação não
-  // disponível"). Aparecem quando há o que mostrar.
-  const hasStarted = status === 'ongoing' || status === 'finished';
+  // A ordem não muda no meio do torneio: memória espacial é mais útil que
+  // promover a rodada atual e fazer as outras abas "andarem". As telas vazias
+  // também ficam acessíveis antes da estreia, agora com mensagens próprias.
+  const tabs = [
+    { href: base,                   label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
+    { href: `${base}/participants`, label: 'Participantes', icon: 'participants' as TournamentTabIconName },
+    { href: `${base}/rounds`,       label: `Rodadas · ${roundsCount}`, icon: 'rounds' as TournamentTabIconName },
+    { href: `${base}/standings`,    label: 'Classificação', icon: 'standings' as TournamentTabIconName },
+  ];
 
-  const tabs = isOngoing
-    ? [
-        { href: `${base}/rounds/${currentRoundNumber}`, label: 'Rodada atual', icon: 'current-round' as TournamentTabIconName },
-        { href: `${base}/standings`,                    label: 'Classificação', icon: 'standings' as TournamentTabIconName },
-        { href: `${base}/participants`,                 label: 'Participantes', icon: 'participants' as TournamentTabIconName },
-        { href: base,                                   label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
-      ]
-    : [
-        { href: base,                   label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
-        { href: `${base}/participants`, label: 'Participantes', icon: 'participants' as TournamentTabIconName },
-        ...(hasStarted
-          ? [
-              { href: `${base}/rounds`,    label: 'Rodadas', icon: 'rounds' as TournamentTabIconName },
-              { href: `${base}/standings`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
-            ]
-          : []),
-      ];
+  function hrefWithContext(href: string) {
+    return selectedGroupId ? `${href}?group=${encodeURIComponent(selectedGroupId)}` : href;
+  }
 
   return (
     <nav className="grid grid-cols-2 border-b border-gray-200 dark:border-gray-800 -mx-4 sm:mx-0 sm:flex sm:flex-wrap sm:gap-0.5 sm:px-0">
@@ -48,7 +39,7 @@ export function TournamentTabs({ slug, status, currentRoundNumber }: TournamentT
         return (
           <Link
             key={tab.href}
-            href={tab.href}
+            href={hrefWithContext(tab.href)}
             className={cn(
               'flex min-h-11 flex-row items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors',
               'sm:px-4 sm:py-2.5 sm:text-sm sm:whitespace-nowrap',

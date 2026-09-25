@@ -702,6 +702,7 @@ export type Database = {
           cbx_id: string | null
           cbx_rating_checked_at: string | null
           city: string | null
+          club_or_school: string | null
           created_at: string
           created_by: string | null
           federation: string | null
@@ -714,6 +715,7 @@ export type Database = {
           rating_std: number | null
           sex: string | null
           state: string | null
+          title: string | null
           updated_at: string
         }
         Insert: {
@@ -721,6 +723,7 @@ export type Database = {
           cbx_id?: string | null
           cbx_rating_checked_at?: string | null
           city?: string | null
+          club_or_school?: string | null
           created_at?: string
           created_by?: string | null
           federation?: string | null
@@ -733,6 +736,7 @@ export type Database = {
           rating_std?: number | null
           sex?: string | null
           state?: string | null
+          title?: string | null
           updated_at?: string
         }
         Update: {
@@ -740,6 +744,7 @@ export type Database = {
           cbx_id?: string | null
           cbx_rating_checked_at?: string | null
           city?: string | null
+          club_or_school?: string | null
           created_at?: string
           created_by?: string | null
           federation?: string | null
@@ -752,6 +757,7 @@ export type Database = {
           rating_std?: number | null
           sex?: string | null
           state?: string | null
+          title?: string | null
           updated_at?: string
         }
         Relationships: []

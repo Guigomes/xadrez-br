@@ -58,6 +58,8 @@ export interface Player {
   city: string | null;
   /** migration 080: sincronizado de tournament_registrations.club_or_school na aprovação (enriquecimento, nunca sobrescreve valor já existente). */
   club_or_school: string | null;
+  /** Título enxadrístico importado (GM, WIM, FM etc.) — migration 077. */
+  title: string | null;
   birth_year: number | null;
   sex: PlayerSex | null;
   rating_std: number | null;

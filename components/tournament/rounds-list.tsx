@@ -1,13 +1,14 @@
 'use client';
 
 import { Link } from '@/i18n/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useTournament, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSpinner } from '@/components/ui/spinner';
 import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS } from '@/lib/utils/chess';
 import { summarizeRounds } from '@/lib/utils/rounds';
-import { formatDate } from '@/lib/utils/date';
+import { formatDate, getTournamentStartLabel } from '@/lib/utils/date';
 
 /**
  * Lista de rodadas do torneio — client component, usado tanto pelo público
@@ -26,6 +27,8 @@ import { formatDate } from '@/lib/utils/date';
  * usa `/torneios/{slug}/rounds`, admin usa `/admin/tournaments/{slug}/rounds`.
  */
 export function RoundsList({ slug, basePath }: { slug: string; basePath: string }) {
+  const searchParams = useSearchParams();
+  const selectedGroupId = searchParams.get('group');
   const { data: tournament, isLoading: loadingTournament } = useTournament(slug);
   const { data: rounds, isLoading: loadingRounds } = useTournamentRounds(tournament?.id ?? '');
 
@@ -33,7 +36,16 @@ export function RoundsList({ slug, basePath }: { slug: string; basePath: string 
   if (!tournament) return <p className="text-sm text-gray-500 dark:text-gray-400">Torneio não encontrado.</p>;
 
   if (!rounds?.length) {
-    return <EmptyState icon="📋" title="Nenhuma rodada criada" description="As rodadas serão publicadas pelo organizador." />;
+    const startLabel = !['cancelled', 'finished'].includes(tournament.status)
+      ? getTournamentStartLabel(tournament.start_date)
+      : null;
+    return (
+      <EmptyState
+        icon="📅"
+        title={startLabel ?? 'Primeira rodada ainda não publicada'}
+        description="Os emparceiramentos aparecerão aqui assim que forem divulgados. Ative as notificações no cabeçalho para receber o aviso."
+      />
+    );
   }
 
   // Group by round_number so multi-group tournaments show one card per round,
@@ -47,7 +59,7 @@ export function RoundsList({ slug, basePath }: { slug: string; basePath: string 
       {items.map((round) => (
         <Link
           key={round.roundNumber}
-          href={`${basePath}/${round.roundNumber}`}
+          href={`${basePath}/${round.roundNumber}${selectedGroupId ? `?group=${encodeURIComponent(selectedGroupId)}` : ''}`}
           className="card flex items-center justify-between gap-4 p-4 hover:shadow-sm hover:border-brand-200 dark:hover:border-brand-800 transition-all group"
         >
           <div className="flex items-center gap-3">

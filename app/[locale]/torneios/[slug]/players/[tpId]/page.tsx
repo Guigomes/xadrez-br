@@ -1,6 +1,7 @@
 'use client';
 
 import { use } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useTournament, useTournamentStandings, usePlayerHistory } from '@/lib/hooks/use-tournament';
@@ -10,8 +11,9 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { Button } from '@/components/ui/button';
-import { ShareResultButton } from '@/components/player-hub/share-result-button';
+import { StateBadge } from '@/components/player/state-badge';
 import { formatScore, formatTiebreak, resultBadgeColor, resultLabel, TIEBREAK_INFO } from '@/lib/utils/chess';
+import { getTournamentStartLabel } from '@/lib/utils/date';
 import type { PlayerHistoryRow } from '@/types/database';
 
 interface Props {
@@ -20,21 +22,21 @@ interface Props {
 
 export default function PlayerTournamentPage({ params }: Props) {
   const { slug, tpId } = use(params);
+  const searchParams = useSearchParams();
   const { data: tournament } = useTournament(slug);
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(tournament?.id ?? '');
   const playerRow = standings?.find((s) => s.tp_id === tpId);
 
-  // Fallback: fetch basic player info directly when standings don't exist yet.
-  // Enabled as soon as playerRow is missing — not gated on loadingStandings — so
-  // we always have a name to show while standings are still loading.
+  // A ficha precisa de cidade, UF, escola e grupo mesmo quando a classificação
+  // já existe; por isso o cadastro básico é sempre lido, não só como fallback.
   const { data: tpBasic, isLoading: loadingTpBasic } = useQuery({
     queryKey: ['tp-basic', tpId],
-    enabled: !playerRow,
+    enabled: !!tpId,
     queryFn: async () => {
       const supabase = createClient();
       const { data } = await supabase
         .from('tournament_players')
-        .select('player_id, initial_ranking, players(full_name, title, rating_std, state), tournament_categories(name)')
+        .select('player_id, initial_ranking, pairing_group_id, player:players(full_name, title, rating_std, state, city, club_or_school, fide_id, cbx_id), category:tournament_categories(name), pairing_group:pairing_groups(name)')
         .eq('id', tpId)
         .single();
       return data;
@@ -46,94 +48,117 @@ export default function PlayerTournamentPage({ params }: Props) {
   const { data: history, isLoading: loadingHistory } = usePlayerHistory(tournament?.id ?? '', tpId);
   const { isFollowing, toggleFollow } = usePlayerFollow(playerId ?? '', tournament?.id);
 
-  const { data: playerProfile } = useQuery({
-    queryKey: ['player-profile', playerId],
-    enabled: !!playerId,
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from('players')
-        .select('fide_id, cbx_id')
-        .eq('id', playerId!)
-        .single();
-      return data;
-    },
-    staleTime: Infinity,
-  });
-
   // Block only until we have a name to show. Stats section handles its own skeleton.
-  if (!tournament || (!playerRow && loadingTpBasic)) return <PageSpinner />;
+  if (!tournament || loadingTpBasic) return <PageSpinner />;
 
   // Build a display object from standings (if available) or fallback to tp basic info
-  const tp = tpBasic as { player_id: string; initial_ranking: number | null; players: { full_name: string; title: string | null; rating_std: number | null; state: string | null } | null; tournament_categories: { name: string } | null } | null | undefined;
-  const displayName = playerRow?.full_name ?? (tp?.players as { full_name: string } | null)?.full_name ?? '';
-  const displayTitle = playerRow?.title ?? (tp?.players as { title: string | null } | null)?.title ?? null;
-  const displayRating = playerRow?.rating_std ?? (tp?.players as { rating_std: number | null } | null)?.rating_std ?? null;
-  const displayState = playerRow?.state ?? (tp?.players as { state: string | null } | null)?.state ?? null;
-  const displayCategory = playerRow?.category_name ?? (tp?.tournament_categories as { name: string } | null)?.name ?? null;
-  const displayRank = playerRow?.rank ?? null;
+  const tp = tpBasic as {
+    player_id: string;
+    initial_ranking: number | null;
+    pairing_group_id: string | null;
+    player: { full_name: string; title: string | null; rating_std: number | null; state: string | null; city: string | null; club_or_school: string | null; fide_id: string | null; cbx_id: string | null } | null;
+    category: { name: string } | null;
+    pairing_group: { name: string } | null;
+  } | null | undefined;
+  const profile = tp?.player;
+  const displayName = playerRow?.full_name ?? profile?.full_name ?? '';
+  const displayTitle = playerRow?.title ?? profile?.title ?? null;
+  const displayRating = playerRow?.rating_std ?? profile?.rating_std ?? null;
+  const displayState = playerRow?.state ?? profile?.state ?? null;
+  const displayCategory = playerRow?.category_name ?? tp?.category?.name ?? null;
+  const displayGroupId = playerRow?.pairing_group_id ?? tp?.pairing_group_id ?? null;
+  const displayGroupName = playerRow?.pairing_group_name ?? tp?.pairing_group?.name ?? null;
+  const hasPlayed = (playerRow?.games_played ?? 0) > 0 || (history as PlayerHistoryRow[] | undefined)?.some((row) => row.result !== '*') === true;
+  const displayRank = hasPlayed
+    ? (playerRow?.rank ?? null)
+    : (playerRow?.initial_ranking ?? tp?.initial_ranking ?? null);
+  const groupSize = standings
+    ? standings.filter((row) => displayGroupId ? row.pairing_group_id === displayGroupId : !row.pairing_group_id).length
+    : null;
+  const contextGroupId = searchParams.get('group') ?? displayGroupId;
+  const backHref = `/torneios/${slug}/participants${contextGroupId ? `?group=${contextGroupId}` : ''}`;
+  const startLabel = !hasPlayed && !['cancelled', 'finished'].includes(tournament.status)
+    ? getTournamentStartLabel(tournament.start_date)
+    : null;
+  const displayClub = profile?.club_or_school
+    ?? (tournament.mode === 'imported' ? profile?.city : null);
+  const displayCity = tournament.mode === 'imported'
+    && displayClub?.trim().toLocaleLowerCase('pt-BR') === profile?.city?.trim().toLocaleLowerCase('pt-BR')
+    ? null
+    : profile?.city;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="max-w-3xl mx-auto space-y-4">
+      <Link href={backHref} className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">
+        ← {displayGroupName ?? 'Participantes'}
+      </Link>
       {/* Player header */}
       <div className="card p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold
-                ${displayRank === 1 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-                ${displayRank === 2 ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' : ''}
-                ${displayRank === 3 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
-                ${(displayRank ?? 0) > 3 ? 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400' : ''}
-                ${displayRank === null ? 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400' : ''}
+                ${hasPlayed && displayRank === 1 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
+                ${hasPlayed && displayRank === 2 ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' : ''}
+                ${hasPlayed && displayRank === 3 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
+                ${!hasPlayed || displayRank === null || (displayRank ?? 0) > 3 ? 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400' : ''}
               `}>
                 {displayRank ?? '–'}
               </span>
-              {standings?.length ? <span className="text-xs text-gray-400">de {standings.length}</span> : null}
+              {groupSize ? (
+                <span className="text-xs text-gray-400">
+                  {hasPlayed ? 'de' : 'posição inicial de'} {groupSize}{displayGroupName ? ` · ${displayGroupName}` : ''}
+                </span>
+              ) : null}
             </div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
               {displayTitle && <span className="text-gray-400 dark:text-gray-500 font-normal">{displayTitle} </span>}
               {displayName}
-            </h1>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
-              {displayState && <span className="text-xs text-gray-500">{displayState}</span>}
+            </h2>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <StateBadge state={displayState} className="text-xs" />
+              {displayCity && <span className="text-xs text-gray-500 dark:text-gray-400">{displayCity}</span>}
               {displayRating && (
                 <span className="text-xs text-gray-500">Rating {displayRating}</span>
               )}
+              {displayGroupName && <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 text-xs">{displayGroupName}</Badge>}
               {displayCategory && (
                 <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300 text-xs">
                   {displayCategory}
                 </Badge>
               )}
             </div>
-            {(playerProfile?.fide_id || playerProfile?.cbx_id) && (
+            {displayClub && (
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Escola/Clube: <span className="font-medium text-gray-800 dark:text-gray-200">{displayClub}</span></p>
+            )}
+            {(profile?.fide_id || profile?.cbx_id) && (
               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
-                {playerProfile.fide_id && (
+                {profile.fide_id && (
                   <a
-                    href={`https://ratings.fide.com/profile/${playerProfile.fide_id}`}
+                    href={`https://ratings.fide.com/profile/${profile.fide_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"
                   >
-                    FIDE #{playerProfile.fide_id}
+                    FIDE #{profile.fide_id}
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                   </a>
                 )}
-                {playerProfile.cbx_id && (
+                {profile.cbx_id && (
                   <a
-                    href={`https://www.cbx.org.br/enxadristas/?id=${playerProfile.cbx_id}`}
+                    href={`https://www.cbx.org.br/enxadristas/?id=${profile.cbx_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"
                   >
-                    CBX #{playerProfile.cbx_id}
+                    CBX #{profile.cbx_id}
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                   </a>
                 )}
               </div>
             )}
           </div>
-          {playerRow ? (
+          {playerRow && hasPlayed ? (
             <div className="flex flex-col items-end gap-2">
               <span className="text-3xl font-bold text-brand-600 dark:text-brand-400 tabular-nums">
                 {formatScore(playerRow.points)}
@@ -168,7 +193,7 @@ export default function PlayerTournamentPage({ params }: Props) {
               ))}
             </div>
           </div>
-        ) : playerRow ? (() => {
+        ) : playerRow && hasPlayed ? (() => {
           // Derive wins/draws/losses from history instead of stale recalculation data
           const finishedGames = (history as PlayerHistoryRow[] | undefined)?.filter(
             (r) => r.result !== '*' && !r.is_bye,
@@ -210,13 +235,6 @@ export default function PlayerTournamentPage({ params }: Props) {
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 mt-3">
-          <ShareButton title={`${displayName} – ${tournament.name}`} />
-          <ShareResultButton tournamentPlayerId={tpId} playerName={displayName} />
-          {tournament.status === 'finished' && (
-            <a href={`/api/certificates/${tpId}`} className="inline-flex min-h-9 items-center rounded-lg border border-gray-200 px-3 text-sm font-semibold text-brand-600 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
-              Certificado
-            </a>
-          )}
           <Button
             variant={isFollowing ? 'secondary' : 'primary'}
             size="sm"
@@ -225,8 +243,23 @@ export default function PlayerTournamentPage({ params }: Props) {
           >
             {isFollowing ? '★ Seguindo' : '☆ Acompanhar'}
           </Button>
+          <ShareButton title={`${displayName} – ${tournament.name}`} />
+          {tournament.status === 'finished' && (
+            <a href={`/api/certificates/${tpId}`} className="inline-flex min-h-9 items-center rounded-lg border border-gray-200 px-3 text-sm font-semibold text-brand-600 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
+              Certificado
+            </a>
+          )}
         </div>
       </div>
+
+      {!hasPlayed && (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 dark:border-blue-900/60 dark:bg-blue-950/30">
+          <p className="font-semibold text-blue-900 dark:text-blue-200">{startLabel ?? 'Aguardando a primeira rodada'}</p>
+          <p className="mt-1 text-sm text-blue-800/80 dark:text-blue-300/80">
+            Esta é a posição inicial no grupo. Pontos, partidas e critérios de desempate aparecerão após a publicação dos resultados.
+          </p>
+        </div>
+      )}
 
       {/* Round history */}
       <div className="card">
@@ -236,7 +269,7 @@ export default function PlayerTournamentPage({ params }: Props) {
         {loadingHistory ? (
           <div className="py-8 flex justify-center"><PageSpinner /></div>
         ) : (history?.length ?? 0) === 0 ? (
-          <p className="p-4 text-sm text-gray-500 dark:text-gray-400">Nenhuma partida disputada ainda.</p>
+          <p className="p-4 text-sm text-gray-500 dark:text-gray-400">A primeira partida ainda não foi publicada.</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
             {(history as PlayerHistoryRow[]).map((row) => (

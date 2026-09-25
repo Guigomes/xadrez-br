@@ -1,12 +1,12 @@
 import type React from 'react';
-import { redirect, Link } from '@/i18n/navigation';
-import { notFound } from 'next/navigation';
+import { Link } from '@/i18n/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import {
   ROUND_STATUS_LABELS, ROUND_STATUS_COLORS, TOURNAMENT_TYPE_LABELS, RATING_KIND_LABELS, TIEBREAK_INFO,
 } from '@/lib/utils/chess';
 import type { TiebreakKey } from '@/types/database';
-import { formatDateRange } from '@/lib/utils/date';
+import { formatDateRange, getTournamentStartLabel } from '@/lib/utils/date';
 import { Badge } from '@/components/ui/badge';
 
 interface Props {
@@ -73,6 +73,20 @@ export default async function TournamentOverviewPage({ params }: Props) {
     return nA !== nB ? nA - nB : a.name.localeCompare(b.name);
   });
   const hasGroups = groups.length > 0;
+  const startLabel = !currentRound && !['cancelled', 'finished'].includes(tournament.status)
+    ? getTournamentStartLabel(tournament.start_date)
+    : null;
+  const groupFamilies = Array.from(groups.reduce((families, group) => {
+    const age = group.name.match(/\d+/)?.[0] ?? group.name;
+    const family = families.get(age) ?? [];
+    family.push(group);
+    families.set(age, family);
+    return families;
+  }, new Map<string, typeof groups>()).entries()).map(([age, familyGroups]) => ({
+    age,
+    label: /^\d+$/.test(age) ? `${age} anos` : age,
+    groups: familyGroups,
+  }));
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
@@ -122,18 +136,30 @@ export default async function TournamentOverviewPage({ params }: Props) {
                 Ver todos
               </Link>
             </div>
-            <div className="flex flex-col gap-1">
-              {groups.map((g) => (
-                <Link
-                  key={g.id}
-                  href={`/torneios/${slug}/participants?group=${g.id}`}
-                  className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
-                >
-                  <span>{g.name}</span>
-                  <svg className="h-4 w-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
+            {startLabel && (
+              <p className="mb-3 text-xs text-blue-700 dark:text-blue-300">
+                {startLabel}. Escolha uma faixa para ver os inscritos.
+              </p>
+            )}
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {groupFamilies.map((family) => (
+                <div key={family.age} className="rounded-lg border border-gray-100 p-2.5 dark:border-gray-800">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{family.label}</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {family.groups.map((group) => {
+                      const shortName = group.name.replace(family.age, '').trim() || group.name;
+                      return (
+                        <Link
+                          key={group.id}
+                          href={`/torneios/${slug}/participants?group=${group.id}`}
+                          className="rounded-md bg-gray-50 px-2 py-2 text-center text-xs font-semibold text-gray-700 transition-colors hover:bg-brand-50 hover:text-brand-700 dark:bg-gray-800/70 dark:text-gray-300 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+                        >
+                          {shortName}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -176,8 +202,18 @@ export default async function TournamentOverviewPage({ params }: Props) {
           <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
             Rodadas ({completedRounds}/{tournament.rounds_count})
           </h2>
-          <div className="flex flex-wrap gap-2">
-            {aggregatedRounds.map((round) => (
+          {aggregatedRounds.length === 0 ? (
+            <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800/60">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {startLabel ?? 'Primeira rodada ainda não publicada'}
+              </p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Os emparceiramentos aparecerão aqui assim que forem divulgados.
+              </p>
+            </div>
+          ) : (
+            <><div className="flex flex-wrap gap-2">
+              {aggregatedRounds.map((round) => (
               <Link
                 key={round.round_number}
                 href={`/torneios/${slug}/rounds/${round.round_number}`}
@@ -189,19 +225,20 @@ export default async function TournamentOverviewPage({ params }: Props) {
               >
                 {round.round_number}
               </Link>
-            ))}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-green-500" /> Finalizada
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-amber-500" /> Em andamento
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600" /> Pendente
-            </span>
-          </div>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-green-500" /> Finalizada
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-amber-500" /> Em andamento
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600" /> Pendente
+              </span>
+            </div></>
+          )}
         </div>
 
         {/* Pairing groups in sidebar — só quando a coluna principal não já

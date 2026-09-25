@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { NotifyButton } from '@/components/tournament/notify-button';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
+import { getTournamentStartLabel } from '@/lib/utils/date';
 import { RelativeTime } from '@/components/ui/relative-time';
 import type { Metadata } from 'next';
 
@@ -40,6 +41,9 @@ export default async function TournamentLayout({ children, params }: Props) {
 
   const { tournament, currentRoundNumber, effectiveStatus, lastImportAt, lastImportStatus } = data;
   const lastImport = lastImportAt ? { last_run_at: lastImportAt, last_status: lastImportStatus } : null;
+  const startLabel = currentRoundNumber == null && !['cancelled', 'finished'].includes(effectiveStatus)
+    ? getTournamentStartLabel(tournament.start_date)
+    : null;
 
   return (
     <div>
@@ -49,7 +53,7 @@ export default async function TournamentLayout({ children, params }: Props) {
         <div className="container-app py-5">
           <div className="min-w-0 mb-1">
             <div className="flex items-center justify-between gap-2 mb-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
+              <h1 className="min-w-0 flex-1 break-words text-xl font-bold leading-tight text-gray-900 dark:text-gray-100 sm:text-2xl">
                 {tournament.name}
               </h1>
               <div className="flex items-center gap-2 shrink-0">
@@ -58,11 +62,11 @@ export default async function TournamentLayout({ children, params }: Props) {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <Badge className={getTournamentStatusColor(effectiveStatus, tournament.registration_end_date, tournament.registration_closes_by_date)}>
-                {effectiveStatus === 'ongoing' && (
+              <Badge className={startLabel ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : getTournamentStatusColor(effectiveStatus, tournament.registration_end_date, tournament.registration_closes_by_date)}>
+                {effectiveStatus === 'ongoing' && !startLabel && (
                   <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                 )}
-                {getTournamentStatusLabel(effectiveStatus, tournament.registration_end_date, tournament.registration_closes_by_date)}
+                {startLabel ?? getTournamentStatusLabel(effectiveStatus, tournament.registration_end_date, tournament.registration_closes_by_date)}
               </Badge>
               {tournament.tournament_type === 'swiss' && (
                 <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
@@ -92,11 +96,11 @@ export default async function TournamentLayout({ children, params }: Props) {
             )}
           </div>
 
-          <TournamentTabs slug={slug} roundsCount={tournament.rounds_count} status={effectiveStatus} currentRoundNumber={currentRoundNumber} />
+          <TournamentTabs slug={slug} roundsCount={tournament.rounds_count} />
         </div>
       </div>
 
-      <div className="container-app py-6">{children}</div>
+      <div className="container-app pb-20 pt-6 sm:pb-6">{children}</div>
     </div>
   );
 }
