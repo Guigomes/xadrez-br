@@ -55,7 +55,6 @@ export async function generateMetadata({
   return {
     title: { default: name, template: `%s | ${name}` },
     description: 'Crie e gerencie torneios de xadrez: inscrição online, emparceiramento automático, classificação por categoria e página pública ao vivo.',
-    manifest: '/manifest.json',
     icons: {
       icon: '/favicon.ico',
       apple: '/icons/icon-192x192.png',
@@ -113,6 +112,11 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      {/* Metadata assíncrono pode ser transmitido no <body> pelo Next.js.
+          O manifesto precisa estar no <head> para o Chrome reconhecer a PWA. */}
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className={`${inter.variable} font-sans min-h-screen flex flex-col`}>
         <NextIntlClientProvider messages={messages}>
           <Providers>
