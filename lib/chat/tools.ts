@@ -92,7 +92,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'estado_do_torneio',
     description:
-      'Situação geral de UM torneio: status, quantas rodadas já foram (finalizadas) de quantas previstas, qual a rodada atual, quantos participantes, quais os grupos de emparceiramento. Use para "quantas rodadas já foram?", "em que pé está o torneio?", "quantos jogadores tem?". NÃO traz a classificação nem pontos — para isso use classificacao_do_torneio.',
+      'Situação geral de UM torneio: status, quantas rodadas já foram (finalizadas) de quantas previstas, qual a rodada atual, o status de CADA rodada (campo "rodadas"), quantos participantes, quais os grupos de emparceiramento. Torneio com mais de um grupo pode ter uma rodada "ongoing" no meio (só alguns grupos terminaram) ao mesmo tempo que a próxima já existe pro grupo mais adiantado — sempre confira o campo "rodadas" pra não pular uma rodada intermediária ao responder. Use para "quantas rodadas já foram?", "em que pé está o torneio?", "quantos jogadores tem?". NÃO traz a classificação nem pontos — para isso use classificacao_do_torneio.',
     parameters: {
       type: 'object',
       properties: {
@@ -351,6 +351,7 @@ async function toolEstadoDoTorneio(args: Record<string, unknown>, ctx: ToolConte
   const { rounds } = summarizeRounds(roundRows ?? []);
   const finalizadas = rounds.filter((r) => r.status === 'finished').length;
   const atual = rounds.length ? rounds[rounds.length - 1] : null;
+  const multiGrupo = (groups ?? []).length > 1;
 
   return {
     torneio: t.name,
@@ -358,6 +359,14 @@ async function toolEstadoDoTorneio(args: Record<string, unknown>, ctx: ToolConte
     rodadas_previstas: t.rounds_count,
     rodadas_finalizadas: finalizadas,
     rodada_atual: atual ? { numero: atual.roundNumber, status: atual.status } : null,
+    // Status rodada a rodada — torneio multi-grupo pode ter uma rodada "no
+    // meio do caminho" (só alguns grupos terminaram) ao mesmo tempo que a
+    // próxima já existe pro grupo mais adiantado. rodadas_finalizadas +
+    // rodada_atual sozinhos escondem esse meio-termo (ex: rodada 2 ainda
+    // 'ongoing' enquanto a 3 já apareceu) e o modelo pula a rodada no meio
+    // ao narrar. Devolver a lista inteira deixa explícito pra qualquer caso.
+    rodadas: rounds.map((r) => ({ numero: r.roundNumber, status: r.status })),
+    ...(multiGrupo ? { multi_grupo: true } : {}),
     participantes: participantes ?? 0,
     grupos: (groups ?? []).map((g: any) => g.name),
   };
