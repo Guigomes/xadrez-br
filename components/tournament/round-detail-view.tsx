@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Link } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useTournament, useRoundSections } from '@/lib/hooks/use-tournament';
 import { Badge } from '@/components/ui/badge';
 import { PageSpinner } from '@/components/ui/spinner';
@@ -35,6 +35,7 @@ export function RoundDetailView({
   groupParam?: string;
   basePath: string;
 }) {
+  const router = useRouter();
   const { data: tournament, isLoading: loadingTournament } = useTournament(slug);
   const rn = parseInt(roundNumber);
   const { data: sections, isLoading: loadingSections } = useRoundSections(tournament?.id ?? '', rn);
@@ -59,6 +60,11 @@ export function RoundDetailView({
 
   // Preserved query string for prev/next nav so the chosen group sticks.
   const qs = selectedGroupId ? `?group=${selectedGroupId}` : '';
+
+  function selectGroup(groupId: string) {
+    rememberGroup(groupId);
+    router.replace(`${basePath}/${rn}?group=${encodeURIComponent(groupId)}`, { scroll: false });
+  }
 
   return (
     <div>
@@ -106,24 +112,20 @@ export function RoundDetailView({
         </div>
       </div>
 
-      {/* Group filter pills — same UX as the standings tab. */}
+      {/* Group selector — same UX as the standings tab. */}
       {isMultiGroup && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {sections.map((s) => (
-            <Link
-              key={s.groupId}
-              href={`${basePath}/${rn}?group=${s.groupId}`}
-              onClick={() => s.groupId && rememberGroup(s.groupId)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                s.groupId === selectedGroupId
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-              }`}
-            >
-              {s.groupName}
-            </Link>
-          ))}
-        </div>
+        <label className="mb-4 block min-w-48 max-w-xs text-left">
+          <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Grupo</span>
+          <select
+            value={selectedGroupId ?? ''}
+            onChange={(event) => selectGroup(event.target.value)}
+            className="min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+          >
+            {sections.map((section) => (
+              <option key={section.groupId} value={section.groupId ?? ''}>{section.groupName}</option>
+            ))}
+          </select>
+        </label>
       )}
 
       {/* Pairings for the selected group (or the single section for

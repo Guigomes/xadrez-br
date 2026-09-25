@@ -8,9 +8,10 @@ import { TournamentTabIcon, type TournamentTabIconName } from './tournament-tab-
 interface TournamentTabsProps {
   slug: string;
   roundsCount: number;
+  currentRoundNumber: number | null;
 }
 
-export function TournamentTabs({ slug, roundsCount }: TournamentTabsProps) {
+export function TournamentTabs({ slug, roundsCount, currentRoundNumber }: TournamentTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const base = `/torneios/${slug}`;
@@ -20,10 +21,15 @@ export function TournamentTabs({ slug, roundsCount }: TournamentTabsProps) {
   // promover a rodada atual e fazer as outras abas "andarem". As telas vazias
   // também ficam acessíveis antes da estreia, agora com mensagens próprias.
   const tabs = [
-    { href: base,                   label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
-    { href: `${base}/participants`, label: 'Participantes', icon: 'participants' as TournamentTabIconName },
-    { href: `${base}/rounds`,       label: `Rodadas · ${roundsCount}`, icon: 'rounds' as TournamentTabIconName },
-    { href: `${base}/standings`,    label: 'Classificação', icon: 'standings' as TournamentTabIconName },
+    { href: base, activePath: base, exact: true, label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
+    { href: `${base}/participants`, activePath: `${base}/participants`, label: 'Participantes', icon: 'participants' as TournamentTabIconName },
+    {
+      href: `${base}/rounds${currentRoundNumber ? `/${currentRoundNumber}` : ''}`,
+      activePath: `${base}/rounds`,
+      label: `Rodadas · ${roundsCount}`,
+      icon: 'rounds' as TournamentTabIconName,
+    },
+    { href: `${base}/standings`, activePath: `${base}/standings`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
   ];
 
   function hrefWithContext(href: string) {
@@ -33,9 +39,9 @@ export function TournamentTabs({ slug, roundsCount }: TournamentTabsProps) {
   return (
     <nav className="grid grid-cols-2 border-b border-gray-200 dark:border-gray-800 -mx-4 sm:mx-0 sm:flex sm:flex-wrap sm:gap-0.5 sm:px-0">
       {tabs.map((tab) => {
-        const isActive = tab.href === base
-          ? pathname === base
-          : pathname === tab.href || (tab.label !== 'Rodadas' && pathname.startsWith(tab.href + '/'));
+        const isActive = tab.exact
+          ? pathname === tab.activePath
+          : pathname === tab.activePath || pathname.startsWith(`${tab.activePath}/`);
         return (
           <Link
             key={tab.href}

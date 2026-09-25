@@ -96,7 +96,11 @@ export default async function TournamentLayout({ children, params }: Props) {
             )}
           </div>
 
-          <TournamentTabs slug={slug} roundsCount={tournament.rounds_count} />
+          <TournamentTabs
+            slug={slug}
+            roundsCount={tournament.rounds_count}
+            currentRoundNumber={currentRoundNumber}
+          />
         </div>
       </div>
 
