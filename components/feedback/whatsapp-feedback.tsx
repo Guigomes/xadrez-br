@@ -1,5 +1,5 @@
 const WHATSAPP_NUMBER = '5567992683450';
-const DEFAULT_MESSAGE = 'Olá! Vim pelo Gambito Torneios e queria deixar uma dúvida/sugestão.';
+const DEFAULT_MESSAGE = 'Olá! Vim pelo Gambito Torneios. Quero enviar o link de um torneio para acompanhamento ou falar sobre uma dúvida/sugestão.';
 
 function WhatsappIcon({ className }: { className?: string }) {
   return (
@@ -22,7 +22,7 @@ export function WhatsappFeedback({ testPhase = false, className = '' }: { testPh
     >
       <p>
         {testPhase && <strong className="font-semibold">Estamos em fase de teste. </strong>}
-        Qualquer dúvida ou sugestão, fale conosco.
+        Quer que a gente acompanhe um torneio? Envie o link pelo WhatsApp ou pelo Gambito — não precisa ser o organizador. Para dúvidas e sugestões, fale conosco.
       </p>
       <a
         href={href}

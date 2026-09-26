@@ -21,6 +21,10 @@ O Gambito consulta o sistema na hora e responde perguntas sobre o estado de um t
 
 Se você está vendo a página de um torneio quando abre o chat, o Gambito já sabe que é aquele — pode perguntar "quantas rodadas já foram?" sem dizer o nome. Fora de uma página de torneio, diga o nome do torneio na pergunta. Se o nome bater com mais de um torneio, o Gambito lista as opções e pede pra você escolher.
 
+## Pedir o acompanhamento de outro torneio
+
+Qualquer pessoa pode pedir que o Gambito Torneios acompanhe um torneio já existente — não precisa ser organizadora nem responsável pelo evento. Basta enviar o link do torneio, de preferência o link do Chess-Results, pelo WhatsApp disponível no site ou diretamente no chat do Gambito. A equipe analisa o link e adiciona o torneio para acompanhamento.
+
 ## Detalhe importante: torneios com vários grupos
 
 Num torneio dividido em grupos de emparceiramento (por exemplo Absoluto e faixas separadas), cada grupo tem o seu próprio líder e a sua própria classificação. Quando você pergunta "quem está ganhando?", o Gambito responde por grupo — não existe um único primeiro colocado do torneio inteiro.

@@ -24,6 +24,12 @@ describe('buildSystemPrompt', () => {
     expect(buildSystemPrompt([chunkA])).toContain('SOMENTE com base no CONTEXTO');
   });
 
+  it('explica que qualquer pessoa pode pedir acompanhamento de torneio', () => {
+    const prompt = buildSystemPrompt([]);
+    expect(prompt).toContain('enviar o link pelo WhatsApp ou pelo próprio Gambito');
+    expect(prompt).toContain('não precisa ser organizadora');
+  });
+
   it('cita o torneio da página quando informado', () => {
     const prompt = buildSystemPrompt([chunkA], { tournamentName: 'Copa 2026' });
     expect(prompt).toContain('Copa 2026');
