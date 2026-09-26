@@ -1120,6 +1120,7 @@ export type Database = {
           browser: string
           device_type: string
           first_seen_at: string
+          followed_player_ids: string[]
           id: string
           is_owner: boolean
           last_path: string | null
@@ -1131,6 +1132,7 @@ export type Database = {
           browser: string
           device_type: string
           first_seen_at?: string
+          followed_player_ids?: string[]
           id: string
           is_owner?: boolean
           last_path?: string | null
@@ -1142,6 +1144,7 @@ export type Database = {
           browser?: string
           device_type?: string
           first_seen_at?: string
+          followed_player_ids?: string[]
           id?: string
           is_owner?: boolean
           last_path?: string | null

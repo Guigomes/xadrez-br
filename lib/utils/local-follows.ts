@@ -44,3 +44,7 @@ export function getLocalFollowedPlayerIds(tournamentId: string): Set<string> {
       .map((f) => f.playerId)
   );
 }
+
+export function getAllLocalFollowedPlayerIds(): Set<string> {
+  return new Set(load().map((follow) => follow.playerId));
+}

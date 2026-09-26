@@ -7,6 +7,11 @@ export interface AccessSummary {
   uniqueDevices30Days: number;
 }
 
+export interface FollowedPlayer {
+  id: string;
+  name: string;
+}
+
 export interface AccessDevice {
   id: string;
   deviceType: DeviceType;
@@ -18,6 +23,7 @@ export interface AccessDevice {
   lastSeenAt: string;
   lastPath: string | null;
   views30Days: number;
+  followedPlayers: FollowedPlayer[];
 }
 
 export interface RecentAccess {
@@ -30,6 +36,7 @@ export interface RecentAccess {
   deviceType: DeviceType;
   browser: string;
   os: string;
+  followedPlayers: FollowedPlayer[];
 }
 
 export interface AccessDashboardData {

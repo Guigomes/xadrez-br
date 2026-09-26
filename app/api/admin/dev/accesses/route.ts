@@ -49,6 +49,19 @@ export async function GET() {
     return NextResponse.json({ error: firstError.message }, { status: 500 });
   }
 
+  const followedPlayerIds = [...new Set(
+    (devicesResult.data ?? []).flatMap((device) => device.followed_player_ids)
+  )].slice(0, 500);
+  const followedPlayersResult = followedPlayerIds.length
+    ? await admin.from('players').select('id, full_name').in('id', followedPlayerIds)
+    : { data: [], error: null };
+  if (followedPlayersResult.error) {
+    return NextResponse.json({ error: followedPlayersResult.error.message }, { status: 500 });
+  }
+  const playerNameById = new Map(
+    (followedPlayersResult.data ?? []).map((player) => [player.id, player.full_name])
+  );
+
   const events = eventsResult.data ?? [];
   const viewsByDevice = new Map<string, number>();
   for (const event of events) {
@@ -66,6 +79,9 @@ export async function GET() {
     lastSeenAt: device.last_seen_at,
     lastPath: device.last_path,
     views30Days: viewsByDevice.get(device.id) ?? 0,
+    followedPlayers: device.followed_player_ids
+      .map((id) => ({ id, name: playerNameById.get(id) }))
+      .filter((player): player is { id: string; name: string } => Boolean(player.name)),
   }));
   const deviceById = new Map(devices.map((device) => [device.id, device]));
 
@@ -89,6 +105,7 @@ export async function GET() {
         deviceType: device?.deviceType ?? 'other',
         browser: device?.browser ?? 'Desconhecido',
         os: device?.os ?? 'Desconhecido',
+        followedPlayers: device?.followedPlayers ?? [],
       };
     }),
   };

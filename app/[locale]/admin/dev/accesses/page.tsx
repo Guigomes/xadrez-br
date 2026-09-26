@@ -25,6 +25,13 @@ function formatDate(value: string) {
   });
 }
 
+function followedPlayersLabel(players: { name: string }[]) {
+  if (!players.length) return 'Não acompanha nenhum atleta';
+  const visible = players.slice(0, 3).map((player) => player.name).join(', ');
+  const remaining = players.length - 3;
+  return `Acompanha: ${visible}${remaining > 0 ? ` e mais ${remaining}` : ''}`;
+}
+
 export default function DevAccessesPage() {
   const { data: profile, isLoading } = useProfile();
 
@@ -134,6 +141,9 @@ function AccessesPanel() {
                         <p className="truncate text-xs text-gray-400">
                           {device.lastPath ?? '—'} · ID {device.id.slice(-8)}
                         </p>
+                        <p className={`mt-1 text-xs ${device.followedPlayers.length ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'}`}>
+                          {device.followedPlayers.length ? '★ ' : ''}{followedPlayersLabel(device.followedPlayers)}
+                        </p>
                       </div>
                     </div>
                     <button
@@ -166,6 +176,11 @@ function AccessesPanel() {
                     <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                       {access.isOwner ? `Meu · ${access.ownerLabel}` : `${access.browser} · ${access.os} · ${access.deviceId.slice(-8)}`}
                     </p>
+                    {access.followedPlayers.length > 0 && (
+                      <p className="truncate text-xs text-amber-600 dark:text-amber-400">
+                        ★ {followedPlayersLabel(access.followedPlayers)}
+                      </p>
+                    )}
                   </div>
                   <time className="shrink-0 text-xs text-gray-400">{formatDate(access.visitedAt)}</time>
                 </div>

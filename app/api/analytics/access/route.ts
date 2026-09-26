@@ -20,6 +20,16 @@ export async function POST(request: NextRequest) {
   const browser = cleanText(body?.browser, 80);
   const os = cleanText(body?.os, 80);
   const deviceType = cleanText(body?.deviceType, 20) as DeviceType | null;
+  const hasFollowedPlayerIds = Array.isArray(body?.followedPlayerIds);
+  const followedPlayerCandidates: unknown[] = hasFollowedPlayerIds
+    ? body.followedPlayerIds
+    : [];
+  const requestedPlayerIds = [...new Set(
+    followedPlayerCandidates.filter(
+      (id): id is string => typeof id === 'string' && UUID_PATTERN.test(id)
+    )
+  )].slice(0, 100);
+  const recordAccess = body?.recordAccess !== false;
 
   if (
     !deviceId || !UUID_PATTERN.test(deviceId) ||
@@ -31,6 +41,17 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
   const now = new Date().toISOString();
+  let validPlayerIds: string[] = [];
+  if (requestedPlayerIds.length) {
+    const { data: players, error: playersError } = await admin
+      .from('players')
+      .select('id')
+      .in('id', requestedPlayerIds);
+    if (playersError) {
+      return NextResponse.json({ error: 'Não foi possível validar os atletas.' }, { status: 500 });
+    }
+    validPlayerIds = (players ?? []).map((player) => player.id);
+  }
 
   const deviceUpdate = {
     device_type: deviceType,
@@ -38,6 +59,7 @@ export async function POST(request: NextRequest) {
     os,
     last_seen_at: now,
     last_path: path,
+    ...(hasFollowedPlayerIds ? { followed_player_ids: validPlayerIds } : {}),
   };
 
   const { data: existing, error: updateError } = await admin
@@ -65,15 +87,17 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const { error: eventError } = await admin.from('site_access_events').insert({
-    device_id: deviceId,
-    path,
-    user_id: null,
-    visited_at: now,
-  });
+  if (recordAccess) {
+    const { error: eventError } = await admin.from('site_access_events').insert({
+      device_id: deviceId,
+      path,
+      user_id: null,
+      visited_at: now,
+    });
 
-  if (eventError) {
-    return NextResponse.json({ error: 'Não foi possível registrar a visualização.' }, { status: 500 });
+    if (eventError) {
+      return NextResponse.json({ error: 'Não foi possível registrar a visualização.' }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ ok: true }, { status: 201 });
