@@ -1083,6 +1083,74 @@ export type Database = {
           },
         ]
       }
+      site_access_events: {
+        Row: {
+          device_id: string
+          id: number
+          path: string
+          user_id: string | null
+          visited_at: string
+        }
+        Insert: {
+          device_id: string
+          id?: number
+          path: string
+          user_id?: string | null
+          visited_at?: string
+        }
+        Update: {
+          device_id?: string
+          id?: number
+          path?: string
+          user_id?: string | null
+          visited_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_access_events_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "site_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_devices: {
+        Row: {
+          browser: string
+          device_type: string
+          first_seen_at: string
+          id: string
+          is_owner: boolean
+          last_path: string | null
+          last_seen_at: string
+          os: string
+          owner_label: string | null
+        }
+        Insert: {
+          browser: string
+          device_type: string
+          first_seen_at?: string
+          id: string
+          is_owner?: boolean
+          last_path?: string | null
+          last_seen_at?: string
+          os: string
+          owner_label?: string | null
+        }
+        Update: {
+          browser?: string
+          device_type?: string
+          first_seen_at?: string
+          id?: string
+          is_owner?: boolean
+          last_path?: string | null
+          last_seen_at?: string
+          os?: string
+          owner_label?: string | null
+        }
+        Relationships: []
+      }
       standings: {
         Row: {
           buchholz: number | null

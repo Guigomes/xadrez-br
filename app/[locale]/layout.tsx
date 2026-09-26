@@ -9,6 +9,7 @@ import { Providers } from './providers';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Analytics } from '@vercel/analytics/next';
+import { AccessTracker } from '@/components/access-tracker';
 import { PwaRegister } from '@/components/pwa-register';
 import { ErrorLogger } from '@/components/error-logger';
 import dynamic from 'next/dynamic';
@@ -129,6 +130,7 @@ export default async function RootLayout({
         <PwaRegister />
         <ErrorLogger />
         <Analytics />
+        <AccessTracker />
         {/* Verificação de propriedade do site no Google AdSense — precisa
             aparecer em toda página, não só na de torneio. */}
         <Script

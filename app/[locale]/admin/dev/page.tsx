@@ -160,6 +160,16 @@ function DevPanel() {
       </div>
 
       <div className="card p-5 space-y-2 mb-4">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Acessos do site</h2>
+        <Link
+          href="/admin/dev/accesses"
+          className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          → Ver acessos separados por aparelho
+        </Link>
+      </div>
+
+      <div className="card p-5 space-y-2 mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Log de erros</h2>
         <Link
           href="/admin/dev/errors"
