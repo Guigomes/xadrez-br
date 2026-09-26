@@ -13,6 +13,22 @@ export function normalize(value: string): string {
 }
 
 /**
+ * Nome legível sem perder a ordem enviada pelo Chess-Results.
+ *
+ * O Excel do Chess-Results usa a vírgula para separar partes do nome, mas a
+ * posição delas depende de como o organizador cadastrou o jogador. Inverter
+ * cegamente os blocos transformava "Pietro Nishimura Caste, Fernandes" em
+ * "Fernandes Pietro Nishimura Caste". Para exibição, removemos apenas o
+ * separador; o valor original continua salvo em tournament_players.source_name.
+ */
+export function displayNameFromSource(value: string): string {
+  return value
+    .replace(/\s*,\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Chave de casamento de nome de jogador, insensível à ORDEM das palavras —
  * não só a acento/caixa. chess-results não é consistente entre a planilha
  * de jogadores e a de pareamentos de um mesmo torneio: às vezes uma delas

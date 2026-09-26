@@ -2,8 +2,11 @@ import webpush from 'web-push';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 import { createAdminClient } from '@/lib/supabase/server';
+import { subscriptionTracksPlayers } from '@/lib/tournament-notifications';
 
 type AdminClient = ReturnType<typeof createAdminClient>;
+type PushPayload = { title: string; body: string; url?: string };
+type WebPushSubscription = { endpoint: string; p256dh: string; auth: string };
 
 function initVapid() {
   const email = process.env.VAPID_EMAIL!;
@@ -17,7 +20,7 @@ function initVapid() {
 
 async function sendToSubscriptions(
   admin: AdminClient,
-  subs: { endpoint: string; p256dh: string; auth: string }[],
+  subs: WebPushSubscription[],
   payload: object
 ) {
   if (!subs.length) return;
@@ -112,7 +115,7 @@ export async function sendFcmToAdmins(payload: {
 // Notify all subscribers of a tournament regardless of user_id
 export async function sendTournamentNotification(
   tournamentId: string,
-  payload: { title: string; body: string; url?: string }
+  payload: PushPayload
 ) {
   initVapid();
   const admin = createAdminClient();
@@ -125,9 +128,113 @@ export async function sendTournamentNotification(
   await sendToSubscriptions(admin, subs ?? [], payload);
 }
 
+async function getTrackedUserIds(
+  admin: AdminClient,
+  tournamentId: string,
+  playerIds?: string[],
+): Promise<Set<string>> {
+  let followsQuery = admin
+    .from('player_follows')
+    .select('user_id')
+    .eq('tournament_id', tournamentId);
+
+  if (playerIds) {
+    if (!playerIds.length) return new Set();
+    followsQuery = followsQuery.in('player_id', playerIds);
+  }
+
+  let linkedPlayerIds = playerIds;
+  if (!linkedPlayerIds) {
+    const { data: tournamentPlayers, error } = await admin
+      .from('tournament_players')
+      .select('player_id')
+      .eq('tournament_id', tournamentId)
+      .eq('status', 'active');
+    if (error) throw error;
+    linkedPlayerIds = [...new Set((tournamentPlayers ?? []).map((tp) => tp.player_id))];
+  }
+
+  const [followsResult, linksResult] = await Promise.all([
+    followsQuery,
+    linkedPlayerIds.length
+      ? admin
+          .from('user_player_links')
+          .select('user_id')
+          .eq('status', 'verified')
+          .in('player_id', linkedPlayerIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (followsResult.error) throw followsResult.error;
+  if (linksResult.error) throw linksResult.error;
+
+  return new Set([
+    ...(followsResult.data ?? []).map((follow) => follow.user_id),
+    ...(linksResult.data ?? []).map((link) => link.user_id),
+  ]);
+}
+
+// Envia o resumo global apenas para quem acompanha o torneio, mas nao um
+// jogador dele. Assinaturas anonimas entram naturalmente neste grupo.
+export async function sendTournamentNotificationToNonFollowers(
+  tournamentId: string,
+  payload: PushPayload,
+) {
+  initVapid();
+  const admin = createAdminClient();
+  const [{ data: subs, error }, trackedUserIds] = await Promise.all([
+    admin
+      .from('push_subscriptions')
+      .select('endpoint, p256dh, auth, user_id, followed_player_ids')
+      .eq('tournament_id', tournamentId),
+    getTrackedUserIds(admin, tournamentId),
+  ]);
+  if (error) throw error;
+
+  const recipients = (subs ?? []).filter(
+    (sub) => !subscriptionTracksPlayers(
+      { userId: sub.user_id, followedPlayerIds: sub.followed_player_ids },
+      trackedUserIds,
+    ),
+  );
+  console.log(`[push] tournament ${tournamentId}, sem jogador seguido: ${recipients.length} subs`);
+  await sendToSubscriptions(admin, recipients, payload);
+}
+
+// Um unico push por dispositivo, mesmo quando o usuario segue os dois
+// jogadores da partida ou mais de um jogador da mesma categoria.
+export async function sendPlayerFollowersNotification(
+  tournamentId: string,
+  playerIds: string[],
+  payload: PushPayload,
+) {
+  const uniquePlayerIds = [...new Set(playerIds.filter(Boolean))];
+  if (!uniquePlayerIds.length) return;
+
+  initVapid();
+  const admin = createAdminClient();
+  const trackedUserIds = await getTrackedUserIds(admin, tournamentId, uniquePlayerIds);
+  if (!trackedUserIds.size) return;
+
+  const { data: subs, error } = await admin
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth, user_id, followed_player_ids')
+    .eq('tournament_id', tournamentId);
+  if (error) throw error;
+
+  const relevantPlayerIds = new Set(uniquePlayerIds);
+  const recipients = (subs ?? []).filter((sub) => subscriptionTracksPlayers(
+    { userId: sub.user_id, followedPlayerIds: sub.followed_player_ids },
+    trackedUserIds,
+    relevantPlayerIds,
+  ));
+  console.log(`[push] tournament ${tournamentId}, seguidores: ${recipients.length} subs`);
+  await sendToSubscriptions(admin, recipients, payload);
+}
+
 export async function sendUserNotification(
   userId: string,
-  payload: { title: string; body: string; url?: string }
+  payload: PushPayload
 ) {
   initVapid();
   const admin = createAdminClient();

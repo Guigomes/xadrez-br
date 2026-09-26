@@ -6,17 +6,31 @@ describe('parseRows do Chess-Results', () => {
     const rows = [
       ['Ranking inicial'],
       ['Nº.', '', 'Nome', 'ID FIDE', 'EloN', 'Gr', 'Clube/Cidade'],
-      ['1', 'CM', 'Silva, Maria', '123456', '1800', 'mg', 'Colégio Exemplo'],
+      ['1', 'CM', 'Maria, Silva', '123456', '1800', 'mg', 'Colégio Exemplo'],
     ];
 
     expect(parseRows(rows)).toEqual([
       expect.objectContaining({
         fullName: 'Maria Silva',
+        sourceName: 'Maria, Silva',
         title: 'CM',
         state: 'MG',
         clubOrSchool: 'Colégio Exemplo',
       }),
     ]);
+  });
+
+  it('preserva a ordem da fonte e guarda o nome original como alias', () => {
+    const rows = [
+      ['Nº.', '', 'Nome', 'ID FIDE'],
+      ['1', '', 'Pietro Nishimura Caste, Fernandes', '538001900'],
+    ];
+
+    expect(parseRows(rows)[0]).toEqual(expect.objectContaining({
+      fullName: 'Pietro Nishimura Caste Fernandes',
+      sourceName: 'Pietro Nishimura Caste, Fernandes',
+      fideId: '538001900',
+    }));
   });
 
   it('não grava como UF um grupo que não seja uma sigla estadual', () => {

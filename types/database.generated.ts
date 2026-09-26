@@ -767,6 +767,7 @@ export type Database = {
           auth: string
           created_at: string | null
           endpoint: string
+          followed_player_ids: string[]
           id: string
           p256dh: string
           tournament_id: string | null
@@ -776,6 +777,7 @@ export type Database = {
           auth: string
           created_at?: string | null
           endpoint: string
+          followed_player_ids?: string[]
           id?: string
           p256dh: string
           tournament_id?: string | null
@@ -785,6 +787,7 @@ export type Database = {
           auth?: string
           created_at?: string | null
           endpoint?: string
+          followed_player_ids?: string[]
           id?: string
           p256dh?: string
           tournament_id?: string | null
@@ -793,6 +796,51 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "push_subscriptions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_notification_events: {
+        Row: {
+          created_at: string
+          event_key: string
+          event_type: string
+          id: string
+          pairing_group_id: string | null
+          round_number: number
+          tournament_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_key: string
+          event_type: string
+          id?: string
+          pairing_group_id?: string | null
+          round_number: number
+          tournament_id: string
+        }
+        Update: {
+          created_at?: string
+          event_key?: string
+          event_type?: string
+          id?: string
+          pairing_group_id?: string | null
+          round_number?: number
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_notification_events_pairing_group_id_fkey"
+            columns: ["pairing_group_id"]
+            isOneToOne: false
+            referencedRelation: "pairing_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_notification_events_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
             referencedRelation: "tournaments"
@@ -1207,6 +1255,7 @@ export type Database = {
         Row: {
           base_url: string
           created_at: string
+          discovered_rounds_count: number | null
           enabled: boolean
           id: string
           last_message: string | null
@@ -1219,6 +1268,7 @@ export type Database = {
         Insert: {
           base_url: string
           created_at?: string
+          discovered_rounds_count?: number | null
           enabled?: boolean
           id?: string
           last_message?: string | null
@@ -1231,6 +1281,7 @@ export type Database = {
         Update: {
           base_url?: string
           created_at?: string
+          discovered_rounds_count?: number | null
           enabled?: boolean
           id?: string
           last_message?: string | null
@@ -1269,6 +1320,7 @@ export type Database = {
           player_id: string
           progressive: number | null
           sonneborn_berger: number | null
+          source_name: string | null
           status: Database["public"]["Enums"]["player_tournament_status"]
           tournament_id: string
           updated_at: string
@@ -1291,6 +1343,7 @@ export type Database = {
           player_id: string
           progressive?: number | null
           sonneborn_berger?: number | null
+          source_name?: string | null
           status?: Database["public"]["Enums"]["player_tournament_status"]
           tournament_id: string
           updated_at?: string
@@ -1313,6 +1366,7 @@ export type Database = {
           player_id?: string
           progressive?: number | null
           sonneborn_berger?: number | null
+          source_name?: string | null
           status?: Database["public"]["Enums"]["player_tournament_status"]
           tournament_id?: string
           updated_at?: string

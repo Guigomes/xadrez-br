@@ -126,7 +126,7 @@ export async function importStandings(
   // initial_ranking só entra como fallback.
   let playersQuery = supabase
     .from('tournament_players')
-    .select('id, initial_ranking, player:players(full_name)')
+    .select('id, initial_ranking, source_name, player:players(full_name)')
     .eq('tournament_id', tournamentId);
 
   if (pairingGroupId) {
@@ -139,8 +139,10 @@ export async function importStandings(
   const byInitial = new Map<number, string>();
   for (const tp of tPlayers ?? []) {
     const fullName = ((tp.player as unknown) as { full_name?: string } | null)?.full_name ?? '';
-    const key = normalizeNameKey(fullName);
-    if (key) byName.set(key, tp.id as string);
+    for (const name of [fullName, tp.source_name as string | null]) {
+      const key = normalizeNameKey(name ?? '');
+      if (key) byName.set(key, tp.id as string);
+    }
     const rank = tp.initial_ranking as number | null;
     if (rank != null) byInitial.set(rank, tp.id as string);
   }

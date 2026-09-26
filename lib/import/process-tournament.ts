@@ -131,6 +131,15 @@ export async function processImport(
     );
   }
 
+  // NULL no banco significa "fonte ainda não inspecionada"; zero significa
+  // uma categoria real sem rodadas. O processador de push usa esta diferença
+  // para saber quais categorias devem participar do resumo global.
+  const { error: roundsCountError } = await supabase
+    .from('tournament_imports')
+    .update({ discovered_rounds_count: maxRound })
+    .eq('id', row.id);
+  if (roundsCountError) throw new Error(roundsCountError.message);
+
   // 3. Pairings for each round (art=2) — pula rodada já 'finished' localmente,
   // ela não muda mais no chess-results.
   let finishedRoundsQuery = supabase
@@ -147,7 +156,7 @@ export async function processImport(
   let totalPairings = 0;
   let totalPairingsUnmatched = 0;
   let skippedFinishedRounds = 0;
-  const roundsToNotify: string[] = [];
+  const roundsToNotify = new Set<string>();
   for (let rd = 1; rd <= maxRound; rd++) {
     if (finishedRounds.has(rd)) {
       skippedFinishedRounds++;
@@ -159,7 +168,10 @@ export async function processImport(
       const r = await importPairings(supabase, row.tournament_id, buf, pairingGroupId);
       totalPairings += r.imported;
       totalPairingsUnmatched += r.unmatched;
-      if (r.published && r.roundId) roundsToNotify.push(r.roundId);
+      // A rota interna deduplica quatro eventos independentes. Ela precisa ser
+      // chamada em toda sincronização da rodada para perceber resultados que
+      // chegam enquanto o status continua 'ongoing'.
+      if (r.roundId) roundsToNotify.add(r.roundId);
     } catch (err) {
       // Rodada futura ainda não publicada falha o parse — pula e segue.
       console.warn(`[${row.id}] rodada ${rd} falhou: ${(err as Error).message}`);
@@ -171,8 +183,9 @@ export async function processImport(
   const standingsBuf = await fetchExcelDirect(standingsPageUrl);
   const standingsResult = await importStandings(supabase, row.tournament_id, standingsBuf, pairingGroupId);
 
-  // 5. Push das rodadas recém-publicadas — só depois de gravar pairings E
-  // standings, pra rota interna ler dado já consistente.
+  // 5. Processa os eventos de push só depois de gravar pairings E standings,
+  // para a rota interna ler dados consistentes. As chaves persistidas no app
+  // impedem reenvio nas sincronizações seguintes.
   for (const roundId of roundsToNotify) {
     await notifyRoundPublished(roundId);
   }

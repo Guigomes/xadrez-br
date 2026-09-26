@@ -284,7 +284,13 @@ async function toolBuscarJogador(args: Record<string, unknown>, ctx: ToolContext
   // pra confirmar com a pessoa antes de responder como certeza.
   let aproximado = false;
   if (!players?.length) {
-    const words = nome.split(/\s+/).filter((w) => w.length >= 2);
+    // Remove pontuação (especialmente a vírgula do formato FIDE), mas mantém
+    // os acentos porque ILIKE compara o texto armazenado no Postgres.
+    const words = nome
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length >= 2);
     if (words.length > 1) {
       let query = ctx.supabase.from('players').select('id, full_name, city, state');
       for (const w of words) query = query.ilike('full_name', `%${w}%`);

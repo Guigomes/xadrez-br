@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { StateBadge } from '@/components/player/state-badge';
 import { cn } from '@/lib/utils/cn';
-import { compareParticipantOrder, compareGroupNames } from '@/lib/utils/chess';
+import { compareParticipantOrder, compareGroupNames, formatScore } from '@/lib/utils/chess';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -77,7 +77,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
     }
   }
 
-  const [{ data: pairingGroups }, { data: playersData, count }] = await Promise.all([
+  const [{ data: pairingGroups }, { data: playersData, count }, { data: standingsData }] = await Promise.all([
     supabase
       .from('pairing_groups')
       .select('id, name')
@@ -86,9 +86,11 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
     playersQuery
       .order('initial_ranking', { ascending: true, nullsFirst: false })
       .range(from, from + PAGE_SIZE - 1),
+    supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id }),
   ]);
 
   const groups = [...(pairingGroups ?? [])].sort((a, b) => compareGroupNames(a.name, b.name));
+  const groupById = new Map(groups.map((group) => [group.id, group]));
   const hasGroups = groups.length > 0;
   // Todo torneio nativo nasce com UM grupo chamado "Absoluto"
   // (lib/utils/create-tournament-setup.ts), então com um grupo só os chips
@@ -102,6 +104,44 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
   // da página atual: com seed gerado a ordem do banco já é a definitiva, e sem
   // seed nenhuma ordem entre páginas seria estável de qualquer jeito.
   const players = playersData ? [...playersData].sort(compareParticipantOrder) : playersData;
+
+  // A posição da categoria segue exatamente a ordem devolvida pela mesma RPC
+  // usada na aba Classificação. Ao filtrar uma categoria, aquela tela apenas
+  // renumera as linhas restantes (1, 2, 3...), preservando pontos e desempates.
+  // Quando não há uma subcategoria, o próprio grupo (ex.: "6 Abs") é a
+  // classificação correspondente do participante.
+  const standings = standingsData ?? [];
+  const groupHasResults = new Map<string, boolean>();
+  const groupKey = (id: string | null) => id ?? '__ungrouped__';
+  for (const row of standings) {
+    const key = groupKey(row.pairing_group_id);
+    if ((row.games_played ?? 0) > 0 || Number(row.points) > 0) {
+      groupHasResults.set(key, true);
+    }
+  }
+
+  const categoryCounters = new Map<string, number>();
+  const performanceByTpId = new Map<string, {
+    points: number;
+    categoryRank: number | null;
+    classificationName: string;
+    hasResults: boolean;
+  }>();
+  for (const row of standings) {
+    const key = groupKey(row.pairing_group_id);
+    let categoryRank = row.rank ?? null;
+    if (row.category_id) {
+      const categoryKey = `${key}:${row.category_id}`;
+      categoryRank = (categoryCounters.get(categoryKey) ?? 0) + 1;
+      categoryCounters.set(categoryKey, categoryRank);
+    }
+    performanceByTpId.set(row.tp_id, {
+      points: Number(row.points ?? 0),
+      categoryRank,
+      classificationName: row.category_name ?? row.pairing_group_name ?? 'Geral',
+      hasResults: groupHasResults.get(key) === true,
+    });
+  }
 
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -213,6 +253,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                     <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Grupo</th>
                   )}
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Categoria</th>
+                  <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Desempenho</th>
                   <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Rating</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Cidade</th>
                   <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">UF</th>
@@ -225,8 +266,19 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                   const cat = tp.category;
                   const player = tp.player;
                   const playerGroup = tp.pairing_group_id
-                    ? groups.find((g) => g.id === tp.pairing_group_id)
+                    ? groupById.get(tp.pairing_group_id)
                     : null;
+                  const performance = performanceByTpId.get(tp.id) ?? {
+                    points: Number(tp.current_score ?? 0),
+                    categoryRank: cat?.id ? null : (tp.current_rank ?? null),
+                    classificationName: cat?.name ?? playerGroup?.name ?? 'Geral',
+                    hasResults: tp.current_rank !== null && ['ongoing', 'finished'].includes(tournament.status),
+                  };
+                  const performanceLabel = performance.hasResults
+                    ? (performance.categoryRank
+                        ? `${performance.categoryRank}º em ${performance.classificationName}`
+                        : 'Sem posição')
+                    : 'Aguardando resultados';
                   // Importações antigas gravavam "Clube/Cidade" em `city`.
                   // Até a próxima sincronização preencher club_or_school,
                   // apresenta o dado no rótulo correto sem duplicá-lo.
@@ -268,6 +320,9 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                           {playerGroup?.name && <span className="font-medium text-brand-600 dark:text-brand-400">{playerGroup.name}</span>}
                           <StateBadge state={player?.state} />
                           {cat?.name && <span>{cat.name}</span>}
+                          <span className="font-medium text-gray-600 dark:text-gray-300">
+                            {formatScore(performance.points)} pts · {performanceLabel}
+                          </span>
                           {displayCity && <span>{displayCity}</span>}
                           {displayClub && <span>{displayClub}</span>}
                           {player?.rating_std && <span>Rating {player.rating_std}</span>}
@@ -292,6 +347,13 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                             {cat.name}
                           </Badge>
                         ) : '–'}
+                      </td>
+                      <td
+                        className="hidden py-3 px-3 text-gray-700 dark:text-gray-300 sm:table-cell whitespace-nowrap"
+                        title="Pontuação e posição na classificação da categoria"
+                      >
+                        <span className="font-semibold tabular-nums">{formatScore(performance.points)} pts</span>
+                        <span className="block text-xs text-gray-400 dark:text-gray-500">{performanceLabel}</span>
                       </td>
                       <td className="hidden py-3 px-3 text-center tabular-nums text-gray-700 dark:text-gray-300 sm:table-cell">
                         {player?.rating_std ?? '–'}

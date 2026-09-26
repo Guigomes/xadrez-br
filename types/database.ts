@@ -163,6 +163,8 @@ export interface TournamentPlayer {
   id: string;
   tournament_id: string;
   player_id: string;
+  /** Nome exato recebido da fonte externa; null em torneios nativos. */
+  source_name: string | null;
   category_id: string | null;
   initial_ranking: number | null;
   current_score: number;

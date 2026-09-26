@@ -272,6 +272,16 @@ export function useSetResult(tournamentId: string, groupId: string) {
       });
       if (error) throw error;
     },
-    onSuccess: invalidate,
+    onSuccess: async (_, { pairingId }) => {
+      const { data: pairing } = await supabase
+        .from('pairings')
+        .select('round_id')
+        .eq('id', pairingId)
+        .maybeSingle();
+      if (pairing?.round_id) {
+        await fetch(`/api/admin/rounds/${pairing.round_id}/notify`, { method: 'POST' }).catch(() => undefined);
+      }
+      invalidate();
+    },
   });
 }

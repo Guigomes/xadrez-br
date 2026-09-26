@@ -14,13 +14,23 @@ import type { TournamentStatus } from '@/types/database';
  * (policy created_by = auth.uid()), que é o correto.
  */
 
-/** lowercase + remove acento (NFD) — pra casar "joao" com "João". */
+/**
+ * Normaliza nomes para busca: remove acentos, pontuação e espaços repetidos.
+ * Assim o nome original com vírgula e o nome natural de exibição usam os
+ * mesmos tokens.
+ */
 export function normalizeName(s: string): string {
   return s
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
-    .trim();
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function nameTokenKey(s: string): string {
+  return normalizeName(s).split(/\s+/).filter(Boolean).sort().join(' ');
 }
 
 export interface NameMatchResult<T> {
@@ -48,6 +58,14 @@ export function matchPlayerNames<T extends { full_name: string }>(rows: T[], que
 
   const exactMatches = rows.filter((r) => normalizeName(r.full_name).includes(q));
   if (exactMatches.length > 0) return { rows: exactMatches.slice(0, limit), exact: true };
+
+  // O mesmo nome completo em outra ordem (inclusive com vírgula) é uma
+  // correspondência exata, não uma aproximação que precise de confirmação.
+  const tokenKey = nameTokenKey(query);
+  const reorderedExactMatches = rows.filter((r) => nameTokenKey(r.full_name) === tokenKey);
+  if (reorderedExactMatches.length > 0) {
+    return { rows: reorderedExactMatches.slice(0, limit), exact: true };
+  }
 
   const words = q.split(/\s+/).filter(Boolean);
   if (words.length === 0) return { rows: [], exact: true };

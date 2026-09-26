@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 
 interface ImportedParticipant {
   fullName: string;
+  sourceName: string;
   fideId?: string;
   federation?: string;
   ratingStd?: number;
@@ -21,6 +22,18 @@ const BR_STATE_CODES = new Set([
 
 function normalize(value: string) {
   return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function normalizeNameKey(value: string) {
+  return normalize(value.replace(/,/g, ' '))
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort()
+    .join(' ');
+}
+
+function displayNameFromSource(value: string) {
+  return value.replace(/\s*,\s*/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function colIndex(headers: string[], aliases: string[]) {
@@ -50,10 +63,8 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
 
   const participants: ImportedParticipant[] = [];
   for (const row of asStr.slice(headerIdx + 1)) {
-    const rawName = row[nameIdx] ?? '';
-    const fullName = rawName.includes(',')
-      ? rawName.split(',').map((s: string) => s.trim()).filter(Boolean).reverse().join(' ')
-      : rawName;
+    const sourceName = (row[nameIdx] ?? '').replace(/\s+/g, ' ').trim();
+    const fullName = displayNameFromSource(sourceName);
     if (!fullName) continue;
     if (normalize(fullName).startsWith('encontrara todos os detalhes')) break;
     if (normalize(fullName).includes('chess-results')) continue;
@@ -64,6 +75,7 @@ function parseRows(rows: unknown[][]): ImportedParticipant[] {
     const rawState = stateIdx >= 0 ? row[stateIdx].toUpperCase() : '';
     participants.push({
       fullName,
+      sourceName,
       fideId: fideIdx >= 0 ? row[fideIdx] || undefined : undefined,
       federation: fedIdx >= 0 ? row[fedIdx] || undefined : undefined,
       ratingStd: Number.isFinite(ratingStd) && ratingStd > 0 ? ratingStd : undefined,
@@ -161,12 +173,16 @@ export async function POST(
       // Find player by FIDE ID
       if (p.fideId) {
         const { data: match } = await supabase
-          .from('players').select('id').eq('fide_id', p.fideId).limit(1).maybeSingle();
+          .from('players').select('id, full_name').eq('fide_id', p.fideId).limit(1).maybeSingle();
         if (match?.id) {
           playerId = match.id;
           reused++;
-          if (p.state || p.clubOrSchool || p.ratingStd || p.federation) {
+          const shouldUpdateName =
+            match.full_name !== p.fullName &&
+            normalizeNameKey(match.full_name) === normalizeNameKey(p.fullName);
+          if (shouldUpdateName || p.state || p.clubOrSchool || p.ratingStd || p.federation) {
             await supabase.from('players').update({
+              ...(shouldUpdateName ? { full_name: p.fullName } : {}),
               state: p.state, club_or_school: p.clubOrSchool, rating_std: p.ratingStd, federation: p.federation,
             }).eq('id', match.id);
           }
@@ -205,6 +221,7 @@ export async function POST(
         await supabase.from('tournament_players').update({
           initial_ranking: p.initialRanking ?? null,
           category_id: categoryId ?? null,
+          source_name: p.sourceName,
         }).eq('tournament_id', tournament.id).eq('player_id', playerId);
         skipped++;
         continue;
@@ -215,6 +232,7 @@ export async function POST(
         player_id: playerId,
         initial_ranking: p.initialRanking,
         category_id: categoryId,
+        source_name: p.sourceName,
       });
 
       existingPlayerIds.add(playerId);

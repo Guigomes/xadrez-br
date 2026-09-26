@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { processImport } from '@/lib/import/process-tournament';
+import { notifyTournamentSummary } from '@/lib/import/notify';
 import { acquireImportLock, releaseImportLock } from '@/lib/import/lock';
 
 export const runtime = 'nodejs';
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
         results.push({ id: row.id, pairingGroupName: row.pairing_group_name, ok: false, message });
       }
     }
+    await notifyTournamentSummary(tournamentId);
     return NextResponse.json({ ok: true, results });
   } finally {
     await releaseImportLock(admin);

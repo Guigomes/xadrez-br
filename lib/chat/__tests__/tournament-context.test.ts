@@ -33,6 +33,10 @@ describe('normalizeName', () => {
     expect(normalizeName('João Água')).toBe('joao agua');
     expect(normalizeName('  MARÍA  ')).toBe('maria');
   });
+
+  it('remove vírgulas e normaliza espaços', () => {
+    expect(normalizeName('  Fernandes,  Pietro  ')).toBe('fernandes pietro');
+  });
 });
 
 describe('matchPlayerNames', () => {
@@ -59,6 +63,19 @@ describe('matchPlayerNames', () => {
     const r = matchPlayerNames(rows, 'Silva Guilherme');
     expect(r.rows.map((row) => row.full_name)).toEqual(['Guilherme Gomes da Silva']);
     expect(r.exact).toBe(false);
+  });
+
+  it('trata o nome completo com vírgula e ordem diferente como exato', () => {
+    const players = [{ full_name: 'Pietro Nishimura Caste Fernandes' }];
+
+    for (const alias of [
+      'Fernandes, Pietro Nishimura Caste',
+      'Pietro Nishimura Caste, Fernandes',
+    ]) {
+      const result = matchPlayerNames(players, alias);
+      expect(result.rows).toEqual(players);
+      expect(result.exact).toBe(true);
+    }
   });
 
   it('nem trecho nem partes batem, lista vazia', () => {

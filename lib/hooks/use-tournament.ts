@@ -336,7 +336,7 @@ export function useUpdateRoundStatus(tournamentId: string) {
         .update({ status, published_at: status === 'ongoing' ? new Date().toISOString() : undefined })
         .eq('id', roundId);
       if (error) throw error;
-      if (status === 'ongoing') {
+      if (status === 'ongoing' || status === 'finished') {
         await fetch(`/api/admin/rounds/${roundId}/notify`, { method: 'POST' }).catch(() => undefined);
       }
     },
@@ -369,6 +369,14 @@ export function useUpdatePairingResult(tournamentId: string) {
     onSuccess: async (_, { pairingId }) => {
       // Recalculate standings via RPC
       await supabase.rpc('recalculate_standings', { p_tournament_id: tournamentId });
+      const { data: pairing } = await supabase
+        .from('pairings')
+        .select('round_id')
+        .eq('id', pairingId)
+        .maybeSingle();
+      if (pairing?.round_id) {
+        await fetch(`/api/admin/rounds/${pairing.round_id}/notify`, { method: 'POST' }).catch(() => undefined);
+      }
       qc.invalidateQueries({ queryKey: tournamentKeys.standings(tournamentId) });
       qc.invalidateQueries({ queryKey: ['pairings'] });
     },

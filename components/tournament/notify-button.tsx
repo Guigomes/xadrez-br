@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getLocalFollowedPlayerIds } from '@/lib/utils/local-follows';
+
+const PUSH_SCOPE_KEY = 'xbr_push_scope';
 
 interface Props {
   tournamentId?: string;
@@ -71,10 +74,40 @@ export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
     navigator.serviceWorker.getRegistration('/push-sw.js').then((reg) => {
       if (!reg) return;
       reg.pushManager.getSubscription().then((sub) => {
-        if (sub) setStatus('subscribed');
+        const currentScope = tournamentId ?? '__global__';
+        if (sub && localStorage.getItem(PUSH_SCOPE_KEY) === currentScope) {
+          setStatus('subscribed');
+        }
       });
     });
-  }, []);
+  }, [tournamentId]);
+
+  useEffect(() => {
+    if (status !== 'subscribed' || !tournamentId) return;
+
+    const syncLocalFollows = async () => {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration('/push-sw.js');
+        const sub = await reg?.pushManager.getSubscription();
+        if (!sub) return;
+        const response = await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: sub.toJSON(),
+            tournamentId,
+            followedPlayerIds: [...getLocalFollowedPlayerIds(tournamentId)],
+          }),
+        });
+        if (!response.ok) console.error('[NotifyButton] falha ao sincronizar jogadores seguidos');
+      } catch (error) {
+        console.error('[NotifyButton] falha ao sincronizar jogadores seguidos:', error);
+      }
+    };
+
+    window.addEventListener('xbr:follows:changed', syncLocalFollows);
+    return () => window.removeEventListener('xbr:follows:changed', syncLocalFollows);
+  }, [status, tournamentId]);
 
   async function toggle() {
     setStatus('loading');
@@ -92,6 +125,9 @@ export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ endpoint: sub.endpoint }),
             });
+            if (localStorage.getItem(PUSH_SCOPE_KEY) === (tournamentId ?? '__global__')) {
+              localStorage.removeItem(PUSH_SCOPE_KEY);
+            }
           }
         }
         setStatus('idle');
@@ -117,10 +153,17 @@ export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
       const res = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscription: sub.toJSON(), tournamentId: tournamentId ?? null }),
+        body: JSON.stringify({
+          subscription: sub.toJSON(),
+          tournamentId: tournamentId ?? null,
+          followedPlayerIds: tournamentId
+            ? [...getLocalFollowedPlayerIds(tournamentId)]
+            : [],
+        }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Erro ao salvar subscrição');
 
+      localStorage.setItem(PUSH_SCOPE_KEY, tournamentId ?? '__global__');
       setStatus('subscribed');
     } catch (err: any) {
       console.error('[NotifyButton]', err);
