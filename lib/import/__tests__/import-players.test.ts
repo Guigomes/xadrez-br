@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseRows } from '../import-players';
+import { participantIdentityKey } from '../normalize';
 
 describe('parseRows do Chess-Results', () => {
   it('mapeia Gr para UF e Clube/Cidade para escola ou clube', () => {
@@ -43,5 +44,12 @@ describe('parseRows do Chess-Results', () => {
       state: undefined,
       clubOrSchool: 'Clube Exemplo',
     }));
+  });
+
+  it('reconhece o mesmo participante pelo nome reordenado e ranking inicial', () => {
+    expect(participantIdentityKey('de Souza Alberto Heleno Ferreira', 25))
+      .toBe(participantIdentityKey('Alberto Heleno Ferreira, de Souza', 25));
+    expect(participantIdentityKey('Alberto Heleno Ferreira de Souza', 26))
+      .not.toBe(participantIdentityKey('Alberto Heleno Ferreira de Souza', 25));
   });
 });
