@@ -45,8 +45,8 @@ describe('estatísticas do torneio escolar', () => {
     });
     expect(stats.states[0].athletes.map(({ participantId, groupName, rank, points }) => ({ participantId, groupName, rank, points })))
       .toEqual([
-        { participantId: '2', groupName: '6 Abs', rank: 2, points: 3 },
         { participantId: '4', groupName: '7 Fem', rank: 1, points: 4 },
+        { participantId: '2', groupName: '6 Abs', rank: 2, points: 3 },
         { participantId: '6', groupName: '7 Fem', rank: 3, points: 2 },
       ]);
     expect(stats.states[0].categoryBreakdown).toEqual([
@@ -83,5 +83,15 @@ describe('estatísticas do torneio escolar', () => {
       { label: 'MS', total: 0 },
     ]);
     expect(stats.states[1].athletes[0]).toMatchObject({ playerName: 'Jogador 1', points: 1.5 });
+  });
+
+  it('ordena o desempenho individual por posição e depois por categoria', () => {
+    const stats = buildSchoolTournamentStatistics([
+      row('1', 'SP', '8 Fem', 1, 4),
+      row('2', 'SP', '6 Abs', 1, 4),
+      row('3', 'SP', '7 Fem', 2, 3),
+    ]);
+
+    expect(stats.states[0].athletes.map(({ participantId }) => participantId)).toEqual(['2', '1', '3']);
   });
 });

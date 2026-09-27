@@ -244,9 +244,8 @@ function toStateStatistics(map: Map<string, MutableEntity>): StateStatistic[] {
       && previous.bronze === entity.bronze;
     const position = sameMedals && previous ? previous.position : index + 1;
     const athletes = [...entity.athletes].sort((a, b) =>
-      collator.compare(a.groupName, b.groupName)
-      || medalWeight(a.medal) - medalWeight(b.medal)
-      || (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER)
+      (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER)
+      || collator.compare(a.groupName, b.groupName)
       || collator.compare(a.playerName, b.playerName),
     );
     const entry: StateStatistic = {

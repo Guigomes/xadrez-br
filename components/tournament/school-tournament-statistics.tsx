@@ -27,6 +27,10 @@ function formatPerformanceGroup(label: string) {
     .replace(/\bFem\b/gi, 'Feminino');
 }
 
+function formatPlayerCount(value: number) {
+  return `${value} ${value === 1 ? 'jogador' : 'jogadores'}`;
+}
+
 function ParticipationChart({
   title,
   description,
@@ -147,7 +151,7 @@ function StateDetail({ state, slug }: { state: StateStatistic; slug: string }) {
   const maximumCategory = Math.max(1, ...state.categoryBreakdown.map((category) => category.participants));
 
   return (
-    <details className="card group overflow-hidden">
+    <details className="card group/state overflow-hidden">
       <summary className="grid cursor-pointer list-none grid-cols-[2.25rem_3rem_minmax(0,1fr)_auto] items-center gap-3 p-4 sm:grid-cols-[2.5rem_4rem_1fr_auto] sm:p-5 [&::-webkit-details-marker]:hidden">
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-sm font-bold tabular-nums text-gray-500 dark:bg-gray-800 dark:text-gray-400">
           {state.position}º
@@ -175,7 +179,7 @@ function StateDetail({ state, slug }: { state: StateStatistic; slug: string }) {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-4 w-4 transition-transform group-open:rotate-180"
+            className="h-4 w-4 transition-transform group-open/state:rotate-180"
             aria-hidden="true"
           >
             <path d="m6 9 6 6 6-6" />
@@ -198,18 +202,42 @@ function StateDetail({ state, slug }: { state: StateStatistic; slug: string }) {
           ))}
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(0,2fr)]">
-          <section>
-            <h4 className="font-bold text-gray-900 dark:text-gray-100">Presença por categoria</h4>
-            <div className="mt-3 space-y-3">
+        <div className="mt-6">
+          <StateAthletes state={state} slug={slug} />
+        </div>
+
+        <details className="group/category mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 [&::-webkit-details-marker]:hidden">
+            <span>
+              <span className="block font-bold text-gray-900 dark:text-gray-100">Presença por categoria</span>
+              <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                Número de jogadores e média de pontos em cada categoria.
+              </span>
+            </span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4 transition-transform group-open/category:rotate-180"
+                aria-hidden="true"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </span>
+          </summary>
+          <div className="space-y-3 border-t border-gray-100 p-4 dark:border-gray-800">
               {state.categoryBreakdown.map((category) => (
                 <div key={category.key}>
-                  <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                  <div className="mb-1 flex flex-col gap-0.5 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                     <span className="truncate font-medium text-gray-700 dark:text-gray-300" title={formatPerformanceGroup(category.label)}>
                       {formatPerformanceGroup(category.label)}
                     </span>
-                    <span className="shrink-0 text-gray-500 dark:text-gray-400">
-                      {category.participants} · média {formatPoints(category.averagePoints)}
+                    <span className="text-gray-500 sm:shrink-0 dark:text-gray-400">
+                      {formatPlayerCount(category.participants)} · média de pontos: {formatPoints(category.averagePoints)}
                     </span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
@@ -220,11 +248,8 @@ function StateDetail({ state, slug }: { state: StateStatistic; slug: string }) {
                   </div>
                 </div>
               ))}
-            </div>
-          </section>
-
-          <StateAthletes state={state} slug={slug} />
-        </div>
+          </div>
+        </details>
       </div>
     </details>
   );
