@@ -8,6 +8,7 @@ import type {
 } from '@/lib/statistics/school-tournament';
 
 const scoreFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
+const identityLabel = (label: string) => label;
 
 function formatPoints(value: number | null) {
   if (value == null) return '–';
@@ -20,16 +21,24 @@ function medalSymbol(medal: MedalKind) {
   return '🥉';
 }
 
+function formatPerformanceGroup(label: string) {
+  return label
+    .replace(/\bAbs\b/gi, 'Absoluto')
+    .replace(/\bFem\b/gi, 'Feminino');
+}
+
 function ParticipationChart({
   title,
   description,
   entries,
   limit = 12,
+  labelFormatter = identityLabel,
 }: {
   title: string;
   description: string;
   entries: ParticipationEntry[];
   limit?: number;
+  labelFormatter?: (label: string) => string;
 }) {
   const visible = entries.slice(0, limit);
   const maximum = visible[0]?.participants ?? 1;
@@ -39,24 +48,27 @@ function ParticipationChart({
       <h2 className="font-bold text-gray-900 dark:text-gray-100">{title}</h2>
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
       <div className="mt-5 space-y-3.5">
-        {visible.map((entry, index) => (
-          <div key={entry.key}>
-            <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-              <span className="min-w-0 truncate text-gray-700 dark:text-gray-300" title={entry.label}>
-                {index + 1}. {entry.label}
-              </span>
-              <span className="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">
-                {entry.participants}
-              </span>
+        {visible.map((entry, index) => {
+          const label = labelFormatter(entry.label);
+          return (
+            <div key={entry.key}>
+              <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-gray-700 dark:text-gray-300" title={label}>
+                  {index + 1}. {label}
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">
+                  {entry.participants}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                <div
+                  className="h-full rounded-full bg-brand-500"
+                  style={{ width: `${Math.max(3, (entry.participants / maximum) * 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-              <div
-                className="h-full rounded-full bg-brand-500"
-                style={{ width: `${Math.max(3, (entry.participants / maximum) * 100)}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </article>
   );
@@ -102,11 +114,11 @@ function StateAthletes({ state, slug }: { state: StateStatistic; slug: string })
               <div className="min-w-0">
                 <AthleteLink athlete={athlete} slug={slug} />
                 <p className="mt-0.5 truncate text-xs text-gray-500 sm:hidden dark:text-gray-400">
-                  {athlete.groupName}{athlete.rating ? ` · Rating ${athlete.rating}` : ''}
+                  {formatPerformanceGroup(athlete.groupName)}{athlete.rating ? ` · Rating ${athlete.rating}` : ''}
                 </p>
               </div>
-              <span className="hidden min-w-0 truncate text-gray-600 sm:block dark:text-gray-300" title={athlete.groupName}>
-                {athlete.groupName}
+              <span className="hidden min-w-0 truncate text-gray-600 sm:block dark:text-gray-300" title={formatPerformanceGroup(athlete.groupName)}>
+                {formatPerformanceGroup(athlete.groupName)}
               </span>
               <span className="hidden text-center font-semibold tabular-nums text-gray-900 sm:block dark:text-gray-100">
                 {formatPoints(athlete.points)}
@@ -193,8 +205,8 @@ function StateDetail({ state, slug }: { state: StateStatistic; slug: string }) {
               {state.categoryBreakdown.map((category) => (
                 <div key={category.key}>
                   <div className="mb-1 flex items-center justify-between gap-3 text-xs">
-                    <span className="truncate font-medium text-gray-700 dark:text-gray-300" title={category.label}>
-                      {category.label}
+                    <span className="truncate font-medium text-gray-700 dark:text-gray-300" title={formatPerformanceGroup(category.label)}>
+                      {formatPerformanceGroup(category.label)}
                     </span>
                     <span className="shrink-0 text-gray-500 dark:text-gray-400">
                       {category.participants} · média {formatPoints(category.averagePoints)}
@@ -229,13 +241,13 @@ export function SchoolTournamentStatisticsView({
   const cards = [
     { label: 'Participantes', value: summary.participants },
     { label: 'Categorias', value: summary.categories },
-    { label: 'UFs representadas', value: summary.states },
+    { label: 'Estados representados', value: summary.states },
   ];
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <header>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Estatísticas por UF</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Estatísticas por estado</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Participação e desempenho dos estados no Brasileiro Escolar 2026.
         </p>
@@ -254,7 +266,7 @@ export function SchoolTournamentStatisticsView({
         <div className="mb-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Detalhamento por estado</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Abra uma UF para ver suas categorias, médias e o desempenho individual dos atletas.
+            Abra um estado para ver suas categorias, médias e o desempenho individual dos atletas.
           </p>
         </div>
         <div className="space-y-3">
@@ -268,6 +280,16 @@ export function SchoolTournamentStatisticsView({
           description="Categorias com maior número de atletas no torneio."
           entries={statistics.categoryParticipation}
           limit={statistics.categoryParticipation.length}
+          labelFormatter={formatPerformanceGroup}
+        />
+      </section>
+
+      <section>
+        <ParticipationChart
+          title="Presença por estado"
+          description="Quantidade de atletas de cada estado no torneio."
+          entries={statistics.stateParticipation}
+          limit={statistics.stateParticipation.length}
         />
       </section>
     </div>
