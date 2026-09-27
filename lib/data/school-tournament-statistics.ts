@@ -22,8 +22,8 @@ interface StandingRecord {
 }
 
 /**
- * Consulta usada somente depois de a rota confirmar role=admin. O cliente da
- * sessão mantém RLS ativa; os dados-base já são públicos no torneio publicado.
+ * O cliente da sessão mantém RLS ativa; os dados-base são públicos no
+ * torneio publicado.
  */
 export async function getSchoolTournamentStatistics(tournamentId: string) {
   const supabase = await createClient();

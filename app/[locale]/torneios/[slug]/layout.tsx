@@ -1,7 +1,6 @@
 import { Link } from '@/i18n/navigation';
 import { notFound } from 'next/navigation';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
-import { getSessionProfile } from '@/lib/data/session';
 import { SCHOOL_TOURNAMENT_SLUG } from '@/lib/statistics/school-tournament';
 import { TournamentTabs } from '@/components/tournament/tournament-tabs';
 import { SaveLastTournament } from '@/components/tournament/save-last-tournament';
@@ -37,18 +36,12 @@ export default async function TournamentLayout({ children, params }: Props) {
   // e status efetivo (considerando pendências de resultado), e último sync de
   // import — tudo antes calculado aqui em Node com até 4 queries sequenciais.
   // Ver lib/data/tournament-page-data.ts.
-  const profilePromise = slug === SCHOOL_TOURNAMENT_SLUG
-    ? getSessionProfile()
-    : Promise.resolve(null);
-  const [data, profile] = await Promise.all([
-    getTournamentPageData(slug),
-    profilePromise,
-  ]);
+  const data = await getTournamentPageData(slug);
 
   if (!data) notFound();
 
   const { tournament, currentRoundNumber, effectiveStatus, lastImportAt, lastImportStatus } = data;
-  const showStatistics = slug === SCHOOL_TOURNAMENT_SLUG && profile?.role === 'admin';
+  const showStatistics = slug === SCHOOL_TOURNAMENT_SLUG;
   const lastImport = lastImportAt ? { last_run_at: lastImportAt, last_status: lastImportStatus } : null;
   const startLabel = currentRoundNumber == null && !['cancelled', 'finished'].includes(effectiveStatus)
     ? getTournamentStartLabel(tournament.start_date)

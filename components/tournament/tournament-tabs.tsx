@@ -34,7 +34,7 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
     ...(showStatistics ? [{
       href: `${base}/statistics`,
       activePath: `${base}/statistics`,
-      label: 'Estatísticas',
+      label: 'Desempenho por Grupos',
       icon: 'statistics' as TournamentTabIconName,
       mobileFull: true,
     }] : []),

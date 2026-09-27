@@ -9,11 +9,6 @@ import type {
 
 const scoreFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 
-function percentage(value: number, total: number) {
-  if (!total) return '0%';
-  return `${Math.round((value / total) * 100)}%`;
-}
-
 function formatPoints(value: number | null) {
   if (value == null) return '–';
   return scoreFormatter.format(value);
@@ -23,58 +18,6 @@ function medalSymbol(medal: MedalKind) {
   if (medal === 'gold') return '🥇';
   if (medal === 'silver') return '🥈';
   return '🥉';
-}
-
-function MedalChart({ states }: { states: StateStatistic[] }) {
-  const visible = states.slice(0, 12);
-  const maximum = Math.max(1, ...visible.map((state) => state.total));
-
-  return (
-    <article className="card p-5">
-      <h2 className="font-bold text-gray-900 dark:text-gray-100">Medalhas por UF</h2>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Ouro, prata e bronze somados entre todas as categorias.
-      </p>
-      <div className="mt-5 space-y-3.5">
-        {visible.map((state) => (
-          <div key={state.key} className="grid grid-cols-[2rem_1fr_auto] items-center gap-2.5">
-            <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{state.label}</span>
-            <div className="flex h-3 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-              {state.gold > 0 && (
-                <span
-                  className="h-full bg-amber-400"
-                  style={{ width: `${(state.gold / maximum) * 100}%` }}
-                  title={`${state.gold} ouro`}
-                />
-              )}
-              {state.silver > 0 && (
-                <span
-                  className="h-full bg-slate-400"
-                  style={{ width: `${(state.silver / maximum) * 100}%` }}
-                  title={`${state.silver} prata`}
-                />
-              )}
-              {state.bronze > 0 && (
-                <span
-                  className="h-full bg-orange-600"
-                  style={{ width: `${(state.bronze / maximum) * 100}%` }}
-                  title={`${state.bronze} bronze`}
-                />
-              )}
-            </div>
-            <span className="w-5 text-right text-sm font-semibold tabular-nums text-gray-700 dark:text-gray-300">
-              {state.total}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-        <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-amber-400" />Ouro</span>
-        <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-slate-400" />Prata</span>
-        <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-orange-600" />Bronze</span>
-      </div>
-    </article>
-  );
 }
 
 function ParticipationChart({
@@ -212,7 +155,20 @@ function StateDetail({ state, slug }: { state: StateStatistic; slug: string }) {
             <span>🥉 {state.bronze}</span>
           </span>
         </span>
-        <span className="text-gray-400 transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-4 w-4 transition-transform group-open:rotate-180"
+            aria-hidden="true"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </span>
       </summary>
 
       <div className="border-t border-gray-100 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-800 dark:bg-gray-900/30">
@@ -274,47 +230,24 @@ export function SchoolTournamentStatisticsView({
     { label: 'Participantes', value: summary.participants },
     { label: 'Categorias', value: summary.categories },
     { label: 'UFs representadas', value: summary.states },
-    { label: 'Atletas com UF', value: percentage(summary.withState, summary.participants) },
   ];
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Estatísticas por UF</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Panorama ao vivo da participação e do desempenho dos estados.
-          </p>
-        </div>
-        <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
-          Visível só para Dev
-        </span>
+      <header>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Estatísticas por UF</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Participação e desempenho dos estados no Brasileiro Escolar 2026.
+        </p>
       </header>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Resumo do torneio">
+      <section className="grid grid-cols-3 gap-3" aria-label="Resumo do torneio">
         {cards.map((card) => (
           <div key={card.label} className="card p-4 sm:p-5">
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">{card.value}</p>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">{card.label}</p>
           </div>
         ))}
-      </section>
-
-      <section>
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Panorama dos estados</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Compare os pódios e o tamanho das delegações de cada UF.
-          </p>
-        </div>
-        <div className="grid gap-5 lg:grid-cols-2">
-          <MedalChart states={statistics.states} />
-          <ParticipationChart
-            title="Maiores delegações"
-            description="Quantidade de atletas identificados em cada UF."
-            entries={statistics.stateParticipation}
-          />
-        </div>
       </section>
 
       <section>
@@ -329,35 +262,13 @@ export function SchoolTournamentStatisticsView({
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,0.6fr)]">
+      <section>
         <ParticipationChart
           title="Participação por categoria"
           description="Categorias com maior número de atletas no torneio."
           entries={statistics.categoryParticipation}
           limit={statistics.categoryParticipation.length}
         />
-        <article className="card p-5">
-          <h2 className="font-bold text-gray-900 dark:text-gray-100">Cobertura dos dados</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Atletas sem UF continuam no total geral, mas não entram nos gráficos nem no detalhamento estadual.
-          </p>
-          <div className="mt-6">
-            <div className="flex items-end justify-between gap-3">
-              <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                {percentage(summary.withState, summary.participants)}
-              </span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {summary.withState} de {summary.participants}
-              </span>
-            </div>
-            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-              <div
-                className="h-full rounded-full bg-brand-500"
-                style={{ width: percentage(summary.withState, summary.participants) }}
-              />
-            </div>
-          </div>
-        </article>
       </section>
     </div>
   );
