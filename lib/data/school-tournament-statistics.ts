@@ -9,14 +9,16 @@ interface ParticipantRecord {
   pairing_group_id: string | null;
   player: {
     full_name: string;
+    title: string | null;
+    rating_std: number | null;
     state: string | null;
-    club_or_school: string | null;
   } | null;
 }
 
 interface StandingRecord {
   tournament_player_id: string;
   rank: number | null;
+  points: number;
 }
 
 /**
@@ -28,11 +30,11 @@ export async function getSchoolTournamentStatistics(tournamentId: string) {
   const [participantsResult, standingsResult, groupsResult] = await Promise.all([
     supabase
       .from('tournament_players')
-      .select('id, pairing_group_id, player:players(full_name, state, club_or_school)')
+      .select('id, pairing_group_id, player:players(full_name, title, rating_std, state)')
       .eq('tournament_id', tournamentId),
     supabase
       .from('standings')
-      .select('tournament_player_id, rank')
+      .select('tournament_player_id, rank, points')
       .eq('tournament_id', tournamentId),
     supabase
       .from('pairing_groups')
@@ -46,21 +48,26 @@ export async function getSchoolTournamentStatistics(tournamentId: string) {
   const participants = (participantsResult.data ?? []) as unknown as ParticipantRecord[];
   const standings = (standingsResult.data ?? []) as StandingRecord[];
   const groupById = new Map((groupsResult.data ?? []).map((group) => [group.id, group.name]));
-  const rankByParticipant = new Map(
-    standings.map((standing) => [standing.tournament_player_id, standing.rank]),
+  const standingByParticipant = new Map(
+    standings.map((standing) => [standing.tournament_player_id, standing]),
   );
 
-  const rows: SchoolTournamentStatisticInput[] = participants.map((participant) => ({
-    participantId: participant.id,
-    playerName: participant.player?.full_name ?? 'Jogador sem nome',
-    state: participant.player?.state ?? null,
-    school: participant.player?.club_or_school ?? null,
-    groupId: participant.pairing_group_id,
-    groupName: participant.pairing_group_id
-      ? groupById.get(participant.pairing_group_id) ?? null
-      : null,
-    rank: rankByParticipant.get(participant.id) ?? null,
-  }));
+  const rows: SchoolTournamentStatisticInput[] = participants.map((participant) => {
+    const standing = standingByParticipant.get(participant.id);
+    return {
+      participantId: participant.id,
+      playerName: participant.player?.full_name ?? 'Jogador sem nome',
+      playerTitle: participant.player?.title ?? null,
+      rating: participant.player?.rating_std ?? null,
+      state: participant.player?.state ?? null,
+      groupId: participant.pairing_group_id,
+      groupName: participant.pairing_group_id
+        ? groupById.get(participant.pairing_group_id) ?? null
+        : null,
+      rank: standing?.rank ?? null,
+      points: standing?.points ?? null,
+    };
+  });
 
   return buildSchoolTournamentStatistics(rows);
 }

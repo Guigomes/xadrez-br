@@ -22,5 +22,5 @@ export default async function TournamentStatisticsPage({ params }: Props) {
   if (!tournamentData) notFound();
 
   const statistics = await getSchoolTournamentStatistics(tournamentData.tournament.id);
-  return <SchoolTournamentStatisticsView statistics={statistics} />;
+  return <SchoolTournamentStatisticsView statistics={statistics} slug={slug} />;
 }
