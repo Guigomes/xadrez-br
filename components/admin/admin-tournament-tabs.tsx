@@ -28,9 +28,14 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
   // rotas continuam existindo — some a navegação, não o acesso por link.
   const hasStarted = status === 'ongoing' || status === 'finished';
 
+  // Emparceiramento (pairing_mode/classificação) e Inscrições (aprovar/
+  // rejeitar) são ações de torneio NATIVO — torneio importado não pareia por
+  // aqui (o chess-results já faz isso) nem recebe inscrição pública (o
+  // roster vem do sync). Mesmo princípio de Rodadas/Participantes: sem ação
+  // nenhuma pra oferecer, a aba some em vez de abrir numa tela sem uso.
   const tabs = [
     { href: base,              label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
-    ...(hasStarted
+    ...(hasStarted || mode === 'imported'
       ? []
       : [
           { href: `${base}/groups`,        label: 'Emparceiramento', icon: 'pairing' as TournamentTabIconName },

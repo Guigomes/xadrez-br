@@ -37,9 +37,6 @@ export default function AdminPlayersPage({ params }: Props) {
   const createGroup = useCreateDefaultGroup(tournament?.id ?? '');
   const setCheckin = useSetPlayerCheckin(tournament?.id ?? '');
 
-  const [importing, setImporting] = useState(false);
-  const [importReport, setImportReport] = useState('');
-  const [importUrl, setImportUrl] = useState('');
   const [error, setError] = useState('');
 
   // Modal de cadastro/edição — null = fechado. editing !== null = modo edição
@@ -74,30 +71,6 @@ export default function AdminPlayersPage({ params }: Props) {
       await assignGroup.mutateAsync({ tpId, groupId: gId });
     } catch (err: any) {
       setError(err.message);
-    }
-  }
-
-  async function handleImportUrl() {
-    if (!importUrl.trim() || !tournament) return;
-    setError('');
-    setImportReport('');
-    setImporting(true);
-    try {
-      const res = await fetch(`/api/admin/tournaments/${slug}/import-players`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: importUrl.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Erro ao importar.');
-      setImportReport(
-        `Importação concluída: ${data.added} adicionados, ${data.created} novos cadastros, ${data.reused} já existentes, ${data.skipped} ignorados, ${data.failed} falhas.`
-      );
-      setImportUrl('');
-    } catch (err: any) {
-      setError(err.message ?? 'Erro ao importar.');
-    } finally {
-      setImporting(false);
     }
   }
 
@@ -200,14 +173,16 @@ export default function AdminPlayersPage({ params }: Props) {
             {tpAny.checkin_status === 'checked_in' ? '✓ Presente' : 'Pendente'}
           </button>
         )}
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => startEdit(tp.id, tpAny.category_id ?? tpAny.category?.id ?? null, tpAny.player)}
-          className="shrink-0"
-        >
-          ✏️ Editar
-        </Button>
+        {isNative && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => startEdit(tp.id, tpAny.category_id ?? tpAny.category?.id ?? null, tpAny.player)}
+            className="shrink-0"
+          >
+            ✏️ Editar
+          </Button>
+        )}
       </div>
     );
   }
@@ -216,34 +191,6 @@ export default function AdminPlayersPage({ params }: Props) {
     <div className="max-w-4xl">
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">{error}</p>
-      )}
-
-      {importReport && (
-        <p className="mb-4 rounded-lg bg-green-50 dark:bg-green-950/30 px-4 py-3 text-sm text-green-700 dark:text-green-300">
-          {importReport}
-        </p>
-      )}
-
-      {!isNative && (
-        /* Import by URL (chess-results) — só para torneios importados */
-        <div className="card p-4 mb-4">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Importar participantes por link</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            Cole o link de download do Chess-Results (padrão de ranking inicial). Os jogadores serão cadastrados e vinculados ao torneio.
-          </p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="https://chess-results.com/..."
-              value={importUrl}
-              onChange={(e) => setImportUrl(e.target.value)}
-              disabled={importing}
-              onKeyDown={(e) => e.key === 'Enter' && handleImportUrl()}
-            />
-            <Button onClick={handleImportUrl} loading={importing} disabled={!importUrl.trim()}>
-              Importar
-            </Button>
-          </div>
-        </div>
       )}
 
       {/* Native tournament sem nenhum grupo ainda — precisa existir pelo menos
@@ -262,16 +209,21 @@ export default function AdminPlayersPage({ params }: Props) {
 
       {/* A maioria dos participantes chega por inscrição pública — o cadastro
           manual é a exceção, não o caminho principal. Fica atrás de um botão
-          em vez de um formulário sempre aberto competindo por atenção. */}
-      <div className="mb-4" data-tour="cadastrar-participante">
-        <Button
-          type="button"
-          disabled={isNative && (loadingGroups || !groups?.length)}
-          onClick={() => setShowCreateModal(true)}
-        >
-          + Cadastrar participante
-        </Button>
-      </div>
+          em vez de um formulário sempre aberto competindo por atenção.
+          Torneio importado não tem cadastro manual: o roster vem do
+          chess-results via sincronização (botão "Sincronizar" no cabeçalho) —
+          mesmo motivo do card de import por link que saiu daqui. */}
+      {isNative && (
+        <div className="mb-4" data-tour="cadastrar-participante">
+          <Button
+            type="button"
+            disabled={loadingGroups || !groups?.length}
+            onClick={() => setShowCreateModal(true)}
+          >
+            + Cadastrar participante
+          </Button>
+        </div>
+      )}
 
       {unclassified.length > 0 && (
         <p className="mb-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
