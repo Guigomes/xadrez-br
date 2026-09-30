@@ -25,6 +25,11 @@ function formatDate(value: string) {
   });
 }
 
+function cityLabel(city: string | null, region: string | null): string | null {
+  if (!city) return null;
+  return region ? `${city} · ${region}` : city;
+}
+
 function followedPlayersLabel(players: { name: string }[]) {
   if (!players.length) return 'Não acompanha nenhum atleta';
   const visible = players.slice(0, 3).map((player) => player.name).join(', ');
@@ -73,7 +78,7 @@ function AccessesPanel() {
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Acessos do site</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Visualizações separadas por navegador. Nenhum endereço IP é armazenado.
+            Visualizações separadas por navegador. Cidade estimada pela rede (edge da Vercel) — nenhum endereço IP é armazenado.
           </p>
         </div>
         <Button variant="secondary" size="sm" loading={isFetching} onClick={() => refetch()}>
@@ -141,6 +146,11 @@ function AccessesPanel() {
                         <p className="truncate text-xs text-gray-400">
                           {device.lastPath ?? '—'} · ID {device.id.slice(-8)}
                         </p>
+                        {cityLabel(device.lastCity, device.lastRegion) && (
+                          <p className="truncate text-xs text-gray-400">
+                            📍 {cityLabel(device.lastCity, device.lastRegion)}
+                          </p>
+                        )}
                         <p className={`mt-1 text-xs ${device.followedPlayers.length ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'}`}>
                           {device.followedPlayers.length ? '★ ' : ''}{followedPlayersLabel(device.followedPlayers)}
                         </p>
@@ -175,6 +185,7 @@ function AccessesPanel() {
                     <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{access.path}</p>
                     <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                       {access.isOwner ? `Meu · ${access.ownerLabel}` : `${access.browser} · ${access.os} · ${access.deviceId.slice(-8)}`}
+                      {cityLabel(access.city, access.region) ? ` · 📍 ${cityLabel(access.city, access.region)}` : ''}
                     </p>
                     {access.followedPlayers.length > 0 && (
                       <p className="truncate text-xs text-amber-600 dark:text-amber-400">

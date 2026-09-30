@@ -22,6 +22,8 @@ export interface AccessDevice {
   firstSeenAt: string;
   lastSeenAt: string;
   lastPath: string | null;
+  lastCity: string | null;
+  lastRegion: string | null;
   views30Days: number;
   followedPlayers: FollowedPlayer[];
 }
@@ -31,6 +33,8 @@ export interface RecentAccess {
   deviceId: string;
   path: string;
   visitedAt: string;
+  city: string | null;
+  region: string | null;
   isOwner: boolean;
   ownerLabel: string | null;
   deviceType: DeviceType;

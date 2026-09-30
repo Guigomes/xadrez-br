@@ -13,6 +13,19 @@ function cleanText(value: unknown, maxLength: number): string | null {
   return cleaned || null;
 }
 
+// x-vercel-ip-city vem URL-encoded ("S%C3%A3o%20Paulo") e só existe em
+// produção na Vercel — a decodificação nunca falha por vir de origem
+// confiável, mas o try/catch cobre um valor corrompido em trânsito.
+function geoFromHeaders(request: NextRequest): { city: string | null; region: string | null } {
+  const rawCity = request.headers.get('x-vercel-ip-city');
+  let city: string | null = null;
+  if (rawCity) {
+    try { city = decodeURIComponent(rawCity).slice(0, 100) || null; } catch { city = null; }
+  }
+  const region = cleanText(request.headers.get('x-vercel-ip-country-region'), 10);
+  return { city, region };
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const deviceId = cleanText(body?.deviceId, 36);
@@ -41,6 +54,7 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
   const now = new Date().toISOString();
+  const { city, region } = geoFromHeaders(request);
   let validPlayerIds: string[] = [];
   if (requestedPlayerIds.length) {
     const { data: players, error: playersError } = await admin
@@ -59,6 +73,8 @@ export async function POST(request: NextRequest) {
     os,
     last_seen_at: now,
     last_path: path,
+    ...(city ? { last_city: city } : {}),
+    ...(region ? { last_region: region } : {}),
     ...(hasFollowedPlayerIds ? { followed_player_ids: validPlayerIds } : {}),
   };
 
@@ -93,6 +109,8 @@ export async function POST(request: NextRequest) {
       path,
       user_id: null,
       visited_at: now,
+      city,
+      region,
     });
 
     if (eventError) {

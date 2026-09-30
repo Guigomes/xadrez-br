@@ -38,7 +38,7 @@ export async function GET() {
     admin.from('site_devices').select('*').order('last_seen_at', { ascending: false }).limit(500),
     admin
       .from('site_access_events')
-      .select('id, device_id, path, visited_at')
+      .select('id, device_id, path, visited_at, city, region')
       .gte('visited_at', since30Days)
       .order('visited_at', { ascending: false })
       .limit(10_000),
@@ -78,6 +78,8 @@ export async function GET() {
     firstSeenAt: device.first_seen_at,
     lastSeenAt: device.last_seen_at,
     lastPath: device.last_path,
+    lastCity: device.last_city,
+    lastRegion: device.last_region,
     views30Days: viewsByDevice.get(device.id) ?? 0,
     followedPlayers: device.followed_player_ids
       .map((id) => ({ id, name: playerNameById.get(id) }))
@@ -100,6 +102,8 @@ export async function GET() {
         deviceId: event.device_id,
         path: event.path,
         visitedAt: event.visited_at,
+        city: event.city,
+        region: event.region,
         isOwner: device?.isOwner ?? false,
         ownerLabel: device?.ownerLabel ?? null,
         deviceType: device?.deviceType ?? 'other',
