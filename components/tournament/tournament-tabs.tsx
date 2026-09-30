@@ -23,7 +23,11 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
   // também ficam acessíveis antes da estreia, agora com mensagens próprias.
   const tabs = [
     { href: base, activePath: base, exact: true, label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
-    { href: `${base}/participants`, activePath: `${base}/participants`, label: 'Participantes', icon: 'participants' as TournamentTabIconName },
+    // carryContext: false — a aba sempre abre com todos os grupos. O filtro
+    // de grupo é escolha de DENTRO da própria aba (select "Grupo" ali), não
+    // algo herdado de um link de fora — senão a aba nunca abria "zerada"
+    // depois que a pessoa já tinha filtrado uma vez em qualquer outra aba.
+    { href: `${base}/participants`, activePath: `${base}/participants`, label: 'Participantes', icon: 'participants' as TournamentTabIconName, carryContext: false },
     {
       href: `${base}/rounds${currentRoundNumber ? `/${currentRoundNumber}` : ''}`,
       activePath: `${base}/rounds`,
@@ -40,8 +44,8 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
     }] : []),
   ];
 
-  function hrefWithContext(href: string) {
-    return selectedGroupId ? `${href}?group=${encodeURIComponent(selectedGroupId)}` : href;
+  function hrefWithContext(href: string, carryContext: boolean) {
+    return carryContext && selectedGroupId ? `${href}?group=${encodeURIComponent(selectedGroupId)}` : href;
   }
 
   return (
@@ -53,7 +57,7 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
         return (
           <Link
             key={tab.href}
-            href={hrefWithContext(tab.href)}
+            href={hrefWithContext(tab.href, tab.carryContext ?? true)}
             className={cn(
               'flex min-h-11 flex-row items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors',
               'sm:px-4 sm:py-2.5 sm:text-sm sm:whitespace-nowrap',

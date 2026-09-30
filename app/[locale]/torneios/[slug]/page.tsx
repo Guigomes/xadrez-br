@@ -76,17 +76,6 @@ export default async function TournamentOverviewPage({ params }: Props) {
   const startLabel = !currentRound && !['cancelled', 'finished'].includes(tournament.status)
     ? getTournamentStartLabel(tournament.start_date)
     : null;
-  const groupFamilies = Array.from(groups.reduce((families, group) => {
-    const age = group.name.match(/\d+/)?.[0] ?? group.name;
-    const family = families.get(age) ?? [];
-    family.push(group);
-    families.set(age, family);
-    return families;
-  }, new Map<string, typeof groups>()).entries()).map(([age, familyGroups]) => ({
-    age,
-    label: /^\d+$/.test(age) ? `${age} anos` : age,
-    groups: familyGroups,
-  }));
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
@@ -127,46 +116,10 @@ export default async function TournamentOverviewPage({ params }: Props) {
           </Link>
         )}
 
-        {/* Before tournament starts: show participants / group cards */}
-        {!currentRound && hasGroups && (
-          <div className="card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Participantes por grupo</h2>
-              <Link href={`/torneios/${slug}/participants`} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
-                Ver todos
-              </Link>
-            </div>
-            {startLabel && (
-              <p className="mb-3 text-xs text-blue-700 dark:text-blue-300">
-                {startLabel}. Escolha uma faixa para ver os inscritos.
-              </p>
-            )}
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {groupFamilies.map((family) => (
-                <div key={family.age} className="rounded-lg border border-gray-100 p-2.5 dark:border-gray-800">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{family.label}</p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {family.groups.map((group) => {
-                      const shortName = group.name.replace(family.age, '').trim() || group.name;
-                      return (
-                        <Link
-                          key={group.id}
-                          href={`/torneios/${slug}/participants?group=${group.id}`}
-                          className="rounded-md bg-gray-50 px-2 py-2 text-center text-xs font-semibold text-gray-700 transition-colors hover:bg-brand-50 hover:text-brand-700 dark:bg-gray-800/70 dark:text-gray-300 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
-                        >
-                          {shortName}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Before tournament starts without groups: simple participants link */}
-        {!currentRound && !hasGroups && (participantCount ?? 0) > 0 && (
+        {/* Before tournament starts: simple participants link — a listagem
+            por grupo virou redundante com a aba Participantes (que já tem
+            filtro de grupo próprio), não repete a navegação aqui. */}
+        {!currentRound && (participantCount ?? 0) > 0 && (
           <Link
             href={`/torneios/${slug}/participants`}
             className="card p-4 flex items-center justify-between gap-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors group"
@@ -241,29 +194,9 @@ export default async function TournamentOverviewPage({ params }: Props) {
           )}
         </div>
 
-        {/* Pairing groups in sidebar — só quando a coluna principal não já
-            mostra a mesma lista em "Participantes por grupo" (antes do
-            torneio começar, currentRound null — ver bloco lá em cima). Sem
-            grupo nenhum, mostra Categorias no lugar (nunca os dois juntos). */}
-        {hasGroups && currentRound && (
-          <div className="card p-4">
-            <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Grupos</h2>
-            <div className="flex flex-col gap-1">
-              {groups.map((g) => (
-                <Link
-                  key={g.id}
-                  href={`/torneios/${slug}/participants?group=${g.id}`}
-                  className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
-                >
-                  <span>{g.name}</span>
-                  <svg className="h-4 w-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Categorias — só quando o torneio não tem grupo de emparceiramento
+            (a listagem por grupo virou redundante com a aba Participantes,
+            que já tem filtro de grupo próprio — não repete aqui). */}
         {!hasGroups && (categories?.length ?? 0) > 0 && (
           <div className="card p-4">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Categorias</h2>
