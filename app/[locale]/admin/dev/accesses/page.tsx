@@ -118,7 +118,15 @@ function AccessesPanel() {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {data.devices.map((device) => (
-                  <div key={device.id} className={`card p-4 ${device.isOwner ? 'ring-1 ring-brand-500' : ''}`}>
+                  // min-w-0: sem isso, o card (item de um grid de 1 coluna
+                  // implícita no mobile) crescia pro tamanho do conteúdo mais
+                  // largo (caminho longo, lista de atletas acompanhados) em
+                  // vez de encolher pra largura da tela — vazava a página
+                  // inteira pro lado. Mesmo bug da regra "fieldset min-width
+                  // min-content estoura grid" (CLAUDE.md), agora num grid, não
+                  // fieldset: o min-w-0 tem que estar no ITEM do grid, não só
+                  // no flex aninhado dentro dele.
+                  <div key={device.id} className={`card min-w-0 p-4 ${device.isOwner ? 'ring-1 ring-brand-500' : ''}`}>
                     <div className="flex items-start gap-3">
                       <span className="text-2xl" aria-hidden>{DEVICE_ICON[device.deviceType]}</span>
                       <div className="min-w-0 flex-1">
