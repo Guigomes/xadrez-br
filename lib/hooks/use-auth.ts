@@ -88,6 +88,23 @@ export function useSignInWithGoogle() {
   });
 }
 
+/**
+ * Login com Google pelo botão do próprio Google (Google Identity Services): o
+ * navegador recebe um ID token e entrega ao Supabase, sem a tela de "continuar
+ * para xxxx.supabase.co" do fluxo OAuth por redirecionamento. `nonce` é o valor
+ * CRU — o GIS recebeu o hash SHA-256 dele, e o Supabase confere os dois.
+ * Como no OAuth, o primeiro login cria a conta (handle_new_user).
+ */
+export function useSignInWithGoogleIdToken() {
+  return useMutation({
+    mutationFn: async ({ token, nonce }: { token: string; nonce: string }) => {
+      const { data, error } = await getClient().auth.signInWithIdToken({ provider: 'google', token, nonce });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useSignUp() {
   return useMutation({
     mutationFn: async ({ email, password, fullName, isOrganizer, isArbiter, isParticipant }: {

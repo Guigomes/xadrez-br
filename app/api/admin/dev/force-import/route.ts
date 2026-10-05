@@ -34,14 +34,18 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
+  // Sem filtro por `enabled`: essa flag só decide se o WORKER AGENDADO pega a
+  // linha (torneio que ainda não começou fica desligado pra ele não ficar
+  // batendo no chess-results à toa). Clique manual é intenção explícita — com o
+  // filtro, o botão respondia "nenhuma importação" justamente nos torneios
+  // desligados que já tinham acontecido e precisavam de uma importação única.
   const { data: rows, error: rowsError } = await admin
     .from('tournament_imports')
     .select('id, tournament_id, base_url, pairing_group_name')
-    .eq('tournament_id', tournamentId)
-    .eq('enabled', true);
+    .eq('tournament_id', tournamentId);
   if (rowsError) return NextResponse.json({ error: rowsError.message }, { status: 500 });
   if (!rows || rows.length === 0) {
-    return NextResponse.json({ error: 'Nenhuma importação ativa configurada pra este torneio.' }, { status: 404 });
+    return NextResponse.json({ error: 'Nenhuma importação configurada pra este torneio.' }, { status: 404 });
   }
 
   // Mesma trava do worker agendado (cron_import_lock) — se ele estiver

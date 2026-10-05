@@ -7,6 +7,7 @@ import { canSignUp, BETA_SIGNUP_MESSAGE } from '@/lib/auth/beta';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Gambito } from '@/components/mascot/gambito';
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 
 // Produção entra só com Google (primeiro login já cria a conta). E-mail/senha
 // continua existindo atrás desta flag porque os testes e2e e o teste manual
@@ -25,6 +26,9 @@ export default function LoginPage() {
   const [wantsParticipant, setWantsParticipant] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  // Botão do Google (GIS) indisponível — sem client id, script bloqueado — e o
+  // fluxo antigo por redirecionamento vira o botão principal.
+  const [gisUnavailable, setGisUnavailable] = useState(false);
 
   const signIn = useSignIn();
   const signUp = useSignUp();
@@ -93,6 +97,7 @@ export default function LoginPage() {
         </div>
 
         <div className="card p-6">
+          {gisUnavailable ? (
           <Button
             type="button"
             variant="secondary"
@@ -109,6 +114,24 @@ export default function LoginPage() {
             </svg>
             Entrar com Google
           </Button>
+          ) : (
+            <>
+              <GoogleSignInButton
+                onSuccess={() => { router.push('/admin'); router.refresh(); }}
+                onError={setError}
+                onUnavailable={() => setGisUnavailable(true)}
+              />
+              {/* O botão do Google não avisa quando a origem não está autorizada
+                  no Google Cloud — então o caminho antigo fica sempre à mão. */}
+              <button
+                type="button"
+                onClick={handleGoogle}
+                className="mt-3 block w-full text-center text-xs text-gray-400 hover:underline"
+              >
+                O botão não funcionou? Entrar de outro jeito
+              </button>
+            </>
+          )}
 
           {EMAIL_LOGIN_ENABLED ? (
           <div className="mt-4 flex flex-col items-center gap-2 text-center">

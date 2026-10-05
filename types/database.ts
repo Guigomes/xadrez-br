@@ -392,6 +392,8 @@ export interface PlayerHistoryRow {
   is_bye: boolean;
   cumulative_pts: number | null;
   opponent_title: string | null;
+  /** tournament_players.id do adversário (null em bye / sem emparceiramento). */
+  opponent_tp_id: string | null;
 }
 
 export interface RoundPairingRow {

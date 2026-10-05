@@ -299,11 +299,36 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
   const isWhite = row.color === 'white';
   const isDone = row.round_status === 'finished' && row.result !== '*';
 
+  const roundHref = `/torneios/${tournamentSlug}/rounds/${row.round_number}`;
+  // Linha não é mais um link único (link dentro de link é inválido): número da
+  // rodada e resultado levam pra rodada; o adversário leva pro histórico dele.
+  const opponentHref = !row.is_bye && row.opponent_tp_id
+    ? `/torneios/${tournamentSlug}/players/${row.opponent_tp_id}`
+    : null;
+
+  const opponentBody = row.is_bye ? (
+    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+      {row.result === 'not_paired' ? 'NÃO EMPARC.' : 'BYE'}
+    </p>
+  ) : (
+    <>
+      <p className={`text-sm font-medium break-words ${opponentHref ? 'text-brand-700 dark:text-brand-300' : 'text-gray-900 dark:text-gray-100'}`}>
+        {row.opponent_title && <span className="text-gray-400 dark:text-gray-500 font-normal">{row.opponent_title} </span>}
+        {row.opponent_name}
+      </p>
+      <p className="text-xs text-gray-400 mt-0.5">
+        {row.opponent_rating ? `Rating ${row.opponent_rating}` : 'Sem rating'}
+        {row.opponent_rank ? ` · ${row.opponent_rank}º colocado` : ''}
+        {/* Pontuação atual do adversário — pra conferir Buchholz/Sonneborn-Berger na mão
+            sem precisar abrir a classificação em outra aba e cruzar nome por nome. */}
+        {row.opponent_points !== null ? ` · ${formatScore(row.opponent_points)} pts` : ''}
+      </p>
+    </>
+  );
+
   return (
-    <Link
-      href={`/torneios/${tournamentSlug}/rounds/${row.round_number}`}
-      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
-    >
+    <div className="flex items-center gap-3 px-4 py-3">
+      <Link href={roundHref} className="flex items-center gap-3 shrink-0 self-stretch" aria-label={`Ver rodada ${row.round_number}`}>
       {/* Round number */}
       <span className="text-xs font-bold text-gray-400 dark:text-gray-500 shrink-0">
         Rodada {row.round_number}
@@ -325,32 +350,19 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
           <path d="M3 24H17L15 17H5L3 24Z" fill="#1f2937" stroke="#6b7280" strokeWidth="1.5" strokeLinejoin="round" />
         </svg>
       )}
+      </Link>
 
       {/* Opponent */}
-      <div className="flex-1 min-w-0">
-        {row.is_bye ? (
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-            {row.result === 'not_paired' ? 'NÃO EMPARC.' : 'BYE'}
-          </p>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
-              {row.opponent_title && <span className="text-gray-400 dark:text-gray-500 font-normal">{row.opponent_title} </span>}
-              {row.opponent_name}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {row.opponent_rating ? `Rating ${row.opponent_rating}` : 'Sem rating'}
-              {row.opponent_rank ? ` · ${row.opponent_rank}º colocado` : ''}
-              {/* Pontuação atual do adversário — pra conferir Buchholz/Sonneborn-Berger na mão
-                  sem precisar abrir a classificação em outra aba e cruzar nome por nome. */}
-              {row.opponent_points !== null ? ` · ${formatScore(row.opponent_points)} pts` : ''}
-            </p>
-          </>
-        )}
-      </div>
+      {opponentHref ? (
+        <Link href={opponentHref} className="flex-1 min-w-0 rounded-md -mx-1 px-1 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+          {opponentBody}
+        </Link>
+      ) : (
+        <div className="flex-1 min-w-0">{opponentBody}</div>
+      )}
 
       {/* Result + cumulative */}
-      <div className="flex flex-col items-end gap-1 shrink-0">
+      <Link href={roundHref} className="flex flex-col items-end gap-1 shrink-0">
         {isDone ? (
           <Badge className={resultBadgeColor(row.result, isWhite)}>
             {resultLabel(row.result, isWhite)}
@@ -365,7 +377,7 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
             {formatScore(row.cumulative_pts)} pts
           </span>
         )}
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
