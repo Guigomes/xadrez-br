@@ -8,23 +8,36 @@ import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { NotifyButton } from '@/components/tournament/notify-button';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
+import { siteUrl, describeDates, isIndexableTournament, jsonLdString } from '@/lib/seo';
 import { getTournamentStartLabel } from '@/lib/utils/date';
 import { RelativeTime } from '@/components/ui/relative-time';
 import type { Metadata } from 'next';
 
 interface Props {
   children: React.ReactNode;
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string; locale: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug, locale } = await params;
   const data = await getTournamentPageData(slug);
   if (!data) return {};
   const { tournament } = data;
+  const when = describeDates(tournament.start_date, tournament.end_date);
+  // Descrição única por torneio — é o que a busca mostra embaixo do título.
+  // Não usa o texto livre do organizador (pode ser só uma lista de links).
+  const description = `Torneio de xadrez em ${tournament.city}/${tournament.state}, ${when}. ` +
+    `Participantes, pareamentos por rodada e classificação${tournament.status === 'ongoing' ? ' ao vivo' : ''}.`;
+  // Canonical de cada idioma aponta pra ele mesmo (pt-BR sem prefixo) — um
+  // /es canônico pro pt-BR contradiria o hreflang do sitemap.
+  const canonical = `${locale === 'pt-BR' ? '' : `/${locale}`}/torneios/${slug}`;
   return {
-    title: tournament.name,
-    description: tournament.description ?? `Torneio em ${tournament.city}, ${tournament.state}`,
+    title: `${tournament.name} — torneio de xadrez em ${tournament.city}/${tournament.state}`,
+    description,
+    alternates: { canonical },
+    openGraph: { type: 'website', title: tournament.name, description, url: canonical },
+    // Rascunho/privado abre por link, mas não deve ser indexado.
+    robots: isIndexableTournament(tournament) ? undefined : { index: false, follow: false },
   };
 }
 
@@ -47,8 +60,41 @@ export default async function TournamentLayout({ children, params }: Props) {
     ? getTournamentStartLabel(tournament.start_date)
     : null;
 
+  // Dados estruturados de evento: é o que permite ao Google mostrar o torneio
+  // com data e local direto na busca. Só pra torneio indexável.
+  const eventJsonLd = isIndexableTournament(tournament) ? {
+    '@context': 'https://schema.org',
+    '@type': 'SportsEvent',
+    name: tournament.name,
+    sport: 'Chess',
+    url: `${siteUrl()}/torneios/${slug}`,
+    startDate: tournament.start_date,
+    endDate: tournament.end_date ?? tournament.start_date,
+    eventStatus: tournament.status === 'cancelled'
+      ? 'https://schema.org/EventCancelled'
+      : 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    location: {
+      '@type': 'Place',
+      name: tournament.venue || `${tournament.city}/${tournament.state}`,
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: tournament.city,
+        addressRegion: tournament.state,
+        addressCountry: 'BR',
+      },
+    },
+    ...(tournament.organizer_name && tournament.organizer_name !== 'A confirmar'
+      ? { organizer: { '@type': 'Organization', name: tournament.organizer_name } }
+      : {}),
+    description: `Torneio de xadrez em ${tournament.city}/${tournament.state}, ${describeDates(tournament.start_date, tournament.end_date)}.`,
+  } : null;
+
   return (
     <div>
+      {eventJsonLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(eventJsonLd) }} />
+      )}
       <SaveLastTournament slug={slug} />
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">

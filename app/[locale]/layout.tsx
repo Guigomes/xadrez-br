@@ -15,6 +15,7 @@ import { ErrorLogger } from '@/components/error-logger';
 import dynamic from 'next/dynamic';
 import { getSessionUser } from '@/lib/data/session';
 import { routing } from '@/i18n/routing';
+import { siteUrl } from '@/lib/seo';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' });
 
@@ -54,6 +55,8 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: 'brand' });
   const name = t('name');
   return {
+    // Base pra canonical/og relativos (por torneio, em torneios/[slug]/layout.tsx).
+    metadataBase: new URL(siteUrl()),
     title: { default: name, template: `%s | ${name}` },
     description: 'Crie e gerencie torneios de xadrez: inscrição online, emparceiramento automático, classificação por categoria e página pública ao vivo.',
     icons: {
