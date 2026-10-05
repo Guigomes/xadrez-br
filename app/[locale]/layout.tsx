@@ -57,6 +57,8 @@ export async function generateMetadata({
   return {
     // Base pra canonical/og relativos (por torneio, em torneios/[slug]/layout.tsx).
     metadataBase: new URL(siteUrl()),
+    // Prova de propriedade do site no Google Search Console (método "tag HTML").
+    verification: { google: 'D-shEymnfWUR3yTbfLqWDV87tfxKYyZKB_aAH0Bc3zU' },
     title: { default: name, template: `%s | ${name}` },
     description: 'Crie e gerencie torneios de xadrez: inscrição online, emparceiramento automático, classificação por categoria e página pública ao vivo.',
     icons: {
