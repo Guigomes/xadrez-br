@@ -88,6 +88,23 @@ export default async function TournamentLayout({ children, params }: Props) {
       ? { organizer: { '@type': 'Organization', name: tournament.organizer_name } }
       : {}),
     description: `Torneio de xadrez em ${tournament.city}/${tournament.state}, ${describeDates(tournament.start_date, tournament.end_date)}.`,
+    // Google pede imagem pra evento: banner do torneio, ou o ícone do site de reserva.
+    image: [tournament.banner_url || `${siteUrl()}/icons/icon-512x512.png`],
+    // Ingresso/inscrição só pra torneio nativo — no importado a taxa é do site de
+    // origem e is_free não reflete a realidade.
+    ...(tournament.mode === 'native' && (tournament.is_free || tournament.registration_fee_cents != null)
+      ? {
+          offers: {
+            '@type': 'Offer',
+            url: `${siteUrl()}/torneios/${slug}`,
+            price: tournament.is_free ? 0 : (tournament.registration_fee_cents ?? 0) / 100,
+            priceCurrency: 'BRL',
+            availability: effectiveStatus === 'registration'
+              ? 'https://schema.org/InStock'
+              : 'https://schema.org/SoldOut',
+          },
+        }
+      : {}),
   } : null;
 
   return (
