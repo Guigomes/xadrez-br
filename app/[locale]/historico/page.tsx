@@ -103,6 +103,11 @@ export default function HistoryPage() {
                     {t.homologated === true && ' · ✅ homologado'}
                     {t.homologated === false && ' · não homologado'}
                   </p>
+                  {t.series && (
+                    <p className="text-xs text-brand-700 dark:text-brand-300 mt-1">
+                      Circuito: {t.series.name}{t.series_label ? ` · ${t.series_label}` : ''}
+                    </p>
+                  )}
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">{t.players_count} jogadores</Badge>
                     <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">{t.games_count} partidas</Badge>

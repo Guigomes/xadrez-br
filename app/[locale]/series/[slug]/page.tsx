@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { formatDate } from '@/lib/utils/date';
+import type { TournamentStatus } from '@/types/database';
 
 export default async function SeriesOverview({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -17,6 +18,12 @@ export default async function SeriesOverview({ params }: { params: Promise<{ slu
     .single();
   if (!series) notFound();
 
+  // etapas que só existem no arquivo histórico (tabelas ainda fora de types/database.generated.ts)
+  const { data: archived } = await (supabase as any)
+    .from('history_tournaments')
+    .select('slug, name, start_date, series_label')
+    .eq('series_id', series.id);
+
   const [{ data: stages }, { data: rules }] = await Promise.all([
     supabase
       .from('series_tournaments')
@@ -26,6 +33,17 @@ export default async function SeriesOverview({ params }: { params: Promise<{ slu
     supabase.from('series_points_rules').select('place, points')
       .eq('series_id', series.id).order('place'),
   ]);
+
+  type StageItem = { key: string; href: string; title: string; date: string | null; archive: boolean; status?: TournamentStatus };
+  const items: StageItem[] = [
+    ...(stages ?? []).filter((s: any) => s.tournament?.slug).map((s: any, i: number) => ({
+      key: `l-${s.tournament.slug}`, href: `/torneios/${s.tournament.slug}`, title: s.label || s.tournament.name,
+      date: s.tournament.start_date as string | null, archive: false, status: s.tournament.status as TournamentStatus,
+    })),
+    ...(archived ?? []).map((a: any) => ({
+      key: `a-${a.slug}`, href: `/historico/${a.slug}`, title: a.series_label || a.name, date: a.start_date as string | null, archive: true,
+    })),
+  ].sort((a, b) => (a.date ?? '').localeCompare(b.date ?? '') || a.title.localeCompare(b.title, 'pt-BR'));
 
   return (
     <div className="space-y-5">
@@ -39,25 +57,29 @@ export default async function SeriesOverview({ params }: { params: Promise<{ slu
 
       <div className="card p-5">
         <h2 className="mb-3 font-semibold text-gray-900 dark:text-gray-100">Etapas</h2>
-        {!stages?.length ? (
+        {!items.length ? (
           <EmptyState icon="🗓" title="Nenhuma etapa divulgada ainda" />
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-            {stages.map((s: any, i: number) => (
-              <li key={s.tournament?.slug ?? i} className="flex flex-wrap items-center gap-2 py-3">
+            {items.map((s, i) => (
+              <li key={s.key} className="flex flex-wrap items-center gap-2 py-3">
                 <span className="text-sm tabular-nums text-gray-400 dark:text-gray-500">{i + 1}.</span>
                 <Link
-                  href={`/torneios/${s.tournament?.slug}`}
+                  href={s.href}
                   className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 hover:underline dark:text-gray-100"
                 >
-                  {s.label || s.tournament?.name}
+                  {s.title}
                 </Link>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {s.tournament?.start_date ? formatDate(s.tournament.start_date, 'dd/MM/yyyy') : ''}
+                  {s.date ? formatDate(s.date, 'dd/MM/yyyy') : ''}
                 </span>
-                <Badge className={getTournamentStatusColor(s.tournament?.status, null, true)}>
-                  {getTournamentStatusLabel(s.tournament?.status, null, true)}
-                </Badge>
+                {s.archive ? (
+                  <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Arquivo</Badge>
+                ) : (
+                  <Badge className={getTournamentStatusColor(s.status!, null, true)}>
+                    {getTournamentStatusLabel(s.status!, null, true)}
+                  </Badge>
+                )}
               </li>
             ))}
           </ul>

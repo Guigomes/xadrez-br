@@ -75,6 +75,13 @@ export function HistoryTournamentView({ slug }: { slug: string }) {
           {t.city && ` · ${t.city}${t.state ? `/${t.state}` : ''}`}
           {t.organizer_name && ` · ${t.organizer_name}`}
         </p>
+        {t.series && (
+          <p className="text-sm mt-2">
+            Circuito:{' '}
+            <Link href={`/series/${t.series.slug}`} className="text-brand-700 dark:text-brand-300 hover:underline">{t.series.name}</Link>
+            {t.series_label ? ` · ${t.series_label}` : ''}
+          </p>
+        )}
         <div className="flex flex-wrap gap-2 mt-3">
           <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">{t.players_count} jogadores</Badge>
           <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">{t.games_count} partidas</Badge>

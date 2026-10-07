@@ -94,6 +94,8 @@ export interface HistoryTournament {
   players_count: number;
   games_count: number;
   pgn_count: number;
+  series_label: string | null;
+  series: { slug: string; name: string } | null;
 }
 
 export function useHistoryTournaments() {
@@ -103,7 +105,7 @@ export function useHistoryTournaments() {
     queryFn: async (): Promise<HistoryTournament[]> => {
       const { data, error } = await supabase
         .from('history_tournaments')
-        .select('*')
+        .select('*, series:tournament_series(slug, name)')
         .order('start_date', { ascending: false })
         .limit(1000);
       if (error) throw error;
@@ -117,7 +119,7 @@ export function useHistoryTournament(slug: string) {
     queryKey: historyKeys.tournament(slug),
     staleTime: 300_000,
     queryFn: async (): Promise<HistoryTournament | null> => {
-      const { data, error } = await supabase.from('history_tournaments').select('*').eq('slug', slug).maybeSingle();
+      const { data, error } = await supabase.from('history_tournaments').select('*, series:tournament_series(slug, name)').eq('slug', slug).maybeSingle();
       if (error) throw error;
       return (data as HistoryTournament | null) ?? null;
     },
