@@ -41,6 +41,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
     { href: '/torneios', label: tNav('tournaments') },
     { href: '/series',      label: tNav('series') },
     { href: '/players',     label: tNav('players') },
+    { href: '/historico',   label: tNav('history') },
     { href: '/noticias',    label: tNav('news') },
   ];
 

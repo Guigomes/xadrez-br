@@ -15,7 +15,7 @@ export const playerKeys = {
   tournaments: (id: string) => [...playerKeys.all, id, 'tournaments'] as const,
 };
 
-export type PlayerSearchResult = Pick<Player, 'id' | 'full_name' | 'state' | 'rating_std' | 'cbx_id'>;
+export type PlayerSearchResult = Pick<Player, 'id' | 'full_name' | 'state' | 'rating_std' | 'cbx_id' | 'fide_id' | 'title'>;
 
 export function usePlayerSearch(query: string) {
   return useQuery({
@@ -23,14 +23,18 @@ export function usePlayerSearch(query: string) {
     queryFn: async (): Promise<PlayerSearchResult[]> => {
       if (!query.trim()) return [];
       // Só as colunas que o card de resultado da busca mostra.
-      const { data, error } = await supabase
-        .from('players')
-        .select('id, full_name, state, rating_std, cbx_id')
-        .ilike('full_name', `%${query}%`)
-        .order('full_name')
-        .limit(20);
+      const q = query.trim();
+      let req = supabase.from('players').select('id, full_name, state, rating_std, cbx_id, fide_id, title').eq('is_test', false);
+      if (/^\d{2,}$/.test(q)) {
+        // número: ID CBX ou FIDE
+        req = req.or(`cbx_id.eq.${q},fide_id.eq.${q}`);
+      } else {
+        // várias palavras, em qualquer ordem ("silva miguel" acha "Miguel Oliveira Silva")
+        for (const word of q.split(/\s+/).filter((w) => w.length >= 2)) req = req.ilike('full_name', `%${word.replace(/[%_,()]/g, ' ')}%`);
+      }
+      const { data, error } = await req.order('full_name').limit(30);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as PlayerSearchResult[];
     },
     staleTime: 60_000,
     enabled: query.trim().length >= 2,

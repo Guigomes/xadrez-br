@@ -24,6 +24,7 @@
     "@tanstack/react-query-devtools": "^5.62.16",
     "@vercel/analytics": "^2.0.1",
     "cheerio": "^1.1.0",
+    "chess.js": "^1.4.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "driver.js": "^1.8.0",

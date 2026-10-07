@@ -16,13 +16,13 @@ export default function PlayersPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">Buscar jogador</h1>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          Digite o nome do jogador para ver seu perfil e histórico de torneios.
+          Busque pelo nome ou pelo ID CBX / FIDE para ver o perfil e o histórico de torneios.
         </p>
       </div>
 
       <div className="mb-6">
         <Input
-          placeholder="Nome do jogador..."
+          placeholder="Nome ou ID (ex.: Miguel Silva, 107485)"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="text-base h-12"
@@ -52,12 +52,16 @@ export default function PlayersPage() {
               className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
             >
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{player.full_name}</p>
+                <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {player.title && <span className="text-amber-600 dark:text-amber-400 mr-1">{player.title}</span>}
+                  {player.full_name}
+                </p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {[
                     player.state,
                     player.rating_std ? `Rating ${player.rating_std}` : null,
                     player.cbx_id ? `CBX ${player.cbx_id}` : null,
+                    player.fide_id ? `FIDE ${player.fide_id}` : null,
                   ].filter(Boolean).join(' · ')}
                 </p>
               </div>
