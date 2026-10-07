@@ -36,6 +36,9 @@ export default async function AdminDashboard({
     .from('tournaments')
     .select('id, slug, name, status, start_date, end_date, registration_end_date, registration_closes_by_date, rounds_count, is_public, city, state')
     .eq('created_by', user!.id)
+    // Data de realização, não de cadastro: torneio antigo importado hoje não pode
+    // ir pro topo.
+    .order('start_date', { ascending: false })
     .order('created_at', { ascending: false });
 
   return (

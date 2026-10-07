@@ -20,18 +20,6 @@ import { Gambito } from '@/components/mascot/gambito';
  * agora" e "Inscrições abertas"). Não usar standalone.
  */
 
-// Ordem de relevância pra quem administra: o que exige ação agora primeiro,
-// arquivo (encerrado/cancelado) por último.
-const STATUS_PRIORITY: Record<string, number> = {
-  ongoing: 0,
-  registration: 1,
-  registration_closed: 2,
-  published: 3,
-  draft: 4,
-  finished: 5,
-  cancelled: 6,
-};
-
 const MAX_SHOWN = 6;
 
 function nextAction(slug: string, status: string, pending: number) {
@@ -51,6 +39,9 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
     .from('tournaments')
     .select('id, slug, name, status, start_date, end_date, registration_end_date, registration_closes_by_date, rounds_count, is_public, city, state, created_at')
     .eq('created_by', userId)
+    // Data de realização, não de cadastro: torneio antigo importado hoje não pode
+    // ir pro topo.
+    .order('start_date', { ascending: false })
     .order('created_at', { ascending: false });
 
   const all = tournaments ?? [];
@@ -70,12 +61,7 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
     }
   }
 
-  const sorted = [...all].sort((a, b) => {
-    const pa = STATUS_PRIORITY[a.status] ?? 9;
-    const pb = STATUS_PRIORITY[b.status] ?? 9;
-    return pa - pb; // dentro do mesmo status mantém created_at desc da query
-  });
-  const shown = sorted.slice(0, MAX_SHOWN);
+  const shown = all.slice(0, MAX_SHOWN);
   const totalPending = [...pendingByTournament.values()].reduce((a, b) => a + b, 0);
 
   const firstName = userName?.trim().split(/\s+/)[0];
