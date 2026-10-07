@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { ExternalIdLinks } from '@/components/player/external-id-links';
 import { formatScore, BR_STATES, compareGroupNames } from '@/lib/utils/chess';
 import type { PlayerFormValues, PairingGroup, TournamentCategory } from '@/types/database';
 
@@ -137,8 +138,8 @@ export default function AdminPlayersPage({ params }: Props) {
           <p className="text-xs text-gray-400">
             {tpAny.player?.city ?? tpAny.player?.state ?? ''}
             {tpAny.player?.rating_std ? ` · ${tpAny.player.rating_std}` : ''}
-            {tpAny.player?.cbx_id ? ` · CBX ${tpAny.player.cbx_id}` : ''}
-            {tpAny.player?.fide_id ? ` · FIDE ${tpAny.player.fide_id}` : ''}
+            {(tpAny.player?.cbx_id || tpAny.player?.fide_id) && ' · '}
+            <ExternalIdLinks cbxId={tpAny.player?.cbx_id} fideId={tpAny.player?.fide_id} />
           </p>
           {missingGroup && (
             <div className="mt-1 flex items-center gap-2">

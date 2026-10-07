@@ -146,7 +146,7 @@ export default function PlayerTournamentPage({ params }: Props) {
                 )}
                 {profile.cbx_id && (
                   <a
-                    href={`https://www.cbx.org.br/enxadristas/?id=${profile.cbx_id}`}
+                    href={`https://cbx.org.br/jogador/${profile.cbx_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"

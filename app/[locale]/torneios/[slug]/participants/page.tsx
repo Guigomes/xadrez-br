@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { StateBadge } from '@/components/player/state-badge';
 import { cn } from '@/lib/utils/cn';
+import { ExternalIdLinks } from '@/components/player/external-id-links';
 import { compareParticipantOrder, compareGroupNames, formatScore } from '@/lib/utils/chess';
 
 interface Props {
@@ -288,10 +289,6 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                     && displayClub?.trim().toLocaleLowerCase('pt-BR') === player?.city?.trim().toLocaleLowerCase('pt-BR')
                     ? null
                     : player?.city;
-                  const ids = [
-                    player?.cbx_id ? `CBX ${player.cbx_id}` : null,
-                    player?.fide_id ? `FIDE ${player.fide_id}` : null,
-                  ].filter(Boolean).join(' · ');
 
                   return (
                     <tr
@@ -326,7 +323,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                           {displayCity && <span>{displayCity}</span>}
                           {displayClub && <span>{displayClub}</span>}
                           {player?.rating_std && <span>Rating {player.rating_std}</span>}
-                          {ids && <span>{ids}</span>}
+                          <ExternalIdLinks cbxId={player?.cbx_id} fideId={player?.fide_id} />
                         </span>
                       </td>
                       {showGroupColumn && (
@@ -368,7 +365,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                         {displayClub || '–'}
                       </td>
                       <td className="hidden py-3 px-3 text-gray-500 dark:text-gray-400 sm:table-cell whitespace-nowrap">
-                        {ids || '–'}
+                        {player?.cbx_id || player?.fide_id ? <ExternalIdLinks cbxId={player?.cbx_id} fideId={player?.fide_id} /> : '–'}
                       </td>
                     </tr>
                   );
