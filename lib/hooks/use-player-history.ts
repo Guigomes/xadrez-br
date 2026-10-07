@@ -53,6 +53,25 @@ export function useGamePgn(source: 'live' | 'history', gameId: string, enabled: 
   });
 }
 
+/** Quais mesas (torneio ao vivo/importado) têm lances. Só logado: a tabela de PGN não é pública. */
+export function useLivePgnIds(pairingIds: string[], enabled: boolean) {
+  const key = pairingIds.length ? `${pairingIds.length}:${pairingIds[0]}:${pairingIds[pairingIds.length - 1]}` : '';
+  return useQuery({
+    queryKey: [...historyKeys.all, 'live-pgn-ids', key],
+    enabled: enabled && pairingIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Set<string>> => {
+      const found = new Set<string>();
+      for (let i = 0; i < pairingIds.length; i += 100) {
+        const { data, error } = await supabase.from('pairing_pgns').select('pairing_id').in('pairing_id', pairingIds.slice(i, i + 100));
+        if (error) throw error;
+        for (const r of data ?? []) found.add((r as { pairing_id: string }).pairing_id);
+      }
+      return found;
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Arquivo histórico (torneios antigos, só com as partidas jogadas) — leitura pública
 // ---------------------------------------------------------------------------

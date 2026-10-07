@@ -23,8 +23,8 @@ export interface ViewableGame {
   blackName: string;
   /** texto do resultado, ex.: "1 - 0" */
   resultText: string;
-  round: number;
-  tournamentName: string;
+  round?: number | null;
+  tournamentName?: string | null;
 }
 
 export const RESULT_TEXT: Record<string, string> = {
@@ -87,7 +87,7 @@ export function GameViewerButton({
                   ♔ {game.whiteName} <span className="text-gray-400">x</span> ♚ {game.blackName}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
-                  {game.resultText} · Rodada {game.round} · {game.tournamentName}
+                  {[game.resultText, game.round ? `Rodada ${game.round}` : null, game.tournamentName].filter(Boolean).join(' · ')}
                 </p>
               </div>
               <button

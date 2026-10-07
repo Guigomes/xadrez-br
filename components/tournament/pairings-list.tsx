@@ -4,15 +4,20 @@ import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { formatScore, winnerSide, resultLabel, resultBadgeColor } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
+import { GameViewerButton, RESULT_TEXT } from '@/components/player-history/game-viewer';
 import type { RoundPairingRow } from '@/types/database';
 
 interface PairingsListProps {
   pairings: RoundPairingRow[];
   tournamentSlug: string;
   followedTpIds?: Set<string>;
+  /** mesas com lances (só preenchido para quem está logado) */
+  pgnIds?: Set<string>;
+  roundNumber?: number | null;
+  tournamentName?: string | null;
 }
 
-export function PairingsList({ pairings, tournamentSlug, followedTpIds }: PairingsListProps) {
+export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, roundNumber, tournamentName }: PairingsListProps) {
   if (pairings.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -75,6 +80,13 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds }: Pairin
             </div>
 
             <PlayerLink tpId={pairing.black_tp_id} name={pairing.black_name} title={pairing.black_title} rating={pairing.black_rating} score={pairing.black_score} tournamentSlug={tournamentSlug} color="black" state={blackState} alignRight followed={!!followedBlack} />
+          </div>
+        )}
+        {!pairing.is_bye && pgnIds?.has(pairing.pairing_id) && (
+          <div className="mt-1 text-center">
+            <GameViewerButton
+              game={{ source: 'live', gameId: pairing.pairing_id, whiteName: pairing.white_name, blackName: pairing.black_name, resultText: RESULT_TEXT[pairing.result] ?? pairing.result, round: roundNumber, tournamentName }}
+            />
           </div>
         )}
       </div>
