@@ -16,6 +16,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { GameViewerButton, RESULT_TEXT } from '@/components/player-history/game-viewer';
 import { formatDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
+import { useIsDev } from '@/lib/hooks/use-is-dev';
 import { numberLabel } from '@/lib/player-history/types';
 
 const KIND_LABEL: Record<string, string> = { classical: 'Clássico', rapid: 'Rápido', blitz: 'Blitz', bullet: 'Bullet' };
@@ -25,6 +26,7 @@ export function HistoryTournamentView({ slug }: { slug: string }) {
   const { data: players } = useHistoryTournamentPlayers(t?.id);
   const { data: games } = useHistoryGames(t?.id);
   const { user } = useUser();
+  const isDev = useIsDev();
   const { data: pgnIds } = useHistoryPgnIds(t?.id, !!user && (t?.pgn_count ?? 0) > 0);
   const [group, setGroup] = useState('');
   const [round, setRound] = useState('');
@@ -70,8 +72,8 @@ export function HistoryTournamentView({ slug }: { slug: string }) {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
           {formatDate(t.start_date)}{t.date_approx ? ' (data aproximada)' : ''}
           {KIND_LABEL[t.time_control_kind] && ` · ${KIND_LABEL[t.time_control_kind]}`}
-          {t.homologated === true && ' · ✅ homologado'}
-          {t.homologated === false && ' · não homologado'}
+          {isDev && t.homologated === true && ' · ✅ homologado'}
+          {isDev && t.homologated === false && ' · não homologado'}
           {t.city && ` · ${t.city}${t.state ? `/${t.state}` : ''}`}
           {t.organizer_name && ` · ${t.organizer_name}`}
         </p>

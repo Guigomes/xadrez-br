@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { Select } from '@/components/ui/select';
 import { GameViewerButton, RESULT_TEXT } from './game-viewer';
 import { cn } from '@/lib/utils/cn';
+import { useIsDev } from '@/lib/hooks/use-is-dev';
 import { formatDate } from '@/lib/utils/date';
 import {
   OUTCOME_CLASS,
@@ -61,6 +62,7 @@ function bump(rec: { wins: number; draws: number; losses: number }, g: HGame) {
 }
 
 export function PlayerHistoryView({ games }: { games: HGame[] }) {
+  const isDev = useIsDev(); // homologação é informação interna: só o desenvolvedor vê
   const [openOpponents, setOpenOpponents] = useState<Set<string>>(new Set());
   const [opponentSort, setOpponentSort] = useState<OpponentSort>('games');
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -194,8 +196,8 @@ export function PlayerHistoryView({ games }: { games: HGame[] }) {
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       {formatDate(first.date)}
                       {first.timeControl && ` · ${first.timeControl}`}
-                      {first.homologated === true && ' · ✅ homologado'}
-                      {first.homologated === false && ' · não homologado'}
+                      {isDev && first.homologated === true && ' · ✅ homologado'}
+                      {isDev && first.homologated === false && ' · não homologado'}
                       {` · ${n} ${n === 1 ? 'partida' : 'partidas'}`}
                     </p>
                   </li>
@@ -313,8 +315,8 @@ export function PlayerHistoryView({ games }: { games: HGame[] }) {
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {formatDate(first.date)}
                 {first.timeControl && ` · ${first.timeControl}`}
-                {first.homologated === true && ' · ✅ homologado'}
-                {first.homologated === false && ' · não homologado'}
+                {isDev && first.homologated === true && ' · ✅ homologado'}
+                {isDev && first.homologated === false && ' · não homologado'}
               </span>
             </div>
             <ul className="divide-y divide-gray-100 dark:divide-gray-800/60">

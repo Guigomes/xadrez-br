@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageSpinner } from '@/components/ui/spinner';
 import { formatDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
+import { useIsDev } from '@/lib/hooks/use-is-dev';
 
 const PAGE = 40;
 
@@ -25,6 +26,8 @@ export default function HistoryPage() {
   const [kind, setKind] = useState('');
   const [year, setYear] = useState('');
   const [onlyPgn, setOnlyPgn] = useState(false);
+  const isDev = useIsDev();
+  const [hom, setHom] = useState(''); // filtro de homologação: só o desenvolvedor
   const [limit, setLimit] = useState(PAGE);
 
   const years = useMemo(
@@ -38,10 +41,11 @@ export default function HistoryPage() {
       if (kind && t.time_control_kind !== kind) return false;
       if (year && !t.start_date.startsWith(year)) return false;
       if (onlyPgn && t.pgn_count === 0) return false;
+      if (isDev && hom && String(t.homologated ?? 'none') !== hom) return false;
       const name = normalize(t.name);
       return words.every((w) => name.includes(w));
     });
-  }, [tournaments, query, kind, year, onlyPgn]);
+  }, [tournaments, query, kind, year, onlyPgn, hom, isDev]);
 
   if (isLoading) return <PageSpinner />;
 
@@ -77,6 +81,16 @@ export default function HistoryPage() {
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </Select>
       </div>
+      {isDev && (
+        <div className="max-w-xs">
+          <Select label="Homologação (dev)" value={hom} onChange={(e) => { setHom(e.target.value); setLimit(PAGE); }}>
+            <option value="">Todas</option>
+            <option value="true">Homologado</option>
+            <option value="false">Não homologado</option>
+            <option value="none">Sem informação</option>
+          </Select>
+        </div>
+      )}
       <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
         <input
           type="checkbox"
@@ -100,8 +114,8 @@ export default function HistoryPage() {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {formatDate(t.start_date)}{t.date_approx ? ' (data aproximada)' : ''}
                     {KIND_LABEL[t.time_control_kind] && ` · ${KIND_LABEL[t.time_control_kind]}`}
-                    {t.homologated === true && ' · ✅ homologado'}
-                    {t.homologated === false && ' · não homologado'}
+                    {isDev && t.homologated === true && ' · ✅ homologado'}
+                    {isDev && t.homologated === false && ' · não homologado'}
                   </p>
                   {t.series && (
                     <p className="text-xs text-brand-700 dark:text-brand-300 mt-1">

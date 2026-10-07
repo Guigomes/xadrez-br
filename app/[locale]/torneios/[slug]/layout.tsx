@@ -12,6 +12,7 @@ import { siteUrl, describeDates, isIndexableTournament, jsonLdString } from '@/l
 import { getTournamentStartLabel } from '@/lib/utils/date';
 import { RelativeTime } from '@/components/ui/relative-time';
 import { PgnCountBadge } from '@/components/tournament/pgn-count-badge';
+import { DevHomologatedBadge } from '@/components/tournament/dev-homologated-badge';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -139,12 +140,7 @@ export default async function TournamentLayout({ children, params }: Props) {
                   Suíço
                 </Badge>
               )}
-              {(tournament as { homologated?: boolean | null }).homologated === true && (
-                <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300">✅ Homologado</Badge>
-              )}
-              {(tournament as { homologated?: boolean | null }).homologated === false && (
-                <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Não homologado</Badge>
-              )}
+              <DevHomologatedBadge homologated={(tournament as { homologated?: boolean | null }).homologated} />
               <PgnCountBadge tournamentId={tournament.id} />
             </div>
             {lastImport?.last_run_at && (
