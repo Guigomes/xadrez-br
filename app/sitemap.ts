@@ -45,6 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const fixed = [
     entry('/', null, 1),
     entry('/torneios', null, 0.9),
+    entry('/agenda', null, 0.8),
     entry('/noticias', null, 0.5),
     entry('/players', null, 0.4),
   ];

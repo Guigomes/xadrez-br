@@ -39,6 +39,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
 
   const navLinks = [
     { href: '/torneios', label: tNav('tournaments') },
+    { href: '/agenda',     label: tNav('agenda') },
     { href: '/series',      label: tNav('series') },
     { href: '/players',     label: tNav('players') },
     { href: '/historico',   label: tNav('history') },
