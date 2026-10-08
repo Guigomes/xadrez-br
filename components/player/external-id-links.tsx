@@ -1,6 +1,6 @@
 import { cbxProfileUrl, fideProfileUrl } from '@/lib/utils/player-links';
 
-const LINK_CLASS = 'hover:text-brand-600 dark:hover:text-brand-400 hover:underline underline-offset-2';
+const LINK_CLASS = 'text-brand-600 underline underline-offset-2 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300';
 
 /**
  * "CBX 123 · FIDE 456" com cada ID levando ao perfil do jogador na entidade

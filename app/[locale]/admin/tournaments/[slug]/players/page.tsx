@@ -39,6 +39,7 @@ export default function AdminPlayersPage({ params }: Props) {
   const setCheckin = useSetPlayerCheckin(tournament?.id ?? '');
 
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   // Modal de cadastro/edição — null = fechado. editing !== null = modo edição
   // (aberto a partir de "✏️ Editar" numa linha); showCreateModal cobre o
@@ -98,6 +99,17 @@ export default function AdminPlayersPage({ params }: Props) {
   const indexOf = new Map<string, number>();
   (tPlayers ?? []).forEach((tp, i) => indexOf.set(tp.id, i));
 
+  // Busca por nome, cidade/UF, clube, CBX ou FIDE — sem acento e sem diferenciar
+  // maiúsculas, igual à lista pública de participantes.
+  const norm = (v: unknown) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const query = norm(search.trim());
+  const visiblePlayers = query
+    ? (tPlayers ?? []).filter((tp) => {
+        const pl = (tp as any).player;
+        return norm([pl?.full_name, pl?.city, pl?.state, pl?.club_or_school, pl?.cbx_id, pl?.fide_id].join(' ')).includes(query);
+      })
+    : (tPlayers ?? []);
+
   // Participantes divididos por grupo de emparceiramento (mesmo padrão da
   // página pública). Sem grupo nenhum (importado ou nativo não configurado),
   // cai na lista chapada.
@@ -107,12 +119,12 @@ export default function AdminPlayersPage({ params }: Props) {
         ...sortedGroups.map((g) => ({
           key: g.id,
           title: g.name,
-          rows: (tPlayers ?? []).filter((tp) => (tp as any).pairing_group_id === g.id),
+          rows: visiblePlayers.filter((tp) => (tp as any).pairing_group_id === g.id),
         })),
         {
           key: '__none__',
           title: 'Sem grupo',
-          rows: (tPlayers ?? []).filter((tp) => !(tp as any).pairing_group_id),
+          rows: visiblePlayers.filter((tp) => !(tp as any).pairing_group_id),
         },
       ].filter((s) => s.key !== '__none__' || s.rows.length > 0)
     : [];
@@ -241,12 +253,23 @@ export default function AdminPlayersPage({ params }: Props) {
             Participantes ({tPlayers?.length ?? 0})
             {tournament.checkin_enabled && ` · ${(tPlayers ?? []).filter((tp) => (tp as any).checkin_status === 'checked_in').length} presentes`}
           </p>
+          <Input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome, cidade, CBX ou FIDE…"
+            aria-label="Buscar participantes"
+            className="mt-3"
+          />
         </div>
         {loadingPlayers ? (
           <div className="py-8 flex justify-center"><PageSpinner /></div>
         ) : !useGroupSections ? (
           <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
-            {(tPlayers ?? []).map((tp, i) => renderRow(tp, i))}
+            {visiblePlayers.length === 0 && query && (
+              <p className="px-4 py-6 text-center text-sm text-gray-400">Nenhum participante encontrado.</p>
+            )}
+            {visiblePlayers.map((tp, i) => renderRow(tp, i))}
           </div>
         ) : (
           <div>
