@@ -7,6 +7,8 @@ import { useCategories } from '@/lib/hooks/use-classifications';
 import { useGroups } from '@/lib/hooks/use-native-rounds';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
+import { LinkifiedText } from '@/components/ui/linkified-text';
+import { MapsLink } from '@/components/tournament/maps-link';
 import { ROUND_STATUS_LABELS, ROUND_STATUS_COLORS, compareGroupNames } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 
@@ -84,6 +86,7 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
             <InfoItem
               label="Local"
               value={[tournament.venue, tournament.city && `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}
+              action={tournament.venue ? <MapsLink venue={tournament.venue} city={tournament.city} state={tournament.state} /> : undefined}
               icon="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"
             />
           )}
@@ -129,8 +132,8 @@ export default function AdminTournamentOverviewPage({ params }: Props) {
         {tournament.description && (
           <div className="card p-4 overflow-hidden">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Sobre o torneio</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed break-words whitespace-pre-wrap">
-              {tournament.description}
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed break-words">
+              <LinkifiedText text={tournament.description} />
             </p>
           </div>
         )}
@@ -202,7 +205,7 @@ function Icon({ path, className = 'h-4 w-4' }: { path: string; className?: strin
 }
 
 /** Linha do card de detalhes: ícone + rótulo pequeno + valor. */
-function InfoItem({ label, value, icon }: { label: string; value: string; icon: string }) {
+function InfoItem({ label, value, icon, action }: { label: string; value: string; icon: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3 min-w-0">
       <span className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400">
@@ -211,6 +214,7 @@ function InfoItem({ label, value, icon }: { label: string; value: string; icon: 
       <div className="min-w-0">
         <dt className="text-xs text-gray-400 dark:text-gray-500">{label}</dt>
         <dd className="text-sm text-gray-800 dark:text-gray-200 break-words">{value}</dd>
+        {action && <div className="mt-1.5">{action}</div>}
       </div>
     </div>
   );

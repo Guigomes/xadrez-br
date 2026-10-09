@@ -1,4 +1,3 @@
-import type React from 'react';
 import { Link } from '@/i18n/navigation';
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -8,6 +7,8 @@ import {
 import type { TiebreakKey } from '@/types/database';
 import { formatDateRange, getTournamentStartLabel } from '@/lib/utils/date';
 import { Badge } from '@/components/ui/badge';
+import { LinkifiedText } from '@/components/ui/linkified-text';
+import { MapsLink } from '@/components/tournament/maps-link';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -82,7 +83,10 @@ export default async function TournamentOverviewPage({ params }: Props) {
       {/* Meta info — only shown on the overview page */}
       <div className="md:col-span-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-2">
         {(tournament.venue || tournament.city) && (
-          <span>📍 {[tournament.venue, `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}</span>
+          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>📍 {[tournament.venue, `${tournament.city}, ${tournament.state}`].filter(Boolean).join(' · ')}</span>
+            {tournament.venue && <MapsLink venue={tournament.venue} city={tournament.city} state={tournament.state} />}
+          </span>
         )}
         <span>📅 {formatDateRange(tournament.start_date, tournament.end_date)}{tournament.start_time && ` às ${tournament.start_time.slice(0, 5)}`}</span>
         {tournament.registration_start_date && (
@@ -142,7 +146,7 @@ export default async function TournamentOverviewPage({ params }: Props) {
           <div className="card p-4 overflow-hidden">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Sobre o torneio</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed break-words">
-              <DescriptionText text={tournament.description} />
+              <LinkifiedText text={tournament.description} />
             </p>
           </div>
         )}
@@ -214,7 +218,12 @@ export default async function TournamentOverviewPage({ params }: Props) {
         <div className="card p-4 space-y-3 text-sm">
           <InfoRow label="Organização" value={tournament.organizer_name} />
           {tournament.chief_arbiter && <InfoRow label="Árbitro-chefe" value={tournament.chief_arbiter} />}
-          {tournament.venue && <InfoRow label="Local" value={tournament.venue} />}
+          {tournament.venue && (
+            <div className="space-y-1.5">
+              <InfoRow label="Local" value={tournament.venue} />
+              <MapsLink venue={tournament.venue} city={tournament.city} state={tournament.state} />
+            </div>
+          )}
           <InfoRow label="Ritmo" value={tournament.time_control} />
           <InfoRow label="Sistema" value={TOURNAMENT_TYPE_LABELS[tournament.tournament_type]} />
         </div>
@@ -267,34 +276,4 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="text-gray-800 dark:text-gray-200 break-words">{value}</span>
     </div>
   );
-}
-
-/** Renders plain text, turning http(s) URLs into styled clickable links. */
-function DescriptionText({ text }: { text: string }) {
-  const URL_RE = /https?:\/\/[^\s]+/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = URL_RE.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    const url = match[0];
-    parts.push(
-      <a
-        key={match.index}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-brand-600 hover:underline dark:text-brand-400 break-all"
-      >
-        {url}
-      </a>,
-    );
-    lastIndex = match.index + url.length;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-
-  return <>{parts}</>;
 }
