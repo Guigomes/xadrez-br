@@ -171,7 +171,10 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
       <div
         className={cn(
           'lg:hidden overflow-hidden transition-all duration-200 ease-in-out',
-          mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+          // Aberto: até a altura da tela abaixo da barra (rola por dentro se
+          // não couber). Um teto fixo (max-h-96) cortava o fim da lista — o
+          // "Sair" sumiu quando entraram mais itens no menu.
+          mobileOpen ? 'max-h-[calc(100dvh-3.5rem)] overflow-y-auto opacity-100' : 'max-h-0 opacity-0'
         )}
       >
         <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 pb-3 pt-2">
