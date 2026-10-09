@@ -22,10 +22,12 @@ import { Gambito } from '@/components/mascot/gambito';
 
 const MAX_SHOWN = 6;
 
-function nextAction(slug: string, status: string, pending: number) {
+function nextAction(slug: string, status: string, pending: number, hasRounds: boolean) {
   const base = `/admin/tournaments/${slug}`;
   if (pending > 0) return { href: `${base}/registrations`, label: `Revisar ${pending} inscrição${pending > 1 ? 'ões' : ''}` };
-  if (status === 'ongoing') return { href: `${base}/rounds`, label: 'Abrir rodadas' };
+  // Em andamento mas sem rodada publicada (ex.: torneio importado que o chess-results
+  // ainda não divulgou): a aba Rodadas só mostraria "ainda não publicada" — abre a visão geral.
+  if (status === 'ongoing' && hasRounds) return { href: `${base}/rounds`, label: 'Abrir rodadas' };
   if (status === 'draft') return { href: `${base}/edit`, label: 'Continuar configuração' };
   if (status === 'registration_closed') return { href: `${base}/players`, label: 'Conferir participantes' };
   if (status === 'finished') return { href: `${base}/standings`, label: 'Ver classificação final' };
@@ -59,6 +61,17 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
     for (const r of pending ?? []) {
       pendingByTournament.set(r.tournament_id, (pendingByTournament.get(r.tournament_id) ?? 0) + 1);
     }
+  }
+
+  // Torneios que já têm alguma rodada publicada (qualquer status fora de rascunho).
+  const withRounds = new Set<string>();
+  if (ids.length > 0) {
+    const { data: rds } = await supabase
+      .from('rounds')
+      .select('tournament_id')
+      .in('tournament_id', ids)
+      .neq('status', 'draft');
+    for (const r of rds ?? []) withRounds.add(r.tournament_id);
   }
 
   const shown = all.slice(0, MAX_SHOWN);
@@ -122,7 +135,7 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {shown.map((t) => {
               const pending = pendingByTournament.get(t.id) ?? 0;
-              const action = nextAction(t.slug, t.status, pending);
+              const action = nextAction(t.slug, t.status, pending, withRounds.has(t.id));
               return (
                 <Link
                   key={t.id}
