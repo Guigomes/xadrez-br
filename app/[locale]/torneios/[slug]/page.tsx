@@ -12,10 +12,11 @@ import { MapsLink } from '@/components/tournament/maps-link';
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ visao?: string }>;
 }
 
-export default async function TournamentOverviewPage({ params }: Props) {
-  const { slug } = await params;
+export default async function TournamentOverviewPage({ params, searchParams }: Props) {
+  const [{ slug }, { visao }] = await Promise.all([params, searchParams]);
   const supabase = await createClient();
 
   const { data: tournament } = await supabase
@@ -62,7 +63,9 @@ export default async function TournamentOverviewPage({ params }: Props) {
   const completedRounds = aggregatedRounds.filter((r) => r.status === 'finished').length;
   const currentRound = aggregatedRounds.find((r) => r.status === 'ongoing');
 
-  if (tournament.status === 'ongoing' && currentRound) {
+  // Links de fora (lista, agenda, push) caem aqui e seguem pra rodada em andamento; a aba
+  // "Visão geral" manda ?visao=geral e fica na visão geral.
+  if (tournament.status === 'ongoing' && currentRound && visao !== 'geral') {
     redirect(`/torneios/${slug}/rounds/${currentRound.round_number}`);
   }
 

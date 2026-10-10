@@ -22,7 +22,11 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
   // promover a rodada atual e fazer as outras abas "andarem". As telas vazias
   // também ficam acessíveis antes da estreia, agora com mensagens próprias.
   const tabs = [
-    { href: base, activePath: base, exact: true, label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
+    // ?visao=geral: a página-base redireciona pra rodada atual quando o torneio está em
+    // andamento (é o destino dos links de fora); clicar na aba é pedir a visão geral de
+    // propósito, então o parâmetro desliga esse redirecionamento. Sem carryContext pra não
+    // misturar o filtro de grupo na mesma query.
+    { href: `${base}?visao=geral`, activePath: base, exact: true, label: 'Visão geral', icon: 'overview' as TournamentTabIconName, carryContext: false },
     // carryContext: false — a aba sempre abre com todos os grupos. O filtro
     // de grupo é escolha de DENTRO da própria aba (select "Grupo" ali), não
     // algo herdado de um link de fora — senão a aba nunca abria "zerada"
