@@ -9,6 +9,8 @@ import {
   allRoundsStartedEventKey,
   categoryKey,
   groupRoundStartedEventKey,
+  groupRoundStartedStableKey,
+  playerResultStableKey,
   isFinalResult,
   playerResultEventKey,
   resultNotificationBody,
@@ -47,8 +49,18 @@ async function claimEvent(
     roundNumber: number;
     type: NotificationEventType;
     key: string;
+    /** Chaves do formato antigo (por id de rodada) que já contam como "avisado". */
+    legacyKeys?: string[];
   },
 ): Promise<boolean> {
+  if (event.legacyKeys?.length) {
+    const { data: already } = await admin
+      .from('push_notification_events')
+      .select('id')
+      .in('event_key', event.legacyKeys)
+      .limit(1);
+    if (already?.length) return false;
+  }
   const { error } = await admin.from('push_notification_events').insert({
     tournament_id: event.tournamentId,
     pairing_group_id: event.pairingGroupId,
@@ -328,7 +340,8 @@ export async function POST(request: NextRequest) {
     pairingGroupId,
     roundNumber,
     type: 'group_round_started',
-    key: groupRoundStartedEventKey(roundId),
+    key: groupRoundStartedStableKey(tournamentId, pairingGroupId, roundNumber),
+    legacyKeys: [groupRoundStartedEventKey(roundId)],
   })) {
     groupRoundStarted = true;
     await sendPlayerFollowersNotification(
@@ -346,8 +359,17 @@ export async function POST(request: NextRequest) {
   for (const pairing of inserted) {
     if (!isFinalResult(pairing.result)) continue;
 
-    const key = playerResultEventKey({
+    const legacyKey = playerResultEventKey({
       roundId,
+      boardNumber: pairing.board_number,
+      whiteTpId: pairing.white_tp_id,
+      blackTpId: pairing.black_tp_id,
+      result: pairing.result,
+    });
+    const key = playerResultStableKey({
+      tournamentId,
+      pairingGroupId,
+      roundNumber,
       boardNumber: pairing.board_number,
       whiteTpId: pairing.white_tp_id,
       blackTpId: pairing.black_tp_id,
@@ -359,6 +381,7 @@ export async function POST(request: NextRequest) {
       roundNumber,
       type: 'player_result',
       key,
+      legacyKeys: [legacyKey],
     })) continue;
 
     const white = pairing.white_tp_id ? tpMap.get(pairing.white_tp_id) : null;

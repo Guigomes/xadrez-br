@@ -45,6 +45,34 @@ export function groupRoundStartedEventKey(roundId: string): string {
   return `group-round-started:${roundId}`;
 }
 
+/**
+ * Chave estável de "rodada iniciada": uma por torneio + grupo + número da rodada.
+ * A chave antiga usava o id da rodada, e rodada apagada e reimportada ganha id novo
+ * — o aviso saía de novo a cada recriação (3 pushes iguais no mesmo torneio).
+ */
+export function groupRoundStartedStableKey(
+  tournamentId: string,
+  pairingGroupId: string | null,
+  roundNumber: number,
+): string {
+  return `group-round-started:${tournamentId}:${categoryKey(pairingGroupId)}:${roundNumber}`;
+}
+
+/** Mesma ideia da chave acima, para o aviso de resultado de uma mesa. */
+export function playerResultStableKey(pairing: {
+  tournamentId: string;
+  pairingGroupId: string | null;
+  roundNumber: number;
+  boardNumber: number | null;
+  whiteTpId: string | null;
+  blackTpId: string | null;
+  result: string;
+}): string {
+  const pairingKey = pairing.boardNumber?.toString()
+    ?? `${pairing.whiteTpId ?? ''}:${pairing.blackTpId ?? ''}`;
+  return `player-result:${pairing.tournamentId}:${categoryKey(pairing.pairingGroupId)}:${pairing.roundNumber}:${pairingKey}:${pairing.result}`;
+}
+
 export function allRoundsStartedEventKey(tournamentId: string, roundNumber: number): string {
   return `all-rounds-started:${tournamentId}:${roundNumber}`;
 }
