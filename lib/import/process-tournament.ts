@@ -158,7 +158,12 @@ export async function processImport(
   let skippedFinishedRounds = 0;
   const roundsToNotify = new Set<string>();
   for (let rd = 1; rd <= maxRound; rd++) {
-    if (finishedRounds.has(rd)) {
+    // A última rodada divulgada é revista mesmo estando 'finished': o árbitro pode
+    // refazer o emparceiramento (às vezes mais de uma vez) e antes a rodada nunca
+    // mais era relida. importPairings só regrava se o conteúdo mudou e reabre a
+    // rodada quando voltam mesas sem resultado. Rodadas anteriores seguem puladas.
+    const alreadyFinished = finishedRounds.has(rd);
+    if (alreadyFinished && rd !== maxRound) {
       skippedFinishedRounds++;
       continue;
     }
@@ -171,7 +176,9 @@ export async function processImport(
       // A rota interna deduplica quatro eventos independentes. Ela precisa ser
       // chamada em toda sincronização da rodada para perceber resultados que
       // chegam enquanto o status continua 'ongoing'.
-      if (r.roundId) roundsToNotify.add(r.roundId);
+      // Rodada encerrada que só foi revista não notifica a cada execução — só
+      // quando mudou de estado (ex.: foi reemparceirada e reabriu).
+      if (r.roundId && (!alreadyFinished || r.published)) roundsToNotify.add(r.roundId);
     } catch (err) {
       // Rodada futura ainda não publicada falha o parse — pula e segue.
       console.warn(`[${row.id}] rodada ${rd} falhou: ${(err as Error).message}`);
