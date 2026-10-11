@@ -98,6 +98,8 @@ export interface Tournament {
   banner_url: string | null;
   /** Transmissão ao vivo oferecida pela organização (ex.: broadcast do Lichess) — aba "Acompanhe ao Vivo". */
   live_broadcast_url: string | null;
+  /** Observação da transmissão (ex.: quais mesas são transmitidas), mostrada no aviso da aba. */
+  live_broadcast_note: string | null;
   mode: TournamentMode;
   requested_bye_score: number;
   initial_color: InitialColor;
@@ -428,6 +430,7 @@ export interface TournamentFormValues {
   name: string;
   description?: string;
   live_broadcast_url?: string | null;
+  live_broadcast_note?: string | null;
   city: string;
   state: string;
   venue?: string;

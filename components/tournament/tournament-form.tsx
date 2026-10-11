@@ -31,6 +31,7 @@ const schema = z.object({
   live_broadcast_url: z.string().trim()
     .refine((v) => v === '' || /^https:\/\/\S+$/i.test(v), 'Cole o link completo, começando com https://')
     .optional().nullable(),
+  live_broadcast_note: z.string().trim().max(200, 'Use até 200 caracteres').optional().nullable(),
   city:            z.string().min(2, 'Cidade obrigatória'),
   state:           z.string().length(2, 'Selecione um estado'),
   venue:           z.string().optional(),
@@ -277,6 +278,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           start_time: values.start_time || undefined,
           // null (não undefined) pra apagar o link ao editar — undefined não mexe na coluna.
           live_broadcast_url: values.live_broadcast_url?.trim() || null,
+          live_broadcast_note: values.live_broadcast_note?.trim() || null,
           end_date: values.end_date || undefined,
           registration_start_date: values.registration_start_date || undefined,
           registration_end_date: values.registration_end_date || undefined,
@@ -350,6 +352,13 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           hint="Link da transmissão da organização. Do Lichess, aparece dentro da aba Acompanhe ao Vivo; de outros sites, como botão para abrir."
           error={errors.live_broadcast_url?.message}
           {...register('live_broadcast_url')}
+        />
+        <Input
+          label="Observação da transmissão (opcional)"
+          placeholder="Ex.: São transmitidas as 15 primeiras mesas."
+          hint="Aparece no aviso da aba Acompanhe ao Vivo."
+          error={errors.live_broadcast_note?.message}
+          {...register('live_broadcast_note')}
         />
       </div>
 

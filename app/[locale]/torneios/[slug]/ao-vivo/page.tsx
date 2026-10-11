@@ -25,6 +25,7 @@ export default async function LiveBroadcastPage({ params }: Props) {
   const url = data?.tournament.live_broadcast_url;
   if (!data || !url) notFound();
 
+  const note = data.tournament.live_broadcast_note?.trim();
   const embedUrl = lichessBroadcastEmbedUrl(url);
   const isLichess = !!embedUrl;
 
@@ -37,6 +38,7 @@ export default async function LiveBroadcastPage({ params }: Props) {
           Torneios apenas compartilha o link — lances, horários e disponibilidade são de responsabilidade
           da organização{isLichess ? ' e do Lichess' : ''}.
         </p>
+        {note && <p className="mt-2 font-medium">{note}</p>}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
