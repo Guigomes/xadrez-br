@@ -22,6 +22,7 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
   const { data: followed } = useFollowedInTournament(tournamentId);
   const [query, setQuery] = useState('');
   const [onlyPgn, setOnlyPgn] = useState(false);
+  const [onlyOngoing, setOnlyOngoing] = useState(false);
   // lances das partidas: só logado (a tabela de PGN não é pública)
   const { user } = useUser();
   const { data: pgnIds } = useLivePgnIds((pairings ?? []).filter((p) => !p.is_bye).map((p) => p.pairing_id), !!user);
@@ -38,8 +39,17 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
     );
   }
 
+  // Mesa ainda sendo jogada: sem resultado ('*') e não é bye. O filtro só aparece com a rodada
+  // em andamento e alguma mesa ainda aberta — no fim da rodada, quando restam poucas, é o que
+  // o público quer ver sem rolar a lista inteira.
+  const isOpen = (p: (typeof pairings)[number]) => !p.is_bye && p.result === '*';
+  const openCount = pairings.filter(isOpen).length;
+  const showOngoingFilter = isOngoing && openCount > 0;
+
   const filteredPairings = pairings.filter(
-    (p) => (matchesPlayerSearch(p.white_name, query) || matchesPlayerSearch(p.black_name, query)) && (!onlyPgn || pgnIds?.has(p.pairing_id))
+    (p) => (matchesPlayerSearch(p.white_name, query) || matchesPlayerSearch(p.black_name, query))
+      && (!onlyPgn || pgnIds?.has(p.pairing_id))
+      && (!onlyOngoing || !showOngoingFilter || isOpen(p))
   );
 
   return (
@@ -51,6 +61,12 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
         </p>
       )}
       <SearchField value={query} onChange={setQuery} className="mb-3 sm:max-w-xs" />
+      {showOngoingFilter && (
+        <label className="mb-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <input type="checkbox" checked={onlyOngoing} onChange={(e) => setOnlyOngoing(e.target.checked)} className="h-4 w-4 accent-brand-600" />
+          Só partidas em andamento ({openCount})
+        </label>
+      )}
       {!!pgnIds?.size && (
         <label className="mb-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
           <input type="checkbox" checked={onlyPgn} onChange={(e) => setOnlyPgn(e.target.checked)} className="h-4 w-4 accent-brand-600" />
@@ -59,7 +75,7 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
       )}
       {filteredPairings.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-          Nenhum jogador encontrado com esse nome.
+          {query ? 'Nenhum jogador encontrado com esse nome.' : 'Nenhuma partida com esse filtro.'}
         </p>
       ) : (
         <PairingsList pairings={filteredPairings} tournamentSlug={tournamentSlug} followedTpIds={followed?.tpIds} pgnIds={pgnIds} />
