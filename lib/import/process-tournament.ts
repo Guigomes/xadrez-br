@@ -141,7 +141,7 @@ export async function processImport(
   if (roundsCountError) throw new Error(roundsCountError.message);
 
   // 3. Pairings for each round (art=2) — pula rodada já 'finished' localmente,
-  // ela não muda mais no chess-results.
+  // ela quase nunca muda no chess-results (relê as 2 últimas sempre e as demais 1x por hora).
   let finishedRoundsQuery = supabase
     .from('rounds')
     .select('round_number')
@@ -161,9 +161,16 @@ export async function processImport(
     // A última rodada divulgada é revista mesmo estando 'finished': o árbitro pode
     // refazer o emparceiramento (às vezes mais de uma vez) e antes a rodada nunca
     // mais era relida. importPairings só regrava se o conteúdo mudou e reabre a
-    // rodada quando voltam mesas sem resultado. Rodadas anteriores seguem puladas.
+    // rodada quando voltam mesas sem resultado. As anteriores seguem a regra de revisão abaixo.
     const alreadyFinished = finishedRounds.has(rd);
-    if (alreadyFinished && rd !== maxRound) {
+    // O árbitro também corrige RESULTADO de rodada já encerrada (ex.: 1-0 virou 0-1 na R3 e
+    // o banco ficou com a mesa invertida, a pontuação certa e vitórias/derrotas erradas).
+    // Por isso as 2 últimas rodadas são revistas em toda execução, e todas as encerradas uma
+    // vez por hora (nos primeiros minutos de cada hora UTC). A revisão é barata: importPairings
+    // só regrava a mesa que mudou.
+    const recentRound = rd >= maxRound - 1;
+    const hourlyDeepCheck = new Date().getUTCMinutes() < 3;
+    if (alreadyFinished && !recentRound && !hourlyDeepCheck) {
       skippedFinishedRounds++;
       continue;
     }
