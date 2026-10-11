@@ -8,6 +8,7 @@ import { PairingsList } from '@/components/tournament/pairings-list';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SearchField } from '@/components/ui/search-field';
+import { Switch } from '@/components/ui/switch';
 import { matchesPlayerSearch } from '@/lib/utils/text';
 
 interface Props {
@@ -61,17 +62,23 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
         </p>
       )}
       <SearchField value={query} onChange={setQuery} className="mb-3 sm:max-w-xs" />
-      {showOngoingFilter && (
-        <label className="mb-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-          <input type="checkbox" checked={onlyOngoing} onChange={(e) => setOnlyOngoing(e.target.checked)} className="h-4 w-4 accent-brand-600" />
-          Só partidas em andamento ({openCount})
-        </label>
-      )}
-      {!!pgnIds?.size && (
-        <label className="mb-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-          <input type="checkbox" checked={onlyPgn} onChange={(e) => setOnlyPgn(e.target.checked)} className="h-4 w-4 accent-brand-600" />
-          Só partidas com lances ({pgnIds.size})
-        </label>
+      {(showOngoingFilter || !!pgnIds?.size) && (
+        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1">
+          {showOngoingFilter && (
+            <Switch
+              checked={onlyOngoing}
+              onChange={setOnlyOngoing}
+              label={<>Só em andamento <span className="text-gray-400 dark:text-gray-500">({openCount})</span></>}
+            />
+          )}
+          {!!pgnIds?.size && (
+            <Switch
+              checked={onlyPgn}
+              onChange={setOnlyPgn}
+              label={<>Só com lances <span className="text-gray-400 dark:text-gray-500">({pgnIds.size})</span></>}
+            />
+          )}
+        </div>
       )}
       {filteredPairings.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
