@@ -1,4 +1,5 @@
 import type { DeviceType } from './device';
+import type { TabStatRow } from './tournament-tabs';
 
 export interface AccessSummary {
   last24Hours: number;
@@ -47,4 +48,8 @@ export interface AccessDashboardData {
   summary: AccessSummary;
   devices: AccessDevice[];
   recent: RecentAccess[];
+  /** Acessos por aba de torneio (sem robôs e sem aparelhos marcados como do dono). */
+  tabStats: TabStatRow[];
+  /** Nome dos torneios que aparecem em tabStats, pro seletor. */
+  tabTournaments: Array<{ slug: string; name: string }>;
 }

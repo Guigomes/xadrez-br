@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useProfile } from '@/lib/hooks/use-auth';
 import { useAccessAnalytics, useMarkOwnerDevice } from '@/lib/hooks/use-access-analytics';
 import { getOrCreateDeviceId } from '@/lib/analytics/device';
-import type { AccessDevice } from '@/lib/analytics/types';
+import type { AccessDevice, AccessDashboardData } from '@/lib/analytics/types';
+import { ALL_TOURNAMENTS, TOURNAMENT_TAB_LABELS, TOURNAMENT_TAB_ORDER } from '@/lib/analytics/tournament-tabs';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSpinner } from '@/components/ui/spinner';
@@ -105,6 +106,8 @@ function AccessesPanel() {
               </div>
             ))}
           </div>
+
+          <TabStatsSection data={data} />
 
           <section className="space-y-3">
             <div>
@@ -209,5 +212,65 @@ function AccessesPanel() {
         </>
       ) : null}
     </div>
+  );
+}
+
+/** Acessos por aba de torneio — quantas vezes cada aba foi aberta e por quantos aparelhos. */
+function TabStatsSection({ data }: { data: AccessDashboardData }) {
+  const [slug, setSlug] = useState<string>(ALL_TOURNAMENTS);
+  const rows = data.tabStats.filter((row) => row.slug === slug);
+  const byTab = new Map(rows.map((row) => [row.tab, row]));
+  const ordered = TOURNAMENT_TAB_ORDER.map((tab) => byTab.get(tab)).filter((row) => !!row);
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Abas mais acessadas</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Páginas dos torneios, sem robôs do Google e sem os aparelhos marcados como seus.
+          </p>
+        </div>
+        <select
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
+          aria-label="Filtrar por torneio"
+          className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:w-72"
+        >
+          <option value={ALL_TOURNAMENTS}>Todos os torneios</option>
+          {data.tabTournaments.map((t) => (
+            <option key={t.slug} value={t.slug}>{t.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className="card overflow-x-auto p-0">
+        {!ordered.length ? (
+          <p className="p-5 text-sm text-gray-500">Nenhum acesso a abas de torneio nos últimos 30 dias.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <th className="px-4 py-2 font-medium">Aba</th>
+                <th className="px-3 py-2 text-right font-medium">24h</th>
+                <th className="px-3 py-2 text-right font-medium">7 dias</th>
+                <th className="px-3 py-2 text-right font-medium">30 dias</th>
+                <th className="px-4 py-2 text-right font-medium">Aparelhos (30d)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {ordered.map((row) => (
+                <tr key={row!.tab}>
+                  <td className="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">{TOURNAMENT_TAB_LABELS[row!.tab]}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300">{row!.views24h}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300">{row!.views7d}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300">{row!.views30d}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300">{row!.devices30d}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
   );
 }

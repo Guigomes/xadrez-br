@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import type { AccessDashboardData } from '@/lib/analytics/types';
 import type { DeviceType } from '@/lib/analytics/device';
+import { aggregateTabStats, ALL_TOURNAMENTS } from '@/lib/analytics/tournament-tabs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,28 @@ async function isAdmin() {
   return profile?.role === 'admin';
 }
 
+// O PostgREST do Supabase devolve no máximo 1000 linhas por chamada, então o .limit(10_000)
+// antigo parava em 1000 sem aviso — com mais tráfego, o painel contava só o último dia ou dois.
+const EVENTS_PAGE = 1000;
+const EVENTS_MAX = 10_000;
+
+async function fetchRecentEvents(admin: ReturnType<typeof createAdminClient>, since: string) {
+  const all: Array<{ id: number; device_id: string; path: string; visited_at: string; city: string | null; region: string | null }> = [];
+  for (let from = 0; from < EVENTS_MAX; from += EVENTS_PAGE) {
+    const { data, error } = await admin
+      .from('site_access_events')
+      .select('id, device_id, path, visited_at, city, region')
+      .gte('visited_at', since)
+      .order('visited_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + EVENTS_PAGE - 1);
+    if (error) return { data: null, error };
+    all.push(...(data ?? []));
+    if (!data || data.length < EVENTS_PAGE) break;
+  }
+  return { data: all, error: null };
+}
+
 export async function GET() {
   if (!await isAdmin()) {
     return NextResponse.json({ error: 'Restrito a administradores.' }, { status: 403 });
@@ -36,12 +59,7 @@ export async function GET() {
     admin.from('site_access_events').select('id', { count: 'exact', head: true }).gte('visited_at', since7Days),
     admin.from('site_access_events').select('id', { count: 'exact', head: true }).gte('visited_at', since30Days),
     admin.from('site_devices').select('*').order('last_seen_at', { ascending: false }).limit(500),
-    admin
-      .from('site_access_events')
-      .select('id, device_id, path, visited_at, city, region')
-      .gte('visited_at', since30Days)
-      .order('visited_at', { ascending: false })
-      .limit(10_000),
+    fetchRecentEvents(admin, since30Days),
   ]);
 
   const firstError = last24.error || last7.error || last30.error || devicesResult.error || eventsResult.error;
@@ -87,6 +105,23 @@ export async function GET() {
   }));
   const deviceById = new Map(devices.map((device) => [device.id, device]));
 
+  // Por aba de torneio: fora os aparelhos marcados como do dono (a gente mesmo testando)
+  // e os robôs do Google — o que sobra é o público.
+  const ownerDeviceIds = new Set(devices.filter((device) => device.isOwner).map((device) => device.id));
+  const tabStats = aggregateTabStats(events, ownerDeviceIds, now);
+  const tabSlugs = [...new Set(tabStats.map((row) => row.slug).filter((slug) => slug !== ALL_TOURNAMENTS))];
+  const tabTournamentsResult = tabSlugs.length
+    ? await admin.from('tournaments').select('slug, name').in('slug', tabSlugs.slice(0, 500))
+    : { data: [], error: null };
+  if (tabTournamentsResult.error) {
+    return NextResponse.json({ error: tabTournamentsResult.error.message }, { status: 500 });
+  }
+  const viewsBySlug = new Map<string, number>();
+  for (const row of tabStats) viewsBySlug.set(row.slug, (viewsBySlug.get(row.slug) ?? 0) + row.views30d);
+  const tabTournaments = (tabTournamentsResult.data ?? [])
+    .map((t) => ({ slug: t.slug as string, name: t.name as string }))
+    .sort((a, b) => (viewsBySlug.get(b.slug) ?? 0) - (viewsBySlug.get(a.slug) ?? 0));
+
   const data: AccessDashboardData = {
     summary: {
       last24Hours: last24.count ?? 0,
@@ -95,6 +130,8 @@ export async function GET() {
       uniqueDevices30Days: viewsByDevice.size,
     },
     devices,
+    tabStats,
+    tabTournaments,
     recent: events.slice(0, 100).map((event) => {
       const device = deviceById.get(event.device_id);
       return {
