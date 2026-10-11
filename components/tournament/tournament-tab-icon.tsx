@@ -8,7 +8,8 @@ export type TournamentTabIconName =
   | 'statistics'
   | 'report'
   | 'staff'
-  | 'current-round';
+  | 'current-round'
+  | 'live';
 
 const paths: Record<TournamentTabIconName, React.ReactNode> = {
   overview: <path strokeLinecap="round" strokeLinejoin="round" d="M3 10.5 12 3l9 7.5M5.25 9.75V21h13.5V9.75M9 21v-6h6v6" />,
@@ -21,6 +22,7 @@ const paths: Record<TournamentTabIconName, React.ReactNode> = {
   report: <path strokeLinecap="round" strokeLinejoin="round" d="M6 3.75h9L19.5 8.25V21H6V3.75Zm9 0v4.5h4.5M9 12h7.5M9 15.75h7.5M9 19.5h4.5" />,
   staff: <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18m-6.75-3.75h13.5M5.25 7.5h13.5M5.25 7.5 2.25 13.5h6L5.25 7.5Zm13.5 0-3 6h6l-3-6Z" />,
   'current-round': <path strokeLinecap="round" strokeLinejoin="round" d="m13.5 2.25-8.25 12h6l-.75 7.5 8.25-12h-6l.75-7.5Z" />,
+  live: <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.652a3.75 3.75 0 0 1 0-5.304m5.304 0a3.75 3.75 0 0 1 0 5.304m-7.425 2.121a6.75 6.75 0 0 1 0-9.546m9.546 0a6.75 6.75 0 0 1 0 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12Z" />,
 };
 
 export function TournamentTabIcon({ name }: { name: TournamentTabIconName }) {

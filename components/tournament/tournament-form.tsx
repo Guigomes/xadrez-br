@@ -11,6 +11,7 @@ import { TiebreakOrderPicker } from '@/components/tournament/tiebreak-order-pick
 import { Gambito } from '@/components/mascot/gambito';
 import { BR_STATES } from '@/lib/utils/chess';
 import { useEntitlements } from '@/lib/hooks/use-entitlements';
+import { useIsDev } from '@/lib/hooks/use-is-dev';
 import {
   TIME_CONTROL_PRESETS, TIME_CONTROL_OTHER, findPresetByValue,
 } from '@/lib/utils/time-control';
@@ -27,6 +28,10 @@ const START_TIME_OPTIONS = Array.from({ length: (22 - 6) * 2 + 1 }, (_, i) => {
 const schema = z.object({
   name:            z.string().min(3, 'Nome muito curto'),
   description:     z.string().optional(),
+  // Opcional; vazio = sem transmissão. https obrigatório (o banco também exige).
+  live_broadcast_url: z.string().trim()
+    .refine((v) => v === '' || /^https:\/\/\S+$/i.test(v), 'Cole o link completo, começando com https://')
+    .optional().nullable(),
   city:            z.string().min(2, 'Cidade obrigatória'),
   state:           z.string().length(2, 'Selecione um estado'),
   venue:           z.string().optional(),
@@ -162,6 +167,7 @@ interface Props {
 
 export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar', formId, readOnly = false }: Props) {
   const entitlements = useEntitlements();
+  const isDev = useIsDev();
   const lacksOnlinePayment = !entitlements.isLoading && !entitlements.can('registration.payment');
   const normalizedDefaults = stripNulls(defaultValues);
   normalizedDefaults.checkin_opens_at = toLocalDateTime(normalizedDefaults.checkin_opens_at);
@@ -271,6 +277,8 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
         const payload: TournamentFormValues = {
           ...values,
           start_time: values.start_time || undefined,
+          // null (não undefined) pra apagar o link ao editar — undefined não mexe na coluna.
+          live_broadcast_url: values.live_broadcast_url?.trim() || null,
           end_date: values.end_date || undefined,
           registration_start_date: values.registration_start_date || undefined,
           registration_end_date: values.registration_end_date || undefined,
@@ -278,6 +286,9 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           checkin_opens_at: values.checkin_opens_at ? new Date(values.checkin_opens_at).toISOString() : undefined,
           checkin_closes_at: values.checkin_closes_at ? new Date(values.checkin_closes_at).toISOString() : undefined,
         };
+        // Campo em teste, só o dev vê. Pra todos os outros o link nem entra no payload —
+        // senão salvar a edição apagaria (null) um link que o dev configurou.
+        if (!isDev) delete payload.live_broadcast_url;
         onSubmit(payload);
       }, onInvalid)}
       className="space-y-5"
@@ -338,6 +349,15 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           </Select>
         </div>
         <Input label="Local (endereço/clube)" {...register('venue')} />
+        {isDev && (
+        <Input
+          label="Transmissão ao vivo (opcional · em teste, só você vê)"
+          placeholder="https://lichess.org/broadcast/..."
+          hint="Link da transmissão da organização. Do Lichess, aparece dentro da aba Acompanhe ao Vivo; de outros sites, como botão para abrir."
+          error={errors.live_broadcast_url?.message}
+          {...register('live_broadcast_url')}
+        />
+        )}
       </div>
 
       {/* Organizer */}

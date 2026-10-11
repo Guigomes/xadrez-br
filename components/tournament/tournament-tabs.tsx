@@ -10,9 +10,11 @@ interface TournamentTabsProps {
   roundsCount: number;
   currentRoundNumber: number | null;
   showStatistics?: boolean;
+  /** Torneio com link de transmissão (tournaments.live_broadcast_url) ganha a aba "Acompanhe ao Vivo". */
+  hasLiveBroadcast?: boolean;
 }
 
-export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStatistics = false }: TournamentTabsProps) {
+export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStatistics = false, hasLiveBroadcast = false }: TournamentTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const base = `/torneios/${slug}`;
@@ -39,6 +41,16 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
       icon: 'rounds' as TournamentTabIconName,
     },
     { href: `${base}/standings`, activePath: `${base}/standings`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
+    // Linha inteira no celular (grade de 2 colunas): é a aba que mais se procura durante
+    // a rodada e não pode ficar espremida ao lado de outra.
+    ...(hasLiveBroadcast ? [{
+      href: `${base}/ao-vivo`,
+      activePath: `${base}/ao-vivo`,
+      label: 'Acompanhe ao Vivo',
+      icon: 'live' as TournamentTabIconName,
+      mobileFull: true,
+      carryContext: false,
+    }] : []),
     ...(showStatistics ? [{
       href: `${base}/statistics`,
       activePath: `${base}/statistics`,
