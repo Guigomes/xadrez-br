@@ -11,7 +11,6 @@ import { TiebreakOrderPicker } from '@/components/tournament/tiebreak-order-pick
 import { Gambito } from '@/components/mascot/gambito';
 import { BR_STATES } from '@/lib/utils/chess';
 import { useEntitlements } from '@/lib/hooks/use-entitlements';
-import { useIsDev } from '@/lib/hooks/use-is-dev';
 import {
   TIME_CONTROL_PRESETS, TIME_CONTROL_OTHER, findPresetByValue,
 } from '@/lib/utils/time-control';
@@ -167,7 +166,6 @@ interface Props {
 
 export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel = 'Salvar', formId, readOnly = false }: Props) {
   const entitlements = useEntitlements();
-  const isDev = useIsDev();
   const lacksOnlinePayment = !entitlements.isLoading && !entitlements.can('registration.payment');
   const normalizedDefaults = stripNulls(defaultValues);
   normalizedDefaults.checkin_opens_at = toLocalDateTime(normalizedDefaults.checkin_opens_at);
@@ -286,9 +284,6 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           checkin_opens_at: values.checkin_opens_at ? new Date(values.checkin_opens_at).toISOString() : undefined,
           checkin_closes_at: values.checkin_closes_at ? new Date(values.checkin_closes_at).toISOString() : undefined,
         };
-        // Campo em teste, só o dev vê. Pra todos os outros o link nem entra no payload —
-        // senão salvar a edição apagaria (null) um link que o dev configurou.
-        if (!isDev) delete payload.live_broadcast_url;
         onSubmit(payload);
       }, onInvalid)}
       className="space-y-5"
@@ -349,15 +344,13 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           </Select>
         </div>
         <Input label="Local (endereço/clube)" {...register('venue')} />
-        {isDev && (
         <Input
-          label="Transmissão ao vivo (opcional · em teste, só você vê)"
+          label="Transmissão ao vivo (opcional)"
           placeholder="https://lichess.org/broadcast/..."
           hint="Link da transmissão da organização. Do Lichess, aparece dentro da aba Acompanhe ao Vivo; de outros sites, como botão para abrir."
           error={errors.live_broadcast_url?.message}
           {...register('live_broadcast_url')}
         />
-        )}
       </div>
 
       {/* Organizer */}

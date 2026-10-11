@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
-import { getSessionProfile } from '@/lib/data/session';
 import { lichessBroadcastEmbedUrl } from '@/lib/utils/live-broadcast';
 
 interface Props {
@@ -25,8 +24,6 @@ export default async function LiveBroadcastPage({ params }: Props) {
   const data = await getTournamentPageData(slug);
   const url = data?.tournament.live_broadcast_url;
   if (!data || !url) notFound();
-  // Em teste: só o desenvolvedor (perfil admin). Pros demais a página nem existe.
-  if ((await getSessionProfile())?.role !== 'admin') notFound();
 
   const embedUrl = lichessBroadcastEmbedUrl(url);
   const isLichess = !!embedUrl;
