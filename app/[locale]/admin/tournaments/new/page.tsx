@@ -118,7 +118,12 @@ export default function NewTournamentPage() {
       // só ia notar a pendência ao tentar publicar e ver o botão travado.
       router.push(`/admin/tournaments/${slug}/groups?criado=1`);
     } catch (err: any) {
-      setError(err.message ?? 'Erro ao criar torneio.');
+      // 23505 = chave duplicada: o slug é nome + data de início, então repetir os dois colide.
+      setError(
+        err?.code === '23505'
+          ? 'Já existe um torneio com esse nome e essa data de início. Mude o nome ou a data.'
+          : err.message ?? 'Erro ao criar torneio.',
+      );
     } finally {
       setLoading(false);
     }
@@ -255,6 +260,13 @@ export default function NewTournamentPage() {
       </div>
 
       <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800" data-tour="criar">
+        {/* O erro do servidor também aparece aqui: o do topo fica fora da tela pra quem
+            clicou no botão do fim da página, e parecia que nada tinha acontecido. */}
+        {error && (
+          <p role="alert" className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
         <Button type="submit" form={FORM_ID} loading={loading} size="lg" className="w-full sm:w-auto">
           Criar torneio
         </Button>

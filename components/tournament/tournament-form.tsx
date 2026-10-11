@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Input } from '@/components/ui/input';
@@ -234,28 +234,39 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
     }
   }
 
-  const erroredFields = FIELD_ORDER.filter((f) => errors[f]);
+  // Primeiro os campos conhecidos na ordem da tela, depois qualquer outro com erro (limite de
+  // participantes, valor da inscrição, check-in…): antes esses falhavam sem aviso nenhum.
+  const orderedErrorKeys = (errs: FieldErrors<TournamentFormValues>) => {
+    const keys = Object.keys(errs) as Array<keyof TournamentFormValues>;
+    return [...FIELD_ORDER.filter((f) => keys.includes(f)), ...keys.filter((k) => !FIELD_ORDER.includes(k))];
+  };
+  const erroredFields = orderedErrorKeys(errors);
 
-  function scrollToField(field: keyof TournamentFormValues) {
-    if (typeof document === 'undefined') return;
+  function scrollToField(field: keyof TournamentFormValues): boolean {
+    if (typeof document === 'undefined') return false;
     const el = document.querySelector<HTMLElement>(
       `[name="${field}"], [data-field="${field}"]`
     );
-    if (!el) return;
+    if (!el) return false;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (typeof (el as HTMLInputElement).focus === 'function') {
       try { (el as HTMLInputElement).focus({ preventScroll: true }); } catch { el.focus(); }
     }
+    return true;
   }
 
-  function onInvalid() {
-    const first = FIELD_ORDER.find((f) => errors[f]);
-    if (first) scrollToField(first);
+  // Recebe os erros do próprio submit: o `errors` do render ainda está vazio no primeiro clique
+  // (o botão "Criar torneio" fica no fim da página, então sem rolar parecia não responder).
+  function onInvalid(fieldErrors: FieldErrors<TournamentFormValues>) {
+    const [first] = orderedErrorKeys(fieldErrors);
+    if (first && scrollToField(first)) return;
+    // Campo sem elemento próprio na tela: leva ao topo do formulário, onde está o aviso.
+    document.getElementById(formId ?? 'tournament-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   return (
     <form
-      id={formId}
+      id={formId ?? 'tournament-form'}
       onSubmit={handleSubmit((values) => {
         const payload: TournamentFormValues = {
           ...values,
