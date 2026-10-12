@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRoundPairings } from '@/lib/hooks/use-tournament';
-import { useFollowedInTournament, useUser } from '@/lib/hooks/use-auth';
+import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { useLivePgnIds } from '@/lib/hooks/use-player-history';
 import { PairingsList } from '@/components/tournament/pairings-list';
 import { PageSpinner } from '@/components/ui/spinner';
@@ -24,9 +24,8 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
   const [query, setQuery] = useState('');
   const [onlyPgn, setOnlyPgn] = useState(false);
   const [onlyOngoing, setOnlyOngoing] = useState(false);
-  // lances das partidas: só logado (a tabela de PGN não é pública)
-  const { user } = useUser();
-  const { data: pgnIds } = useLivePgnIds((pairings ?? []).filter((p) => !p.is_bye).map((p) => p.pairing_id), !!user);
+  // Quais mesas têm lances: público (só o id). O lance em si pede login — ver GameViewerButton.
+  const { data: pgnIds } = useLivePgnIds((pairings ?? []).filter((p) => !p.is_bye).map((p) => p.pairing_id), true);
 
   if (isLoading) return <PageSpinner />;
 

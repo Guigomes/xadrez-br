@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Spinner } from '@/components/ui/spinner';
 import { useGamePgn } from '@/lib/hooks/use-player-history';
+import { useUser } from '@/lib/hooks/use-auth';
 
 // chess.js só entra no bundle quando alguém abre uma partida.
 const PgnBoard = dynamic(() => import('./pgn-board').then((m) => m.PgnBoard), {
@@ -38,7 +39,8 @@ export const RESULT_TEXT: Record<string, string> = {
 
 // Botão "ver lances" que abre o tabuleiro navegável de uma partida com PGN.
 // `orientation`: lado que fica embaixo (o do jogador da página, quando há um).
-// Os lances só são buscados ao abrir (e só quem está logado consegue lê-los).
+// Os lances só são buscados ao abrir e só quem está logado consegue lê-los: para quem não
+// entrou, o botão abre um convite para entrar com o Google, que volta para esta mesma página.
 export function GameViewerButton({
   game,
   orientation = 'white',
@@ -49,7 +51,13 @@ export function GameViewerButton({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const { data: pgn, isLoading, isError } = useGamePgn(game.source, game.gameId, open);
+  const { user, loading: loadingUser } = useUser();
+  const needsLogin = !loadingUser && !user;
+  const { data: pgn, isLoading, isError } = useGamePgn(game.source, game.gameId, open && !needsLogin);
+  // Volta exatamente para onde a pessoa estava (rodada, filtros) depois de entrar.
+  const loginHref = typeof window === 'undefined'
+    ? '/login'
+    : `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
   useEffect(() => {
     if (!open) return;
@@ -99,7 +107,20 @@ export function GameViewerButton({
               </button>
             </div>
             <div className="mt-4">
-              {isLoading ? (
+              {needsLogin ? (
+                <div className="space-y-3 py-2 text-center">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    Os lances das partidas ficam disponíveis para quem entra com a conta Google. É grátis e
+                    leva um clique.
+                  </p>
+                  <a
+                    href={loginHref}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+                  >
+                    Entrar com Google para ver os lances
+                  </a>
+                </div>
+              ) : isLoading ? (
                 <div className="flex justify-center py-16">
                   <Spinner className="h-8 w-8" />
                 </div>

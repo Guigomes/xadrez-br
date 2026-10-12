@@ -13,7 +13,6 @@ import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/
 import { siteUrl, describeDates, isIndexableTournament, jsonLdString } from '@/lib/seo';
 import { getTournamentStartLabel } from '@/lib/utils/date';
 import { RelativeTime } from '@/components/ui/relative-time';
-import { PgnCountBadge } from '@/components/tournament/pgn-count-badge';
 import { DevHomologatedBadge } from '@/components/tournament/dev-homologated-badge';
 import type { Metadata } from 'next';
 
@@ -159,7 +158,6 @@ export default async function TournamentLayout({ children, params }: Props) {
                 </Badge>
               )}
               <DevHomologatedBadge homologated={(tournament as { homologated?: boolean | null }).homologated} />
-              <PgnCountBadge tournamentId={tournament.id} />
             </div>
             {lastImport?.last_run_at && !syncError && (
               <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">

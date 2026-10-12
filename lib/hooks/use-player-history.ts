@@ -53,7 +53,10 @@ export function useGamePgn(source: 'live' | 'history', gameId: string, enabled: 
   });
 }
 
-/** Quais mesas (torneio ao vivo/importado) têm lances. Só logado: a tabela de PGN não é pública. */
+/**
+ * Quais mesas (torneio ao vivo/importado) têm lances. Público: usa get_pairing_ids_with_pgn, que
+ * devolve só o id da mesa — o lance em si continua só para quem está logado.
+ */
 export function useLivePgnIds(pairingIds: string[], enabled: boolean) {
   const key = pairingIds.length ? `${pairingIds.length}:${pairingIds[0]}:${pairingIds[pairingIds.length - 1]}` : '';
   return useQuery({
@@ -63,9 +66,12 @@ export function useLivePgnIds(pairingIds: string[], enabled: boolean) {
     queryFn: async (): Promise<Set<string>> => {
       const found = new Set<string>();
       for (let i = 0; i < pairingIds.length; i += 100) {
-        const { data, error } = await supabase.from('pairing_pgns').select('pairing_id').in('pairing_id', pairingIds.slice(i, i + 100));
+        const { data, error } = await (supabase as unknown as { rpc: (fn: string, args: object) => Promise<{ data: unknown; error: Error | null }> })
+          .rpc('get_pairing_ids_with_pgn', { p_pairing_ids: pairingIds.slice(i, i + 100) });
         if (error) throw error;
-        for (const r of data ?? []) found.add((r as { pairing_id: string }).pairing_id);
+        for (const r of (data as Array<string | { get_pairing_ids_with_pgn: string }>) ?? []) {
+          found.add(typeof r === 'string' ? r : r.get_pairing_ids_with_pgn);
+        }
       }
       return found;
     },

@@ -11,7 +11,7 @@ interface PairingsListProps {
   pairings: RoundPairingRow[];
   tournamentSlug: string;
   followedTpIds?: Set<string>;
-  /** mesas com lances (só preenchido para quem está logado) */
+  /** mesas com lances (público; abrir os lances pede login) */
   pgnIds?: Set<string>;
   roundNumber?: number | null;
   tournamentName?: string | null;

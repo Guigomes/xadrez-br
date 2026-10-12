@@ -14,6 +14,27 @@ import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 // com conta inventada dependem dele — e serve de volta rápida se precisar.
 const EMAIL_LOGIN_ENABLED = process.env.NEXT_PUBLIC_EMAIL_LOGIN === 'true';
 
+/**
+ * Para onde voltar depois de entrar (?next=, ex.: a rodada onde a pessoa tocou "ver lances").
+ * Só caminho interno ("/..." e não "//..."), para o login não virar redirecionamento aberto.
+ */
+function nextPath(): string | null {
+  if (typeof window === 'undefined') return null;
+  const next = new URLSearchParams(window.location.search).get('next');
+  return next && next.startsWith('/') && !next.startsWith('//') ? next : null;
+}
+
+/** Depois do login: volta ao ?next (recarregando, já com a sessão) ou vai ao painel. */
+function goAfterLogin(router: ReturnType<typeof useRouter>) {
+  const next = nextPath();
+  if (next) {
+    window.location.assign(next);
+    return;
+  }
+  router.push('/admin');
+  router.refresh();
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -40,7 +61,7 @@ export default function LoginPage() {
     try {
       if (mode === 'signin') {
         await signIn.mutateAsync({ email, password });
-        router.push('/admin');
+        goAfterLogin(router);
       } else {
         // Beta fechado: só a allowlist cria conta nova (lib/auth/beta.ts).
         // Checado antes da validação de capacidade pra não pedir que a pessoa
@@ -69,7 +90,7 @@ export default function LoginPage() {
   async function handleGoogle() {
     setError('');
     try {
-      await signInWithGoogle.mutateAsync(undefined);
+      await signInWithGoogle.mutateAsync(nextPath() ?? undefined);
       // Não chega a resolver em caso de sucesso — signInWithOAuth já
       // navegou o browser pro Google. Erro (provider indisponível, etc.)
       // é o único caso que cai aqui de fato.
@@ -117,7 +138,7 @@ export default function LoginPage() {
           ) : (
             <>
               <GoogleSignInButton
-                onSuccess={() => { router.push('/admin'); router.refresh(); }}
+                onSuccess={() => goAfterLogin(router)}
                 onError={setError}
                 onUnavailable={() => setGisUnavailable(true)}
               />
