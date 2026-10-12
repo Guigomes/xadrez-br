@@ -1,6 +1,8 @@
 import { Link } from '@/i18n/navigation';
 import { notFound } from 'next/navigation';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
+import { getSessionProfile } from '@/lib/data/session';
+import { createClient } from '@/lib/supabase/server';
 import { SCHOOL_TOURNAMENT_SLUG } from '@/lib/statistics/school-tournament';
 import { TournamentTabs } from '@/components/tournament/tournament-tabs';
 import { SaveLastTournament } from '@/components/tournament/save-last-tournament';
@@ -59,6 +61,21 @@ export default async function TournamentLayout({ children, params }: Props) {
   const showLiveBroadcast = !!tournament.live_broadcast_url;
   const showStatistics = slug === SCHOOL_TOURNAMENT_SLUG;
   const lastImport = lastImportAt ? { last_run_at: lastImportAt, last_status: lastImportStatus } : null;
+  // Erro de sincronização é problema interno: o público não vê aviso nenhum (nem "sincronizado",
+  // que seria mentira), só o desenvolvedor (perfil admin) — e com o motivo. O worker também
+  // manda um push para o dev quando quebra (api/internal/import-status). Perfil e motivo só são
+  // buscados quando há erro, pra não custar consulta a mais em toda página.
+  const syncError = lastImport?.last_status === 'error';
+  const isDev = syncError && (await getSessionProfile())?.role === 'admin';
+  const syncErrorMessage = isDev
+    ? (await (await createClient())
+        .from('tournament_imports')
+        .select('last_message')
+        .eq('tournament_id', tournament.id)
+        .eq('last_status', 'error')
+        .limit(1)
+        .maybeSingle()).data?.last_message ?? null
+    : null;
   const startLabel = currentRoundNumber == null && !['cancelled', 'finished'].includes(effectiveStatus)
     ? getTournamentStartLabel(tournament.start_date)
     : null;
@@ -144,16 +161,17 @@ export default async function TournamentLayout({ children, params }: Props) {
               <DevHomologatedBadge homologated={(tournament as { homologated?: boolean | null }).homologated} />
               <PgnCountBadge tournamentId={tournament.id} />
             </div>
-            {lastImport?.last_run_at && (
+            {lastImport?.last_run_at && !syncError && (
               <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
-                {lastImport.last_status === 'error' ? (
-                  <span className="text-red-400">⚠ Sincronização com erro</span>
-                ) : (
-                  <>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400" />
-                    Sincronizado <RelativeTime iso={lastImport.last_run_at} />
-                  </>
-                )}
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400" />
+                Sincronizado <RelativeTime iso={lastImport.last_run_at} />
+              </p>
+            )}
+            {isDev && (
+              <p className="mt-1 text-xs text-red-500 dark:text-red-400" title="Visível só para você (dev)">
+                ⚠ Sincronização com erro <RelativeTime iso={lastImport!.last_run_at} />
+                {syncErrorMessage ? `: ${syncErrorMessage}` : ''}
+                <span className="ml-1 text-gray-400 dark:text-gray-500">· só você vê</span>
               </p>
             )}
             {effectiveStatus === 'registration' && (
