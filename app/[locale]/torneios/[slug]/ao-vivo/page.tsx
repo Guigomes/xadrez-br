@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
 import { lichessBroadcastEmbedUrl } from '@/lib/utils/live-broadcast';
 
@@ -24,6 +24,10 @@ export default async function LiveBroadcastPage({ params }: Props) {
   const data = await getTournamentPageData(slug);
   const url = data?.tournament.live_broadcast_url;
   if (!data || !url) notFound();
+  // Torneio encerrado/cancelado não tem mais transmissão: link antigo cai na visão geral.
+  if (data.effectiveStatus === 'finished' || data.effectiveStatus === 'cancelled') {
+    redirect(`/torneios/${slug}?visao=geral`);
+  }
 
   const note = data.tournament.live_broadcast_note?.trim();
   const embedUrl = lichessBroadcastEmbedUrl(url);

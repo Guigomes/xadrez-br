@@ -57,7 +57,9 @@ export default async function TournamentLayout({ children, params }: Props) {
   if (!data) notFound();
 
   const { tournament, currentRoundNumber, effectiveStatus, lastImportAt, lastImportStatus } = data;
-  const showLiveBroadcast = !!tournament.live_broadcast_url;
+  // Transmissão ao vivo só enquanto o torneio acontece: encerrado/cancelado, a aba some.
+  const showLiveBroadcast = !!tournament.live_broadcast_url
+    && effectiveStatus !== 'finished' && effectiveStatus !== 'cancelled';
   const showStatistics = slug === SCHOOL_TOURNAMENT_SLUG;
   const lastImport = lastImportAt ? { last_run_at: lastImportAt, last_status: lastImportStatus } : null;
   // Erro de sincronização é problema interno: o público não vê aviso nenhum (nem "sincronizado",
