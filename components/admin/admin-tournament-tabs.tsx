@@ -46,7 +46,10 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
       ? [
           { href: `${base}/rounds`,    label: 'Rodadas', icon: 'rounds' as TournamentTabIconName },
           { href: `${base}/standings`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
-          ...(status === 'finished' ? [{ href: `${base}/report`, label: 'Relatório', icon: 'report' as TournamentTabIconName }] : []),
+          // Relatório: no nativo, só com o torneio encerrado (antes disso inscrições/check-in ainda
+          // mudam). No importado não há inscrição nem check-in — é só o retrato do chess-results —,
+          // então já vale como relatório parcial durante o torneio.
+          ...(status === 'finished' || mode === 'imported' ? [{ href: `${base}/report`, label: 'Relatório', icon: 'report' as TournamentTabIconName }] : []),
         ]
       : []),
     // Torneio importado não tem arbitragem local (é espelho do chess-results,
