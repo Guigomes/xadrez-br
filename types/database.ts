@@ -128,6 +128,12 @@ export interface Tournament {
    * sobraria ranking pra mostrar.
    */
   has_absolute_classification: boolean;
+  /**
+   * Classificação feminina transversal (migration 20261011140000): todas as jogadoras, de
+   * qualquer categoria, reordenadas entre si — como o Absoluto. Pensada para torneio
+   * importado, cuja categoria vem do chess-results e não tem recorte por sexo.
+   */
+  has_female_classification: boolean;
   /** Dimensão que divide os grupos de emparceiramento quando pairing_mode='per_category'. */
   pairing_split: ClassificationDimension | null;
   created_by: string;
@@ -379,6 +385,8 @@ export interface StandingRow {
   tp_id: string;
   player_status: PlayerTournamentStatus;
   title: string | null;
+  /** 'w' = feminino (players.sex). Usado no recorte "Feminino" da classificação. */
+  sex: 'm' | 'w' | null;
 }
 
 export interface PlayerHistoryRow {

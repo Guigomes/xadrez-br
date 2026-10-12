@@ -24,6 +24,9 @@ import { useTournamentGroupPreference } from '@/lib/hooks/use-tournament-group-p
  * não duplicar chips de grupo/faixa, desempates e o polling de 30s; a única
  * coisa que muda entre os dois é a moldura de layout ao redor.
  */
+/** Valor do chip "Feminino" (não é id de categoria). */
+const FEMALE = '__female__';
+
 export function StandingsView({
   slug,
   showExport = false,
@@ -125,18 +128,23 @@ export function StandingsView({
   // ter desligado a chave e depois apagado as faixas).
   const showAbsolute = tournament?.has_absolute_classification !== false || !hasCategories;
 
+  // Recorte "Feminino": transversal como o Absoluto (uma jogadora U14 aparece na U14 e aqui),
+  // ligado por torneio. Só aparece se houver ao menos uma jogadora identificada no grupo.
+  const femaleRows = rowsInGroup.filter((r) => r.sex === 'w');
+  const showFemale = !!tournament?.has_female_classification && femaleRows.length > 0;
+
   // selectedCategory pode ficar obsoleto ao trocar de grupo (classificação
   // de um grupo não existe no outro) — cai pro absoluto nesse caso, ou pra
   // primeira faixa quando o torneio não tem absoluto.
   const fallbackCategory = showAbsolute ? 'all' : (categories[0]?.id ?? 'all');
   const effectiveCategory = categories.some((c) => c.id === selectedCategory)
+    || (selectedCategory === FEMALE && showFemale)
     ? selectedCategory
     : fallbackCategory;
 
   const displayed = effectiveCategory === 'all'
     ? rowsInGroup
-    : rowsInGroup
-        .filter((r) => r.category_id === effectiveCategory)
+    : (effectiveCategory === FEMALE ? femaleRows : rowsInGroup.filter((r) => r.category_id === effectiveCategory))
         .map((r, i) => ({ ...r, rank: (i + 1) as number }));
 
   // A busca só filtra a TABELA — o WhatsApp e o card de campeão continuam
@@ -147,7 +155,9 @@ export function StandingsView({
   const groupLabel = hasGroups ? (pairingGroups.find((g) => g.id === selectedGroupId)?.name ?? 'Grupo') : null;
   const categoryLabel = effectiveCategory === 'all'
     ? 'Absoluto'
-    : (categories.find((c) => c.id === effectiveCategory)?.name ?? 'Absoluto');
+    : effectiveCategory === FEMALE
+      ? 'Feminino'
+      : (categories.find((c) => c.id === effectiveCategory)?.name ?? 'Absoluto');
   const isInitialRanking = rowsInGroup.every((row) => (row.games_played ?? 0) === 0);
   const rankingLabel = isInitialRanking ? 'Ranking inicial' : categoryLabel;
   const heading = groupLabel ? `${groupLabel} · ${rankingLabel}` : rankingLabel;
@@ -263,7 +273,7 @@ export function StandingsView({
                   </select>
                 </label>
               )}
-              {hasCategories && (
+              {(hasCategories || showFemale) && (
                 <div className="flex flex-wrap gap-1.5">
                   {showAbsolute && (
                     <button
@@ -275,6 +285,18 @@ export function StandingsView({
                       }`}
                     >
                       Absoluto
+                    </button>
+                  )}
+                  {showFemale && (
+                    <button
+                      onClick={() => setSelectedCategory(FEMALE)}
+                      className={`min-h-10 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+                        effectiveCategory === FEMALE
+                          ? 'bg-gray-700 text-white dark:bg-gray-600'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      Feminino
                     </button>
                   )}
                   {categories.map((cat) => (
