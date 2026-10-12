@@ -198,14 +198,21 @@ export default function PlayerTournamentPage({ params }: Props) {
           const finishedGames = (history as PlayerHistoryRow[] | undefined)?.filter(
             (r) => r.result !== '*' && !r.is_bye,
           ) ?? [];
+          // W.O. entra na conta (vale ponto no torneio): o adversário faltou = vitória; o próprio
+          // jogador faltou, ou os dois, = derrota.
           const wins   = finishedGames.filter((r) =>
             (r.result === '1-0' && r.color === 'white') ||
-            (r.result === '0-1' && r.color === 'black'),
+            (r.result === '0-1' && r.color === 'black') ||
+            (r.result === 'forfeit_black' && r.color === 'white') ||
+            (r.result === 'forfeit_white' && r.color === 'black'),
           ).length;
           const draws  = finishedGames.filter((r) => r.result === '1/2-1/2').length;
           const losses = finishedGames.filter((r) =>
             (r.result === '1-0' && r.color === 'black') ||
-            (r.result === '0-1' && r.color === 'white'),
+            (r.result === '0-1' && r.color === 'white') ||
+            (r.result === 'forfeit_white' && r.color === 'white') ||
+            (r.result === 'forfeit_black' && r.color === 'black') ||
+            r.result === 'double_forfeit',
           ).length;
           return (
             <>
@@ -297,7 +304,10 @@ function TiebreakRow({ info, value }: { info: { label: string; short: string; de
 
 function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournamentSlug: string }) {
   const isWhite = row.color === 'white';
-  const isDone = row.round_status === 'finished' && row.result !== '*';
+  // Resultado aparece assim que a MESA termina — não só quando a rodada inteira acaba (antes,
+  // uma mesa já decidida ficava "Em andamento" enquanto qualquer outra da rodada ainda jogava).
+  // Mesmo critério da lista da rodada.
+  const isDone = row.result !== '*';
 
   const roundHref = `/torneios/${tournamentSlug}/rounds/${row.round_number}`;
   // Linha não é mais um link único (link dentro de link é inválido): número da
