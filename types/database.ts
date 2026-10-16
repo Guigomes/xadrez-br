@@ -408,6 +408,7 @@ export interface PlayerHistoryRow {
   cumulative_pts: number | null;
   opponent_title: string | null;
   opponent_fide_name?: string | null;
+  opponent_federation?: string | null;
   /** tournament_players.id do adversário (null em bye / sem emparceiramento). */
   opponent_tp_id: string | null;
 }
