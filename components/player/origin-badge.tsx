@@ -1,18 +1,23 @@
 import { cn } from '@/lib/utils/cn';
 import { StateBadge } from '@/components/player/state-badge';
-import { federationName } from '@/lib/utils/federation';
+import { federationName, federationFlagUrl } from '@/lib/utils/federation';
 
 export function FederationBadge({ federation, className }: { federation: string | null | undefined; className?: string }) {
   if (!federation) return null;
   const code = federation.toUpperCase();
+  const flag = federationFlagUrl(code);
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800',
+        'inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800',
         className,
       )}
       title={`País: ${federationName(code)}`}
     >
+      {flag && (
+        // eslint-disable-next-line @next/next/no-img-element -- SVG estático de 1 KB; next/image não ganha nada aqui
+        <img src={flag} alt="" width={16} height={12} className="h-3 w-4 rounded-[2px] object-cover shadow-[0_0_0_0.5px_rgba(0,0,0,0.15)]" />
+      )}
       {code}
     </span>
   );

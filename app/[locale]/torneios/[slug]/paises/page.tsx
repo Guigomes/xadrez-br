@@ -13,6 +13,30 @@ import type { StandingRow } from '@/types/database';
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ ordem?: string; dir?: string; bord?: string; bdir?: string }>;
+}
+
+type Dir = 'asc' | 'desc';
+
+/** Cabeçalho que ordena a tabela: link que troca a coluna (ou inverte o sentido) na URL. */
+function SortTh({ label, sortKey, current, dir, defaultDir, href, className = '' }: {
+  label: string; sortKey: string; current: string; dir: Dir; defaultDir: Dir;
+  href: (key: string, dir: Dir) => string; className?: string;
+}) {
+  const active = current === sortKey;
+  const next: Dir = active ? (dir === 'asc' ? 'desc' : 'asc') : defaultDir;
+  return (
+    <th className={className} aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <Link
+        href={href(sortKey, next)}
+        scroll={false}
+        className={'inline-flex items-center gap-0.5 hover:text-brand-600 dark:hover:text-brand-400' + (active ? ' text-gray-900 dark:text-gray-100' : '')}
+      >
+        {label}
+        <span aria-hidden className={active ? '' : 'opacity-30'}>{active ? (dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+      </Link>
+    </th>
+  );
 }
 
 const HOME = 'BRA';
@@ -48,8 +72,9 @@ const winRate = (c: Pick<CountryStats, 'wins' | 'draws' | 'losses'>) => {
  * Ordem do ranking: pódios atuais (top 3 da seção), depois top 10, depois pontos por
  * jogador — o "quadro de medalhas" parcial, que é como os países acompanham o Mundial.
  */
-export default async function CountriesPage({ params }: Props) {
+export default async function CountriesPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const sp = await searchParams;
   const data = await getTournamentPageData(slug);
   if (!data || !isInternationalTournament(data.tournament.state)) notFound();
   const { tournament } = data;
@@ -89,16 +114,70 @@ export default async function CountriesPage({ params }: Props) {
   const ranking = [...byCountry.values()].sort((a, b) =>
     b.podiums - a.podiums || b.top10 - a.top10 || b.points / b.players - a.points / a.players || a.code.localeCompare(b.code),
   );
+  // O ranking oficial (quadro de medalhas) define a coluna "#" e a posição do Brasil; a
+  // ordenação escolhida no cabeçalho só muda a ordem de exibição.
+  const officialPos = new Map(ranking.map((c, i) => [c.code, i + 1]));
+  const ord = sp.ordem ?? 'posicao';
+  const ordDir: Dir = sp.dir === 'asc' || sp.dir === 'desc'
+    ? sp.dir
+    : (ord === 'posicao' || ord === 'pais' || ord === 'melhor' ? 'asc' : 'desc');
+  const countryKey: Record<string, (c: CountryStats) => number | string> = {
+    posicao: (c) => officialPos.get(c.code) ?? 0,
+    pais: (c) => federationName(c.code),
+    jogadores: (c) => c.players,
+    podio: (c) => c.podiums,
+    top10: (c) => c.top10,
+    pontos: (c) => c.points,
+    ptsjog: (c) => c.points / c.players,
+    aproveit: (c) => winRate(c),
+    melhor: (c) => c.best?.ratio ?? 99,
+  };
+  const keyFn = countryKey[ord] ?? countryKey.posicao;
+  const compare = (x: number | string, y: number | string) =>
+    typeof x === 'string' ? x.localeCompare(String(y), 'pt-BR') : x - (y as number);
+  const sortedRanking = [...ranking].sort((a, b) =>
+    (ordDir === 'asc' ? 1 : -1) * compare(keyFn(a), keyFn(b)) || officialPos.get(a.code)! - officialPos.get(b.code)!,
+  );
+  // Cada tabela guarda a própria ordem na URL sem apagar a da outra.
+  const sortHref = (table: 'r' | 'b') => (key: string, dir: Dir) => {
+    const q = new URLSearchParams();
+    const o = table === 'r' ? key : sp.ordem;
+    const d = table === 'r' ? dir : sp.dir;
+    const bo = table === 'b' ? key : sp.bord;
+    const bd = table === 'b' ? dir : sp.bdir;
+    if (o) q.set('ordem', o);
+    if (d) q.set('dir', d);
+    if (bo) q.set('bord', bo);
+    if (bd) q.set('bdir', bd);
+    return `/torneios/${slug}/paises?${q.toString()}#${table === 'r' ? 'ranking' : 'brasil'}`;
+  };
+
   const home = byCountry.get(HOME);
   const homePos = ranking.findIndex((c) => c.code === HOME) + 1;
   const homePlayers = rows
     .filter((r) => r.federation?.toUpperCase() === HOME)
     .sort((a, b) => groupOrder.indexOf(a.pairing_group_name ?? '—') - groupOrder.indexOf(b.pairing_group_name ?? '—') || (a.rank ?? 999) - (b.rank ?? 999));
+  const bord = sp.bord ?? 'secao';
+  const bDir: Dir = sp.bdir === 'asc' || sp.bdir === 'desc'
+    ? sp.bdir
+    : (bord === 'pontos' || bord === 'vitorias' ? 'desc' : 'asc');
+  const playerKey: Record<string, (r: StandingRow) => number | string> = {
+    secao: (r) => groupOrder.indexOf(r.pairing_group_name ?? '—'),
+    jogador: (r) => playerDisplayName(r.full_name, r.fide_name, locale),
+    colocacao: (r) => (r.rank ?? 999) / (groupSize.get(r.pairing_group_name ?? '—') ?? 1),
+    pontos: (r) => Number(r.points) || 0,
+    vitorias: (r) => r.wins ?? 0,
+  };
+  const pKey = playerKey[bord] ?? playerKey.secao;
+  const homeSorted = homePlayers
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => (bDir === 'asc' ? 1 : -1) * compare(pKey(a.r), pKey(b.r)) || a.i - b.i)
+    .map(({ r }) => r);
 
   return (
     <div className="space-y-6">
       {home ? (
-        <section className="overflow-hidden rounded-2xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-50 via-white to-yellow-50 shadow-sm dark:border-emerald-600 dark:from-emerald-950/40 dark:via-gray-900 dark:to-yellow-950/20">
+        <section id="brasil" className="scroll-mt-4 overflow-hidden rounded-2xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-50 via-white to-yellow-50 shadow-sm dark:border-emerald-600 dark:from-emerald-950/40 dark:via-gray-900 dark:to-yellow-950/20">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200 px-5 py-4 dark:border-emerald-900">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-sm font-black text-yellow-300">BRA</span>
@@ -128,15 +207,15 @@ export default async function CountriesPage({ params }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
-                  <th className="px-4 py-2 font-semibold">Jogador</th>
-                  <th className="px-4 py-2 font-semibold">Seção</th>
-                  <th className="px-4 py-2 text-center font-semibold">Colocação</th>
-                  <th className="px-4 py-2 text-center font-semibold">Pontos</th>
-                  <th className="hidden px-4 py-2 text-center font-semibold sm:table-cell">V / E / D</th>
+                  <SortTh label="Jogador" sortKey="jogador" current={bord} dir={bDir} defaultDir="asc" href={sortHref('b')} className="px-4 py-2 font-semibold" />
+                  <SortTh label="Seção" sortKey="secao" current={bord} dir={bDir} defaultDir="asc" href={sortHref('b')} className="px-4 py-2 font-semibold" />
+                  <SortTh label="Colocação" sortKey="colocacao" current={bord} dir={bDir} defaultDir="asc" href={sortHref('b')} className="px-4 py-2 text-center font-semibold" />
+                  <SortTh label="Pontos" sortKey="pontos" current={bord} dir={bDir} defaultDir="desc" href={sortHref('b')} className="px-4 py-2 text-center font-semibold" />
+                  <SortTh label="V / E / D" sortKey="vitorias" current={bord} dir={bDir} defaultDir="desc" href={sortHref('b')} className="hidden px-4 py-2 text-center font-semibold sm:table-cell" />
                 </tr>
               </thead>
               <tbody>
-                {homePlayers.map((r) => (
+                {homeSorted.map((r) => (
                   <tr key={r.tp_id} className="border-t border-emerald-100 dark:border-emerald-900/50">
                     <td className="px-4 py-2.5">
                       <Link
@@ -172,30 +251,30 @@ export default async function CountriesPage({ params }: Props) {
         </p>
       )}
 
-      <section>
+      <section id="ranking" className="scroll-mt-4">
         <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Desempenho por país</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Ordem: jogadores no pódio da seção, depois no top 10, depois pontos por jogador. Classificação parcial enquanto o torneio estiver em andamento.
+            Posição (#): jogadores no pódio da seção, depois no top 10, depois pontos por jogador. Clique no título de uma coluna para ordenar. Classificação parcial enquanto o torneio estiver em andamento.
           </p>
         </div>
         <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-                <th className="px-3 py-2 font-semibold">#</th>
-                <th className="px-3 py-2 font-semibold">País</th>
-                <th className="px-3 py-2 text-center font-semibold">Jogadores</th>
-                <th className="px-3 py-2 text-center font-semibold">Pódio</th>
-                <th className="px-3 py-2 text-center font-semibold">Top 10</th>
-                <th className="hidden px-3 py-2 text-center font-semibold sm:table-cell">Pontos</th>
-                <th className="px-3 py-2 text-center font-semibold">Pts/jogador</th>
-                <th className="hidden px-3 py-2 text-center font-semibold sm:table-cell">Aproveitamento</th>
-                <th className="hidden px-3 py-2 font-semibold md:table-cell">Melhor colocação</th>
+                <SortTh label="#" sortKey="posicao" current={ord} dir={ordDir} defaultDir="asc" href={sortHref('r')} className="px-3 py-2 font-semibold" />
+                <SortTh label="País" sortKey="pais" current={ord} dir={ordDir} defaultDir="asc" href={sortHref('r')} className="px-3 py-2 font-semibold" />
+                <SortTh label="Jogadores" sortKey="jogadores" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="px-3 py-2 text-center font-semibold" />
+                <SortTh label="Pódio" sortKey="podio" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="px-3 py-2 text-center font-semibold" />
+                <SortTh label="Top 10" sortKey="top10" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="px-3 py-2 text-center font-semibold" />
+                <SortTh label="Pontos" sortKey="pontos" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="hidden px-3 py-2 text-center font-semibold sm:table-cell" />
+                <SortTh label="Pts/jogador" sortKey="ptsjog" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="px-3 py-2 text-center font-semibold" />
+                <SortTh label="Aproveitamento" sortKey="aproveit" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="hidden px-3 py-2 text-center font-semibold sm:table-cell" />
+                <SortTh label="Melhor colocação" sortKey="melhor" current={ord} dir={ordDir} defaultDir="asc" href={sortHref('r')} className="hidden px-3 py-2 font-semibold md:table-cell" />
               </tr>
             </thead>
             <tbody>
-              {ranking.map((c, i) => {
+              {sortedRanking.map((c) => {
                 const isHome = c.code === HOME;
                 return (
                   <tr
@@ -204,7 +283,7 @@ export default async function CountriesPage({ params }: Props) {
                       ? 'border-y-2 border-emerald-500 bg-emerald-50 font-semibold dark:border-emerald-600 dark:bg-emerald-950/40'
                       : 'border-b border-gray-100 dark:border-gray-800/60'}
                   >
-                    <td className="px-3 py-2 tabular-nums text-gray-500">{i + 1}</td>
+                    <td className="px-3 py-2 tabular-nums text-gray-500">{officialPos.get(c.code)}</td>
                     <td className="px-3 py-2">
                       <span className="inline-flex items-center gap-2">
                         <FederationBadge federation={c.code} />

@@ -3,6 +3,7 @@
 import { Link } from '@/i18n/navigation';
 import { useLocale } from 'next-intl';
 import { playerDisplayName } from '@/lib/utils/player-name';
+import { FederationBadge } from '@/components/player/origin-badge';
 import { Badge } from '@/components/ui/badge';
 import { formatScore, winnerSide, resultLabel, resultBadgeColor } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
@@ -17,10 +18,15 @@ interface PairingsListProps {
   pgnIds?: Set<string>;
   roundNumber?: number | null;
   tournamentName?: string | null;
+  /** Torneio internacional: bandeira/federação de todos os jogadores (no Brasil, só dos estrangeiros). */
+  international?: boolean;
 }
 
-export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, roundNumber, tournamentName }: PairingsListProps) {
+export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, roundNumber, tournamentName, international = false }: PairingsListProps) {
   const locale = useLocale();
+  // Internacional: país de todos. No Brasil: só de quem é de fora (o resto é BRA, ruído).
+  const shownFederation = (fed: string | null | undefined) =>
+    fed && (international || fed.toUpperCase() !== 'BRA') ? fed : null;
   if (pairings.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -55,7 +61,7 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
         {pairing.is_bye ? (
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state="winner" followed={!!followedWhite} />
+              <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} federation={shownFederation(pairing.white_federation)} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state="winner" followed={!!followedWhite} />
             </div>
             {/* 'bye' (sobra do suíço) e 'not_paired' (fora por decisão/
                 ausência) usam o mesmo is_bye pra não contar como jogo, mas
@@ -64,7 +70,7 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
           </div>
         ) : (
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state={whiteState} followed={!!followedWhite} />
+            <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} federation={shownFederation(pairing.white_federation)} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state={whiteState} followed={!!followedWhite} />
 
             <div className="flex flex-col items-center gap-0.5 min-w-[3rem]">
               {hasResult ? (
@@ -82,7 +88,7 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
               )}
             </div>
 
-            <PlayerLink tpId={pairing.black_tp_id} name={playerDisplayName(pairing.black_name, pairing.black_fide_name, locale)} title={pairing.black_title} rating={pairing.black_rating} score={pairing.black_score} tournamentSlug={tournamentSlug} color="black" state={blackState} alignRight followed={!!followedBlack} />
+            <PlayerLink tpId={pairing.black_tp_id} name={playerDisplayName(pairing.black_name, pairing.black_fide_name, locale)} federation={shownFederation(pairing.black_federation)} title={pairing.black_title} rating={pairing.black_rating} score={pairing.black_score} tournamentSlug={tournamentSlug} color="black" state={blackState} alignRight followed={!!followedBlack} />
           </div>
         )}
         {!pairing.is_bye && pgnIds?.has(pairing.pairing_id) && (
@@ -110,13 +116,13 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
 }
 
 function PlayerLink({
-  tpId, name, title, rating, score, tournamentSlug, color, state, alignRight, followed,
+  tpId, name, title, rating, score, tournamentSlug, color, state, alignRight, followed, federation,
 }: {
   tpId: string | null; name: string; title?: string | null; rating: number | null;
   score: number | null; tournamentSlug: string;
   color: 'white' | 'black';
   state: 'winner' | 'loser' | 'draw' | 'pending';
-  alignRight?: boolean; followed?: boolean;
+  alignRight?: boolean; followed?: boolean; federation?: string | null;
 }) {
   const isWinner = state === 'winner';
   const isLoser  = state === 'loser';
@@ -142,7 +148,8 @@ function PlayerLink({
         {isWinner && <span className="text-xs">🏆</span>}
         {followed && alignRight && <span className="text-brand-500 text-xs">★</span>}
       </div>
-      <p className={`text-xs mt-0.5 text-center ${isLoser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400'}`}>
+      <p className={`text-xs mt-0.5 flex flex-wrap items-center justify-center gap-x-1.5 ${isLoser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400'}`}>
+        {federation && <FederationBadge federation={federation} className="px-1 py-0 text-[10px]" />}
         {rating ? `Rating ${rating}` : 'Sem rating'}
         {score !== null && ` · ${formatScore(score)} pts`}
       </p>

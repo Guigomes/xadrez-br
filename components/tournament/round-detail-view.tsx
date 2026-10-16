@@ -8,6 +8,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS } from '@/lib/utils/chess';
 import { RoundDetailClient } from '@/components/tournament/round-detail-client';
+import { isInternationalTournament } from '@/lib/utils/federation';
 import { useTournamentGroupPreference } from '@/lib/hooks/use-tournament-group-preference';
 
 /**
@@ -150,6 +151,7 @@ export function RoundDetailView({
               tournamentId={tournament.id}
               tournamentSlug={slug}
               isOngoing={s.status === 'ongoing'}
+              international={isInternationalTournament(tournament.state)}
             />
           </div>
         ))}

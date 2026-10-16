@@ -16,9 +16,11 @@ interface Props {
   tournamentId: string;
   tournamentSlug: string;
   isOngoing: boolean;
+  /** Torneio internacional: mostra bandeira/federação de todos os jogadores. */
+  international?: boolean;
 }
 
-export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOngoing }: Props) {
+export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOngoing, international = false }: Props) {
   const { data: pairings, isLoading } = useRoundPairings(roundId);
   const { data: followed } = useFollowedInTournament(tournamentId);
   const [query, setQuery] = useState('');
@@ -84,7 +86,7 @@ export function RoundDetailClient({ roundId, tournamentId, tournamentSlug, isOng
           {query ? 'Nenhum jogador encontrado com esse nome.' : 'Nenhuma partida com esse filtro.'}
         </p>
       ) : (
-        <PairingsList pairings={filteredPairings} tournamentSlug={tournamentSlug} followedTpIds={followed?.tpIds} pgnIds={pgnIds} />
+        <PairingsList pairings={filteredPairings} tournamentSlug={tournamentSlug} followedTpIds={followed?.tpIds} pgnIds={pgnIds} international={international} />
       )}
     </div>
   );

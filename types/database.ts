@@ -427,6 +427,8 @@ export interface RoundPairingRow {
   black_score: number | null;
   white_fide_name?: string | null;
   black_fide_name?: string | null;
+  white_federation?: string | null;
+  black_federation?: string | null;
   result: GameResult;
   white_points: number | null;
   black_points: number | null;
