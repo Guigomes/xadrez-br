@@ -9,6 +9,7 @@ export type TournamentTabKey =
   | 'rounds'
   | 'standings'
   | 'live'
+  | 'countries'
   | 'player'
   | 'register'
   | 'statistics'
@@ -21,6 +22,7 @@ export const TOURNAMENT_TAB_LABELS: Record<TournamentTabKey, string> = {
   rounds: 'Rodadas',
   standings: 'Classificação',
   live: 'Acompanhe ao Vivo',
+  countries: 'Por país',
   player: 'Ficha do jogador',
   register: 'Inscrição',
   statistics: 'Estatísticas',
@@ -30,7 +32,7 @@ export const TOURNAMENT_TAB_LABELS: Record<TournamentTabKey, string> = {
 
 /** Ordem de exibição (a mesma das abas na página do torneio). */
 export const TOURNAMENT_TAB_ORDER: TournamentTabKey[] = [
-  'overview', 'participants', 'rounds', 'standings', 'live', 'player', 'register', 'statistics', 'tv', 'other',
+  'overview', 'participants', 'rounds', 'standings', 'live', 'countries', 'player', 'register', 'statistics', 'tv', 'other',
 ];
 
 /**
@@ -56,6 +58,7 @@ export function classifyTournamentPath(path: string): { slug: string; tab: Tourn
     : section === 'rounds' ? 'rounds'
     : section === 'standings' ? 'standings'
     : section === 'ao-vivo' ? 'live'
+    : section === 'paises' ? 'countries'
     : section === 'players' ? 'player'
     : section === 'register' ? 'register'
     : section === 'statistics' ? 'statistics'

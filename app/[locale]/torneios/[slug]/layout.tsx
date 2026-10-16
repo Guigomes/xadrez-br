@@ -14,6 +14,7 @@ import { siteUrl, describeDates, isIndexableTournament, jsonLdString } from '@/l
 import { getTournamentStartLabel } from '@/lib/utils/date';
 import { RelativeTime } from '@/components/ui/relative-time';
 import { DevHomologatedBadge } from '@/components/tournament/dev-homologated-badge';
+import { isInternationalTournament } from '@/lib/utils/federation';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -190,6 +191,7 @@ export default async function TournamentLayout({ children, params }: Props) {
             currentRoundNumber={currentRoundNumber}
             showStatistics={showStatistics}
             hasLiveBroadcast={showLiveBroadcast}
+            showCountries={isInternationalTournament(tournament.state)}
           />
         </div>
       </div>

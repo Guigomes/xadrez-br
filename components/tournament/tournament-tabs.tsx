@@ -12,9 +12,11 @@ interface TournamentTabsProps {
   showStatistics?: boolean;
   /** Torneio com link de transmissão (tournaments.live_broadcast_url) ganha a aba "Acompanhe ao Vivo". */
   hasLiveBroadcast?: boolean;
+  /** Torneio internacional (o Mundial FIDE) ganha a aba "Por país". */
+  showCountries?: boolean;
 }
 
-export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStatistics = false, hasLiveBroadcast = false }: TournamentTabsProps) {
+export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStatistics = false, hasLiveBroadcast = false, showCountries = false }: TournamentTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const base = `/torneios/${slug}`;
@@ -49,6 +51,13 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
       label: 'Acompanhe ao Vivo',
       icon: 'live' as TournamentTabIconName,
       mobileFull: true,
+      carryContext: false,
+    }] : []),
+    ...(showCountries ? [{
+      href: `${base}/paises`,
+      activePath: `${base}/paises`,
+      label: 'Por país',
+      icon: 'countries' as TournamentTabIconName,
       carryContext: false,
     }] : []),
     ...(showStatistics ? [{

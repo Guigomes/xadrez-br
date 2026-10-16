@@ -34,7 +34,16 @@ export function OriginBadge({
   international: boolean;
   className?: string;
 }) {
-  if (international) return <FederationBadge federation={federation} className={className} />;
+  if (international) {
+    // Brasileiro num torneio internacional: o país e, quando o cadastro tem, a UF ("BRA · PR").
+    const brazilian = federation?.toUpperCase() === 'BRA';
+    return (
+      <>
+        <FederationBadge federation={federation} className={className} />
+        {brazilian && <StateBadge state={state} className={className} />}
+      </>
+    );
+  }
   const foreign = !!federation && federation.toUpperCase() !== 'BRA';
   return (
     <>
