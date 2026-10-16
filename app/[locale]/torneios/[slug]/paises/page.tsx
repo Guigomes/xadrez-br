@@ -58,7 +58,7 @@ interface CountryStats {
   podiums: number;
   top10: number;
   /** Melhor colocação relativa (posição / tamanho do grupo) e sua descrição. */
-  best: { ratio: number; rank: number; size: number; group: string } | null;
+  best: { ratio: number; rank: number; size: number; group: string; player: StandingRow } | null;
 }
 
 const pctText = (x: number) => `${Math.round(x * 100)}%`;
@@ -113,12 +113,8 @@ export default async function CountriesPage({ params, searchParams }: Props) {
     draw: boardGames.filter((p) => p.result === '1/2-1/2').length,
   };
   const playedOnBoard = decided.white + decided.black + decided.draw;
-  const forfeits = boardGames.filter((p) => p.result.startsWith('forfeit') || p.result === 'double_forfeit').length;
-  const inProgress = boardGames.filter((p) => p.result === '*').length;
-  const byes = results.filter((p) => p.is_bye && p.result === 'bye').length;
   const rated = rows.filter((r) => (r.rating_std ?? 0) > 0);
   const avgRating = rated.length ? Math.round(rated.reduce((a, r) => a + (r.rating_std ?? 0), 0) / rated.length) : null;
-  const share = (n: number) => (playedOnBoard ? `${Math.round((n / playedOnBoard) * 100)}%` : '–');
 
   // Jogador escolhido: só vale se for deste torneio (o RPC também filtra pelo torneio).
   const selectedPlayer = sp.jogador ? rows.find((r) => r.tp_id === sp.jogador) ?? null : null;
@@ -146,7 +142,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
       const group = r.pairing_group_name ?? '—';
       const size = groupSize.get(group) ?? 1;
       const ratio = r.rank / size;
-      if (!c.best || ratio < c.best.ratio) c.best = { ratio, rank: r.rank, size, group };
+      if (!c.best || ratio < c.best.ratio) c.best = { ratio, rank: r.rank, size, group, player: r };
     }
     byCountry.set(code, c);
   }
@@ -245,16 +241,14 @@ export default async function CountriesPage({ params, searchParams }: Props) {
     <div className="space-y-4 sm:space-y-6">
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">
         <h2 className="mb-3 text-base font-bold text-gray-900 sm:text-lg dark:text-gray-100">O Mundial em números</h2>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
           {[
             ['Jogadores', String(rows.length)],
             ['Países', String(byCountry.size)],
             ['Seções', String(groupOrder.length)],
             ['Rodada', `${currentRoundNumber ?? '–'} de ${tournament.rounds_count}`],
-            ['No tabuleiro', String(playedOnBoard)],
-            ['Brancas venceram', share(decided.white)],
-            ['Pretas venceram', share(decided.black)],
-            ['Empates', share(decided.draw)],
+            ['Partidas jogadas', String(playedOnBoard)],
+            ['Rating médio', avgRating ? String(avgRating) : '–'],
           ].map(([label, value]) => (
             <div key={label} className="rounded-xl bg-gray-50 px-3 py-2.5 sm:px-4 sm:py-3 dark:bg-gray-800/60">
               <p className="text-[11px] uppercase tracking-wide text-gray-500 sm:text-xs dark:text-gray-400">{label}</p>
@@ -262,27 +256,14 @@ export default async function CountriesPage({ params, searchParams }: Props) {
             </div>
           ))}
         </div>
-        {playedOnBoard > 0 && (
-          <div className="mt-3 flex h-2.5 overflow-hidden rounded-full" title="Brancas · empates · pretas">
-            <div className="bg-gray-200 dark:bg-gray-300" style={{ width: `${(decided.white / playedOnBoard) * 100}%` }} />
-            <div className="bg-amber-300" style={{ width: `${(decided.draw / playedOnBoard) * 100}%` }} />
-            <div className="bg-gray-800 dark:bg-gray-600" style={{ width: `${(decided.black / playedOnBoard) * 100}%` }} />
-          </div>
-        )}
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600 sm:text-sm dark:text-gray-300">
-          {inProgress > 0 && <span>{inProgress} partidas em andamento</span>}
-          <span className="rounded-full bg-gray-100 px-2 py-1 dark:bg-gray-800">{forfeits} W.O.</span>
-          <span className="rounded-full bg-gray-100 px-2 py-1 dark:bg-gray-800">{byes} byes</span>
-          {avgRating && <span className="rounded-full bg-gray-100 px-2 py-1 dark:bg-gray-800">Rating médio {avgRating} <span className="text-gray-400">({rated.length})</span></span>}
-          {ranking.length > 0 && (() => {
-            const biggest = [...ranking].sort((a, b) => b.players - a.players)[0];
-            return (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2 py-1 dark:bg-gray-800">
-                Maior delegação: <FederationBadge federation={biggest.code} /> {federationName(biggest.code)} ({biggest.players})
-              </span>
-            );
-          })()}
-        </div>
+        {ranking.length > 0 && (() => {
+          const biggest = [...ranking].sort((a, b) => b.players - a.players)[0];
+          return (
+            <p className="mt-3 flex flex-wrap items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300">
+              Maior delegação: <FederationBadge federation={biggest.code} /> {federationName(biggest.code)} ({biggest.players} jogadores)
+            </p>
+          );
+        })()}
       </section>
 
       {home ? (
@@ -325,7 +306,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
               ['Pontos', formatScore(home.points), `${(home.points / home.players).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} por jogador`],
               ['Aproveitamento', pctText(winRate(home))],
               ['V / E / D', `${home.wins} / ${home.draws} / ${home.losses}`],
-              ['Melhor colocação', home.best ? `${home.best.rank}º de ${home.best.size}` : '–', home.best?.group],
+              ['Melhor colocação', home.best ? `${home.best.rank}º de ${home.best.size}` : '–', home.best ? `${playerDisplayName(home.best.player.full_name, home.best.player.fide_name, locale)} · ${home.best.group}` : undefined],
               ['Rating médio', homeAvgRating ? String(homeAvgRating) : '–'],
               ['No top 10', String(home.top10)],
               ['No pódio', String(home.podiums)],
@@ -333,7 +314,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
               <div key={label} className="bg-white/80 px-2.5 py-3 sm:px-4 dark:bg-gray-900/70">
                 <p className="text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs dark:text-gray-400">{label}</p>
                 <p className="text-lg font-bold tabular-nums text-gray-900 sm:text-xl dark:text-gray-100">{value}</p>
-                {sub && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{sub}</p>}
+                {sub && <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">{sub}</p>}
               </div>
             ))}
           </div>
