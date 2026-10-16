@@ -11,6 +11,16 @@ import { importPlayers } from './import-players';
 import { importPairings } from './import-pairings';
 import { importStandings } from './import-standings';
 import { notifyRoundPublished } from './notify';
+import {
+  isInfo64Url,
+  parseInfo64Url,
+  info64Pages,
+  isGirlsSection,
+  playersSheet,
+  pairingsSheet,
+  standingsSheet,
+  totalRoundsFromMenu,
+} from './info64';
 
 /**
  * DUPLICAÇÃO DELIBERADA — leia antes de mexer em qualquer arquivo deste
@@ -94,12 +104,14 @@ export async function processImport(
     throw new Error('torneio nativo — importação bloqueada (desabilite esta linha de import)');
   }
 
-  const info = parseBaseUrl(row.base_url);
   const pairingGroupId = await resolvePairingGroupId(
     supabase,
     row.tournament_id,
     row.pairing_group_name,
   );
+  if (isInfo64Url(row.base_url)) return processInfo64Import(supabase, row, pairingGroupId);
+
+  const info = parseBaseUrl(row.base_url);
 
   // 1. Players (art=0 com SNode preservado para filtrar o grupo correto)
   const playersUrl = buildArtUrl(info, 0);
