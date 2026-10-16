@@ -55,6 +55,7 @@ const schema = z.object({
   checkin_closes_at: z.string().optional(),
   rounds_count:    z.coerce.number().int().min(1).max(20),
   is_public:       z.boolean(),
+  is_international: z.boolean(),
   mode:            z.enum(['native', 'imported']),
   initial_color:   z.enum(['white1', 'black1']),
   rating_kind:     z.enum(['std', 'rpd', 'blz']),
@@ -180,6 +181,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       tournament_type: 'swiss',
       rounds_count: 6,
       is_public: true,
+      is_international: false,
       mode: 'native',
       rating_kind: 'std',
       time_control_kind: 'other',
@@ -633,6 +635,15 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       </div>
 
       {/* Visibility */}
+      <div className="card p-5">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input type="checkbox" className="mt-0.5 h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500" {...register('is_international')} />
+          <span>
+            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Torneio internacional</span>
+            <span className="block text-xs text-gray-500 dark:text-gray-400">Mostra o país dos jogadores, o filtro por país e a aba de desempenho por país.</span>
+          </span>
+        </label>
+      </div>
       <div className="card p-5" data-tour="visibilidade">
         <label className="flex items-center gap-3 cursor-pointer">
           <input

@@ -96,6 +96,7 @@ export interface Tournament {
   rounds_count: number;
   status: TournamentStatus;
   is_public: boolean;
+  is_international: boolean;
   banner_url: string | null;
   /** Transmissão ao vivo oferecida pela organização (ex.: broadcast do Lichess) — aba "Acompanhe ao Vivo". */
   live_broadcast_url: string | null;
@@ -444,6 +445,7 @@ export interface RoundPairingRow {
 // ============================================================
 
 export interface TournamentFormValues {
+  is_international: boolean;
   name: string;
   description?: string;
   live_broadcast_url?: string | null;

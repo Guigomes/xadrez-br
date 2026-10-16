@@ -1,16 +1,6 @@
-import { BR_STATES } from '@/lib/utils/chess';
-
-const BR_UFS = new Set(BR_STATES.map((s) => s.uf));
-
-/**
- * Torneio fora do Brasil: o campo `state` do torneio não é uma UF (ex.: "ESP" no
- * Mundial FIDE de Roquetas de Mar). Nesses torneios o que identifica o jogador é o
- * país (federação FIDE), não o estado. Só vale código de federação (3 letras): torneios
- * importados antigos têm `state = 'Não informado'` e são brasileiros.
- */
-export function isInternationalTournament(tournamentState: string | null | undefined): boolean {
-  const code = tournamentState?.trim().toUpperCase() ?? '';
-  return /^[A-Z]{3}$/.test(code) && !BR_UFS.has(code);
+/** A apresentação internacional depende apenas da configuração explícita do torneio. */
+export function isInternationalTournament(isInternational: boolean | null | undefined): boolean {
+  return isInternational === true;
 }
 
 /** Nomes em português das federações FIDE mais comuns; código desconhecido aparece cru. */

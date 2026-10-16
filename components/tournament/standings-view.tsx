@@ -333,7 +333,7 @@ export function StandingsView({
             tournamentSlug={slug}
             followedPlayerIds={followed?.playerIds}
             isInitialRanking={isInitialRanking}
-            international={isInternationalTournament(tournament?.state)}
+            international={isInternationalTournament(tournament?.is_international)}
           />
         )}
       </div>

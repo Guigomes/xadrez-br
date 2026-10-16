@@ -151,7 +151,7 @@ export function RoundDetailView({
               tournamentId={tournament.id}
               tournamentSlug={slug}
               isOngoing={s.status === 'ongoing'}
-              international={isInternationalTournament(tournament.state)}
+              international={isInternationalTournament(tournament.is_international)}
             />
           </div>
         ))}

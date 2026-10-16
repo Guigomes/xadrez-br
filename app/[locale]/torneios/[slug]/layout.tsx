@@ -191,7 +191,7 @@ export default async function TournamentLayout({ children, params }: Props) {
             currentRoundNumber={currentRoundNumber}
             showStatistics={showStatistics}
             hasLiveBroadcast={showLiveBroadcast}
-            showCountries={isInternationalTournament(tournament.state)}
+            showCountries={isInternationalTournament(tournament.is_international)}
           />
         </div>
       </div>

@@ -1739,6 +1739,7 @@ export type Database = {
           id: string
           initial_color: Database["public"]["Enums"]["initial_color"]
           is_free: boolean
+          is_international: boolean
           is_public: boolean
           max_participants: number | null
           mode: Database["public"]["Enums"]["tournament_mode"]
@@ -1786,6 +1787,7 @@ export type Database = {
           id?: string
           initial_color?: Database["public"]["Enums"]["initial_color"]
           is_free?: boolean
+          is_international?: boolean
           is_public?: boolean
           max_participants?: number | null
           mode?: Database["public"]["Enums"]["tournament_mode"]
@@ -1833,6 +1835,7 @@ export type Database = {
           id?: string
           initial_color?: Database["public"]["Enums"]["initial_color"]
           is_free?: boolean
+          is_international?: boolean
           is_public?: boolean
           max_participants?: number | null
           mode?: Database["public"]["Enums"]["tournament_mode"]

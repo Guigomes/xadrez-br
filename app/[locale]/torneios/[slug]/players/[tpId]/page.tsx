@@ -125,7 +125,7 @@ export default function PlayerTournamentPage({ params }: Props) {
               {displayName}
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <OriginBadge state={displayState} federation={displayFederation} international={isInternationalTournament(tournament.state)} className="text-xs" />
+              <OriginBadge state={displayState} federation={displayFederation} international={isInternationalTournament(tournament.is_international)} className="text-xs" />
               {displayCity && <span className="text-xs text-gray-500 dark:text-gray-400">{displayCity}</span>}
               {displayRating && (
                 <span className="text-xs text-gray-500">Rating {displayRating}</span>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { redirect } from '@/i18n/navigation';
 import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -7,14 +8,13 @@ import { getTournamentPageData } from '@/lib/data/tournament-page-data';
 import { isInternationalTournament, federationName, federationFlagUrl } from '@/lib/utils/federation';
 import { playerDisplayName } from '@/lib/utils/player-name';
 import { FederationBadge } from '@/components/player/origin-badge';
-import { StateBadge } from '@/components/player/state-badge';
-import { formatScore, resultLabel, resultBadgeColor } from '@/lib/utils/chess';
+import { formatScore } from '@/lib/utils/chess';
 import { CountryPicker, CountryRankingSort } from '@/components/tournament/country-picker';
-import type { StandingRow, PlayerHistoryRow } from '@/types/database';
+import type { StandingRow } from '@/types/database';
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ ordem?: string; dir?: string; bord?: string; bdir?: string; pais?: string; jogador?: string }>;
+  searchParams: Promise<{ ordem?: string; dir?: string; bord?: string; bdir?: string; pais?: string; jogador?: string; q?: string }>;
 }
 
 type Dir = 'asc' | 'desc';
@@ -68,10 +68,10 @@ const winRate = (c: Pick<CountryStats, 'wins' | 'draws' | 'losses'>) => {
 };
 
 /**
- * Aba "Por país" — só para torneio internacional (o Mundial FIDE Sub-7 a Sub-17).
+ * Aba "Por país" — habilitada pela configuração internacional do torneio.
  * Agrega a classificação de todas as seções por federação e dá destaque ao Brasil. O painel
- * do topo mostra um país (padrão: Brasil; outro via ?pais=) e, escolhido um jogador
- * (?jogador=<tp_id>), as partidas dele no torneio.
+ * do topo mostra um país (padrão: Brasil, quando presente). Os jogadores abrem
+ * numa página própria, com busca e acesso à ficha completa.
  * Ordem do ranking: pódios atuais (top 3 da seção), depois top 10, depois pontos por
  * jogador — o "quadro de medalhas" parcial, que é como os países acompanham o Mundial.
  */
@@ -79,7 +79,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const sp = await searchParams;
   const data = await getTournamentPageData(slug);
-  if (!data || !isInternationalTournament(data.tournament.state)) notFound();
+  if (!data || !isInternationalTournament(data.tournament.is_international)) notFound();
   const { tournament, currentRoundNumber } = data;
   const locale = await getLocale();
 
@@ -116,16 +116,12 @@ export default async function CountriesPage({ params, searchParams }: Props) {
   const rated = rows.filter((r) => (r.rating_std ?? 0) > 0);
   const avgRating = rated.length ? Math.round(rated.reduce((a, r) => a + (r.rating_std ?? 0), 0) / rated.length) : null;
 
-  // Jogador escolhido: só vale se for deste torneio (o RPC também filtra pelo torneio).
-  const selectedPlayer = sp.jogador ? rows.find((r) => r.tp_id === sp.jogador) ?? null : null;
-  let games: PlayerHistoryRow[] = [];
-  if (selectedPlayer) {
-    const { data: hist } = await supabase.rpc('get_player_tournament_history', {
-      p_tournament_id: tournament.id,
-      p_tp_id: selectedPlayer.tp_id,
-    });
-    games = (hist ?? []) as PlayerHistoryRow[];
+  // Links antigos continuam abrindo a ficha completa do jogador.
+  if (sp.jogador && rows.some((row) => row.tp_id === sp.jogador)) {
+    redirect({ href: `/torneios/${slug}/players/${sp.jogador}`, locale });
   }
+  const searchQuery = sp.q?.trim().slice(0, 80) ?? '';
+  const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
   const byCountry = new Map<string, CountryStats>();
   for (const r of rows) {
@@ -171,36 +167,21 @@ export default async function CountriesPage({ params, searchParams }: Props) {
   const keyFn = countryKey[ord] ?? countryKey.posicao;
   const compare = (x: number | string, y: number | string) =>
     typeof x === 'string' ? x.localeCompare(String(y), 'pt-BR') : x - (y as number);
-  const sortedRanking = [...ranking].sort((a, b) =>
+  const sortedRanking = ranking.filter((country) => !searchQuery || normalize(`${country.code} ${federationName(country.code)}`).includes(normalize(searchQuery))).sort((a, b) =>
     (ordDir === 'asc' ? 1 : -1) * compare(keyFn(a), keyFn(b)) || officialPos.get(a.code)! - officialPos.get(b.code)!,
   );
-  // Cada tabela guarda a própria ordem na URL sem apagar a da outra.
-  const sortHref = (table: 'r' | 'b') => (key: string, dir: Dir) => {
+  const sortHref = (key: string, dir: Dir) => {
     const q = new URLSearchParams();
-    const o = table === 'r' ? key : sp.ordem;
-    const d = table === 'r' ? dir : sp.dir;
-    const bo = table === 'b' ? key : sp.bord;
-    const bd = table === 'b' ? dir : sp.bdir;
-    if (o) q.set('ordem', o);
-    if (d) q.set('dir', d);
-    if (bo) q.set('bord', bo);
-    if (bd) q.set('bdir', bd);
+    q.set('ordem', key);
+    q.set('dir', dir);
     if (sel !== HOME) q.set('pais', sel);
-    if (selectedPlayer) q.set('jogador', selectedPlayer.tp_id);
-    return `/torneios/${slug}/paises?${q.toString()}#${table === 'r' ? 'ranking' : 'selecao'}`;
+    if (searchQuery) q.set('q', searchQuery);
+    return `/torneios/${slug}/paises?${q.toString()}#ranking`;
   };
-  // Link de seleção (país e, opcionalmente, jogador) mantendo a ordenação das tabelas.
-  const selectHref = (country: string, tpId?: string) => {
-    const q = new URLSearchParams();
-    for (const k of ['ordem', 'dir', 'bord', 'bdir'] as const) if (sp[k]) q.set(k, sp[k]!);
-    if (country !== HOME) q.set('pais', country);
-    if (tpId) q.set('jogador', tpId);
-    const qs = q.toString();
-    return `/torneios/${slug}/paises${qs ? `?${qs}` : ''}#${tpId ? 'jogador' : 'selecao'}`;
-  };
+  const selectHref = (country: string) => `/torneios/${slug}/paises/${country}`;
 
   const requested = (sp.pais ?? HOME).toUpperCase();
-  const sel = byCountry.has(requested) ? requested : HOME;
+  const sel = byCountry.has(requested) ? requested : byCountry.has(HOME) ? HOME : ranking[0]?.code ?? HOME;
   const isHomeSel = sel === HOME;
   const home = byCountry.get(sel);
   const homePos = officialPos.get(sel) ?? 0;
@@ -211,36 +192,22 @@ export default async function CountriesPage({ params, searchParams }: Props) {
   const homeAvgRating = homeRated.length
     ? Math.round(homeRated.reduce((a, r) => a + (r.rating_std ?? 0), 0) / homeRated.length)
     : null;
-  const bord = sp.bord ?? 'secao';
-  const bDir: Dir = sp.bdir === 'asc' || sp.bdir === 'desc'
-    ? sp.bdir
-    : (bord === 'pontos' || bord === 'vitorias' ? 'desc' : 'asc');
-  const playerKey: Record<string, (r: StandingRow) => number | string> = {
-    secao: (r) => groupOrder.indexOf(r.pairing_group_name ?? '—'),
-    jogador: (r) => playerDisplayName(r.full_name, r.fide_name, locale),
-    colocacao: (r) => (r.rank ?? 999) / (groupSize.get(r.pairing_group_name ?? '—') ?? 1),
-    pontos: (r) => Number(r.points) || 0,
-    vitorias: (r) => r.wins ?? 0,
-  };
-  const pKey = playerKey[bord] ?? playerKey.secao;
-  const homeSorted = homePlayers
-    .map((r, i) => ({ r, i }))
-    .sort((a, b) => (bDir === 'asc' ? 1 : -1) * compare(pKey(a.r), pKey(b.r)) || a.i - b.i)
-    .map(({ r }) => r);
   const countrySortOptions = [
-    { key: 'posicao', label: 'Posição oficial', href: sortHref('r')('posicao', 'asc') },
-    { key: 'pais', label: 'Nome do país', href: sortHref('r')('pais', 'asc') },
-    { key: 'jogadores', label: 'Número de jogadores', href: sortHref('r')('jogadores', 'desc') },
-    { key: 'podio', label: 'Jogadores no pódio', href: sortHref('r')('podio', 'desc') },
-    { key: 'top10', label: 'Jogadores no top 10', href: sortHref('r')('top10', 'desc') },
-    { key: 'ptsjog', label: 'Pontos por jogador', href: sortHref('r')('ptsjog', 'desc') },
-    { key: 'aproveit', label: 'Aproveitamento', href: sortHref('r')('aproveit', 'desc') },
+    { key: 'posicao', label: 'Posição oficial', href: sortHref('posicao', 'asc') },
+    { key: 'pais', label: 'Nome do país', href: sortHref('pais', 'asc') },
+    { key: 'jogadores', label: 'Número de jogadores', href: sortHref('jogadores', 'desc') },
+    { key: 'podio', label: 'Jogadores no pódio', href: sortHref('podio', 'desc') },
+    { key: 'top10', label: 'Jogadores no top 10', href: sortHref('top10', 'desc') },
+    { key: 'pontos', label: 'Pontos totais', href: sortHref('pontos', 'desc') },
+    { key: 'ptsjog', label: 'Pontos por jogador', href: sortHref('ptsjog', 'desc') },
+    { key: 'aproveit', label: 'Aproveitamento', href: sortHref('aproveit', 'desc') },
+    { key: 'melhor', label: 'Melhor colocação', href: sortHref('melhor', 'asc') },
   ];
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">
-        <h2 className="mb-3 text-base font-bold text-gray-900 sm:text-lg dark:text-gray-100">O Mundial em números</h2>
+        <h2 className="mb-3 text-base font-bold text-gray-900 sm:text-lg dark:text-gray-100">O torneio em números</h2>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
           {[
             ['Jogadores', String(rows.length)],
@@ -287,7 +254,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   {homePos}º entre {ranking.length} países
-                  {!isHomeSel && (
+                  {!isHomeSel && byCountry.has(HOME) && (
                     <> · <Link href={selectHref(HOME)} scroll={false} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">ver o Brasil</Link></>
                   )}
                 </p>
@@ -297,7 +264,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
               slug={slug}
               current={sel}
               countries={[...ranking].sort((a, b) => federationName(a.code).localeCompare(federationName(b.code), 'pt-BR')).map((c) => ({ code: c.code, name: federationName(c.code), players: c.players }))}
-              keepQuery={Object.fromEntries((['ordem', 'dir', 'bord', 'bdir'] as const).filter((k) => sp[k]).map((k) => [k, sp[k]!]))}
+              keepQuery={Object.fromEntries((['ordem', 'dir', 'q'] as const).filter((k) => sp[k]).map((k) => [k, sp[k]!]))}
             />
           </div>
           <div className="grid grid-cols-2 gap-px bg-emerald-100 sm:grid-cols-4 dark:bg-emerald-900/50">
@@ -318,255 +285,15 @@ export default async function CountriesPage({ params, searchParams }: Props) {
               </div>
             ))}
           </div>
-          {/* Lista de jogadores recolhida: abre sozinha quando há jogador escolhido ou ordenação da lista na URL. */}
-          <details open={Boolean(selectedPlayer || sp.bord)} className="group border-t border-emerald-200 dark:border-emerald-900">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-50/60 sm:px-5 dark:text-emerald-300 dark:hover:bg-emerald-950/30 [&::-webkit-details-marker]:hidden">
-              <span>
-                <span className="group-open:hidden">Ver os {home.players} {home.players === 1 ? 'jogador' : 'jogadores'}</span>
-                <span className="hidden group-open:inline">Jogadores ({home.players})</span>
-              </span>
-              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-4 w-4 transition-transform group-open:rotate-180">
-                <path d="m6 8 4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </summary>
-          <div className="divide-y divide-emerald-100 sm:hidden dark:divide-emerald-900/50">
-            {homeSorted.map((r) => (
-              <article
-                key={r.tp_id}
-                className={selectedPlayer?.tp_id === r.tp_id ? 'bg-brand-50 p-4 dark:bg-brand-950/30' : 'p-4'}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <Link
-                      href={selectHref(sel, r.tp_id)}
-                      scroll={false}
-                      className="font-semibold leading-snug text-gray-900 dark:text-gray-100"
-                    >
-                      {r.title && <span className="mr-1 font-normal text-gray-400">{r.title}</span>}
-                      {playerDisplayName(r.full_name, r.fide_name, locale)}
-                    </Link>
-                    <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      <span>{r.pairing_group_name}</span>
-                      {isHomeSel && <StateBadge state={r.state} />}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-lg bg-white px-2.5 py-1 text-sm font-bold text-gray-900 shadow-sm dark:bg-gray-800 dark:text-gray-100">
-                    {formatScore(r.points)} pts
-                  </span>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div className="rounded-lg bg-white/70 px-3 py-2 dark:bg-gray-900/50">
-                    <span className="block text-[10px] uppercase tracking-wide text-gray-400">Colocação</span>
-                    <span className={r.rank != null && r.rank <= 3 ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'font-semibold text-gray-700 dark:text-gray-200'}>
-                      {r.rank != null ? `${r.rank}º de ${groupSize.get(r.pairing_group_name ?? '—')}` : '–'}
-                    </span>
-                  </div>
-                  <div className="rounded-lg bg-white/70 px-3 py-2 dark:bg-gray-900/50">
-                    <span className="block text-[10px] uppercase tracking-wide text-gray-400">Vitórias · empates · derrotas</span>
-                    <span className="font-semibold tabular-nums text-gray-700 dark:text-gray-200">{r.wins} · {r.draws} · {r.losses}</span>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-          <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
-                  <SortTh label="Jogador" sortKey="jogador" current={bord} dir={bDir} defaultDir="asc" href={sortHref('b')} className="px-4 py-2 font-semibold" />
-                  <SortTh label="Seção" sortKey="secao" current={bord} dir={bDir} defaultDir="asc" href={sortHref('b')} className="px-4 py-2 font-semibold" />
-                  <SortTh label="Colocação" sortKey="colocacao" current={bord} dir={bDir} defaultDir="asc" href={sortHref('b')} className="px-4 py-2 text-center font-semibold" />
-                  <SortTh label="Pontos" sortKey="pontos" current={bord} dir={bDir} defaultDir="desc" href={sortHref('b')} className="px-4 py-2 text-center font-semibold" />
-                  <SortTh label="V / E / D" sortKey="vitorias" current={bord} dir={bDir} defaultDir="desc" href={sortHref('b')} className="hidden px-4 py-2 text-center font-semibold sm:table-cell" />
-                </tr>
-              </thead>
-              <tbody>
-                {homeSorted.map((r) => (
-                  <tr
-                    key={r.tp_id}
-                    className={selectedPlayer?.tp_id === r.tp_id
-                      ? 'border-t border-emerald-100 bg-brand-50 dark:border-emerald-900/50 dark:bg-brand-950/30'
-                      : 'border-t border-emerald-100 dark:border-emerald-900/50'}
-                  >
-                    <td className="px-4 py-2.5">
-                      <Link
-                        href={selectHref(sel, r.tp_id)}
-                        scroll={false}
-                        title="Ver as partidas no torneio"
-                        className="font-medium text-gray-900 underline decoration-dotted underline-offset-2 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400"
-                      >
-                        {r.title && <span className="font-normal text-gray-400">{r.title} </span>}
-                        {playerDisplayName(r.full_name, r.fide_name, locale)}
-                      </Link>
-                      {isHomeSel && <StateBadge state={r.state} className="ml-2 align-middle" />}
-                    </td>
-                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">{r.pairing_group_name}</td>
-                    <td className="px-4 py-2.5 text-center tabular-nums">
-                      {r.rank != null ? (
-                        <span className={r.rank <= 3 ? 'font-bold text-emerald-700 dark:text-emerald-400' : ''}>
-                          {r.rank}º <span className="text-xs text-gray-400">de {groupSize.get(r.pairing_group_name ?? '—')}</span>
-                        </span>
-                      ) : '–'}
-                    </td>
-                    <td className="px-4 py-2.5 text-center font-bold tabular-nums">{formatScore(r.points)}</td>
-                    <td className="hidden px-4 py-2.5 text-center tabular-nums text-gray-500 sm:table-cell">
-                      {r.wins} / {r.draws} / {r.losses}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          </details>
+          <Link href={selectHref(sel)} className="flex min-h-12 items-center justify-between border-t border-emerald-200 px-4 py-3 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:px-5 dark:border-emerald-900 dark:text-brand-300 dark:hover:bg-brand-950/30">
+            <span>Ver {home.players} {home.players === 1 ? 'jogador' : 'jogadores'} · {federationName(sel)}</span>
+            <span aria-hidden="true">→</span>
+          </Link>
         </section>
       ) : (
         <p className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-500 dark:border-gray-800">
           Nenhum jogador do Brasil neste torneio.
         </p>
-      )}
-
-      {selectedPlayer && (
-        <section id="jogador" className="scroll-mt-24 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-col items-stretch gap-3 border-b border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3 dark:border-gray-800">
-            <div className="min-w-0">
-              <h3 className="flex flex-wrap items-center gap-2 font-bold text-gray-900 dark:text-gray-100">
-                <FederationBadge federation={selectedPlayer.federation} />
-                {selectedPlayer.title && <span className="font-normal text-gray-400">{selectedPlayer.title}</span>}
-                {playerDisplayName(selectedPlayer.full_name, selectedPlayer.fide_name, locale)}
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {selectedPlayer.pairing_group_name}
-                {selectedPlayer.rank != null && <> · {selectedPlayer.rank}º de {groupSize.get(selectedPlayer.pairing_group_name ?? '—')}</>}
-                {' · '}{formatScore(selectedPlayer.points)} pts
-                {selectedPlayer.rating_std ? <> · rating {selectedPlayer.rating_std}</> : null}
-              </p>
-            </div>
-            <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-sm sm:justify-start sm:border-0 sm:pt-0 dark:border-gray-800">
-              <Link
-                href={`/torneios/${slug}/players/${selectedPlayer.tp_id}${selectedPlayer.pairing_group_id ? `?group=${selectedPlayer.pairing_group_id}` : ''}`}
-                className="font-medium text-brand-600 hover:underline dark:text-brand-400"
-              >
-                Ficha completa
-              </Link>
-              <Link href={selectHref(sel)} scroll={false} className="text-gray-500 hover:underline">Fechar</Link>
-            </div>
-          </div>
-          {games.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-gray-500">Nenhuma partida registrada ainda.</p>
-          ) : (
-            <div>
-              <div className="divide-y divide-gray-100 sm:hidden dark:divide-gray-800/60">
-                {games.map((g) => {
-                  const forWhite = g.color === 'white';
-                  const unpaired = g.is_bye || !g.opponent_tp_id;
-                  const oppCountry = g.opponent_federation?.toUpperCase() ?? null;
-                  return (
-                    <article key={g.round_number} className="p-4">
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                          <span>Rodada {g.round_number}</span>
-                          {!unpaired && (
-                            <span title={forWhite ? 'Brancas' : 'Pretas'} className={forWhite
-                              ? 'inline-block h-3.5 w-3.5 rounded-full border border-gray-400 bg-white'
-                              : 'inline-block h-3.5 w-3.5 rounded-full border border-gray-700 bg-gray-800'}
-                            />
-                          )}
-                        </div>
-                        <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${resultBadgeColor(g.result, forWhite)}`}>
-                          {resultLabel(g.result, forWhite)}
-                        </span>
-                      </div>
-                      {unpaired ? (
-                        <p className="text-sm text-gray-400">{g.result === 'not_paired' ? 'Não emparceirado' : 'Bye'}</p>
-                      ) : (
-                        <div className="flex items-start gap-2">
-                          <FederationBadge federation={oppCountry} className="mt-0.5 px-1 py-0 text-[10px]" />
-                          <div className="min-w-0">
-                            <Link
-                              href={oppCountry && byCountry.has(oppCountry) ? selectHref(oppCountry, g.opponent_tp_id!) : `/torneios/${slug}/players/${g.opponent_tp_id}`}
-                              scroll={false}
-                              className="font-medium leading-snug text-gray-900 dark:text-gray-100"
-                            >
-                              {g.opponent_title && <span className="mr-1 font-normal text-gray-400">{g.opponent_title}</span>}
-                              {playerDisplayName(g.opponent_name, g.opponent_fide_name, locale)}
-                            </Link>
-                            <p className="mt-0.5 text-xs text-gray-400">
-                              {g.opponent_rating ? `Rating ${g.opponent_rating}` : 'Sem rating'}
-                              {g.cumulative_pts != null && g.result !== '*' ? ` · ${formatScore(Number(g.cumulative_pts))} pts acumulados` : ''}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
-              <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
-                    <th className="px-4 py-2 font-semibold">Rodada</th>
-                    <th className="px-4 py-2 font-semibold">Cor</th>
-                    <th className="px-4 py-2 font-semibold">Adversário</th>
-                    <th className="px-4 py-2 text-center font-semibold">Resultado</th>
-                    <th className="hidden px-4 py-2 text-center font-semibold sm:table-cell">Pontos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {games.map((g) => {
-                    const forWhite = g.color === 'white';
-                    const unpaired = g.is_bye || !g.opponent_tp_id;
-                    const oppCountry = g.opponent_federation?.toUpperCase() ?? null;
-                    return (
-                      <tr key={g.round_number} className="border-t border-gray-100 dark:border-gray-800/60">
-                        <td className="px-4 py-2.5 tabular-nums text-gray-500">{g.round_number}</td>
-                        <td className="px-4 py-2.5">
-                          {unpaired ? '–' : (
-                            <span
-                              title={forWhite ? 'Brancas' : 'Pretas'}
-                              className={forWhite
-                                ? 'inline-block h-3.5 w-3.5 rounded-full border border-gray-400 bg-white align-middle'
-                                : 'inline-block h-3.5 w-3.5 rounded-full border border-gray-700 bg-gray-800 align-middle'}
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          {unpaired ? (
-                            <span className="text-gray-400">{g.result === 'not_paired' ? 'Não emparceirado' : 'Bye'}</span>
-                          ) : (
-                            <span className="inline-flex flex-wrap items-center gap-1.5">
-                              <FederationBadge federation={oppCountry} className="px-1 py-0 text-[10px]" />
-                              <Link
-                                href={oppCountry && byCountry.has(oppCountry) ? selectHref(oppCountry, g.opponent_tp_id!) : `/torneios/${slug}/players/${g.opponent_tp_id}`}
-                                scroll={false}
-                                className="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400"
-                              >
-                                {g.opponent_title && <span className="font-normal text-gray-400">{g.opponent_title} </span>}
-                                {playerDisplayName(g.opponent_name, g.opponent_fide_name, locale)}
-                              </Link>
-                              {g.opponent_rating ? <span className="text-xs text-gray-400">{g.opponent_rating}</span> : null}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${resultBadgeColor(g.result, forWhite)}`}>
-                            {resultLabel(g.result, forWhite)}
-                          </span>
-                        </td>
-                        <td className="hidden px-4 py-2.5 text-center tabular-nums text-gray-500 sm:table-cell">
-                          {g.result === '*' ? '–' : formatScore(Number(g.points_earned ?? 0))}
-                          {g.cumulative_pts != null && g.result !== '*' && <span className="text-xs text-gray-400"> ({formatScore(Number(g.cumulative_pts))})</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              </div>
-              <p className="px-5 pb-3 text-xs text-gray-400">Clique no adversário para ver as partidas dele. Entre parênteses, a pontuação acumulada após a rodada.</p>
-            </div>
-          )}
-        </section>
       )}
 
       <section id="ranking" className="scroll-mt-24">
@@ -580,10 +307,20 @@ export default async function CountriesPage({ params, searchParams }: Props) {
             <p className="mt-1">Primeiro conta quem está no pódio da seção, depois no top 10 e, por fim, os pontos por jogador.</p>
           </details>
         </div>
+        <form action={`/torneios/${slug}/paises#ranking`} className="mb-3 flex flex-col gap-2 sm:flex-row">
+          {(['ordem', 'dir', 'pais'] as const).map((key) => sp[key] ? <input key={key} type="hidden" name={key} value={sp[key]} /> : null)}
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Buscar país</span>
+            <input type="search" name="q" defaultValue={searchQuery} placeholder="Buscar país por nome ou sigla" className="min-h-11 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" />
+          </label>
+          <button type="submit" className="min-h-11 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">Buscar país</button>
+          {searchQuery && <Link href={`/torneios/${slug}/paises?pais=${sel}#ranking`} className="inline-flex min-h-11 items-center justify-center px-3 text-sm text-brand-600 dark:text-brand-400">Limpar busca</Link>}
+        </form>
+        {searchQuery && <p className="mb-3 text-sm text-gray-500">{sortedRanking.length} {sortedRanking.length === 1 ? 'país encontrado' : 'países encontrados'}</p>}
         <CountryRankingSort
           current={ord}
           direction={ordDir}
-          reverseHref={sortHref('r')(ord, ordDir === 'asc' ? 'desc' : 'asc')}
+          reverseHref={sortHref(ord, ordDir === 'asc' ? 'desc' : 'asc')}
           options={countrySortOptions}
         />
         <div className="mt-3 space-y-2 md:hidden">
@@ -593,7 +330,6 @@ export default async function CountriesPage({ params, searchParams }: Props) {
               <Link
                 key={c.code}
                 href={selectHref(c.code)}
-                scroll={false}
                 className={isHome
                   ? 'block rounded-xl border-2 border-emerald-500 bg-emerald-50 p-3.5 dark:border-emerald-600 dark:bg-emerald-950/40'
                   : 'block rounded-xl border border-gray-200 bg-white p-3.5 dark:border-gray-800 dark:bg-gray-900'}
@@ -629,15 +365,15 @@ export default async function CountriesPage({ params, searchParams }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-                <SortTh label="#" sortKey="posicao" current={ord} dir={ordDir} defaultDir="asc" href={sortHref('r')} className="px-3 py-2 font-semibold" />
-                <SortTh label="País" sortKey="pais" current={ord} dir={ordDir} defaultDir="asc" href={sortHref('r')} className="px-3 py-2 font-semibold" />
-                <SortTh label="Jogadores" sortKey="jogadores" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="px-3 py-2 text-center font-semibold" />
-                <SortTh label="Pódio" sortKey="podio" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="px-3 py-2 text-center font-semibold" />
-                <SortTh label="Top 10" sortKey="top10" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="px-3 py-2 text-center font-semibold" />
-                <SortTh label="Pontos" sortKey="pontos" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="hidden px-3 py-2 text-center font-semibold sm:table-cell" />
-                <SortTh label="Pts/jogador" sortKey="ptsjog" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="px-3 py-2 text-center font-semibold" />
-                <SortTh label="Aproveitamento" sortKey="aproveit" current={ord} dir={ordDir} defaultDir="desc" href={sortHref('r')} className="hidden px-3 py-2 text-center font-semibold sm:table-cell" />
-                <SortTh label="Melhor colocação" sortKey="melhor" current={ord} dir={ordDir} defaultDir="asc" href={sortHref('r')} className="hidden px-3 py-2 font-semibold md:table-cell" />
+                <SortTh label="#" sortKey="posicao" current={ord} dir={ordDir} defaultDir="asc" href={sortHref} className="px-3 py-2 font-semibold" />
+                <SortTh label="País" sortKey="pais" current={ord} dir={ordDir} defaultDir="asc" href={sortHref} className="px-3 py-2 font-semibold" />
+                <SortTh label="Jogadores" sortKey="jogadores" current={ord} dir={ordDir} defaultDir="desc" href={sortHref} className="px-3 py-2 text-center font-semibold" />
+                <SortTh label="Pódio" sortKey="podio" current={ord} dir={ordDir} defaultDir="desc" href={sortHref} className="px-3 py-2 text-center font-semibold" />
+                <SortTh label="Top 10" sortKey="top10" current={ord} dir={ordDir} defaultDir="desc" href={sortHref} className="px-3 py-2 text-center font-semibold" />
+                <SortTh label="Pontos" sortKey="pontos" current={ord} dir={ordDir} defaultDir="desc" href={sortHref} className="hidden px-3 py-2 text-center font-semibold sm:table-cell" />
+                <SortTh label="Pts/jogador" sortKey="ptsjog" current={ord} dir={ordDir} defaultDir="desc" href={sortHref} className="px-3 py-2 text-center font-semibold" />
+                <SortTh label="Aproveitamento" sortKey="aproveit" current={ord} dir={ordDir} defaultDir="desc" href={sortHref} className="hidden px-3 py-2 text-center font-semibold sm:table-cell" />
+                <SortTh label="Melhor colocação" sortKey="melhor" current={ord} dir={ordDir} defaultDir="asc" href={sortHref} className="hidden px-3 py-2 font-semibold md:table-cell" />
               </tr>
             </thead>
             <tbody>
@@ -656,7 +392,6 @@ export default async function CountriesPage({ params, searchParams }: Props) {
                         <FederationBadge federation={c.code} />
                         <Link
                           href={selectHref(c.code)}
-                          scroll={false}
                           title="Ver os jogadores deste país"
                           className={(isHome ? 'text-emerald-800 dark:text-emerald-300' : 'text-gray-800 dark:text-gray-200') + ' hover:text-brand-600 hover:underline dark:hover:text-brand-400' + (c.code === sel ? ' underline' : '')}
                         >

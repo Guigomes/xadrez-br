@@ -12,7 +12,7 @@ interface TournamentTabsProps {
   showStatistics?: boolean;
   /** Torneio com link de transmissão (tournaments.live_broadcast_url) ganha a aba "Acompanhe ao Vivo". */
   hasLiveBroadcast?: boolean;
-  /** Torneio internacional (o Mundial FIDE) ganha a aba "Por país". */
+  /** Torneio marcado como internacional ganha a aba "Por país". */
   showCountries?: boolean;
 }
 
