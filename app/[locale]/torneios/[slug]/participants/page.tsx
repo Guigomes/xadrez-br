@@ -4,7 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
-import { StateBadge } from '@/components/player/state-badge';
+import { OriginBadge } from '@/components/player/origin-badge';
+import { isInternationalTournament } from '@/lib/utils/federation';
+import { getLocale } from 'next-intl/server';
+import { playerDisplayName } from '@/lib/utils/player-name';
 import { cn } from '@/lib/utils/cn';
 import { ExternalIdLinks } from '@/components/player/external-id-links';
 import { compareParticipantOrder, compareGroupNames, formatScore } from '@/lib/utils/chess';
@@ -31,6 +34,8 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
   const data = await getTournamentPageData(slug);
   if (!data) notFound();
   const { tournament } = data;
+  const international = isInternationalTournament(tournament.state);
+  const locale = await getLocale();
 
   const supabase = await createClient();
 
@@ -44,7 +49,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
     .select(
       `
         id, player_id, initial_ranking, current_score, current_rank, status, pairing_group_id,
-        player:players(id, full_name, title, rating_std, state, city, federation, cbx_id, fide_id, club_or_school),
+        player:players(id, full_name, fide_name, title, rating_std, state, city, federation, cbx_id, fide_id, club_or_school),
         category:tournament_categories(id, name, pairing_group_id)
       `,
       { count: 'exact' },
@@ -62,7 +67,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
     const term = searchQuery.replace(/[,%_()."'\\]/g, ' ').replace(/\s+/g, ' ').trim();
     if (term) {
       const filter = [
-        'full_name', 'title', 'fide_id', 'cbx_id', 'club_or_school', 'city', 'state', 'federation',
+        'full_name', 'fide_name', 'title', 'fide_id', 'cbx_id', 'club_or_school', 'city', 'state', 'federation',
       ].map((field) => `${field}.ilike.%${term}%`).join(',');
       const { data: matchingPlayers } = await supabase
         .from('players')
@@ -257,7 +262,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Desempenho</th>
                   <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Rating</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Cidade</th>
-                  <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">UF</th>
+                  <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">{international ? 'País' : 'UF'}</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Escola/Clube</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">IDs</th>
                 </tr>
@@ -304,7 +309,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                           className="font-medium text-gray-900 dark:text-gray-100 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
                         >
                           {player?.title && <span className="mr-1 text-gray-400 dark:text-gray-500">{player.title}</span>}
-                          {player?.full_name}
+                          {playerDisplayName(player?.full_name, player?.fide_name, locale)}
                         </Link>
                         {tp.status === 'withdrawn' && (
                           <Badge className="ml-2 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
@@ -315,7 +320,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                             à direita mostrariam. */}
                         <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400 sm:hidden">
                           {playerGroup?.name && <span className="font-medium text-brand-600 dark:text-brand-400">{playerGroup.name}</span>}
-                          <StateBadge state={player?.state} />
+                          <OriginBadge state={player?.state} federation={player?.federation} international={international} />
                           {cat?.name && <span>{cat.name}</span>}
                           <span className="font-medium text-gray-600 dark:text-gray-300">
                             {formatScore(performance.points)} pts · {performanceLabel}
@@ -359,7 +364,7 @@ export default async function ParticipantsPage({ params, searchParams }: Props) 
                         {displayCity || '–'}
                       </td>
                       <td className="hidden py-3 px-3 text-center sm:table-cell">
-                        <StateBadge state={player?.state} />
+                        <OriginBadge state={player?.state} federation={player?.federation} international={international} />
                       </td>
                       <td className="hidden py-3 px-3 text-gray-500 dark:text-gray-400 sm:table-cell">
                         {displayClub || '–'}

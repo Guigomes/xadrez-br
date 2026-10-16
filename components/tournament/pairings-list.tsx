@@ -1,6 +1,8 @@
 'use client';
 
 import { Link } from '@/i18n/navigation';
+import { useLocale } from 'next-intl';
+import { playerDisplayName } from '@/lib/utils/player-name';
 import { Badge } from '@/components/ui/badge';
 import { formatScore, winnerSide, resultLabel, resultBadgeColor } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
@@ -18,6 +20,7 @@ interface PairingsListProps {
 }
 
 export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, roundNumber, tournamentName }: PairingsListProps) {
+  const locale = useLocale();
   if (pairings.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -52,7 +55,7 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
         {pairing.is_bye ? (
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <PlayerLink tpId={pairing.white_tp_id} name={pairing.white_name} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state="winner" followed={!!followedWhite} />
+              <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state="winner" followed={!!followedWhite} />
             </div>
             {/* 'bye' (sobra do suíço) e 'not_paired' (fora por decisão/
                 ausência) usam o mesmo is_bye pra não contar como jogo, mas
@@ -61,7 +64,7 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
           </div>
         ) : (
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <PlayerLink tpId={pairing.white_tp_id} name={pairing.white_name} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state={whiteState} followed={!!followedWhite} />
+            <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state={whiteState} followed={!!followedWhite} />
 
             <div className="flex flex-col items-center gap-0.5 min-w-[3rem]">
               {hasResult ? (
@@ -79,13 +82,13 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
               )}
             </div>
 
-            <PlayerLink tpId={pairing.black_tp_id} name={pairing.black_name} title={pairing.black_title} rating={pairing.black_rating} score={pairing.black_score} tournamentSlug={tournamentSlug} color="black" state={blackState} alignRight followed={!!followedBlack} />
+            <PlayerLink tpId={pairing.black_tp_id} name={playerDisplayName(pairing.black_name, pairing.black_fide_name, locale)} title={pairing.black_title} rating={pairing.black_rating} score={pairing.black_score} tournamentSlug={tournamentSlug} color="black" state={blackState} alignRight followed={!!followedBlack} />
           </div>
         )}
         {!pairing.is_bye && pgnIds?.has(pairing.pairing_id) && (
           <div className="mt-1 text-center">
             <GameViewerButton
-              game={{ source: 'live', gameId: pairing.pairing_id, whiteName: pairing.white_name, blackName: pairing.black_name, resultText: RESULT_TEXT[pairing.result] ?? pairing.result, round: roundNumber, tournamentName }}
+              game={{ source: 'live', gameId: pairing.pairing_id, whiteName: playerDisplayName(pairing.white_name, pairing.white_fide_name, locale), blackName: playerDisplayName(pairing.black_name, pairing.black_fide_name, locale), resultText: RESULT_TEXT[pairing.result] ?? pairing.result, round: roundNumber, tournamentName }}
             />
           </div>
         )}

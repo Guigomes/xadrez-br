@@ -11,7 +11,10 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { Button } from '@/components/ui/button';
-import { StateBadge } from '@/components/player/state-badge';
+import { OriginBadge } from '@/components/player/origin-badge';
+import { isInternationalTournament } from '@/lib/utils/federation';
+import { useLocale } from 'next-intl';
+import { playerDisplayName } from '@/lib/utils/player-name';
 import { formatScore, formatTiebreak, resultBadgeColor, resultLabel, TIEBREAK_INFO } from '@/lib/utils/chess';
 import { getTournamentStartLabel } from '@/lib/utils/date';
 import type { PlayerHistoryRow } from '@/types/database';
@@ -22,6 +25,7 @@ interface Props {
 
 export default function PlayerTournamentPage({ params }: Props) {
   const { slug, tpId } = use(params);
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const { data: tournament } = useTournament(slug);
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(tournament?.id ?? '');
@@ -36,7 +40,7 @@ export default function PlayerTournamentPage({ params }: Props) {
       const supabase = createClient();
       const { data } = await supabase
         .from('tournament_players')
-        .select('player_id, initial_ranking, pairing_group_id, player:players(full_name, title, rating_std, state, city, club_or_school, fide_id, cbx_id), category:tournament_categories(name), pairing_group:pairing_groups(name)')
+        .select('player_id, initial_ranking, pairing_group_id, player:players(full_name, fide_name, title, rating_std, state, federation, city, club_or_school, fide_id, cbx_id), category:tournament_categories(name), pairing_group:pairing_groups(name)')
         .eq('id', tpId)
         .single();
       return data;
@@ -56,15 +60,20 @@ export default function PlayerTournamentPage({ params }: Props) {
     player_id: string;
     initial_ranking: number | null;
     pairing_group_id: string | null;
-    player: { full_name: string; title: string | null; rating_std: number | null; state: string | null; city: string | null; club_or_school: string | null; fide_id: string | null; cbx_id: string | null } | null;
+    player: { full_name: string; fide_name: string | null; title: string | null; rating_std: number | null; state: string | null; federation: string | null; city: string | null; club_or_school: string | null; fide_id: string | null; cbx_id: string | null } | null;
     category: { name: string } | null;
     pairing_group: { name: string } | null;
   } | null | undefined;
   const profile = tp?.player;
-  const displayName = playerRow?.full_name ?? profile?.full_name ?? '';
+  const displayName = playerDisplayName(
+    playerRow?.full_name ?? profile?.full_name ?? '',
+    playerRow?.fide_name ?? profile?.fide_name ?? null,
+    locale,
+  );
   const displayTitle = playerRow?.title ?? profile?.title ?? null;
   const displayRating = playerRow?.rating_std ?? profile?.rating_std ?? null;
   const displayState = playerRow?.state ?? profile?.state ?? null;
+  const displayFederation = playerRow?.federation ?? profile?.federation ?? null;
   const displayCategory = playerRow?.category_name ?? tp?.category?.name ?? null;
   const displayGroupId = playerRow?.pairing_group_id ?? tp?.pairing_group_id ?? null;
   const displayGroupName = playerRow?.pairing_group_name ?? tp?.pairing_group?.name ?? null;
@@ -116,7 +125,7 @@ export default function PlayerTournamentPage({ params }: Props) {
               {displayName}
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <StateBadge state={displayState} className="text-xs" />
+              <OriginBadge state={displayState} federation={displayFederation} international={isInternationalTournament(tournament.state)} className="text-xs" />
               {displayCity && <span className="text-xs text-gray-500 dark:text-gray-400">{displayCity}</span>}
               {displayRating && (
                 <span className="text-xs text-gray-500">Rating {displayRating}</span>
@@ -303,6 +312,7 @@ function TiebreakRow({ info, value }: { info: { label: string; short: string; de
 
 
 function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournamentSlug: string }) {
+  const locale = useLocale();
   const isWhite = row.color === 'white';
   // Resultado aparece assim que a MESA termina — não só quando a rodada inteira acaba (antes,
   // uma mesa já decidida ficava "Em andamento" enquanto qualquer outra da rodada ainda jogava).
@@ -324,7 +334,7 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
     <>
       <p className={`text-sm font-medium break-words ${opponentHref ? 'text-brand-700 dark:text-brand-300' : 'text-gray-900 dark:text-gray-100'}`}>
         {row.opponent_title && <span className="text-gray-400 dark:text-gray-500 font-normal">{row.opponent_title} </span>}
-        {row.opponent_name}
+        {playerDisplayName(row.opponent_name, row.opponent_fide_name, locale)}
       </p>
       <p className="text-xs text-gray-400 mt-0.5">
         {row.opponent_rating ? `Rating ${row.opponent_rating}` : 'Sem rating'}

@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { Link } from '@/i18n/navigation';
+import { useLocale } from 'next-intl';
+import { playerDisplayName } from '@/lib/utils/player-name';
 import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
-import { StateBadge } from '@/components/player/state-badge';
+import { OriginBadge } from '@/components/player/origin-badge';
 import { formatScore, formatTiebreak } from '@/lib/utils/chess';
 import type { StandingRow } from '@/types/database';
 
@@ -12,9 +14,12 @@ interface StandingsTableProps {
   tournamentSlug: string;
   followedPlayerIds?: Set<string>;
   isInitialRanking?: boolean;
+  /** Torneio fora do Brasil: mostra o país de cada jogador em vez da UF. */
+  international?: boolean;
 }
 
-export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, isInitialRanking = false }: StandingsTableProps) {
+export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, isInitialRanking = false, international = false }: StandingsTableProps) {
+  const locale = useLocale();
   const hasFollowed = !!followedPlayerIds?.size;
 
   const followed = hasFollowed ? standings.filter((r) => followedPlayerIds!.has(r.player_id)) : [];
@@ -55,9 +60,9 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, i
               className="font-medium text-gray-900 dark:text-gray-100 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
             >
               {row.title && <span className="text-gray-400 dark:text-gray-500 font-normal">{row.title} </span>}
-              {row.full_name}
+              {playerDisplayName(row.full_name, row.fide_name, locale)}
             </Link>
-            <StateBadge state={row.state} />
+            <OriginBadge state={row.state} federation={row.federation} international={international} />
             {row.category_name && <span className="text-xs text-gray-400">{row.category_name}</span>}
           </div>
           <p className="mt-0.5 text-xs text-gray-400 sm:hidden">

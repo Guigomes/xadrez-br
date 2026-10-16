@@ -52,6 +52,7 @@ export interface Player {
   id: string;
   full_name: string;
   fide_id: string | null;
+  fide_name?: string | null;
   cbx_id: string | null;
   federation: string | null;
   state: string | null;
@@ -387,6 +388,8 @@ export interface StandingRow {
   title: string | null;
   /** 'w' = feminino (players.sex). Usado no recorte "Feminino" da classificação. */
   sex: 'm' | 'w' | null;
+  /** Nome no formato FIDE ("Sobrenome, Nome"), quando a fonte trouxe — ver playerDisplayName. */
+  fide_name: string | null;
 }
 
 export interface PlayerHistoryRow {
@@ -404,6 +407,7 @@ export interface PlayerHistoryRow {
   is_bye: boolean;
   cumulative_pts: number | null;
   opponent_title: string | null;
+  opponent_fide_name?: string | null;
   /** tournament_players.id do adversário (null em bye / sem emparceiramento). */
   opponent_tp_id: string | null;
 }
@@ -421,6 +425,8 @@ export interface RoundPairingRow {
   black_rating: number | null;
   black_rank: number | null;
   black_score: number | null;
+  white_fide_name?: string | null;
+  black_fide_name?: string | null;
   result: GameResult;
   white_points: number | null;
   black_points: number | null;

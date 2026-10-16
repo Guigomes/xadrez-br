@@ -707,6 +707,7 @@ export type Database = {
           created_by: string | null
           federation: string | null
           fide_id: string | null
+          fide_name: string | null
           full_name: string
           id: string
           is_test: boolean
@@ -728,6 +729,7 @@ export type Database = {
           created_by?: string | null
           federation?: string | null
           fide_id?: string | null
+          fide_name?: string | null
           full_name: string
           id?: string
           is_test?: boolean
@@ -749,6 +751,7 @@ export type Database = {
           created_by?: string | null
           federation?: string | null
           fide_id?: string | null
+          fide_name?: string | null
           full_name?: string
           id?: string
           is_test?: boolean

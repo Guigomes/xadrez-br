@@ -6,6 +6,7 @@ import { usePathname, useRouter } from '@/i18n/navigation';
 import { useTournament, useTournamentStandings, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { StandingsTable } from '@/components/tournament/standings-table';
+import { isInternationalTournament } from '@/lib/utils/federation';
 import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -332,6 +333,7 @@ export function StandingsView({
             tournamentSlug={slug}
             followedPlayerIds={followed?.playerIds}
             isInitialRanking={isInitialRanking}
+            international={isInternationalTournament(tournament?.state)}
           />
         )}
       </div>
