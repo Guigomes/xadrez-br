@@ -80,7 +80,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const data = await getTournamentPageData(slug);
   if (!data || !isInternationalTournament(data.tournament.state)) notFound();
-  const { tournament } = data;
+  const { tournament, currentRoundNumber } = data;
   const locale = await getLocale();
 
   const supabase = await createClient();
@@ -211,6 +211,10 @@ export default async function CountriesPage({ params, searchParams }: Props) {
   const homePlayers = rows
     .filter((r) => r.federation?.toUpperCase() === sel)
     .sort((a, b) => groupOrder.indexOf(a.pairing_group_name ?? '—') - groupOrder.indexOf(b.pairing_group_name ?? '—') || (a.rank ?? 999) - (b.rank ?? 999));
+  const homeRated = homePlayers.filter((r) => (r.rating_std ?? 0) > 0);
+  const homeAvgRating = homeRated.length
+    ? Math.round(homeRated.reduce((a, r) => a + (r.rating_std ?? 0), 0) / homeRated.length)
+    : null;
   const bord = sp.bord ?? 'secao';
   const bDir: Dir = sp.bdir === 'asc' || sp.bdir === 'desc'
     ? sp.bdir
@@ -246,7 +250,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
             ['Jogadores', String(rows.length)],
             ['Países', String(byCountry.size)],
             ['Seções', String(groupOrder.length)],
-            ['Rodada', `${data.currentRoundNumber ?? '–'} de ${tournament.rounds_count}`],
+            ['Rodada', `${currentRoundNumber ?? '–'} de ${tournament.rounds_count}`],
             ['No tabuleiro', String(playedOnBoard)],
             ['Brancas venceram', share(decided.white)],
             ['Pretas venceram', share(decided.black)],
@@ -315,20 +319,35 @@ export default async function CountriesPage({ params, searchParams }: Props) {
               keepQuery={Object.fromEntries((['ordem', 'dir', 'bord', 'bdir'] as const).filter((k) => sp[k]).map((k) => [k, sp[k]!]))}
             />
           </div>
-          <div className="grid grid-cols-3 gap-px bg-emerald-100 sm:grid-cols-5 dark:bg-emerald-900/50">
-            {[
+          <div className="grid grid-cols-2 gap-px bg-emerald-100 sm:grid-cols-4 dark:bg-emerald-900/50">
+            {([
               ['Jogadores', String(home.players)],
-              ['Pontos', formatScore(home.points)],
+              ['Pontos', formatScore(home.points), `${(home.points / home.players).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} por jogador`],
               ['Aproveitamento', pctText(winRate(home))],
+              ['V / E / D', `${home.wins} / ${home.draws} / ${home.losses}`],
+              ['Melhor colocação', home.best ? `${home.best.rank}º de ${home.best.size}` : '–', home.best?.group],
+              ['Rating médio', homeAvgRating ? String(homeAvgRating) : '–'],
               ['No top 10', String(home.top10)],
               ['No pódio', String(home.podiums)],
-            ].map(([label, value]) => (
+            ] as [string, string, string?][]).map(([label, value, sub]) => (
               <div key={label} className="bg-white/80 px-2.5 py-3 sm:px-4 dark:bg-gray-900/70">
                 <p className="text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs dark:text-gray-400">{label}</p>
-                <p className="text-lg font-bold text-gray-900 sm:text-xl dark:text-gray-100">{value}</p>
+                <p className="text-lg font-bold tabular-nums text-gray-900 sm:text-xl dark:text-gray-100">{value}</p>
+                {sub && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{sub}</p>}
               </div>
             ))}
           </div>
+          {/* Lista de jogadores recolhida: abre sozinha quando há jogador escolhido ou ordenação da lista na URL. */}
+          <details open={Boolean(selectedPlayer || sp.bord)} className="group border-t border-emerald-200 dark:border-emerald-900">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-50/60 sm:px-5 dark:text-emerald-300 dark:hover:bg-emerald-950/30 [&::-webkit-details-marker]:hidden">
+              <span>
+                <span className="group-open:hidden">Ver os {home.players} {home.players === 1 ? 'jogador' : 'jogadores'}</span>
+                <span className="hidden group-open:inline">Jogadores ({home.players})</span>
+              </span>
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-4 w-4 transition-transform group-open:rotate-180">
+                <path d="m6 8 4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </summary>
           <div className="divide-y divide-emerald-100 sm:hidden dark:divide-emerald-900/50">
             {homeSorted.map((r) => (
               <article
@@ -417,6 +436,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
               </tbody>
             </table>
           </div>
+          </details>
         </section>
       ) : (
         <p className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-500 dark:border-gray-800">
@@ -572,7 +592,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
         <div className="mb-3">
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Desempenho por país</h2>
           <p className="mt-1 hidden text-xs text-gray-500 md:block dark:text-gray-400">
-            Posição (#): jogadores no pódio da seção, depois no top 10, depois pontos por jogador. Clique no título de uma coluna para ordenar e no nome de um país para ver os jogadores. Classificação parcial enquanto o torneio estiver em andamento.
+            Posição (#): jogadores no pódio da seção, depois no top 10, depois pontos por jogador. Clique no título de uma coluna para ordenar e no nome de um país para ver os números e os jogadores dele. Classificação parcial enquanto o torneio estiver em andamento.
           </p>
           <details className="mt-1 text-xs text-gray-500 md:hidden dark:text-gray-400">
             <summary className="cursor-pointer font-medium text-brand-600 dark:text-brand-400">Como funciona a posição?</summary>
