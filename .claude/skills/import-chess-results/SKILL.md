@@ -58,6 +58,8 @@ Se já existir uma linha pra essa URL, pare e avise o usuário — não duplique
 
 ## Passo 3 — Criar tournament + tournament_imports
 
+**Regra fixa:** preencha `tournaments.description` com `Resultados oficiais:` e uma linha por URL importada (`Grupo: url` quando houver grupos). Torneio importado sem o link da fonte na descrição é erro.
+
 Via `execute_sql`, numa transação (`begin; ... commit;`), inserindo em `tournaments`
 (`mode='imported'`, `slug = slugify(nome) + '-' + data sem hífen`, `created_by` = uid do
 usuário que pediu, resolvido por email em `user_profiles`/`auth.users`) e em

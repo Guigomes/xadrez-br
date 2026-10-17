@@ -130,3 +130,5 @@ Plano original em `docs/plano-chatbot-suporte.md`; desvios e status real em `doc
 - Exportação de PDF server-side (usa `window.print()` do navegador, páginas `/print` dedicadas).
 - Endosso formal da FIDE para o sistema completo.
 - Suporte a torneios por equipes (fora de escopo desta fase).
+
+- **Torneio importado sempre leva o link da fonte na descrição** (regra fixa, pedido do dono): ao criar `tournaments` a partir do chess-results/info64 (skill `import-chess-results`, script avulso ou UI), preencha `description` com `Resultados oficiais:` + uma linha por URL importada (`Grupo: url` quando há grupos). O worker (`ensureSourceLink` em `process-tournament.ts`) também completa isso a cada ciclo quando a descrição está vazia ou foi gerada por ele; texto escrito pelo organizador não é tocado. A descrição é renderizada com `LinkifiedText`, então a URL vira link clicável.
