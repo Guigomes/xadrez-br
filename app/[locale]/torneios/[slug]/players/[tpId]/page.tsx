@@ -11,7 +11,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
 import { Button } from '@/components/ui/button';
-import { OriginBadge } from '@/components/player/origin-badge';
+import { FederationBadge, OriginBadge } from '@/components/player/origin-badge';
 import { isInternationalTournament } from '@/lib/utils/federation';
 import { useLocale } from 'next-intl';
 import { playerDisplayName } from '@/lib/utils/player-name';
@@ -289,7 +289,7 @@ export default function PlayerTournamentPage({ params }: Props) {
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
             {(history as PlayerHistoryRow[]).map((row) => (
-              <HistoryRow key={row.round_number} row={row} tournamentSlug={slug} />
+              <HistoryRow key={row.round_number} row={row} tournamentSlug={slug} international={isInternationalTournament(tournament.is_international)} />
             ))}
           </div>
         )}
@@ -311,7 +311,7 @@ function TiebreakRow({ info, value }: { info: { label: string; short: string; de
 }
 
 
-function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournamentSlug: string }) {
+function HistoryRow({ row, tournamentSlug, international }: { row: PlayerHistoryRow; tournamentSlug: string; international: boolean }) {
   const locale = useLocale();
   const isWhite = row.color === 'white';
   // Resultado aparece assim que a MESA termina — não só quando a rodada inteira acaba (antes,
@@ -333,6 +333,7 @@ function HistoryRow({ row, tournamentSlug }: { row: PlayerHistoryRow; tournament
   ) : (
     <>
       <p className={`text-sm font-medium break-words ${opponentHref ? 'text-brand-700 dark:text-brand-300' : 'text-gray-900 dark:text-gray-100'}`}>
+        {international && <FederationBadge federation={row.opponent_federation} className="mr-1.5 px-1 py-0 align-middle text-[10px]" />}
         {row.opponent_title && <span className="text-gray-400 dark:text-gray-500 font-normal">{row.opponent_title} </span>}
         {playerDisplayName(row.opponent_name, row.opponent_fide_name, locale)}
       </p>
