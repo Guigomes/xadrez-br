@@ -137,11 +137,15 @@ function PlayerLink({
     <>
       <div className={`flex items-center justify-center gap-1.5`}>
         {followed && !alignRight && <span className="text-brand-500 text-xs">★</span>}
-        {color === 'white'
-          ? <WhitePawn className="h-4 w-3 shrink-0" />
-          : <BlackPawn className="h-4 w-3 shrink-0" />
-        }
-        <span className={`text-sm leading-tight ${nameClass}`}>
+        {/* Peão da cor com a bandeira centralizada logo abaixo */}
+        <div className="flex shrink-0 flex-col items-center gap-0.5">
+          {color === 'white'
+            ? <WhitePawn className="h-4 w-3 shrink-0" />
+            : <BlackPawn className="h-4 w-3 shrink-0" />
+          }
+          {federation && <FederationBadge federation={federation} className="px-1 py-0 text-[10px]" />}
+        </div>
+        <span className={`text-center text-sm leading-tight ${nameClass}`}>
           {title && <span className="text-gray-400 dark:text-gray-500 font-normal">{title} </span>}
           {name}
         </span>
@@ -149,7 +153,6 @@ function PlayerLink({
         {followed && alignRight && <span className="text-brand-500 text-xs">★</span>}
       </div>
       <p className={`text-xs mt-0.5 flex flex-wrap items-center justify-center gap-x-1.5 ${isLoser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400'}`}>
-        {federation && <FederationBadge federation={federation} className="px-1 py-0 text-[10px]" />}
         {rating ? `Rating ${rating}` : 'Sem rating'}
         {score !== null && ` · ${formatScore(score)} pts`}
       </p>
