@@ -129,12 +129,56 @@ export function GameViewerButton({
                   Não foi possível carregar os lances desta partida. Entre na sua conta e tente de novo.
                 </p>
               ) : (
-                <PgnBoard pgn={pgn} orientation={orientation} />
+                <>
+                  <PgnBoard pgn={pgn} orientation={orientation} />
+                  <CopyPgnButton pgn={pgn} />
+                </>
               )}
             </div>
           </div>
         </div>
       )}
     </>
+  );
+}
+
+// Copia o PGN cru da partida (o mesmo que alimenta o tabuleiro) para colar no Lichess,
+// ChessBase etc. Fallback com textarea para navegador sem a Clipboard API (http, WebView antiga).
+function CopyPgnButton({ pgn }: { pgn: string }) {
+  const [state, setState] = useState<'idle' | 'ok' | 'erro'>('idle');
+
+  async function copy() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(pgn);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = pgn;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (!ok) throw new Error('copy');
+      }
+      setState('ok');
+    } catch {
+      setState('erro');
+    }
+    setTimeout(() => setState('idle'), 2500);
+  }
+
+  return (
+    <div className="mt-3 flex justify-center">
+      <button
+        type="button"
+        onClick={copy}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        {state === 'ok' ? '✓ PGN copiado' : state === 'erro' ? 'Não foi possível copiar' : '📋 Copiar PGN'}
+      </button>
+    </div>
   );
 }
