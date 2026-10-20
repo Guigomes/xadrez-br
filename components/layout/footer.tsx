@@ -15,7 +15,7 @@ export function Footer() {
           <span className="text-lg">♟</span>
           <span>{t('copyright', { year: new Date().getFullYear() })}</span>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
           <Link href="/torneios" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
             {t('tournaments')}
           </Link>
@@ -24,6 +24,15 @@ export function Footer() {
           </Link>
           <Link href={user ? '/admin' : '/login'} className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
             {t('organizers')}
+          </Link>
+          <Link href="/privacidade" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+            {t('privacy')}
+          </Link>
+          <Link href="/termos" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+            {t('terms')}
+          </Link>
+          <Link href="/contato" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+            {t('contact')}
           </Link>
         </div>
       </div>

@@ -22,6 +22,9 @@
     "tournaments": "Torneios",
     "players": "Jogadores",
     "organizers": "Organizadores",
-    "copyright": "Gambito Torneios © {year}"
+    "copyright": "Gambito Torneios © {year}",
+    "privacy": "Privacidade",
+    "terms": "Termos",
+    "contact": "Contato"
   }
 }

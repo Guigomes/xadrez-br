@@ -48,6 +48,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry('/agenda', null, 0.8),
     entry('/noticias', null, 0.5),
     entry('/players', null, 0.4),
+    entry('/privacidade', null, 0.3),
+    entry('/termos', null, 0.3),
+    entry('/contato', null, 0.3),
   ];
 
   const tournamentEntries = (tournaments ?? []).flatMap((t) => {
