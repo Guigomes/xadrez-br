@@ -138,7 +138,8 @@ export default async function CountriesPage({ params, searchParams }: Props) {
       const group = r.pairing_group_name ?? '—';
       const size = groupSize.get(group) ?? 1;
       const ratio = r.rank / size;
-      if (!c.best || ratio < c.best.ratio) c.best = { ratio, rank: r.rank, size, group, player: r };
+      // Posição absoluta (14º vence 31º, mesmo que o 31º seja numa seção maior); empate: seção maior.
+      if (!c.best || r.rank < c.best.rank || (r.rank === c.best.rank && size > c.best.size)) c.best = { ratio, rank: r.rank, size, group, player: r };
     }
     byCountry.set(code, c);
   }
@@ -162,7 +163,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
     pontos: (c) => c.points,
     ptsjog: (c) => c.points / c.players,
     aproveit: (c) => winRate(c),
-    melhor: (c) => c.best?.ratio ?? 99,
+    melhor: (c) => (c.best ? c.best.rank - c.best.size / 100000 : 99999),
   };
   const keyFn = countryKey[ord] ?? countryKey.posicao;
   const compare = (x: number | string, y: number | string) =>

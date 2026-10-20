@@ -11,10 +11,11 @@ import { playerDisplayName } from '@/lib/utils/player-name';
 import { cn } from '@/lib/utils/cn';
 import { ExternalIdLinks } from '@/components/player/external-id-links';
 import { compareParticipantOrder, compareGroupNames, formatScore } from '@/lib/utils/chess';
+import { AutoSubmitSelect } from '@/components/ui/auto-submit-select';
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ group?: string; page?: string; q?: string; pais?: string }>;
+  searchParams: Promise<{ group?: string; page?: string; q?: string; pais?: string; ordem?: string }>;
   countryCode?: string;
 }
 
@@ -22,9 +23,19 @@ interface Props {
  *  gargalo real da aba (não a consulta, que roda em ~700ms). */
 const PAGE_SIZE = 50;
 
+/** Ordenações da lista de jogadores de um país (aba "Por país"). A 1ª é a padrão. */
+const COUNTRY_SORTS = [
+  { key: 'colocacao', label: 'Colocação' },
+  { key: 'pontos', label: 'Pontos' },
+  { key: 'grupo', label: 'Seção' },
+  { key: 'rating', label: 'Rating' },
+  { key: 'nome', label: 'Nome' },
+] as const;
+type CountrySort = (typeof COUNTRY_SORTS)[number]['key'];
+
 export async function ParticipantsView({ params, searchParams, countryCode }: Props) {
   const { slug } = await params;
-  const { group: selectedGroupId, page: pageParam, q, pais: countryParam } = await searchParams;
+  const { group: selectedGroupId, page: pageParam, q, pais: countryParam, ordem: sortParam } = await searchParams;
   const searchQuery = q?.trim().slice(0, 80) ?? '';
 
   const pageNum = Math.max(1, Number.parseInt(pageParam ?? '1', 10) || 1);
@@ -40,6 +51,11 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
   const selectedCountry = international ? (countryCode ?? countryParam)?.trim().toUpperCase() : undefined;
   if (countryCode && !/^[A-Z]{3}$/.test(selectedCountry ?? '')) notFound();
   const locale = await getLocale();
+  // Lista de um país: cabe inteira (a maior delegação do Mundial tem ~180), então busca tudo,
+  // ordena aqui e pagina depois — a ordem padrão é a colocação, não o ranking inicial.
+  const countrySort: CountrySort | null = countryCode
+    ? (COUNTRY_SORTS.find((o) => o.key === sortParam)?.key ?? 'colocacao')
+    : null;
 
   const supabase = await createClient();
 
@@ -97,7 +113,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
       .order('sort_order', { ascending: true }),
     playersQuery
       .order('initial_ranking', { ascending: true, nullsFirst: false })
-      .range(from, from + PAGE_SIZE - 1),
+      .range(countrySort ? 0 : from, countrySort ? 999 : from + PAGE_SIZE - 1),
     supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id }),
   ]);
 
@@ -115,7 +131,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
   // banco não significa nada — reordena por rating/nome (chess.ts). Só dentro
   // da página atual: com seed gerado a ordem do banco já é a definitiva, e sem
   // seed nenhuma ordem entre páginas seria estável de qualquer jeito.
-  const players = playersData ? [...playersData].sort(compareParticipantOrder) : playersData;
+  const seeded = playersData ? [...playersData].sort(compareParticipantOrder) : playersData;
 
   // A posição da categoria segue exatamente a ordem devolvida pela mesma RPC
   // usada na aba Classificação. Ao filtrar uma categoria, aquela tela apenas
@@ -158,6 +174,28 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
     });
   }
 
+  // Colocação = posição na própria seção (14º vem antes de 31º), igual ao "Melhor colocação"
+  // da aba Por país; empate na posição: mais pontos, depois nome.
+  const rankByTp = new Map(standings.map((row) => [row.tp_id, row.rank ?? null]));
+  const groupOrder = new Map(groups.map((g, i) => [g.id, i]));
+  let players = seeded;
+  if (countrySort && seeded) {
+    type TP = NonNullable<typeof seeded>[number];
+    const name = (tp: TP) => playerDisplayName(tp.player?.full_name, tp.player?.fide_name, locale);
+    const points = (tp: TP) => performanceByTpId.get(tp.id)?.points ?? Number(tp.current_score ?? 0);
+    const placement = (tp: TP) => rankByTp.get(tp.id) ?? Number.POSITIVE_INFINITY;
+    const byName = (a: TP, b: TP) => name(a).localeCompare(name(b), 'pt-BR');
+    const sorters: Record<CountrySort, (a: TP, b: TP) => number> = {
+      colocacao: (a, b) => (placement(a) - placement(b)) || points(b) - points(a) || byName(a, b),
+      pontos: (a, b) => points(b) - points(a) || placement(a) - placement(b) || byName(a, b),
+      grupo: (a, b) => (groupOrder.get(a.pairing_group_id ?? '') ?? 999) - (groupOrder.get(b.pairing_group_id ?? '') ?? 999)
+        || (rankByTp.get(a.id) ?? 9999) - (rankByTp.get(b.id) ?? 9999) || byName(a, b),
+      rating: (a, b) => (b.player?.rating_std ?? -1) - (a.player?.rating_std ?? -1) || byName(a, b),
+      nome: byName,
+    };
+    players = [...seeded].sort(sorters[countrySort]).slice(from, from + PAGE_SIZE);
+  }
+
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const base = countryCode
@@ -170,6 +208,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
     if (selectedGroupId) qs.set('group', selectedGroupId);
     if (searchQuery) qs.set('q', searchQuery);
     if (selectedCountry && !countryCode) qs.set('pais', selectedCountry);
+    if (countrySort && countrySort !== COUNTRY_SORTS[0].key) qs.set('ordem', countrySort);
     if (n > 1) qs.set('page', String(n));
     const s = qs.toString();
     return s ? `${base}?${s}` : base;
@@ -223,6 +262,18 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
             </select>
           </label>
         )}
+        {countrySort && (
+          <label className="block lg:min-w-44">
+            <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Ordenar por</span>
+            <AutoSubmitSelect
+              name="ordem"
+              defaultValue={countrySort}
+              className="min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+            >
+              {COUNTRY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </AutoSubmitSelect>
+          </label>
+        )}
         <label className={cn('block lg:min-w-64 lg:flex-[2]', !showGroupFilter && !international && 'sm:col-span-2')}>
           <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Buscar participante</span>
           <input
@@ -263,7 +314,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
             )}
             {searchQuery && (
               <Link
-                href={`${base}?${new URLSearchParams({ ...(selectedGroupId ? { group: selectedGroupId } : {}), ...(selectedCountry && !countryCode ? { pais: selectedCountry } : {}) })}`}
+                href={`${base}?${new URLSearchParams({ ...(selectedGroupId ? { group: selectedGroupId } : {}), ...(selectedCountry && !countryCode ? { pais: selectedCountry } : {}), ...(countrySort && countrySort !== COUNTRY_SORTS[0].key ? { ordem: countrySort } : {}) })}`}
                 className="ml-2 font-medium text-brand-600 hover:underline dark:text-brand-400"
               >
                 Limpar busca
