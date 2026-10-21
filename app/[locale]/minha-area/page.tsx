@@ -6,6 +6,7 @@ import { Gambito } from '@/components/mascot/gambito';
 import { CheckinButton } from '@/components/player-hub/checkin-button';
 import { PayRegistrationButton } from '@/components/player-hub/pay-registration-button';
 import { ShareResultButton } from '@/components/player-hub/share-result-button';
+import { PlayerAreaTabs } from '@/components/player-hub/player-area-tabs';
 
 type HubEntry = {
   id: string;
@@ -73,6 +74,7 @@ export default async function PlayerHubPage() {
 
   return (
     <div className="container-app py-8">
+      <PlayerAreaTabs />
       <div className="relative mb-8 overflow-hidden rounded-2xl bg-brand-50 p-5 pr-28 dark:bg-brand-950/30 sm:pr-44">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Minha área de jogador</h1>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Partidas, colocações, inscrições e presença em um só lugar.</p>

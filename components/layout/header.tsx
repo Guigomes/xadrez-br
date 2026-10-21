@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import { useUser, useProfile, useSignOut, type InitialUser } from '@/lib/hooks/use-auth';
+import { useUnreadChatCount } from '@/lib/hooks/use-chat';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { LocaleSwitcher } from '@/components/ui/locale-switcher';
 
@@ -21,6 +22,8 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
   const signOut = useSignOut();
   const { data: profile } = useProfile();
   const canManage = profile?.role === 'admin' || profile?.is_organizer || profile?.is_arbiter;
+  // Selo de mensagens da equipe não lidas (caixa em /minha-area/mensagens).
+  const { data: unread = 0 } = useUnreadChatCount(!!user);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -102,8 +105,9 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
               >
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-xs font-bold">
+                <span className="relative inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-xs font-bold">
                   {user.email?.[0]?.toUpperCase()}
+                  {unread > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white dark:ring-gray-950" aria-label="Mensagens não lidas" />}
                 </span>
                 <span className="hidden sm:inline">{tAccount('myAccount')}</span>
               </button>
@@ -124,6 +128,14 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                     onClick={() => setDropdownOpen(false)}
                   >
                     Minha área de jogador
+                  </Link>
+                  <Link
+                    href="/minha-area/mensagens"
+                    className="flex min-h-11 items-center justify-between px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    Mensagens
+                    {unread > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white">{unread}</span>}
                   </Link>
                   <Link
                     href="/account"
@@ -205,6 +217,14 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                 onClick={() => setMobileOpen(false)}
               >
                 Minha área de jogador
+              </Link>
+              <Link
+                href="/minha-area/mensagens"
+                className="flex min-h-11 items-center gap-2 py-3 text-sm font-medium text-gray-700 dark:text-gray-300"
+                onClick={() => setMobileOpen(false)}
+              >
+                Mensagens
+                {unread > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white">{unread}</span>}
               </Link>
               <Link
                 href="/account"

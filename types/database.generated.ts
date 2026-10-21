@@ -287,9 +287,11 @@ export type Database = {
           escalated_at: string | null
           id: string
           last_message_at: string
+          started_by: string | null
           status: Database["public"]["Enums"]["chat_session_status"]
           tournament_id: string | null
           user_id: string | null
+          user_last_read_at: string | null
         }
         Insert: {
           contact_phone?: string | null
@@ -297,9 +299,11 @@ export type Database = {
           escalated_at?: string | null
           id?: string
           last_message_at?: string
+          started_by?: string | null
           status?: Database["public"]["Enums"]["chat_session_status"]
           tournament_id?: string | null
           user_id?: string | null
+          user_last_read_at?: string | null
         }
         Update: {
           contact_phone?: string | null
@@ -307,9 +311,11 @@ export type Database = {
           escalated_at?: string | null
           id?: string
           last_message_at?: string
+          started_by?: string | null
           status?: Database["public"]["Enums"]["chat_session_status"]
           tournament_id?: string | null
           user_id?: string | null
+          user_last_read_at?: string | null
         }
         Relationships: [
           {
@@ -2330,6 +2336,7 @@ export type Database = {
         }[]
       }
       my_plan_id: { Args: never; Returns: string }
+      my_unread_chat_count: { Args: never; Returns: number }
       next_status_by_date: {
         Args: {
           p_created_at: string

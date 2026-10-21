@@ -115,3 +115,43 @@ export function useCloseChatSession() {
     },
   });
 }
+
+/** Busca de usuário para "Nova mensagem" — admin lê todos os perfis (profiles_select_own, migration 002). */
+export function useSearchUsers(term: string) {
+  const q = term.trim();
+  return useQuery({
+    queryKey: ['admin-user-search', q],
+    enabled: q.length >= 2,
+    queryFn: async (): Promise<Array<{ id: string; full_name: string | null; email: string | null }>> => {
+      const safe = q.replace(/[,%_()."'\\]/g, ' ').trim();
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('id, full_name, email')
+        .or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`)
+        .order('full_name')
+        .limit(10);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/** Admin começa uma conversa (app/api/chat/start/route.ts). */
+export function useStartChat() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, message }: { userId: string; message: string }): Promise<{ sessionId: string }> => {
+      const res = await fetch('/api/chat/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, message }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao enviar mensagem.');
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-chat-sessions'] });
+    },
+  });
+}

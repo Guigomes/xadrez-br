@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { sendUserNotification } from '@/lib/push';
 
 export const runtime = 'nodejs';
 
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const { data: session } = await admin.from('chat_sessions').select('id').eq('id', sessionId).maybeSingle();
+  const { data: session } = await admin.from('chat_sessions').select('id, user_id').eq('id', sessionId).maybeSingle();
   if (!session) return NextResponse.json({ error: 'Sessão não encontrada.' }, { status: 404 });
 
   const { error: msgError } = await admin
@@ -44,6 +45,20 @@ export async function POST(request: NextRequest) {
   const { error: updateError } = await admin
     .from('chat_sessions').update({ status: 'humano', last_message_at: new Date().toISOString() }).eq('id', sessionId);
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+
+  // A resposta também fica na caixa de mensagens do usuário (/minha-area/mensagens);
+  // avisa por push, porque ele pode já ter fechado o widget. Sessão anônima não tem destino.
+  if (session.user_id) {
+    try {
+      await sendUserNotification(session.user_id, {
+        title: 'Nova mensagem do Gambito',
+        body: message.slice(0, 140),
+        url: `/minha-area/mensagens/${sessionId}`,
+      });
+    } catch (err) {
+      console.error('[chat/reply] push falhou:', err);
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

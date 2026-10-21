@@ -516,6 +516,10 @@ export interface ChatSession {
   contact_phone: string | null;
   last_message_at: string;
   created_at: string;
+  /** Até quando o dono já leu (caixa de mensagens). */
+  user_last_read_at?: string | null;
+  /** Admin que abriu a conversa; null = o próprio usuário abriu pelo widget. */
+  started_by?: string | null;
 }
 
 export interface ChatMessage {

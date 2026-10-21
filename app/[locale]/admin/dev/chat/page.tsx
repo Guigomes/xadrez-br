@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useProfile } from '@/lib/hooks/use-auth';
-import { useAllChatSessions, useChatSessionMessages, useReplyToChatSession, useCloseChatSession } from '@/lib/hooks/use-chat-admin';
+import { useAllChatSessions, useChatSessionMessages, useReplyToChatSession, useCloseChatSession, useSearchUsers, useStartChat } from '@/lib/hooks/use-chat-admin';
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,7 @@ function ChatHistoryPanel() {
   const { data: sessions, isLoading } = useAllChatSessions();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [reply, setReply] = useState('');
+  const [composing, setComposing] = useState(false);
 
   // Deep-link da notificação push (?session=<id>) — só aplica na primeira
   // carga, pra não brigar com o clique manual do admin na lista depois.
@@ -82,11 +83,23 @@ function ChatHistoryPanel() {
             Todas as conversas de todos os usuários com o chatbot de suporte. Visível só para admin.
           </p>
         </div>
-        <NotifyButton
-          activeLabel="Notificações de atendimento ativas"
-          idleLabel="Ativar notificações de atendimento"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => setComposing((v) => !v)}>{composing ? 'Fechar' : '✉ Nova mensagem'}</Button>
+          <NotifyButton
+            activeLabel="Notificações de atendimento ativas"
+            idleLabel="Ativar notificações de atendimento"
+          />
+        </div>
       </div>
+
+      {composing && (
+        <NewMessagePanel
+          onSent={(id) => {
+            setComposing(false);
+            setSessionId(id);
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,320px)_1fr] gap-4">
         <div className="card p-0 overflow-hidden">
@@ -180,7 +193,7 @@ function ChatHistoryPanel() {
                 ))}
               </div>
 
-              {isEscalated && (
+              {(isEscalated || !!selected?.user_id) && (
                 <div className="flex items-end gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
                   <textarea
                     value={reply}
@@ -189,7 +202,7 @@ function ChatHistoryPanel() {
                       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply(); }
                     }}
                     rows={1}
-                    placeholder="Responder como Gambito…"
+                    placeholder={isEscalated ? 'Responder como Gambito…' : 'Escrever como Gambito (a conversa passa para você)…'}
                     className="flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                   />
                   <Button size="sm" onClick={handleReply} loading={sendReply.isPending} disabled={!reply.trim()}>
@@ -200,6 +213,72 @@ function ChatHistoryPanel() {
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Nova mensagem": escolhe o usuário e manda o primeiro recado. Sai como Gambito, como as
+ * respostas humanas; a pessoa vê em Mensagens (área logada) e recebe push se tiver ativado.
+ */
+function NewMessagePanel({ onSent }: { onSent: (sessionId: string) => void }) {
+  const [term, setTerm] = useState('');
+  const [to, setTo] = useState<{ id: string; full_name: string | null; email: string | null } | null>(null);
+  const [text, setText] = useState('');
+  const { data: results, isFetching } = useSearchUsers(to ? '' : term);
+  const start = useStartChat();
+
+  return (
+    <div className="card mb-4 space-y-3 p-4">
+      <h2 className="font-semibold text-gray-900 dark:text-gray-100">Nova mensagem</h2>
+      {to ? (
+        <div className="flex items-center justify-between gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm dark:bg-brand-950/30">
+          <span><b>{to.full_name || '(sem nome)'}</b> <span className="text-gray-500">{to.email}</span></span>
+          <button type="button" className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-300" onClick={() => setTo(null)}>trocar</button>
+        </div>
+      ) : (
+        <div>
+          <input
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            placeholder="Buscar usuário por nome ou e-mail…"
+            className="min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+          />
+          {term.trim().length >= 2 && (
+            <ul className="mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
+              {isFetching && <li className="px-3 py-2 text-xs text-gray-400">Buscando…</li>}
+              {!isFetching && !results?.length && <li className="px-3 py-2 text-xs text-gray-400">Ninguém encontrado.</li>}
+              {results?.map((u) => (
+                <li key={u.id}>
+                  <button type="button" onClick={() => setTo(u)} className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{u.full_name || '(sem nome)'}</span>
+                    <span className="ml-2 text-xs text-gray-500">{u.email}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+        maxLength={2000}
+        placeholder="Mensagem (sai como Gambito)…"
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+      />
+      {start.error && <p className="text-xs text-red-600">{(start.error as Error).message}</p>}
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          disabled={!to || !text.trim()}
+          loading={start.isPending}
+          onClick={() => to && start.mutate({ userId: to.id, message: text.trim() }, { onSuccess: (r) => onSent(r.sessionId) })}
+        >
+          Enviar
+        </Button>
       </div>
     </div>
   );

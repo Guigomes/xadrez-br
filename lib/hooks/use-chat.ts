@@ -223,3 +223,38 @@ export function useSendChatMessage() {
     },
   });
 }
+
+/**
+ * Selo "Mensagens" (menu e abas da área logada): mensagens da equipe ainda não lidas.
+ * RPC my_unread_chat_count (migration 20261020120000) — conta só as do próprio usuário.
+ */
+export function useUnreadChatCount(enabled: boolean) {
+  return useQuery({
+    queryKey: ['chat-unread-count'],
+    enabled,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<number> => {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('my_unread_chat_count');
+      if (error) return 0;
+      return Number(data ?? 0);
+    },
+  });
+}
+
+/** Marca a conversa como lida (/api/chat/read) e atualiza o selo. */
+export function useMarkChatRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      await fetch('/api/chat/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-unread-count'] });
+    },
+  });
+}
