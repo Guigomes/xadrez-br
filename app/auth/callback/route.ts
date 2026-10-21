@@ -12,6 +12,18 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/admin';
 
+  // Login do app Gambito Lite (PKCE feito no próprio app): não troca o código aqui — o
+  // verificador está no celular. Só devolve o `code` para o app pelo link dele. Passar por
+  // esta rota evita cadastrar um endereço novo de retorno no Supabase.
+  if (searchParams.get('lite') === '1') {
+    const app = new URL('br.com.gambitotorneios.lite://login-callback');
+    for (const key of ['code', 'error', 'error_description']) {
+      const v = searchParams.get(key);
+      if (v) app.searchParams.set(key, v);
+    }
+    return NextResponse.redirect(app.toString());
+  }
+
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);

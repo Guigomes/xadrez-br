@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Política de Privacidade" updated="19 de outubro de 2026">
+    <LegalPage title="Política de Privacidade" updated="21 de outubro de 2026">
       <p>
         O Gambito Torneios (gambitotorneios.com.br) divulga e organiza torneios de xadrez: inscrições, rodadas,
         classificação e histórico de jogadores. Esta política explica quais dados tratamos, para quê, e quais são
@@ -32,6 +32,12 @@ export default function PrivacyPage() {
         <li>
           <b>Inscrições e pagamentos.</b> Dados da inscrição e o status do pagamento. Os dados de cartão ou Pix
           são tratados pelo processador de pagamentos (Asaas); não armazenamos números de cartão.
+        </li>
+        <li>
+          <b>App Gambito Lite.</b> O torneio criado no app fica no celular do organizador. Se ele entrar com a
+          conta Google, uma cópia de cada torneio (nomes dos jogadores, escola, ano de nascimento, sexo, rating
+          e resultados) é guardada na conta dele como backup, visível só para ele. O torneio só aparece no site
+          se o organizador escolher torná-lo público, e pode voltar a privado ou ser apagado a qualquer momento.
         </li>
         <li>
           <b>Notificações.</b> Se você ativar os avisos de rodada, guardamos o identificador do seu navegador

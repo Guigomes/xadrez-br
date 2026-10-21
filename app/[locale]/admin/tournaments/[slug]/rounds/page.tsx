@@ -21,7 +21,7 @@ export default async function AdminRoundsPage({ params, searchParams }: Props) {
   const [{ slug }, { group }] = await Promise.all([params, searchParams]);
   const data = await getTournamentPageData(slug);
 
-  if (data?.tournament.mode === 'imported' && data.currentRoundNumber) {
+  if (data?.tournament.mode !== 'native' && data?.currentRoundNumber) {
     const groupQuery = group ? `?group=${encodeURIComponent(group)}` : '';
     redirect(`/admin/tournaments/${slug}/rounds/${data.currentRoundNumber}${groupQuery}`);
   }

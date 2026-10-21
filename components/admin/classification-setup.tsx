@@ -62,8 +62,10 @@ export function ClassificationSetup({
     return (
       <EmptyState
         icon="🔄"
-        title="Torneio importado"
-        description="Classificações e grupos de torneios importados vêm da origem (chess-results)."
+        title={mode === 'app' ? 'Torneio do Gambito Lite' : 'Torneio importado'}
+        description={mode === 'app'
+          ? 'Este torneio é organizado no app Gambito Lite: grupos e classificação vêm do celular do organizador.'
+          : 'Classificações e grupos de torneios importados vêm da origem (chess-results).'}
       />
     );
   }

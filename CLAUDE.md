@@ -9,6 +9,8 @@ Plataforma de gestão de torneios de xadrez suíços (Next.js 15 + Supabase + Ve
 - **`mode='native'`** (padrão, implícito para o organizador): o próprio sistema pareia rodadas com motor FIDE Dutch (bbpPairings compilado para WASM), gerencia inscrições, resultados, staff.
 - **`mode='imported'`**: espelha um torneio já rodado no chess-results.com via worker `cron-import` (repo irmão, `Guigomes/xadrez-br-cron`). **Exclusivo do painel `/admin/dev`** — usuário comum nunca escolhe isso; só quem tem `role='admin'`.
 
+- **`mode='app'`** (2026-10-21): torneio organizado no app Android Gambito Lite (`../gambito-lite`). O celular pareia e lança; o site só mostra (mesma visão somente leitura dos importados — em código, tratar com `mode !== 'native'`, não `=== 'imported'`). Backup privado em `lite_tournaments` (só o dono lê); publicar materializa nas tabelas do site via `lite_publish` reaproveitando os UUIDs do app; rotas `app/api/lite/*` autenticadas pelo token Bearer do app. Login do app volta por `/auth/callback?lite=1`, que só repassa o `code` ao app (PKCE feito no celular).
+
 Repo separado: `cron-import` (Cloud Run Job, worker de importação) — vive em `../cron-import` neste workspace, próprio git.
 
 ## Documentos de referência (leia antes de mexer em pareamento nativo)

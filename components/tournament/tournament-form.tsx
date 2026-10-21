@@ -56,7 +56,7 @@ const schema = z.object({
   rounds_count:    z.coerce.number().int().min(1).max(20),
   is_public:       z.boolean(),
   is_international: z.boolean(),
-  mode:            z.enum(['native', 'imported']),
+  mode:            z.enum(['native', 'imported', 'app']),
   initial_color:   z.enum(['white1', 'black1']),
   rating_kind:     z.enum(['std', 'rpd', 'blz']),
   requested_bye_score: z.coerce.number(),

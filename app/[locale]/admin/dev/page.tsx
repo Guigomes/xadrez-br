@@ -89,7 +89,7 @@ function DevPanel() {
           <Select label="Torneio" value={tournamentId} onChange={(e) => { setTournamentId(e.target.value); setGroupId(''); }}>
             <option value="">Selecione…</option>
             {(tournaments ?? []).map((t) => (
-              <option key={t.id} value={t.id}>{t.name} ({t.mode === 'native' ? 'nativo' : 'importado'})</option>
+              <option key={t.id} value={t.id}>{t.name} ({t.mode === 'native' ? 'nativo' : t.mode === 'app' ? 'app' : 'importado'})</option>
             ))}
           </Select>
         )}

@@ -35,7 +35,8 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
   // nenhuma pra oferecer, a aba some em vez de abrir numa tela sem uso.
   const tabs = [
     { href: base,              label: 'Visão geral', icon: 'overview' as TournamentTabIconName },
-    ...(hasStarted || mode === 'imported'
+    // Torneio do app (mode='app') segue o importado: o celular pareia e lança, o site só mostra.
+    ...(hasStarted || mode !== 'native'
       ? []
       : [
           { href: `${base}/groups`,        label: 'Emparceiramento', icon: 'pairing' as TournamentTabIconName },
@@ -49,7 +50,7 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
           // Relatório: no nativo, só com o torneio encerrado (antes disso inscrições/check-in ainda
           // mudam). No importado não há inscrição nem check-in — é só o retrato do chess-results —,
           // então já vale como relatório parcial durante o torneio.
-          ...(status === 'finished' || mode === 'imported' ? [{ href: `${base}/report`, label: 'Relatório', icon: 'report' as TournamentTabIconName }] : []),
+          ...(status === 'finished' || mode !== 'native' ? [{ href: `${base}/report`, label: 'Relatório', icon: 'report' as TournamentTabIconName }] : []),
         ]
       : []),
     // Torneio importado não tem arbitragem local (é espelho do chess-results,
@@ -57,7 +58,7 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
     // a sincronização mora no botão do cabeçalho (AdminTournamentChrome). A
     // rota /imports continua existindo pra quem editar a URL/grupo (mesmo
     // padrão de "some a navegação, não o acesso" já usado acima pro hasStarted).
-    ...(mode === 'imported' ? [] : [{ href: `${base}/staff`, label: 'Árbitros', icon: 'staff' as TournamentTabIconName }]),
+    ...(mode !== 'native' ? [] : [{ href: `${base}/staff`, label: 'Árbitros', icon: 'staff' as TournamentTabIconName }]),
   ];
 
   return (

@@ -417,6 +417,53 @@ export type Database = {
         }
         Relationships: []
       }
+      lite_tournaments: {
+        Row: {
+          app_version: number
+          backup: Json
+          created_at: string
+          device_id: string
+          id: string
+          is_public: boolean
+          name: string
+          owner_id: string
+          site_tournament_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          app_version: number
+          backup: Json
+          created_at?: string
+          device_id: string
+          id: string
+          is_public?: boolean
+          name: string
+          owner_id: string
+          site_tournament_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          app_version?: number
+          backup?: Json
+          created_at?: string
+          device_id?: string
+          id?: string
+          is_public?: boolean
+          name?: string
+          owner_id?: string
+          site_tournament_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lite_tournaments_site_tournament_id_fkey"
+            columns: ["site_tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news: {
         Row: {
           author_id: string | null
@@ -2335,6 +2382,9 @@ export type Database = {
           similarity: number
         }[]
       }
+      lite_delete: { Args: { p_id: string; p_owner: string }; Returns: undefined }
+      lite_publish: { Args: { p_id: string; p_slug: string }; Returns: string }
+      lite_unpublish: { Args: { p_id: string }; Returns: undefined }
       my_plan_id: { Args: never; Returns: string }
       my_unread_chat_count: { Args: never; Returns: number }
       next_status_by_date: {
@@ -2484,7 +2534,7 @@ export type Database = {
       series_status: "draft" | "published" | "finished"
       staff_role: "organizer" | "arbiter"
       time_control_kind: "bullet" | "blitz" | "rapid" | "classical" | "other"
-      tournament_mode: "native" | "imported"
+      tournament_mode: "native" | "imported" | "app"
       tournament_status:
         | "draft"
         | "published"
@@ -2650,7 +2700,7 @@ export const Constants = {
       series_status: ["draft", "published", "finished"],
       staff_role: ["organizer", "arbiter"],
       time_control_kind: ["bullet", "blitz", "rapid", "classical", "other"],
-      tournament_mode: ["native", "imported"],
+      tournament_mode: ["native", "imported", "app"],
       tournament_status: [
         "draft",
         "published",
