@@ -34,7 +34,7 @@ export default function PrivacyPage() {
           são tratados pelo processador de pagamentos (Asaas); não armazenamos números de cartão.
         </li>
         <li>
-          <b>App Gambito Lite.</b> O torneio criado no app fica no celular do organizador. Se ele entrar com a
+          <b>App Gambito Torneios.</b> O torneio criado no app fica no celular do organizador. Se ele entrar com a
           conta Google, uma cópia de cada torneio (nomes dos jogadores, escola, ano de nascimento, sexo, rating
           e resultados) é guardada na conta dele como backup, visível só para ele. O torneio só aparece no site
           se o organizador escolher torná-lo público, e pode voltar a privado ou ser apagado a qualquer momento.
