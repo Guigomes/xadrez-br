@@ -21,7 +21,8 @@ export type EntitlementKey =
   | 'support.priority'
   | 'account.multiuser'
   | 'alerts.rules'
-  | 'player.stats';
+  | 'player.stats'
+  | 'groups.players';
 
 export interface Entitlement {
   key: EntitlementKey;

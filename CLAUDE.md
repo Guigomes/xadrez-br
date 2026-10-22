@@ -166,7 +166,7 @@ Fase 5 do plano. Migration `20261022150000_player_stats.sql`.
 - `get_player_history` ganhou `my_rating` (arquivo: rating da época, de `history_games`; ao vivo: rating **atual** do cadastro no ritmo do torneio — não existe foto por torneio). Mudar colunas exige `drop function` + `create`.
 - `PlayerInsights` (`components/player-history/player-insights.tsx`) no perfil logado: sequências, aproveitamento por cor/ritmo/força do adversário (±100), performance por torneio (média dos adversários com rating + delta logístico do Elo, limitado a ±800) e gráfico SVG. Contas puras em `lib/player-history/insights.ts` (testes em `lib/__tests__/player-insights.test.ts`). W.O. fica fora.
 - Gate: entitlement `player.stats` (gratuito não; demais sim; cobrança desligada = todos). É gate de **apresentação**: o histórico em si já é livre para logado.
-- Plano `player` ("Jogador+") = gratuito + `player.stats` + alertas sem limite. Nasce sem preço e `is_public = false`; para vender: `update plans set price_cents=..., billing_interval='month', is_public=true where code='player'`.
+- Plano `player` ("Jogador+") = gratuito + `player.stats` + alertas sem limite. (Grupos: `groups.players` também limitado a 5 no Jogador+.) Nasce sem preço e `is_public = false`; para vender: `update plans set price_cents=..., billing_interval='month', is_public=true where code='player'`.
 
 ## O que NÃO existe ainda (não assumir implementado)
 
@@ -175,3 +175,13 @@ Fase 5 do plano. Migration `20261022150000_player_stats.sql`.
 - Suporte a torneios por equipes (fora de escopo desta fase).
 
 - **Torneio importado sempre leva o link da fonte na descrição** (regra fixa, pedido do dono): ao criar `tournaments` a partir do chess-results/info64 (skill `import-chess-results`, script avulso ou UI), preencha `description` com `Resultados oficiais:` + uma linha por URL importada (`Grupo: url` quando há grupos). O worker (`ensureSourceLink` em `process-tournament.ts`) também completa isso a cada ciclo quando a descrição está vazia ou foi gerada por ele; texto escrito pelo organizador não é tocado. A descrição é renderizada com `LinkifiedText`, então a URL vira link clicável.
+
+## Grupos de jogadores: clube, escola e treinador (2026-10-22)
+
+Frentes 3.3 e 3.5 do plano. Migration `20261022180000_player_groups.sql`. Páginas `/grupos` e `/grupos/[id]` (aba "Grupos" na área logada).
+
+- `player_groups` (dono, nome, tipo `club|school|coach`) + `player_group_members` (jogador + anotação privada). RLS: só o dono (`is_player_group_owner`). CRUD por `/api/groups` e `/api/groups/[id]/members` com o cliente da sessão.
+- O grupo só **organiza** dados que o logado já vê; nada novo de jogador é liberado. Anotações são privadas do dono.
+- Painel: `get_group_overview(grupo, dias)` (ratings atuais + partidas/pontos/PGN no período + último torneio) e `get_group_recent_games(grupo, dias, só_com_lances)` (até 300, mais novas primeiro). As duas checam o dono e usam `_group_member_games` (interna, sem grant). Conferido: os totais por jogador batem com `get_player_history`.
+- Limite: entitlement `groups.players` = jogadores distintos somando os grupos da conta (gratuito e Jogador+: 5; demais sem teto; cobrança desligada = sem teto), no trigger `enforce_group_players_limit`.
+- Ordenação, resumo e idade: `lib/groups/overview.ts` (testes em `lib/__tests__/groups.test.ts`). Aproveitamento só ordena quem jogou ≥ 3 partidas.

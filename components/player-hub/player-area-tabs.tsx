@@ -4,7 +4,7 @@ import { Link, usePathname } from '@/i18n/navigation';
 import { cn } from '@/lib/utils/cn';
 import { useUnreadChatCount } from '@/lib/hooks/use-chat';
 
-/** Abas da área logada: Minha área · Mensagens (com selo de não lidas) · Alertas · Relatórios. Mesmo desenho das abas do torneio. */
+/** Abas da área logada: Minha área · Mensagens (com selo de não lidas) · Alertas · Relatórios · Grupos. Mesmo desenho das abas do torneio. */
 export function PlayerAreaTabs() {
   const pathname = usePathname();
   const { data: unread = 0 } = useUnreadChatCount(true);
@@ -13,6 +13,7 @@ export function PlayerAreaTabs() {
     { href: '/minha-area/mensagens', label: 'Mensagens', active: pathname.startsWith('/minha-area/mensagens'), badge: unread },
     { href: '/alertas', label: 'Alertas', active: pathname.startsWith('/alertas') },
     { href: '/relatorios', label: 'Relatórios', active: pathname.startsWith('/relatorios') },
+    { href: '/grupos', label: 'Grupos', active: pathname.startsWith('/grupos') },
   ];
   return (
     <nav className="mb-6 flex overflow-x-auto border-b border-gray-200 dark:border-gray-800">
