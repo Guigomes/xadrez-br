@@ -1,4 +1,5 @@
 import { Link } from '@/i18n/navigation';
+import { PlayerAreaTabs } from '@/components/player-hub/player-area-tabs';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getSessionUser } from '@/lib/data/session';
 import { isBillingEnabled } from '@/lib/data/billing';
@@ -83,6 +84,7 @@ export default async function RelatoriosPage() {
 
   return (
     <div className="container-app max-w-3xl py-8 space-y-8">
+      {user && <PlayerAreaTabs />}
       <header>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Relatório de desempenho</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">

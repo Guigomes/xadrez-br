@@ -19,7 +19,8 @@ export type EntitlementKey =
   | 'import.chessresults'
   | 'branding.custom'
   | 'support.priority'
-  | 'account.multiuser';
+  | 'account.multiuser'
+  | 'alerts.rules';
 
 export interface Entitlement {
   key: EntitlementKey;

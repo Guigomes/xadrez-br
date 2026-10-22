@@ -118,13 +118,14 @@ export const ENTITLEMENT_LABELS: Record<string, string> = {
   'branding.custom':      'Marca própria (branding)',
   'support.priority':     'Suporte prioritário',
   'account.multiuser':    'Conta multiusuário',
+  'alerts.rules':         'Alertas de torneios ativos',
 };
 
 /** Ordem de exibição — mesma ordem das chaves acima (capacidade primeiro). */
 export const ENTITLEMENT_ORDER = Object.keys(ENTITLEMENT_LABELS);
 
 /** As três chaves onde limit_int null significa "sem teto" (não "não se aplica"). */
-const CAPACITY_KEYS = new Set(['tournaments.active', 'tournament.players', 'tournament.groups']);
+const CAPACITY_KEYS = new Set(['tournaments.active', 'tournament.players', 'tournament.groups', 'alerts.rules']);
 
 /** Linha pronta pra exibir numa lista de funcionalidades: rótulo + teto, quando fizer sentido. */
 export function formatEntitlementLine(key: string, limitInt: number | null): string {

@@ -149,6 +149,16 @@ Frente 2 do plano. Migration `20261022130000_registration_settlement.sql`. O din
 - `tournament_payouts` (só admin escreve, RLS) + `/admin/repasses` (`get_payout_overview`, saldo por torneio e formulário de repasse). Rota `POST /api/admin/tournaments/[slug]/payouts` usa o cliente da sessão, não service_role.
 - Regras puras e testes: `lib/finance/settlement.ts`, `lib/__tests__/settlement.test.ts`.
 
+## Alertas de torneios (2026-10-22)
+
+Frente 4 do plano. Migration `20261022140000_tournament_alerts.sql`. Página `/alertas` (também nas abas da área logada).
+
+- **Regras** (`tournament_alert_rules`): estados + ritmos (`std/rpd/blz`; lista vazia = todos) + incluir calendário da CBX. CRUD por `/api/alerts/rules` com o cliente da sessão (RLS `user_id = auth.uid()`). Limite pelo plano: entitlement `alerts.rules` (gratuito 1, demais sem teto; cobrança desligada = sem teto), aplicado no trigger `enforce_alert_rule_limit`.
+- **Fontes**: torneios públicos do site ainda por começar + `cbx_calendar_events`, espelho do calendário oficial da CBX (`lib/alerts/cbx-calendar.ts`, página ASP.NET com postback de mês e paginação; mês atual e o seguinte). UF vem do "Local" (sigla no fim ou capital conhecida) ou da federação organizadora; sem UF só casa com regra sem filtro de estado. O mesmo torneio no site e na CBX (nome + data) aparece uma vez.
+- **Rodada diária**: `POST /api/internal/tournament-alerts` (header `x-cron-secret` = `CRON_PUSH_SECRET`), chamada pelo `cron-import` a cada ciclo (`triggerTournamentAlerts`) e auto-limitada a uma vez a cada 20 h (`app_settings.alerts_last_run_at`; `?force=1` ignora). Avisa só torneio que apareceu **depois** da criação da regra (alerta é de novidade), grava em `tournament_alert_deliveries` (nunca repete) e manda um push-resumo por usuário (`sendUserNotification`).
+- **Push global** (`/api/push/subscribe` sem torneio) num aparelho que já acompanha um torneio só vincula a conta e renova as chaves — não apaga torneio nem jogadores seguidos.
+- Regras puras e testes: `lib/alerts/match.ts`, `lib/__tests__/alerts.test.ts`.
+
 ## O que NÃO existe ainda (não assumir implementado)
 
 - Exportação de PDF server-side (usa `window.print()` do navegador, páginas `/print` dedicadas).

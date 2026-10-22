@@ -24,6 +24,24 @@ export async function POST(request: NextRequest) {
     validPlayerIds = [...new Set((tournamentPlayers ?? []).map((player) => player.player_id))];
   }
 
+  // Inscrição global (sem torneio, ex.: /alertas) num aparelho que já acompanha
+  // um torneio: só vincula a conta e renova as chaves. Não pode apagar o
+  // torneio nem os jogadores seguidos — os avisos por conta (sendUserNotification)
+  // já chegam a qualquer inscrição do usuário.
+  if (!tournamentId) {
+    const { data: existing } = await admin
+      .from('push_subscriptions').select('tournament_id').eq('endpoint', subscription.endpoint).maybeSingle();
+    if (existing?.tournament_id) {
+      const { error } = await admin.from('push_subscriptions').update({
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        ...(user ? { user_id: user.id } : {}),
+      }).eq('endpoint', subscription.endpoint);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+  }
+
   const { error } = await admin.from('push_subscriptions').upsert({
     endpoint: subscription.endpoint,
     p256dh: subscription.keys.p256dh,
