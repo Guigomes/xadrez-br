@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createAsaasCustomer, createAsaasPayment, type AsaasBillingType } from '@/lib/asaas/client';
-import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { todayInBrazil } from '@/lib/utils/date';
 import { platformFeeCents } from '@/lib/finance/settlement';
 
 // Inicia a cobrança avulsa da taxa de inscrição (migration 078) — chamada
@@ -71,7 +71,7 @@ export async function POST(
       customer: asaasCustomerId,
       billingType: type,
       value: tournament.registration_fee_cents / 100,
-      dueDate: todayInSaoPaulo(),
+      dueDate: todayInBrazil(),
       description: `Inscrição — ${tournament.name}`,
     });
 

@@ -9,6 +9,7 @@ import { isInternationalTournament, federationName, federationFlagUrl } from '@/
 import { playerDisplayName } from '@/lib/utils/player-name';
 import { FederationBadge } from '@/components/player/origin-badge';
 import { formatScore } from '@/lib/utils/chess';
+import { normalizeSearchText } from '@/lib/utils/text';
 import { CountryPicker, CountryRankingSort } from '@/components/tournament/country-picker';
 import type { StandingRow } from '@/types/database';
 
@@ -121,7 +122,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
     redirect({ href: `/torneios/${slug}/players/${sp.jogador}`, locale });
   }
   const searchQuery = sp.q?.trim().slice(0, 80) ?? '';
-  const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const normalize = normalizeSearchText;
 
   const byCountry = new Map<string, CountryStats>();
   for (const r of rows) {

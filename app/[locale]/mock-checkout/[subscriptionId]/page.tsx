@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 // esta URL quando ASAAS_API_KEY não está configurada (lib/asaas/client.ts,
 // modo mock). Aqui o "pagamento" é o próprio usuário clicando no botão, que
 // chama app/api/mock/asaas-confirm — essa rota se recusa a rodar assim que
-// uma ASAAS_API_KEY real existir, então esta tela nunca aparece em produção
-// com conta configurada.
+// uma ASAAS_API_KEY real existir ou em produção (VERCEL_ENV=production) —
+// lá o botão só recebe 404, e a cobrança nem gera link para cá.
 
 export default function MockCheckoutPage() {
   const params = useParams<{ subscriptionId: string }>();

@@ -4,7 +4,7 @@ import { fetchCbxMonth } from '@/lib/alerts/cbx-calendar';
 import { loadUpcomingItems, type FeedItem } from '@/lib/alerts/feed';
 import { alertMessage, matchesRule } from '@/lib/alerts/match';
 import { sendUserNotification } from '@/lib/push';
-import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { todayInBrazil } from '@/lib/utils/date';
 
 // Rodada diária dos alertas de torneio. Chamada pelo worker cron-import (que
 // roda a cada poucos minutos) com o mesmo segredo do push de rodada; a rota
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   // lenta não pode ser disparada de novo por cima.
   await admin.from('app_settings').upsert({ key: 'alerts_last_run_at', value: new Date().toISOString(), updated_at: new Date().toISOString() });
 
-  const today = todayInSaoPaulo();
+  const today = todayInBrazil();
   const [year, month] = today.split('-').map(Number);
   const months = [[year, month], month === 12 ? [year + 1, 1] : [year, month + 1]];
   let cbxCount = 0;

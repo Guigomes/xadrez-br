@@ -4,9 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { compareParticipantOrder } from '@/lib/utils/chess';
 import type {
-  Tournament, TournamentFormValues, TournamentListItem,
-  TournamentCategory, Round, StandingRow, RoundPairingRow,
-  TournamentPlayer, PairingResultUpdate, GameResult,
+  Tournament, TournamentFormValues, Round, StandingRow, RoundPairingRow,
 } from '@/types/database';
 
 const supabase = createClient();
@@ -31,24 +29,6 @@ export const tournamentKeys = {
 // Public hooks
 // ============================================================
 
-export function useTournamentList(filters?: { query?: string; state?: string; status?: string }) {
-  return useQuery({
-    queryKey: tournamentKeys.list(filters ?? {}),
-    queryFn: async (): Promise<TournamentListItem[]> => {
-      const { data, error } = await supabase.rpc('search_tournaments', {
-        p_query:  filters?.query  || undefined,
-        p_state:  filters?.state  || undefined,
-        p_status: (filters?.status as any) || undefined,
-        p_limit:  50,
-        p_offset: 0,
-      });
-      if (error) throw error;
-      return data ?? [];
-    },
-    staleTime: 30_000,
-  });
-}
-
 export function useTournament(slug: string) {
   return useQuery({
     queryKey: tournamentKeys.detail(slug),
@@ -68,24 +48,6 @@ export function useTournament(slug: string) {
     // anunciando "atualiza a cada 30 segundos" num torneio já encerrado, e o
     // card de encerramento só aparecia depois de um F5.
     refetchInterval: 60_000,
-  });
-}
-
-export function useTournamentCategories(tournamentId: string) {
-  return useQuery({
-    queryKey: tournamentKeys.categories(tournamentId),
-    enabled: !!tournamentId,
-    queryFn: async (): Promise<TournamentCategory[]> => {
-      const { data, error } = await supabase
-        .from('tournament_categories')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('name');
-      if (error) throw error;
-      // `sex` é `text` no banco; a app restringe a 'm'|'w'|null.
-      return (data ?? []) as TournamentCategory[];
-    },
-    staleTime: 300_000,
   });
 }
 
@@ -270,27 +232,6 @@ export function usePlayerHistory(tournamentId: string, tpId: string) {
 // Admin mutations
 // ============================================================
 
-export function useCreateTournament() {
-  const qc = useQueryClient();
-  return useMutation({
-    // Sem call site hoje (a criação real passa por
-    // lib/utils/create-tournament-setup.ts, que já calcula `slug`) — o
-    // type-check pegou que `tournaments.slug` é obrigatório e não está em
-    // `TournamentFormValues`. Se este hook voltar a ser usado, `values`
-    // precisa incluir `slug` antes do cast parar de ser seguro.
-    mutationFn: async (values: TournamentFormValues & { created_by: string; slug: string }) => {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .insert(values)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.lists() }),
-  });
-}
-
 export function useUpdateTournament(tournamentId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -307,78 +248,6 @@ export function useUpdateTournament(tournamentId: string) {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: tournamentKeys.lists() });
       qc.invalidateQueries({ queryKey: tournamentKeys.detail(data.slug) });
-    },
-  });
-}
-
-export function useCreateRound(tournamentId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (roundNumber: number) => {
-      const { data, error } = await supabase
-        .from('rounds')
-        .insert({ tournament_id: tournamentId, round_number: roundNumber, status: 'pending' })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.rounds(tournamentId) }),
-  });
-}
-
-export function useUpdateRoundStatus(tournamentId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ roundId, status }: { roundId: string; status: 'pending' | 'ongoing' | 'finished' }) => {
-      const { error } = await supabase
-        .from('rounds')
-        .update({ status, published_at: status === 'ongoing' ? new Date().toISOString() : undefined })
-        .eq('id', roundId);
-      if (error) throw error;
-      if (status === 'ongoing' || status === 'finished') {
-        await fetch(`/api/admin/rounds/${roundId}/notify`, { method: 'POST' }).catch(() => undefined);
-      }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.rounds(tournamentId) }),
-  });
-}
-
-export function useUpdatePairingResult(tournamentId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ pairingId, result }: { pairingId: string; result: GameResult }) => {
-      const pointMap: Record<GameResult, [number | null, number | null]> = {
-        '1-0':          [1, 0],
-        '0-1':          [0, 1],
-        '1/2-1/2':     [0.5, 0.5],
-        '*':            [null, null],
-        'bye':          [1, null],
-        'not_paired':   [0, null],
-        'forfeit_white':[0, 1],
-        'forfeit_black':[1, 0],
-        'double_forfeit':[0, 0],
-      };
-      const [wp, bp] = pointMap[result];
-      const { error } = await supabase
-        .from('pairings')
-        .update({ result, white_points: wp, black_points: bp })
-        .eq('id', pairingId);
-      if (error) throw error;
-    },
-    onSuccess: async (_, { pairingId }) => {
-      // Recalculate standings via RPC
-      await supabase.rpc('recalculate_standings', { p_tournament_id: tournamentId });
-      const { data: pairing } = await supabase
-        .from('pairings')
-        .select('round_id')
-        .eq('id', pairingId)
-        .maybeSingle();
-      if (pairing?.round_id) {
-        await fetch(`/api/admin/rounds/${pairing.round_id}/notify`, { method: 'POST' }).catch(() => undefined);
-      }
-      qc.invalidateQueries({ queryKey: tournamentKeys.standings(tournamentId) });
-      qc.invalidateQueries({ queryKey: ['pairings'] });
     },
   });
 }

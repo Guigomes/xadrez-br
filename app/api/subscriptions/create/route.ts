@@ -7,7 +7,7 @@ import {
   type AsaasBillingType,
   type AsaasCycle,
 } from '@/lib/asaas/client';
-import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { todayInBrazil } from '@/lib/utils/date';
 import { isBillingEnabled } from '@/lib/data/billing';
 
 // Cria a assinatura recorrente na Asaas pro plano escolhido e devolve o link
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       billingType: type,
       value: plan.price_cents / 100,
       cycle,
-      nextDueDate: todayInSaoPaulo(),
+      nextDueDate: todayInBrazil(),
       description: `Gambito Torneios — plano ${plan.name}`,
     });
 

@@ -95,7 +95,7 @@ export default async function RelatoriosPage() {
         </ul>
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
           Valor por relatório: <strong>{charge.charge ? formatPriceBRL(charge.priceCents) : 'gratuito durante o lançamento'}</strong>.
-          O relatório é produzido a partir das partidas registradas no Xadrez BR e entregue em PDF.
+          O relatório é produzido a partir das partidas registradas no Gambito Torneios e entregue em PDF.
           Só aparecem torneios com partidas que têm os lances registrados; partidas sem lances entram na tabela, mas não na análise.
         </p>
       </header>

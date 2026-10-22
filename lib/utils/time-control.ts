@@ -33,14 +33,6 @@ export const TIME_CONTROL_PRESETS: TimeControlPreset[] = [
 /** Valor especial do select que revela o campo de texto livre. */
 export const TIME_CONTROL_OTHER = '__other__';
 
-export const TIME_CONTROL_KIND_LABELS: Record<TimeControlKind, string> = {
-  bullet: 'Bullet',
-  blitz: 'Blitz',
-  rapid: 'Rápido',
-  classical: 'Clássico',
-  other: 'Outro',
-};
-
 /** Acha o preset por texto exato (usado no edit pra pré-selecionar). */
 export function findPresetByValue(value: string | null | undefined): TimeControlPreset | undefined {
   if (!value) return undefined;

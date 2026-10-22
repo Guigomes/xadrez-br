@@ -9,7 +9,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { createClient } from '@/lib/supabase/client';
 import { tournamentKeys } from '@/lib/hooks/use-tournament';
 import { useProfile } from '@/lib/hooks/use-auth';
-import { getTournamentStatusColor, getTournamentStatusLabel, todayInSaoPaulo } from '@/lib/utils/chess';
+import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
+import { todayInBrazil } from '@/lib/utils/date';
 import { TOUR_STEPS } from '@/lib/tour/steps';
 import { writeProgress, TOUR_ENABLED } from '@/lib/tour/state';
 import type { TournamentMode, TournamentStatus, TablesUpdate } from '@/types/database';
@@ -102,7 +103,7 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
         newStatus === 'registration' &&
         patch.registration_closes_by_date === true &&
         registrationEndDate &&
-        registrationEndDate < todayInSaoPaulo()
+        registrationEndDate < todayInBrazil()
       ) {
         patch.registration_closes_by_date = false;
       }

@@ -112,22 +112,6 @@ export async function sendFcmToAdmins(payload: {
   }
 }
 
-// Notify all subscribers of a tournament regardless of user_id
-export async function sendTournamentNotification(
-  tournamentId: string,
-  payload: PushPayload
-) {
-  initVapid();
-  const admin = createAdminClient();
-  const { data: subs, error } = await admin
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .eq('tournament_id', tournamentId);
-
-  console.log(`[push] tournament ${tournamentId}: ${subs?.length ?? 0} subs, error=${error?.message}`);
-  await sendToSubscriptions(admin, subs ?? [], payload);
-}
-
 async function getTrackedUserIds(
   admin: AdminClient,
   tournamentId: string,
@@ -265,71 +249,3 @@ export async function sendOperatorNotification(payload: { title: string; body: s
   await sendToSubscriptions(admin, subs ?? [], payload);
 }
 
-// Notify users who follow specific players (by tp_id) in a tournament
-export async function notifyPlayerFollowers(
-  tournamentId: string,
-  players: Array<{
-    tpId: string;
-    makePayload: (playerName: string) => { title: string; body: string; url?: string };
-  }>
-) {
-  if (!players.length) return;
-  initVapid();
-  const admin = createAdminClient();
-
-  const tpIds = players.map((p) => p.tpId);
-
-  const { data: tps } = await admin
-    .from('tournament_players')
-    .select('id, player_id, players(full_name)')
-    .eq('tournament_id', tournamentId)
-    .in('id', tpIds);
-
-  if (!tps?.length) return;
-
-  const playerIds = tps.map((tp) => tp.player_id);
-
-  const [{ data: follows }, { data: linkedAccounts }] = await Promise.all([
-    admin.from('player_follows').select('user_id, player_id')
-      .eq('tournament_id', tournamentId).in('player_id', playerIds),
-    admin.from('user_player_links').select('user_id, player_id')
-      .eq('status', 'verified').in('player_id', playerIds),
-  ]);
-  const recipients = [...(follows ?? []), ...(linkedAccounts ?? [])];
-  if (!recipients.length) return;
-
-  const userIds = [...new Set(recipients.map((f) => f.user_id))];
-
-  const { data: subs } = await admin
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth, user_id')
-    .in('user_id', userIds);
-
-  if (!subs?.length) return;
-
-  const tpToPlayer = new Map(tps.map((tp) => [
-    tp.id,
-    { playerId: tp.player_id, name: (tp as any).players?.full_name ?? '' },
-  ]));
-  const playerToUsers = new Map<string, string[]>();
-  recipients.forEach((f) => {
-    if (!playerToUsers.has(f.player_id)) playerToUsers.set(f.player_id, []);
-    if (!playerToUsers.get(f.player_id)!.includes(f.user_id)) playerToUsers.get(f.player_id)!.push(f.user_id);
-  });
-  const userToSubs = new Map<string, typeof subs>();
-  subs.forEach((s) => {
-    // user_id é nullable no banco; sem usuário não tem pra quem notificar.
-    if (!s.user_id) return;
-    if (!userToSubs.has(s.user_id)) userToSubs.set(s.user_id, []);
-    userToSubs.get(s.user_id)!.push(s);
-  });
-
-  for (const player of players) {
-    const tp = tpToPlayer.get(player.tpId);
-    if (!tp) continue;
-    const payload = player.makePayload(tp.name);
-    const uids = playerToUsers.get(tp.playerId) ?? [];
-    const subsForPlayer = uids.flatMap((uid) => userToSubs.get(uid) ?? []);
-    await sendToSubscriptions(admin, subsForPlayer, payload);
-  }
-}

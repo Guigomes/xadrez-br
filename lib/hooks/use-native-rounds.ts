@@ -193,24 +193,6 @@ export function useDraftWarnings(tournamentSlug: string, roundId: string, enable
   });
 }
 
-export function useSwapDraft(tournamentId: string, groupId: string, roundId: string) {
-  const qc = useQueryClient();
-  const invalidate = useInvalidate(tournamentId, groupId);
-  return useMutation({
-    mutationFn: async (moves: Array<{ pairing_id: string; white_tp: string; black_tp: string | null }>) => {
-      const { error } = await supabase.rpc('swap_draft_players', {
-        p_round_id: roundId, p_moves: moves,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      invalidate();
-      qc.invalidateQueries({ queryKey: ['pairings', roundId] });
-      qc.invalidateQueries({ queryKey: ['draft-warnings', roundId] });
-    },
-  });
-}
-
 export function useOverridePairing(tournamentId: string, groupId: string, roundId: string) {
   const qc = useQueryClient();
   const invalidate = useInvalidate(tournamentId, groupId);

@@ -5,7 +5,7 @@ import { getTournamentPageData } from '@/lib/data/tournament-page-data';
 import { getSessionUser } from '@/lib/data/session';
 import { RegistrationForm } from '@/components/tournament/registration-form';
 import { formatDateRange } from '@/lib/utils/date';
-import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { todayInBrazil } from '@/lib/utils/date';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 // a tela dizia que a inscrição tinha encerrado 3h antes da hora. Mesmo
 // motivo do today_brt() no banco (migration 043): as três checagens de
 // janela (esta, a RLS e o selo de status) precisam concordar sobre "hoje".
-const todayISO = todayInSaoPaulo;
+const todayISO = todayInBrazil;
 
 export default async function RegisterPage({ params }: Props) {
   const { slug } = await params;

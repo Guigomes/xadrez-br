@@ -12,7 +12,10 @@ export interface FeedItem extends AlertItem {
   slug: string | null;
 }
 
-const RATING_TC: Record<string, TimeControl> = { std: 'std', rpd: 'rpd', blz: 'blz' };
+// Ritmo do torneio do site vem de time_control_kind (o que a tela e o histórico usam).
+// rating_kind NÃO serve: nasce 'std' por padrão e discorda do ritmo real em boa parte
+// dos torneios importados (rápido/blitz marcados como std).
+const KIND_TC: Record<string, TimeControl> = { classical: 'std', rapid: 'rpd', blitz: 'blz', bullet: 'blz' };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function loadUpcomingItems(admin: any, today: string, untilDays = 120): Promise<FeedItem[]> {
@@ -22,7 +25,7 @@ export async function loadUpcomingItems(admin: any, today: string, untilDays = 1
 
   const [{ data: site }, { data: cbx }] = await Promise.all([
     admin.from('tournaments')
-      .select('id, slug, name, start_date, end_date, city, state, rating_kind, organizer_name, created_at')
+      .select('id, slug, name, start_date, end_date, city, state, time_control_kind, organizer_name, created_at')
       .eq('is_public', true)
       .in('status', ['published', 'registration', 'registration_closed'])
       .gte('start_date', today).lte('start_date', untilIso),
@@ -34,7 +37,7 @@ export async function loadUpcomingItems(admin: any, today: string, untilDays = 1
   const items: FeedItem[] = [
     ...(site ?? []).map((t: Record<string, string | null>) => ({
       source: 'site' as const, refId: t.id!, name: t.name!, startDate: String(t.start_date).slice(0, 10),
-      endDate: t.end_date ? String(t.end_date).slice(0, 10) : null, uf: t.state, timeControl: RATING_TC[t.rating_kind ?? ''] ?? null,
+      endDate: t.end_date ? String(t.end_date).slice(0, 10) : null, uf: t.state, timeControl: KIND_TC[t.time_control_kind ?? ''] ?? null,
       seenAt: t.created_at!, location: t.city, organizer: t.organizer_name, slug: t.slug,
     })),
     ...(cbx ?? []).map((e: Record<string, string | null>) => ({

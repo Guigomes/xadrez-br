@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { ExternalIdLinks } from '@/components/player/external-id-links';
 import { formatScore, BR_STATES, compareGroupNames } from '@/lib/utils/chess';
+import { normalizeSearchText } from '@/lib/utils/text';
 import type { PlayerFormValues, PairingGroup, TournamentCategory } from '@/types/database';
 
 interface Props {
@@ -101,7 +102,7 @@ export default function AdminPlayersPage({ params }: Props) {
 
   // Busca por nome, cidade/UF, clube, CBX ou FIDE — sem acento e sem diferenciar
   // maiúsculas, igual à lista pública de participantes.
-  const norm = (v: unknown) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const norm = (v: unknown) => normalizeSearchText(String(v ?? ''));
   const query = norm(search.trim());
   const visiblePlayers = query
     ? (tPlayers ?? []).filter((tp) => {

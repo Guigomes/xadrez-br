@@ -8,10 +8,27 @@
 // credencial nenhuma. `invoiceUrl` mockado aponta pra /mock-checkout dentro
 // do próprio app, que finaliza o "pagamento" chamando
 // app/api/mock/asaas-confirm — essa rota se autodesliga assim que
-// ASAAS_API_KEY for preenchida de verdade (ver comentário lá).
+// ASAAS_API_KEY for preenchida de verdade (ver comentário lá). Em produção
+// (VERCEL_ENV=production) o mock nunca liga, com ou sem chave.
+
+// Deploy de produção na Vercel. O mock nunca vale lá: sem chave da Asaas em
+// produção, cobrar é erro (o caller devolve a mensagem), não pagamento de mentira
+// que qualquer usuário logado confirmaria sozinho pelo /mock-checkout.
+function isProductionDeploy(): boolean {
+  return process.env.VERCEL_ENV === 'production';
+}
+
+/** Mock liberado: sem chave da Asaas E fora da produção (dev local, preview). */
+export function asaasMockAllowed(): boolean {
+  return !process.env.ASAAS_API_KEY && !isProductionDeploy();
+}
 
 function isMockMode(): boolean {
-  return !process.env.ASAAS_API_KEY;
+  if (process.env.ASAAS_API_KEY) return false;
+  if (isProductionDeploy()) {
+    throw new Error('Pagamento online ainda não configurado. Fale com o suporte.');
+  }
+  return true;
 }
 
 function appUrl(): string {

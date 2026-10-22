@@ -12,13 +12,12 @@ import { formatDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
 import { useIsDev } from '@/lib/hooks/use-is-dev';
 
+import { normalizeSearchText } from '@/lib/utils/text';
 const PAGE = 40;
 
 const KIND_LABEL: Record<string, string> = { classical: 'Clássico', rapid: 'Rápido', blitz: 'Blitz', bullet: 'Bullet' };
 
-function normalize(s: string) {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-}
+const normalize = normalizeSearchText;
 
 export default function HistoryPage() {
   const { data: tournaments, isLoading } = useHistoryTournaments();

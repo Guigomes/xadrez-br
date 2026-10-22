@@ -9,7 +9,7 @@ import { NotifyButton } from '@/components/tournament/notify-button';
 import { AlertRuleActions, AlertRuleForm } from '@/components/alerts/rule-form';
 import { loadUpcomingItems } from '@/lib/alerts/feed';
 import { TIME_CONTROL_LABEL, matchesRule, type TimeControl } from '@/lib/alerts/match';
-import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { todayInBrazil } from '@/lib/utils/date';
 
 export const metadata: Metadata = {
   title: 'Alertas de torneios',
@@ -46,7 +46,7 @@ export default async function AlertasPage() {
   const [{ data: rulesRaw }, entitlements, items] = await Promise.all([
     supabase.from('tournament_alert_rules').select('id, name, ufs, time_controls, include_cbx, active, created_at').order('created_at'),
     getEntitlements(),
-    loadUpcomingItems(createAdminClient(), todayInSaoPaulo(), 90),
+    loadUpcomingItems(createAdminClient(), todayInBrazil(), 90),
   ]);
   const rules: Rule[] = rulesRaw ?? [];
   const activeRules = rules.filter((r) => r.active);
@@ -121,7 +121,7 @@ export default async function AlertasPage() {
                     <Badge className={i.source === 'site'
                       ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300'
                       : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}>
-                      {i.source === 'site' ? 'No Xadrez BR' : 'Calendário CBX'}
+                      {i.source === 'site' ? 'No Gambito Torneios' : 'Calendário CBX'}
                     </Badge>
                   </div>
                 </li>

@@ -1,4 +1,5 @@
 import type { GameResult, TournamentStatus, RoundStatus, TournamentType, RatingKind } from '@/types/database';
+import { todayInBrazil } from './date';
 
 // ============================================================
 // Game result helpers
@@ -34,17 +35,6 @@ export function resultLabel(result: GameResult, forWhite: boolean): string {
     case 'forfeit_black': return forWhite ? 'WO adversário' : 'WO';
     case 'double_forfeit': return 'Duplo WO';
     case '*':         return 'Em andamento';
-    default:          return '–';
-  }
-}
-
-export function resultScore(result: GameResult, forWhite: boolean): string {
-  switch (result) {
-    case '1-0':       return forWhite ? '1' : '0';
-    case '0-1':       return forWhite ? '0' : '1';
-    case '1/2-1/2':  return '½';
-    case 'bye':       return '1';
-    case '*':         return '–';
     default:          return '–';
   }
 }
@@ -105,12 +95,6 @@ export const RATING_KIND_LABELS: Record<RatingKind, string> = {
   blz: 'Blitz',
 };
 
-export function todayInSaoPaulo(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date());
-}
 
 /**
  * 'registration_closed' já é status real no banco (migration 038), mas isso
@@ -134,7 +118,7 @@ export function isRegistrationClosed(
   if (status === 'registration_closed') return true;
   if (status !== 'registration' || !registrationEndDate) return false;
   if (!registrationClosesByDate) return false;
-  return registrationEndDate < todayInSaoPaulo();
+  return registrationEndDate < todayInBrazil();
 }
 
 export function getTournamentStatusLabel(
@@ -249,11 +233,6 @@ export function formatScore(score: number | null | undefined): string {
   if (score === null || score === undefined) return '–';
   if (score % 1 === 0.5) return `${Math.floor(score)}½`;
   return score.toString();
-}
-
-export function formatRating(rating: number | null | undefined): string {
-  if (!rating) return 'sem rating';
-  return rating.toString();
 }
 
 export function formatTiebreak(value: number | null | undefined): string {

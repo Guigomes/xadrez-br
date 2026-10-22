@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { applyAsaasPaymentEvent } from '@/lib/asaas/webhook-handler';
-import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { asaasMockAllowed } from '@/lib/asaas/client';
+import { todayInBrazil } from '@/lib/utils/date';
 
 // Simula a Asaas confirmando o pagamento — só existe pra exercitar o fluxo
-// de assinatura sem conta Asaas real. Some sozinha assim que ASAAS_API_KEY
-// for preenchida: em modo real, quem confirma pagamento é a Asaas via
+// de assinatura sem conta Asaas real. Nunca vale em produção, e some sozinha
+// assim que ASAAS_API_KEY for preenchida: em modo real, quem confirma pagamento é a Asaas via
 // webhook assinado, nunca o próprio navegador do usuário.
 
 export async function POST(request: NextRequest) {
-  if (process.env.ASAAS_API_KEY) {
-    return NextResponse.json({ error: 'Mock desativado — ASAAS_API_KEY já configurada.' }, { status: 404 });
+  if (!asaasMockAllowed()) {
+    return NextResponse.json({ error: 'Mock desativado (produção ou ASAAS_API_KEY configurada).' }, { status: 404 });
   }
 
   const supabase = await createClient();
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
       payment: {
         id: `pay_mock_confirm_${Date.now()}`,
         subscription: subscription.asaas_subscription_id,
-        dueDate: todayInSaoPaulo(),
+        dueDate: todayInBrazil(),
       },
     });
     return NextResponse.json({ ok: true, ...result });

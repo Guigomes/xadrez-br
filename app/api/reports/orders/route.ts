@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { createAsaasCustomer, createAsaasPayment, type AsaasBillingType } from '@/lib/asaas/client';
 import { isBillingEnabled } from '@/lib/data/billing';
-import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { todayInBrazil } from '@/lib/utils/date';
 import { initialOrderState, isValidCpfCnpjShape, resolveReportCharge } from '@/lib/reports/orders';
 import { loadReportCandidates } from '@/lib/reports/candidates';
 
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       customer: customerId,
       billingType: type,
       value: charge.priceCents / 100,
-      dueDate: todayInSaoPaulo(),
+      dueDate: todayInBrazil(),
       description: `Relatório de desempenho — ${tournamentName}`,
     });
     await admin.from('report_orders').update({

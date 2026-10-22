@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/server';
 
+import { normalizeSearchText } from '@/lib/utils/text';
 interface ImportedParticipant {
   fullName: string;
   sourceName: string;
@@ -20,9 +21,7 @@ const BR_STATE_CODES = new Set([
   'SP', 'SE', 'TO',
 ]);
 
-function normalize(value: string) {
-  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-}
+const normalize = normalizeSearchText;
 
 function normalizeNameKey(value: string) {
   return normalize(value.replace(/,/g, ' '))

@@ -5,7 +5,7 @@
 import { cbxTimeControl, ufFromLocation, ufFromOrganizer, type TimeControl } from './match';
 
 const BASE = 'https://www.cbx.org.br/torneios';
-const HEADERS = { 'User-Agent': 'Mozilla/5.0 (XadrezBR alertas)' };
+const HEADERS = { 'User-Agent': 'Mozilla/5.0 (GambitoTorneios alertas)' };
 
 export interface CbxCalendarEvent {
   cbxId: string;

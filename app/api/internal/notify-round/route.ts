@@ -16,7 +16,7 @@ import {
   resultNotificationBody,
   summarizeCategoryRounds,
 } from '@/lib/tournament-notifications';
-import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { todayInBrazil } from '@/lib/utils/date';
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 type NotificationEventType =
@@ -163,7 +163,7 @@ function tournamentSkipReason(tournament: TournamentInfo): string | null {
   }
   if (tournament.status !== 'ongoing') {
     const eventDate = tournament.end_date ?? tournament.start_date;
-    if (eventDate && eventDate < todayInSaoPaulo()) {
+    if (eventDate && eventDate < todayInBrazil()) {
       return 'torneio já encerrado por data — provável reimportação histórica';
     }
   }

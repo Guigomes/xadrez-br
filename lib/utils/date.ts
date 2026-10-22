@@ -1,4 +1,4 @@
-import { format, parseISO, formatDistanceToNow, isAfter, isBefore } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function formatDate(date: string | Date, pattern = 'dd/MM/yyyy'): string {
@@ -14,17 +14,6 @@ export function formatDateRange(start: string, end: string | null): string {
     return `${format(s, 'dd', { locale: ptBR })} a ${format(e, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}`;
   }
   return `${formatDate(start, "dd/MM/yyyy")} – ${formatDate(end, "dd/MM/yyyy")}`;
-}
-
-export function timeAgo(date: string): string {
-  return formatDistanceToNow(parseISO(date), { locale: ptBR, addSuffix: true });
-}
-
-export function isTournamentActive(startDate: string, endDate: string | null): boolean {
-  const start = parseISO(startDate);
-  const end = endDate ? parseISO(endDate) : start;
-  const now = new Date();
-  return !isAfter(start, now) && !isBefore(end, now);
 }
 
 export function todayInBrazil(): string {

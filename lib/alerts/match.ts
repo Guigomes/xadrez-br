@@ -1,5 +1,7 @@
 // Regras puras dos alertas de torneio (sem banco nem rede) — testáveis.
 
+import { normalizeSearchText } from '../utils/text';
+
 export type TimeControl = 'std' | 'rpd' | 'blz';
 
 export const TIME_CONTROL_LABEL: Record<TimeControl, string> = { std: 'Clássico', rpd: 'Rápido', blz: 'Blitz' };
@@ -38,7 +40,7 @@ export function matchesRule(rule: AlertRule, item: AlertItem): boolean {
 
 /** Mesmo torneio pode estar no site e na CBX: some a cópia da CBX quando o nome e a data batem. */
 export function dedupeAcrossSources(items: AlertItem[]): AlertItem[] {
-  const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const norm = (s: string) => normalizeSearchText(s).replace(/[^a-z0-9]+/g, ' ').trim();
   const siteKeys = new Set(items.filter((i) => i.source === 'site').map((i) => `${i.startDate}|${norm(i.name)}`));
   return items.filter((i) => i.source === 'site' || !siteKeys.has(`${i.startDate}|${norm(i.name)}`));
 }
@@ -58,7 +60,7 @@ export function alertMessage(items: AlertItem[]): { title: string; body: string 
 
 /** Ritmo informado pela CBX ("Clássico", "Rápido", "Blitz") no código do site. */
 export function cbxTimeControl(label: string | null | undefined): TimeControl | null {
-  const s = String(label ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const s = normalizeSearchText(String(label ?? ''));
   if (s.startsWith('class') || s.includes('pensado') || s.includes('standard')) return 'std';
   if (s.startsWith('rap')) return 'rpd';
   if (s.startsWith('blitz') || s.startsWith('relamp')) return 'blz';
@@ -79,7 +81,7 @@ export function ufFromLocation(location: string | null | undefined): string | nu
   const raw = String(location ?? '').trim();
   const tail = raw.match(/\b([A-Z]{2})\s*$/)?.[1];
   if (tail && (UFS as readonly string[]).includes(tail)) return tail;
-  const city = raw.split(/\s+-\s+|,/)[0].normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+  const city = normalizeSearchText(raw.split(/\s+-\s+|,/)[0]);
   return CITY_UF[city] ?? null;
 }
 
@@ -97,7 +99,7 @@ const FEDERATION_UF: Array<[RegExp, string]> = [
 
 /** UF da federação organizadora, quando o organizador é uma federação estadual. */
 export function ufFromOrganizer(organizer: string | null | undefined): string | null {
-  const s = String(organizer ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const s = normalizeSearchText(String(organizer ?? ''));
   if (!/federa/.test(s)) return null;
   return FEDERATION_UF.find(([re]) => re.test(s))?.[1] ?? null;
 }
