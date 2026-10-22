@@ -129,6 +129,26 @@ Plano original em `docs/plano-chatbot-suporte.md`; desvios e status real em `doc
 
 `ChatWidget` lê `xbr_chat_session_id` do localStorage **uma única vez**, no `useEffect` de mount (dependências vazias) — e como ele mora no layout raiz, não desmonta na navegação client-side entre `/login` e `/admin`. Setar o valor via `page.evaluate()` **depois** de `page.goto('/login')` não funciona: o widget já montou e já leu (valor antigo/nulo) antes do `evaluate` rodar. Precisa de `context.addInitScript(...)` (roda antes do JS da página, em toda navegação) — e mesmo assim, se a sessão de chat já existir via localStorage na primeiríssima carga pós-login, a query de mensagens pode disparar antes do cliente Supabase do browser terminar de hidratar a sessão de auth (corrida que o fluxo normal nunca expõe, porque `sessionId` só aparece depois do primeiro round-trip de mensagem, vários segundos depois). Um `page.reload()` + `waitForLoadState('networkidle')` logo após o login resolve. Ver `e2e/chat-escalation.spec.ts`.
 
+## Relatório de desempenho pago (report_orders, 2026-10-22)
+
+Frente 1 do plano de monetização (`C:/workspace-ssd/minhas-partidas-xadrez/docs/plano-monetizacao-xadrez-br.pdf`). Migration `20261022120000_report_orders.sql`.
+
+- **Pedido** (`/relatorios`, `POST /api/reports/orders`): só logado, só de jogador com vínculo **verificado** em `user_player_links` (nunca por nome), só torneio em que o jogador tem **ao menos uma partida com PGN** (`lib/reports/candidates.ts`, ao vivo via `pairing_pgns` e arquivo via `history_game_pgns`), aceite do responsável obrigatório (menores). Um pedido ativo por jogador+torneio (índice único parcial).
+- **Cobrança**: segue `billing_enabled()` (082). Desligado = gratuito. Ligado = cobrança avulsa Asaas pelo `app_settings.report_price_cents` (3900 = hipótese, muda com UPDATE). Webhook casa por `report_orders.asaas_payment_id` (`lib/asaas/webhook-handler.ts`, regra pura em `reportOrderPatchForPayment`). Regras puras e testes: `lib/reports/orders.ts`, `lib/__tests__/report-orders.test.ts`.
+- **Entrega**: PDF no bucket **privado** `reports` (`<order_id>.pdf`); download só por link assinado de 60 s (`/api/reports/orders/[id]/download`), dono ou admin. Pedido cobrado sem pagamento confirmado nunca é entregue (`canDeliver`), nem pelo admin.
+- **Produção do relatório** (operador, máquina local): `node --env-file=.env.local scripts/reports/report-queue.mjs list | prepare <id> | deliver <id> <pdf>` — `prepare` exporta os PGNs com nomes normalizados, grava `contexto.json`, copia a skill `chess-game-report` (`~/.claude/skills`), roda a análise Stockfish e marca "em produção"; o texto do relatório (momentos-chave, puzzles, plano) continua sendo escrito com a skill. `try --player <uuid> --tournament|--history <uuid>` faz o mesmo sem pedido e sem gravar no banco. Pasta de trabalho: `REPORTS_WORKDIR` (padrão `C:/workspace-ssd/relatorios`).
+- **Admin**: `/admin/relatorios` (fila, em produção, cancelar, anexar PDF).
+
+## Conciliação das inscrições pagas e taxa por inscrito (2026-10-22)
+
+Frente 2 do plano. Migration `20261022130000_registration_settlement.sql`. O dinheiro continua caindo na conta Asaas da plataforma (078, sem split); o que mudou é que o repasse ao organizador ficou auditável.
+
+- Inscrição paga guarda `paid_value_cents`/`net_value_cents` (do `value`/`netValue` do webhook, `paidRegistrationFields`) e `platform_fee_cents` **fotografada na cobrança** (`/api/registrations/[id]/pay`), para mudar a taxa não reescrever o passado.
+- Taxa da plataforma: `app_settings.registration_platform_fee_cents`, por inscrição paga, **descontada do organizador** (o inscrito paga o mesmo). Nasce 0 = desligada.
+- `get_tournament_settlement(tournament)` (organizador ou admin; demais recebem `FORBIDDEN`): bruto − tarifa do gateway − taxa − repassado = saldo. Sem `netValue` não inventa tarifa (zero); inscrição paga antes da migration usa o valor atual do torneio e conta em `estimated_count`. Aparece no relatório do torneio (`/admin/tournaments/[slug]/report`).
+- `tournament_payouts` (só admin escreve, RLS) + `/admin/repasses` (`get_payout_overview`, saldo por torneio e formulário de repasse). Rota `POST /api/admin/tournaments/[slug]/payouts` usa o cliente da sessão, não service_role.
+- Regras puras e testes: `lib/finance/settlement.ts`, `lib/__tests__/settlement.test.ts`.
+
 ## O que NÃO existe ainda (não assumir implementado)
 
 - Exportação de PDF server-side (usa `window.print()` do navegador, páginas `/print` dedicadas).

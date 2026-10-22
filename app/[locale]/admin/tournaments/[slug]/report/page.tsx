@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PrintReportButton } from '@/components/admin/print-report-button';
 import { compareGroupNames } from '@/lib/utils/chess';
+import { SettlementCard, type Settlement } from '@/components/finance/settlement-card';
 
 interface StandingRow {
   rank: number | null;
@@ -41,6 +42,11 @@ export default async function TournamentReportPage({ params }: { params: Promise
     supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id }),
     supabase.rpc('get_tournament_pgn_count', { p_tournament_id: tournament.id }),
   ]);
+  // Financeiro: só organizador ou admin (a função recusa os demais — aí o bloco some).
+  const { data: settlementRows } = isNative
+    ? await supabase.rpc('get_tournament_settlement', { p_tournament_id: tournament.id })
+    : { data: null };
+  const settlement = (Array.isArray(settlementRows) ? settlementRows[0] : null) as Settlement | null;
   const standings = (standingsRaw ?? []) as StandingRow[];
 
   // ---- partidas ----
@@ -152,13 +158,15 @@ export default async function TournamentReportPage({ params }: { params: Promise
               <Row label="Aprovadas" value={(registrations ?? []).filter((r) => r.status === 'approved').length} />
               <Row label="Ainda na espera" value={(registrations ?? []).filter((r) => r.is_waitlisted).length} />
               <Row label="Pagamentos confirmados" value={paid} />
-              {tournament.registration_fee_cents && (
-                <Row label="Receita bruta confirmada" value={(paid * tournament.registration_fee_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} />
-              )}
+
             </dl>
           </div>
         )}
       </section>
+
+      {settlement && (settlement.paid_count > 0 || Number(settlement.paid_out_cents) > 0) && (
+        <section className="mt-6"><SettlementCard s={settlement} /></section>
+      )}
 
       {categories.length > 0 && (
         <section className="mt-6">

@@ -140,6 +140,22 @@ function DevPanel() {
       </div>
 
       <div className="card p-5 space-y-2 mb-4">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Receitas</h2>
+        <Link
+          href="/admin/relatorios"
+          className="block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          → Pedidos de relatório de desempenho
+        </Link>
+        <Link
+          href="/admin/repasses"
+          className="block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          → Repasses das inscrições pagas aos organizadores
+        </Link>
+      </div>
+
+      <div className="card p-5 space-y-2 mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Notícias</h2>
         <Link
           href="/admin/dev/noticias"

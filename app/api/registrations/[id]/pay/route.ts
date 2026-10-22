@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createAsaasCustomer, createAsaasPayment, type AsaasBillingType } from '@/lib/asaas/client';
 import { todayInSaoPaulo } from '@/lib/utils/chess';
+import { platformFeeCents } from '@/lib/finance/settlement';
 
 // Inicia a cobrança avulsa da taxa de inscrição (migration 078) — chamada
 // pelo próprio formulário público logo após o insert em
@@ -74,12 +75,18 @@ export async function POST(
       description: `Inscrição — ${tournament.name}`,
     });
 
+    // Taxa da plataforma fotografada no momento da cobrança: mudar a taxa depois
+    // não reescreve a conciliação de quem já pagou.
+    const { data: feeSetting } = await admin
+      .from('app_settings').select('value').eq('key', 'registration_platform_fee_cents').maybeSingle();
+
     await admin
       .from('tournament_registrations')
       .update({
         asaas_customer_id: asaasCustomerId,
         asaas_payment_id: payment.id,
         asaas_invoice_url: payment.invoiceUrl,
+        platform_fee_cents: platformFeeCents(feeSetting?.value),
       })
       .eq('id', id);
 
