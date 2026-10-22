@@ -7,7 +7,8 @@ import { siteUrl } from '@/lib/seo';
  * Gambito Lite (app Android) — sincronização dos torneios do organizador.
  * O app entra com Google pelo Supabase Auth e manda o access token no header Authorization;
  * estas rotas conferem o token e escrevem com service_role (lite_tournaments não tem policy de
- * escrita). Formato do backup: BackupCodec do app ("gambito-lite-torneio" v1).
+ * escrita). Formato do backup: BackupCodec do app ("gambito-lite-torneio" v1; v2 acrescenta
+ * árbitros, árbitro de cada mesa e quem informou cada resultado — ver lib/lite/arbiter.ts).
  */
 
 export const MAX_BACKUP_BYTES = 2_000_000;
@@ -40,7 +41,11 @@ export type LiteBackup = {
   players: unknown[];
   rounds: unknown[];
   games: unknown[];
+  arbiters?: Array<{ id: string; name: string; email: string }>;
+  boardArbiters?: Array<{ roundNumber: number; board: number; arbiterId: string }>;
 };
+
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /**
  * Confere o backup antes de guardar: o SQL de publicação (lite_publish) confia nesses campos
@@ -73,6 +78,23 @@ export function validateBackup(b: unknown): LiteBackup | null {
     if (g.blackId != null && (!isUuid(g.blackId) || !playerIds.has(g.blackId))) return null;
     if (typeof g.result !== 'string' || !RESULTS.has(g.result) || !optInt(g.board)) return null;
     if (g.byeKind != null && g.byeKind !== 'pairing' && g.byeKind !== 'round_robin') return null;
+    if (g.reportedBy != null && (typeof g.reportedBy !== 'string' || g.reportedBy.length > 120)) return null;
+  }
+  // v2: árbitros (opcionais).
+  const arbiterIds = new Set<string>();
+  if (b.arbiters != null) {
+    if (!Array.isArray(b.arbiters) || b.arbiters.length > 200) return null;
+    for (const a of b.arbiters) {
+      if (!isObj(a) || !isUuid(a.id) || typeof a.name !== 'string' || !a.name.trim() || a.name.length > 120) return null;
+      if (typeof a.email !== 'string' || !EMAIL.test(a.email) || a.email.length > 200) return null;
+      arbiterIds.add(a.id);
+    }
+  }
+  if (b.boardArbiters != null) {
+    if (!Array.isArray(b.boardArbiters) || b.boardArbiters.length > 5000) return null;
+    for (const ba of b.boardArbiters) {
+      if (!isObj(ba) || !isInt(ba.roundNumber) || !isInt(ba.board) || !isUuid(ba.arbiterId) || !arbiterIds.has(ba.arbiterId)) return null;
+    }
   }
   return b as unknown as LiteBackup;
 }

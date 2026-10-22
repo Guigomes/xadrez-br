@@ -417,6 +417,60 @@ export type Database = {
         }
         Relationships: []
       }
+      lite_result_submissions: {
+        Row: {
+          arbiter_email: string
+          arbiter_name: string
+          arbiter_user_id: string
+          board: number
+          created_at: string
+          game_id: string
+          message: string | null
+          result: string
+          rev: string
+          round_number: number
+          status: string
+          tournament_id: string
+          updated_at: string
+        }
+        Insert: {
+          arbiter_email: string
+          arbiter_name: string
+          arbiter_user_id: string
+          board: number
+          created_at?: string
+          game_id: string
+          message?: string | null
+          result: string
+          rev?: string
+          round_number: number
+          status?: string
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          arbiter_email?: string
+          arbiter_name?: string
+          arbiter_user_id?: string
+          board?: number
+          created_at?: string
+          game_id?: string
+          message?: string | null
+          result?: string
+          rev?: string
+          round_number?: number
+          status?: string
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lite_tournament_arbiters: {
+        Row: { email: string; name: string; tournament_id: string }
+        Insert: { email: string; name: string; tournament_id: string }
+        Update: { email?: string; name?: string; tournament_id?: string }
+        Relationships: []
+      }
       lite_tournaments: {
         Row: {
           app_version: number

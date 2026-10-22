@@ -54,6 +54,16 @@ export async function POST(request: Request) {
     return liteError(500, 'SAVE_FAILED', 'Não foi possível salvar. Tente de novo.');
   }
 
+  // Quem pode abrir o torneio como árbitro (pelo e-mail da conta Google), refeito a cada envio.
+  const arbiters = new Map((backup.arbiters ?? []).map((a) => [a.email.trim().toLowerCase(), a.name.trim()]));
+  await admin.from('lite_tournament_arbiters').delete().eq('tournament_id', t.id);
+  if (arbiters.size) {
+    const { error } = await admin
+      .from('lite_tournament_arbiters')
+      .insert([...arbiters].map(([email, name]) => ({ tournament_id: t.id, email, name })));
+    if (error) console.error('[lite/sync] árbitros:', error.message);
+  }
+
   if (isPublic) {
     const slug = await freeSlug(t.name, (body.backup as { tournament: { createdAt: number } }).tournament.createdAt, t.id);
     const { data, error } = await admin.rpc('lite_publish', { p_id: t.id, p_slug: slug });
