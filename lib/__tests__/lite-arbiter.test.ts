@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arbiterView, canSubmit, type ArbiterBackup } from '../lite/arbiter';
+import { arbiterView, boardsText, canSubmit, newRoundAssignments, resultLabel, type ArbiterBackup } from '../lite/arbiter';
 
 const P = (id: string, name: string) => ({ id, name, club: null, rating: null });
 
@@ -55,5 +55,22 @@ describe('visão do árbitro (Gambito Lite)', () => {
 
     const notStarted = arbiterView(backup({ rounds: [], games: [] }), 'jonas@escola.com')!;
     expect(canSubmit(notStarted, 'g2')).toEqual({ error: 'O torneio ainda não começou.' });
+  });
+});
+
+describe('avisos do Gambito Lite', () => {
+  it('rodada nova: mesas de cada árbitro, por e-mail', () => {
+    const a = newRoundAssignments(1, backup())!;
+    expect(a.round).toBe(2);
+    expect(a.byEmail.get('jonas@escola.com')).toEqual([1, 2]);
+    expect(a.byEmail.has('maria@escola.com')).toBe(false);
+    expect(newRoundAssignments(2, backup())).toBeNull();
+  });
+
+  it('texto das mesas e do resultado', () => {
+    expect(boardsText([3])).toBe('3');
+    expect(boardsText([1, 2, 5])).toBe('1, 2 e 5');
+    expect(resultLabel('1/2-1/2')).toBe('½–½');
+    expect(resultLabel('forfeit_white')).toBe('W.O. das brancas');
   });
 });

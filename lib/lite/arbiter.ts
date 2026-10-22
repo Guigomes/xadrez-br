@@ -98,3 +98,41 @@ export function canSubmit(view: ArbiterView, gameId: string): { board: ArbiterBo
   if (!board) return { error: 'Esta mesa não está atribuída a você nesta rodada.' };
   return { board };
 }
+
+/** Resultado como aparece no aviso ("1–0", "W.O. das brancas"…). */
+export function resultLabel(code: string): string {
+  switch (code) {
+    case '1-0': return '1–0';
+    case '0-1': return '0–1';
+    case '1/2-1/2': return '½–½';
+    case 'forfeit_white': return 'W.O. das brancas';
+    case 'forfeit_black': return 'W.O. das pretas';
+    case 'double_forfeit': return 'W.O. duplo';
+    case '*': return 'sem resultado';
+    default: return code;
+  }
+}
+
+/**
+ * Rodada nova no envio (comparando com o backup anterior): mesas de cada árbitro nela, por
+ * e-mail. Vazio se não surgiu rodada nova.
+ */
+export function newRoundAssignments(prevRoundCount: number, b: ArbiterBackup): { round: number; byEmail: Map<string, number[]> } | null {
+  const latest = Math.max(0, ...b.rounds.map((r) => r.number));
+  if (latest <= prevRoundCount) return null;
+  const emailById = new Map((b.arbiters ?? []).map((a) => [a.id, normalizeEmail(a.email)]));
+  const byEmail = new Map<string, number[]>();
+  for (const ba of b.boardArbiters ?? []) {
+    if (ba.roundNumber !== latest) continue;
+    const email = emailById.get(ba.arbiterId);
+    if (!email) continue;
+    byEmail.set(email, [...(byEmail.get(email) ?? []), ba.board].sort((x, y) => x - y));
+  }
+  return { round: latest, byEmail };
+}
+
+/** "1, 2 e 5" */
+export function boardsText(boards: number[]): string {
+  if (boards.length <= 1) return boards.join('');
+  return `${boards.slice(0, -1).join(', ')} e ${boards[boards.length - 1]}`;
+}

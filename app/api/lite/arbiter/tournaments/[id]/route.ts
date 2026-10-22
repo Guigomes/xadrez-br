@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
+import { sendAppUserNotification } from '@/lib/push';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getBearerUser, liteError } from '@/lib/lite/server';
-import { ARBITER_RESULTS, arbiterView, canSubmit, normalizeEmail, type ArbiterBackup } from '@/lib/lite/arbiter';
+import { ARBITER_RESULTS, arbiterView, canSubmit, normalizeEmail, resultLabel, type ArbiterBackup } from '@/lib/lite/arbiter';
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -15,10 +16,10 @@ async function load(request: Request, id: string) {
   if (!UUID.test(id)) return { error: liteError(404, 'NOT_FOUND', 'Torneio não encontrado.') };
   const email = normalizeEmail(user.email);
   const admin = createAdminClient();
-  const { data } = await admin.from('lite_tournaments').select('backup').eq('id', id).maybeSingle();
+  const { data } = await admin.from('lite_tournaments').select('backup, owner_id').eq('id', id).maybeSingle();
   const view = data ? arbiterView(data.backup as unknown as ArbiterBackup, email) : null;
-  if (!view) return { error: liteError(403, 'NOT_ARBITER', 'Você não é árbitro deste torneio.') };
-  return { user, email, admin, view };
+  if (!view || !data) return { error: liteError(403, 'NOT_ARBITER', 'Você não é árbitro deste torneio.') };
+  return { user, email, admin, view, ownerId: data.owner_id as string };
 }
 
 /** Mesas do árbitro na rodada atual, com o resultado que vale e o que ele enviou. */
@@ -48,7 +49,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const { id } = await params;
   const ctx = await load(request, id);
   if ('error' in ctx) return ctx.error;
-  const { admin, view, user, email } = ctx;
+  const { admin, view, user, email, ownerId } = ctx;
 
   const body = (await request.json().catch(() => null)) as { gameId?: unknown; result?: unknown } | null;
   const gameId = typeof body?.gameId === 'string' ? body.gameId : '';
@@ -79,5 +80,13 @@ export async function POST(request: Request, { params }: Ctx) {
     console.error('[lite/arbiter] envio:', error.message);
     return liteError(500, 'SAVE_FAILED', 'Não foi possível enviar. Tente de novo.');
   }
+  // Avisa o celular do organizador (que aplica na hora se o app estiver aberto).
+  after(() =>
+    sendAppUserNotification(
+      ownerId,
+      { title: view.tournamentName, body: `Mesa ${check.board.board}: ${view.arbiterName} informou ${resultLabel(result)}` },
+      { type: 'arbiter_result', tournamentId: id, name: view.tournamentName },
+    ).catch((e) => console.error('[lite/arbiter] aviso:', e)),
+  );
   return NextResponse.json({ ok: true });
 }

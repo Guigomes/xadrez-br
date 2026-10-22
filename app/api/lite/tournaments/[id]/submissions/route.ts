@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
+import { sendAppUserNotification } from '@/lib/push';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getBearerUser, liteError } from '@/lib/lite/server';
 
@@ -11,9 +12,9 @@ async function owner(request: Request, id: string) {
   const user = await getBearerUser(request);
   if (!user) return { error: liteError(401, 'UNAUTHORIZED', 'Entre de novo com sua conta.') };
   const admin = createAdminClient();
-  const { data } = await admin.from('lite_tournaments').select('owner_id, device_id').eq('id', id).maybeSingle();
+  const { data } = await admin.from('lite_tournaments').select('owner_id, device_id, name').eq('id', id).maybeSingle();
   if (!data || data.owner_id !== user.id) return { error: liteError(404, 'NOT_FOUND', 'Torneio não encontrado na sua conta.') };
-  return { admin, deviceId: data.device_id as string };
+  return { admin, deviceId: data.device_id as string, name: data.name as string };
 }
 
 export async function GET(request: Request, { params }: Ctx) {
@@ -53,6 +54,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const acks = Array.isArray(body?.acks) ? body.acks.slice(0, 500) : [];
 
   let done = 0;
+  const rejected: Array<{ userId: string; board: number; message: string | null }> = [];
   for (const a of acks as Array<{ gameId?: unknown; rev?: unknown; status?: unknown; message?: unknown }>) {
     if (typeof a.gameId !== 'string' || typeof a.rev !== 'string') continue;
     if (a.status !== 'applied' && a.status !== 'rejected') continue;
@@ -67,8 +69,25 @@ export async function POST(request: Request, { params }: Ctx) {
       .eq('tournament_id', id)
       .eq('game_id', a.gameId)
       .eq('rev', a.rev)
-      .select('game_id');
+      .select('game_id, board, arbiter_user_id');
     done += data?.length ?? 0;
+    if (a.status === 'rejected') {
+      for (const row of data ?? []) {
+        rejected.push({ userId: row.arbiter_user_id, board: row.board, message: typeof a.message === 'string' ? a.message : null });
+      }
+    }
+  }
+  // Árbitro fica sabendo quando o resultado dele não entrou (o aplicado é o esperado: sem aviso).
+  if (rejected.length) {
+    after(async () => {
+      for (const r of rejected) {
+        await sendAppUserNotification(
+          r.userId,
+          { title: ctx.name, body: `Mesa ${r.board}: resultado não aplicado${r.message ? ` — ${r.message}` : ''}` },
+          { type: 'arbiter_rejected', tournamentId: id, name: ctx.name },
+        ).catch((e) => console.error('[lite/submissions] aviso:', e));
+      }
+    });
   }
   return NextResponse.json({ ok: true, updated: done });
 }

@@ -1,4 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
+import { sendAppUserNotification } from '@/lib/push';
+import { notifyRoundPublished, notifyTournamentSummary } from '@/lib/import/notify';
+import { boardsText, newRoundAssignments, type ArbiterBackup } from '@/lib/lite/arbiter';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Json } from '@/types/database.generated';
 import { MAX_BACKUP_BYTES, freeSlug, getBearerUser, liteError, tournamentUrl, validateBackup } from '@/lib/lite/server';
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: existing } = await admin
     .from('lite_tournaments')
-    .select('owner_id, device_id, site_tournament_id')
+    .select('owner_id, device_id, site_tournament_id, prev_rounds:backup->rounds')
     .eq('id', t.id)
     .maybeSingle();
   if (existing && existing.owner_id !== user.id) {
@@ -54,6 +57,26 @@ export async function POST(request: Request) {
     return liteError(500, 'SAVE_FAILED', 'Não foi possível salvar. Tente de novo.');
   }
 
+  // Rodada nova: cada árbitro recebe no app as mesas dele.
+  const prevRounds = Array.isArray((existing as { prev_rounds?: unknown } | null)?.prev_rounds)
+    ? ((existing as { prev_rounds: Array<{ number?: number }> }).prev_rounds.map((r) => r.number ?? 0))
+    : [];
+  const assigned = newRoundAssignments(Math.max(0, ...prevRounds), backup as unknown as ArbiterBackup);
+  if (assigned?.byEmail.size) {
+    after(async () => {
+      const { data: profiles } = await admin.from('user_profiles').select('id, email').in('email', [...assigned.byEmail.keys()]);
+      for (const p of profiles ?? []) {
+        const boards = assigned.byEmail.get((p.email ?? '').toLowerCase()) ?? [];
+        if (!boards.length) continue;
+        await sendAppUserNotification(
+          p.id,
+          { title: t.name, body: `Rodada ${assigned.round}: ${boards.length > 1 ? 'suas mesas' : 'sua mesa'} ${boardsText(boards)}` },
+          { type: 'arbiter_round', tournamentId: t.id, name: t.name },
+        ).catch((e) => console.error('[lite/sync] aviso ao árbitro:', e));
+      }
+    });
+  }
+
   // Quem pode abrir o torneio como árbitro (pelo e-mail da conta Google), refeito a cada envio.
   const arbiters = new Map((backup.arbiters ?? []).map((a) => [a.email.trim().toLowerCase(), a.name.trim()]));
   await admin.from('lite_tournament_arbiters').delete().eq('tournament_id', t.id);
@@ -71,6 +94,13 @@ export async function POST(request: Request) {
       console.error('[lite/sync] lite_publish falhou:', error.message);
       return liteError(500, 'PUBLISH_FAILED', 'Salvo na conta, mas não foi possível publicar no site.');
     }
+    // Mesmos avisos dos torneios do site (rodada iniciada, resultado de jogador seguido,
+    // rodada concluída) — a rota de eventos deduplica, então reenviar não repete aviso.
+    after(async () => {
+      const { data: rounds } = await admin.from('rounds').select('id').eq('tournament_id', t.id).in('status', ['ongoing', 'finished']);
+      for (const r of rounds ?? []) await notifyRoundPublished(r.id);
+      await notifyTournamentSummary(t.id);
+    });
     return NextResponse.json({ ok: true, slug: data, url: tournamentUrl(data as string) });
   }
   if (existing?.site_tournament_id) {

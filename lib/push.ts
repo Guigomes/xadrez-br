@@ -112,6 +112,70 @@ export async function sendFcmToAdmins(payload: {
   }
 }
 
+// ---------- App Android Gambito Torneios (FCM) ----------
+// Mesmo projeto Firebase do app do admin (FIREBASE_SERVICE_ACCOUNT_JSON). Mensagem com bloco
+// `notification` (o Android mostra sozinho com o app fechado) + `data` (o app abre a tela certa
+// ao tocar e, aberto, reage: ex. busca na hora o resultado que o árbitro mandou).
+
+type AppPushData = Record<string, string>;
+type AppFollowRow = { token: string; followed_player_ids: string[]; app_push_tokens: { user_id: string | null } | null };
+
+async function sendAppFcm(admin: AdminClient, tokens: string[], payload: PushPayload, data: AppPushData = {}) {
+  const unique = [...new Set(tokens)];
+  if (!unique.length) return;
+  try {
+    initFirebaseAdmin();
+  } catch (e) {
+    console.error('[fcm-app]', (e as Error).message);
+    return;
+  }
+  const result = await getMessaging().sendEachForMulticast({
+    tokens: unique,
+    notification: { title: payload.title, body: payload.body },
+    android: { priority: 'high', notification: { channelId: 'avisos' } },
+    data: { ...data, ...(payload.url ? { url: payload.url } : {}) },
+  });
+  console.log(`[fcm-app] ${result.successCount}/${unique.length} ok`);
+  const stale: string[] = [];
+  result.responses.forEach((r, i) => {
+    const code = r.error?.code;
+    if (!r.success && (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-argument')) {
+      stale.push(unique[i]);
+    }
+  });
+  if (stale.length) await admin.from('app_push_tokens').delete().in('token', stale);
+}
+
+async function getAppFollows(admin: AdminClient, tournamentId: string) {
+  const { data, error } = await admin
+    .from('app_push_follows')
+    .select('token, followed_player_ids, app_push_tokens(user_id)')
+    .eq('tournament_id', tournamentId);
+  if (error) {
+    console.error('[fcm-app] seguidores:', error.message);
+    return [];
+  }
+  return ((data ?? []) as unknown as AppFollowRow[]).map((f) => ({
+    token: f.token,
+    userId: f.app_push_tokens?.user_id ?? null,
+    followedPlayerIds: f.followed_player_ids ?? [],
+  }));
+}
+
+/** Aviso pessoal no app (organizador e árbitro do Gambito Lite): todos os aparelhos da conta. */
+export async function sendAppUserNotification(userIds: string | string[], payload: PushPayload, data: AppPushData = {}) {
+  const ids = [...new Set(Array.isArray(userIds) ? userIds : [userIds])].filter(Boolean);
+  if (!ids.length) return;
+  const admin = createAdminClient();
+  const { data: rows } = await admin.from('app_push_tokens').select('token').in('user_id', ids);
+  await sendAppFcm(admin, (rows ?? []).map((r) => r.token), payload, data);
+}
+
+/** Slug do torneio a partir do link do aviso (/torneios/<slug>/...), para o app abrir a tela. */
+function slugFromUrl(url?: string) {
+  return url?.match(/^\/torneios\/([^/?#]+)/)?.[1] ?? '';
+}
+
 async function getTrackedUserIds(
   admin: AdminClient,
   tournamentId: string,
@@ -183,6 +247,10 @@ export async function sendTournamentNotificationToNonFollowers(
   );
   console.log(`[push] tournament ${tournamentId}, sem jogador seguido: ${recipients.length} subs`);
   await sendToSubscriptions(admin, recipients, payload);
+
+  const appRecipients = (await getAppFollows(admin, tournamentId)).filter((f) => !subscriptionTracksPlayers(f, trackedUserIds));
+  await sendAppFcm(admin, appRecipients.map((f) => f.token), payload, { type: 'tournament', slug: slugFromUrl(payload.url), name: payload.title })
+    .catch((e) => console.error('[fcm-app] resumo:', e));
 }
 
 // Um unico push por dispositivo, mesmo quando o usuario segue os dois
@@ -197,8 +265,9 @@ export async function sendPlayerFollowersNotification(
 
   initVapid();
   const admin = createAdminClient();
+  // Sem retorno antecipado quando nenhuma conta segue o jogador: quem segue sem login
+  // (followed_player_ids no navegador, ou no app) também precisa receber.
   const trackedUserIds = await getTrackedUserIds(admin, tournamentId, uniquePlayerIds);
-  if (!trackedUserIds.size) return;
 
   const { data: subs, error } = await admin
     .from('push_subscriptions')
@@ -214,6 +283,12 @@ export async function sendPlayerFollowersNotification(
   ));
   console.log(`[push] tournament ${tournamentId}, seguidores: ${recipients.length} subs`);
   await sendToSubscriptions(admin, recipients, payload);
+
+  const appRecipients = (await getAppFollows(admin, tournamentId)).filter((f) =>
+    subscriptionTracksPlayers(f, trackedUserIds, relevantPlayerIds),
+  );
+  await sendAppFcm(admin, appRecipients.map((f) => f.token), payload, { type: 'player', slug: slugFromUrl(payload.url), name: payload.title })
+    .catch((e) => console.error('[fcm-app] jogadores:', e));
 }
 
 export async function sendUserNotification(

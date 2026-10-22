@@ -417,6 +417,26 @@ export type Database = {
         }
         Relationships: []
       }
+      app_push_follows: {
+        Row: { followed_player_ids: string[]; token: string; tournament_id: string; updated_at: string }
+        Insert: { followed_player_ids?: string[]; token: string; tournament_id: string; updated_at?: string }
+        Update: { followed_player_ids?: string[]; token?: string; tournament_id?: string; updated_at?: string }
+        Relationships: [
+          {
+            foreignKeyName: "app_push_follows_token_fkey"
+            columns: ["token"]
+            isOneToOne: false
+            referencedRelation: "app_push_tokens"
+            referencedColumns: ["token"]
+          },
+        ]
+      }
+      app_push_tokens: {
+        Row: { created_at: string; platform: string; token: string; updated_at: string; user_id: string | null }
+        Insert: { created_at?: string; platform?: string; token: string; updated_at?: string; user_id?: string | null }
+        Update: { created_at?: string; platform?: string; token?: string; updated_at?: string; user_id?: string | null }
+        Relationships: []
+      }
       lite_result_submissions: {
         Row: {
           arbiter_email: string
