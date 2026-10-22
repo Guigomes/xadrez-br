@@ -119,6 +119,7 @@ export const ENTITLEMENT_LABELS: Record<string, string> = {
   'support.priority':     'Suporte prioritário',
   'account.multiuser':    'Conta multiusuário',
   'alerts.rules':         'Alertas de torneios ativos',
+  'player.stats':         'Estatísticas avançadas do jogador',
 };
 
 /** Ordem de exibição — mesma ordem das chaves acima (capacidade primeiro). */

@@ -24,6 +24,8 @@ export interface HistoryRow {
   result: HistoryResult | string;
   points: number | null;
   has_pgn: boolean;
+  /** Rating do jogador na partida (arquivo: da época; ao vivo: o atual do cadastro). */
+  my_rating?: number | null;
 }
 
 // Resultado do ponto de vista do jogador da página.
@@ -48,6 +50,8 @@ export interface HGame {
   /** resultado como está no banco (1-0, 0-1, 1/2-1/2, forfeit_*) */
   result: string;
   hasPgn: boolean;
+  /** Rating do próprio jogador nessa partida, quando conhecido. */
+  myRating: number | null;
   opp: { key: string; id: string | null; name: string; cbxId: string | null; rating: number | null; title: string | null };
 }
 
@@ -103,6 +107,7 @@ export function toGames(rows: HistoryRow[], myName: string): HGame[] {
       outcome: outcomeOf(r.result, r.color),
       result: r.result,
       hasPgn: r.has_pgn,
+      myRating: r.my_rating ?? null,
       opp: {
         key: r.opponent_player_id ?? `nome:${r.opponent_name}`,
         id: r.opponent_player_id,

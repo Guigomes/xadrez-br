@@ -159,6 +159,15 @@ Frente 4 do plano. Migration `20261022140000_tournament_alerts.sql`. Página `/a
 - **Push global** (`/api/push/subscribe` sem torneio) num aparelho que já acompanha um torneio só vincula a conta e renova as chaves — não apaga torneio nem jogadores seguidos.
 - Regras puras e testes: `lib/alerts/match.ts`, `lib/__tests__/alerts.test.ts`.
 
+## Perfil premium do jogador (2026-10-22)
+
+Fase 5 do plano. Migration `20261022150000_player_stats.sql`.
+
+- `get_player_history` ganhou `my_rating` (arquivo: rating da época, de `history_games`; ao vivo: rating **atual** do cadastro no ritmo do torneio — não existe foto por torneio). Mudar colunas exige `drop function` + `create`.
+- `PlayerInsights` (`components/player-history/player-insights.tsx`) no perfil logado: sequências, aproveitamento por cor/ritmo/força do adversário (±100), performance por torneio (média dos adversários com rating + delta logístico do Elo, limitado a ±800) e gráfico SVG. Contas puras em `lib/player-history/insights.ts` (testes em `lib/__tests__/player-insights.test.ts`). W.O. fica fora.
+- Gate: entitlement `player.stats` (gratuito não; demais sim; cobrança desligada = todos). É gate de **apresentação**: o histórico em si já é livre para logado.
+- Plano `player` ("Jogador+") = gratuito + `player.stats` + alertas sem limite. Nasce sem preço e `is_public = false`; para vender: `update plans set price_cents=..., billing_interval='month', is_public=true where code='player'`.
+
 ## O que NÃO existe ainda (não assumir implementado)
 
 - Exportação de PDF server-side (usa `window.print()` do navegador, páginas `/print` dedicadas).

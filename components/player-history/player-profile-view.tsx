@@ -6,6 +6,7 @@ import { usePlayer, usePlayerTournaments } from '@/lib/hooks/use-player';
 import { usePlayerFollow, useUser } from '@/lib/hooks/use-auth';
 import { usePlayerHistory } from '@/lib/hooks/use-player-history';
 import { PlayerHistoryView } from '@/components/player-history/player-history-view';
+import { PlayerInsights } from '@/components/player-history/player-insights';
 import { toGames } from '@/lib/player-history/types';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
@@ -86,7 +87,10 @@ export function PlayerProfileView({ id }: { id: string }) {
           {loadingHistory ? (
             <PageSpinner />
           ) : games.length > 0 ? (
-            <PlayerHistoryView games={games} />
+            <>
+              <PlayerInsights games={games} />
+              <PlayerHistoryView games={games} />
+            </>
           ) : (
             <EmptyState icon="♟" title="Nenhuma partida no histórico" />
           )}

@@ -20,7 +20,8 @@ export type EntitlementKey =
   | 'branding.custom'
   | 'support.priority'
   | 'account.multiuser'
-  | 'alerts.rules';
+  | 'alerts.rules'
+  | 'player.stats';
 
 export interface Entitlement {
   key: EntitlementKey;
