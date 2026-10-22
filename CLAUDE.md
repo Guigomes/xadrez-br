@@ -13,6 +13,8 @@ Plataforma de gestão de torneios de xadrez suíços (Next.js 15 + Supabase + Ve
 
 Repo separado: `cron-import` (Cloud Run Job, worker de importação) — vive em `../cron-import` neste workspace, próprio git.
 
+**O importador existe só no `cron-import`.** Não recriar cópia dele aqui: a que existia em `lib/import/` ficou para trás (cortava a planilha em 150 linhas, sem casamento por CBX, sem PGN) e foi removida em 2026-10-22 — sobrou só `lib/import/notify.ts`, usado pelo sync do Lite. O botão "Dev: forçar sincronização" (`/api/admin/dev/force-import`) apenas marca `tournament_imports.force_requested_at`; o robô processa essas linhas primeiro na próxima execução (a cada 5 min, 9h–22h de Campo Grande), mesmo desligadas ou de torneio encerrado, e limpa a marca.
+
 ## Documentos de referência (leia antes de mexer em pareamento nativo)
 
 - `docs/requisitos-torneios-nativos.md` — requisitos funcionais (RF-1 a RF-11)

@@ -176,11 +176,12 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? 'Erro ao sincronizar.');
-      const summary = (body.results as { ok: boolean; message: string }[])
-        .map((r) => (r.ok ? r.message : `ERRO — ${r.message}`))
-        .join(' | ');
-      setSyncResult(summary);
-      startTransition(() => router.refresh());
+      // O robô (cron-import) é quem importa: o pedido entra na frente da fila da
+      // próxima execução. O resultado aparece na aba Importações.
+      setSyncResult(
+        `Pedido enviado (${body.queued} importação(ões)). O robô sincroniza na próxima execução — `
+        + 'até 5 minutos, das 9h às 22h (Campo Grande). Acompanhe na aba Importações.',
+      );
     } catch (err: any) {
       setSyncResult(`Erro: ${err.message ?? 'falha ao sincronizar'}`);
     } finally {

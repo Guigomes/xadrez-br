@@ -1,3 +1,8 @@
+// Único arquivo que sobrou de lib/import/: a cópia do importador foi removida
+// (o botão "forçar sincronização" agora pede ao robô cron-import, ver
+// migration 20261022210000). Este fica porque o sync do app Lite
+// (app/api/lite/sync) dispara os mesmos avisos de rodada/torneio.
+//
 // Adaptado de ../../cron-import/src/notify.ts — lá o worker chama de fora
 // via HTTP (CHESS_VIEWER_URL); aqui já ESTAMOS no chess-viewer, mas o
 // caminho continua sendo HTTP contra a própria rota interna
