@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { reportOrderPatchForPayment } from '@/lib/reports/orders';
+import { paidRegistrationFields } from '@/lib/finance/settlement';
 
 // Lógica de sincronização (Asaas -> subscriptions -> user_profiles.plan_id),
 // compartilhada entre o webhook real (app/api/webhooks/asaas/route.ts) e o
@@ -12,6 +14,10 @@ export interface AsaasPaymentEvent {
     id: string;
     subscription?: string | null;
     dueDate?: string;
+    /** Valor cobrado, em reais. */
+    value?: number;
+    /** Líquido depois da tarifa da Asaas, em reais (conciliação do repasse). */
+    netValue?: number;
   };
 }
 
@@ -92,11 +98,24 @@ export async function applyAsaasPaymentEvent(
     .eq('asaas_payment_id', payment.id)
     .maybeSingle();
   if (!registration) {
-    return { outcome: 'unmatched' };
+    // Também pode ser cobrança de um pedido de relatório (report_orders).
+    const { data: reportOrder } = await admin
+      .from('report_orders')
+      .select('id, status')
+      .eq('asaas_payment_id', payment.id)
+      .maybeSingle();
+    if (!reportOrder) return { outcome: 'unmatched' };
+    const kind = ACTIVATE_EVENTS.has(event) ? 'activate' : OVERDUE_EVENTS.has(event) ? 'overdue' : CANCEL_EVENTS.has(event) ? 'cancel' : null;
+    const patch = kind ? reportOrderPatchForPayment(kind, reportOrder.status) : null;
+    if (!patch) return { outcome: 'applied', status: 'ignored' };
+    await admin.from('report_orders').update(patch).eq('id', reportOrder.id);
+    return { outcome: 'applied', status: patch.payment_status };
   }
 
   if (ACTIVATE_EVENTS.has(event)) {
-    await admin.from('tournament_registrations').update({ payment_status: 'paid' }).eq('id', registration.id);
+    // Guarda bruto e líquido do pagamento para a conciliação do repasse ao organizador.
+    await admin.from('tournament_registrations')
+      .update({ payment_status: 'paid', ...paidRegistrationFields(payment) }).eq('id', registration.id);
     return { outcome: 'applied', status: 'paid' };
   }
   if (OVERDUE_EVENTS.has(event)) {
