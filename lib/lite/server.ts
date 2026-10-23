@@ -90,6 +90,15 @@ export function validateBackup(b: unknown): LiteBackup | null {
       arbiterIds.add(a.id);
     }
   }
+  // v3: categorias (opcionais).
+  if (b.categories != null) {
+    if (!Array.isArray(b.categories) || b.categories.length > 100) return null;
+    for (const c of b.categories) {
+      if (!isObj(c) || !isUuid(c.id) || typeof c.name !== 'string' || !c.name.trim() || c.name.length > 80) return null;
+      if (![c.minAge, c.maxAge, c.minRating, c.maxRating, c.sortOrder].every(optInt)) return null;
+      if (c.sex != null && c.sex !== 'm' && c.sex !== 'w') return null;
+    }
+  }
   if (b.boardArbiters != null) {
     if (!Array.isArray(b.boardArbiters) || b.boardArbiters.length > 5000) return null;
     for (const ba of b.boardArbiters) {

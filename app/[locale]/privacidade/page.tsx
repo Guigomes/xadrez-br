@@ -38,6 +38,9 @@ export default function PrivacyPage() {
           conta Google, uma cópia de cada torneio (nomes dos jogadores, escola, ano de nascimento, sexo, rating
           e resultados) é guardada na conta dele como backup, visível só para ele. O torneio só aparece no site
           se o organizador escolher torná-lo público, e pode voltar a privado ou ser apagado a qualquer momento.
+          Na inscrição pelo link do app, os dados enviados (nome, ano de nascimento, sexo, escola ou clube, rating,
+          responsável e contato) ficam guardados para o organizador daquele torneio aceitar ou recusar; o contato
+          não aparece no site.
         </li>
         <li>
           <b>Notificações.</b> Se você ativar os avisos de rodada, guardamos o identificador do seu navegador

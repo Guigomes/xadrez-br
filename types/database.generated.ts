@@ -437,6 +437,62 @@ export type Database = {
         Update: { created_at?: string; platform?: string; token?: string; updated_at?: string; user_id?: string | null }
         Relationships: []
       }
+      lite_registrations: {
+        Row: {
+          birth_year: number | null
+          club: string | null
+          contact: string
+          created_at: string
+          decided_at: string | null
+          guardian_name: string | null
+          id: string
+          message: string | null
+          name: string
+          rating: number | null
+          sex: string | null
+          status: string
+          tournament_id: string
+        }
+        Insert: {
+          birth_year?: number | null
+          club?: string | null
+          contact: string
+          created_at?: string
+          decided_at?: string | null
+          guardian_name?: string | null
+          id?: string
+          message?: string | null
+          name: string
+          rating?: number | null
+          sex?: string | null
+          status?: string
+          tournament_id: string
+        }
+        Update: {
+          birth_year?: number | null
+          club?: string | null
+          contact?: string
+          created_at?: string
+          decided_at?: string | null
+          guardian_name?: string | null
+          id?: string
+          message?: string | null
+          name?: string
+          rating?: number | null
+          sex?: string | null
+          status?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lite_registrations_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "lite_tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lite_result_submissions: {
         Row: {
           arbiter_email: string
@@ -501,6 +557,7 @@ export type Database = {
           is_public: boolean
           name: string
           owner_id: string
+          registration_open: boolean
           site_tournament_id: string | null
           updated_at: string
         }
@@ -513,6 +570,7 @@ export type Database = {
           is_public?: boolean
           name: string
           owner_id: string
+          registration_open?: boolean
           site_tournament_id?: string | null
           updated_at?: string
         }
@@ -525,6 +583,7 @@ export type Database = {
           is_public?: boolean
           name?: string
           owner_id?: string
+          registration_open?: boolean
           site_tournament_id?: string | null
           updated_at?: string
         }
