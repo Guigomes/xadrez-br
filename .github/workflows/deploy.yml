@@ -11,7 +11,30 @@ env:
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
 jobs:
+  # Barreira antes de produção: push no main publica direto, então lint e
+  # testes unitários precisam passar aqui. Tipos (tsc) ainda não entram: há
+  # erros antigos de tipagem do cliente Supabase (next.config ignora no build);
+  # quando zerarem, adicionar `npm run type-check` a este job.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes unitários
+        run: npm test
+
   deploy:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
