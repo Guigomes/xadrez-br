@@ -115,7 +115,8 @@ export function useTournamentStandings(tournamentId: string) {
         p_tournament_id: tournamentId,
       });
       if (error) throw error;
-      return data ?? [];
+      // O RPC devolve `sex` como text; o domínio só admite 'm' | 'w' | null.
+      return (data ?? []) as StandingRow[];
     },
     staleTime: 30_000,
     refetchInterval: 30_000,

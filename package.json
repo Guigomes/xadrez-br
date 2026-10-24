@@ -12,7 +12,8 @@
     "index-kb": "tsx scripts/index-kb.ts",
     "smoke-kb": "tsx scripts/smoke-kb.ts",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "gen-types": "node --env-file=.env.local scripts/gen-types.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

@@ -14,12 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      asaas_webhook_events: {
-        Row: { event: string; id: string; payload: Json; payment_id: string; processed_at: string }
-        Insert: { event: string; id?: string; payload: Json; payment_id: string; processed_at?: string }
-        Update: { event?: string; id?: string; payload?: Json; payment_id?: string; processed_at?: string }
-        Relationships: []
-      }
       admin_fcm_tokens: {
         Row: {
           created_at: string
@@ -27,6 +21,7 @@ export type Database = {
           updated_at: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           token: string
@@ -41,6 +36,112 @@ export type Database = {
         }
         Relationships: []
       }
+      app_push_follows: {
+        Row: {
+          followed_player_ids: string[]
+          token: string
+          tournament_id: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          followed_player_ids?: string[]
+          token: string
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          followed_player_ids?: string[]
+          token?: string
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_push_follows_token_fkey"
+            columns: ["token"]
+            isOneToOne: false
+            referencedRelation: "app_push_tokens"
+            referencedColumns: ["token"]
+          },
+          {
+            foreignKeyName: "app_push_follows_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_push_tokens: {
+        Row: {
+          created_at: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          platform?: string
+          token: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: NonNullable<Json>
+        }
+        ComputedFields: never
+        Insert: {
+          key: string
+          updated_at?: string
+          value: NonNullable<Json>
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: NonNullable<Json>
+        }
+        Relationships: []
+      }
+      asaas_webhook_events: {
+        Row: {
+          event: string
+          id: string
+          payload: NonNullable<Json>
+          payment_id: string
+          processed_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          event: string
+          id?: string
+          payload: NonNullable<Json>
+          payment_id: string
+          processed_at?: string
+        }
+        Update: {
+          event?: string
+          id?: string
+          payload?: NonNullable<Json>
+          payment_id?: string
+          processed_at?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -52,6 +153,7 @@ export type Database = {
           payload: Json | null
           tournament_id: string
         }
+        ComputedFields: never
         Insert: {
           action: string
           actor?: string | null
@@ -92,6 +194,7 @@ export type Database = {
           tournament_id: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           assigned_by?: string | null
           board_number: number
@@ -127,11 +230,31 @@ export type Database = {
           },
         ]
       }
+      broadcast_create_limits: {
+        Row: {
+          attempts: number
+          fingerprint: string
+          window_start: string
+        }
+        ComputedFields: never
+        Insert: {
+          attempts: number
+          fingerprint: string
+          window_start: string
+        }
+        Update: {
+          attempts?: number
+          fingerprint?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       broadcast_keys: {
         Row: {
           broadcast_id: string
           key_hash: string
         }
+        ComputedFields: never
         Insert: {
           broadcast_id: string
           key_hash: string
@@ -161,6 +284,7 @@ export type Database = {
           uci: string
           video_timestamp: number | null
         }
+        ComputedFields: never
         Insert: {
           broadcast_id: string
           confidence?: number | null
@@ -208,6 +332,7 @@ export type Database = {
           updated_at: string
           white_player: string
         }
+        ComputedFields: never
         Insert: {
           black_player?: string
           created_at?: string
@@ -242,6 +367,52 @@ export type Database = {
         }
         Relationships: []
       }
+      cbx_calendar_events: {
+        Row: {
+          cbx_id: string
+          end_date: string
+          first_seen_at: string
+          location: string | null
+          name: string
+          organizer: string | null
+          rating: string | null
+          start_date: string
+          status: string | null
+          time_control: string | null
+          uf: string | null
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          cbx_id: string
+          end_date: string
+          first_seen_at?: string
+          location?: string | null
+          name: string
+          organizer?: string | null
+          rating?: string | null
+          start_date: string
+          status?: string | null
+          time_control?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cbx_id?: string
+          end_date?: string
+          first_seen_at?: string
+          location?: string | null
+          name?: string
+          organizer?: string | null
+          rating?: string | null
+          start_date?: string
+          status?: string | null
+          time_control?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -252,6 +423,7 @@ export type Database = {
           session_id: string
           sources: Json | null
         }
+        ComputedFields: never
         Insert: {
           content: string
           created_at?: string
@@ -293,6 +465,7 @@ export type Database = {
           user_id: string | null
           user_last_read_at: string | null
         }
+        ComputedFields: never
         Insert: {
           contact_phone?: string | null
           created_at?: string
@@ -332,6 +505,7 @@ export type Database = {
           id: number
           locked_at: string | null
         }
+        ComputedFields: never
         Insert: {
           id?: number
           locked_at?: string | null
@@ -355,6 +529,7 @@ export type Database = {
           status_code: number | null
           user_id: string | null
         }
+        ComputedFields: never
         Insert: {
           context?: Json | null
           created_at?: string
@@ -381,6 +556,188 @@ export type Database = {
         }
         Relationships: []
       }
+      history_game_pgns: {
+        Row: {
+          created_at: string
+          game_id: string
+          pgn: string
+          source: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          game_id: string
+          pgn: string
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          pgn?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "history_game_pgns_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: true
+            referencedRelation: "history_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      history_games: {
+        Row: {
+          black_name: string
+          black_player_id: string | null
+          black_rating: number | null
+          created_at: string
+          group_name: string | null
+          id: string
+          result: Database["public"]["Enums"]["game_result"]
+          round: number
+          source_game_id: string
+          tournament_id: string
+          white_name: string
+          white_player_id: string | null
+          white_rating: number | null
+        }
+        ComputedFields: never
+        Insert: {
+          black_name: string
+          black_player_id?: string | null
+          black_rating?: number | null
+          created_at?: string
+          group_name?: string | null
+          id?: string
+          result: Database["public"]["Enums"]["game_result"]
+          round: number
+          source_game_id: string
+          tournament_id: string
+          white_name: string
+          white_player_id?: string | null
+          white_rating?: number | null
+        }
+        Update: {
+          black_name?: string
+          black_player_id?: string | null
+          black_rating?: number | null
+          created_at?: string
+          group_name?: string | null
+          id?: string
+          result?: Database["public"]["Enums"]["game_result"]
+          round?: number
+          source_game_id?: string
+          tournament_id?: string
+          white_name?: string
+          white_player_id?: string | null
+          white_rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "history_games_black_player_id_fkey"
+            columns: ["black_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "history_games_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "history_tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "history_games_white_player_id_fkey"
+            columns: ["white_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      history_tournaments: {
+        Row: {
+          city: string | null
+          created_at: string
+          date_approx: boolean
+          end_date: string | null
+          games_count: number
+          groups: string[]
+          homologated: boolean | null
+          id: string
+          name: string
+          organizer_name: string | null
+          pgn_count: number
+          players_count: number
+          series_id: string | null
+          series_label: string | null
+          slug: string
+          source_tnrs: string[]
+          source_url: string | null
+          start_date: string
+          state: string | null
+          time_control_kind: Database["public"]["Enums"]["time_control_kind"]
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          city?: string | null
+          created_at?: string
+          date_approx?: boolean
+          end_date?: string | null
+          games_count?: number
+          groups?: string[]
+          homologated?: boolean | null
+          id?: string
+          name: string
+          organizer_name?: string | null
+          pgn_count?: number
+          players_count?: number
+          series_id?: string | null
+          series_label?: string | null
+          slug: string
+          source_tnrs?: string[]
+          source_url?: string | null
+          start_date: string
+          state?: string | null
+          time_control_kind?: Database["public"]["Enums"]["time_control_kind"]
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          date_approx?: boolean
+          end_date?: string | null
+          games_count?: number
+          groups?: string[]
+          homologated?: boolean | null
+          id?: string
+          name?: string
+          organizer_name?: string | null
+          pgn_count?: number
+          players_count?: number
+          series_id?: string | null
+          series_label?: string | null
+          slug?: string
+          source_tnrs?: string[]
+          source_url?: string | null
+          start_date?: string
+          state?: string | null
+          time_control_kind?: Database["public"]["Enums"]["time_control_kind"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "history_tournaments_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kb_chunks: {
         Row: {
           audience: string
@@ -393,6 +750,7 @@ export type Database = {
           embedding: string | null
           id: string
         }
+        ComputedFields: never
         Insert: {
           audience?: string
           chunk_index: number
@@ -417,26 +775,6 @@ export type Database = {
         }
         Relationships: []
       }
-      app_push_follows: {
-        Row: { followed_player_ids: string[]; token: string; tournament_id: string; updated_at: string }
-        Insert: { followed_player_ids?: string[]; token: string; tournament_id: string; updated_at?: string }
-        Update: { followed_player_ids?: string[]; token?: string; tournament_id?: string; updated_at?: string }
-        Relationships: [
-          {
-            foreignKeyName: "app_push_follows_token_fkey"
-            columns: ["token"]
-            isOneToOne: false
-            referencedRelation: "app_push_tokens"
-            referencedColumns: ["token"]
-          },
-        ]
-      }
-      app_push_tokens: {
-        Row: { created_at: string; platform: string; token: string; updated_at: string; user_id: string | null }
-        Insert: { created_at?: string; platform?: string; token: string; updated_at?: string; user_id?: string | null }
-        Update: { created_at?: string; platform?: string; token?: string; updated_at?: string; user_id?: string | null }
-        Relationships: []
-      }
       lite_registrations: {
         Row: {
           birth_year: number | null
@@ -453,6 +791,7 @@ export type Database = {
           status: string
           tournament_id: string
         }
+        ComputedFields: never
         Insert: {
           birth_year?: number | null
           club?: string | null
@@ -509,6 +848,7 @@ export type Database = {
           tournament_id: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           arbiter_email: string
           arbiter_name: string
@@ -539,18 +879,47 @@ export type Database = {
           tournament_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lite_result_submissions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "lite_tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lite_tournament_arbiters: {
-        Row: { email: string; name: string; tournament_id: string }
-        Insert: { email: string; name: string; tournament_id: string }
-        Update: { email?: string; name?: string; tournament_id?: string }
-        Relationships: []
+        Row: {
+          email: string
+          name: string
+          tournament_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          email: string
+          name: string
+          tournament_id: string
+        }
+        Update: {
+          email?: string
+          name?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lite_tournament_arbiters_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "lite_tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lite_tournaments: {
         Row: {
           app_version: number
-          backup: Json
+          backup: NonNullable<Json>
           created_at: string
           device_id: string
           id: string
@@ -561,9 +930,10 @@ export type Database = {
           site_tournament_id: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           app_version: number
-          backup: Json
+          backup: NonNullable<Json>
           created_at?: string
           device_id: string
           id: string
@@ -576,7 +946,7 @@ export type Database = {
         }
         Update: {
           app_version?: number
-          backup?: Json
+          backup?: NonNullable<Json>
           created_at?: string
           device_id?: string
           id?: string
@@ -616,6 +986,7 @@ export type Database = {
           title: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           author_id?: string | null
           body_md?: string
@@ -664,6 +1035,7 @@ export type Database = {
           tournament_id: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id?: string
@@ -692,6 +1064,39 @@ export type Database = {
           },
         ]
       }
+      pairing_pgns: {
+        Row: {
+          created_at: string
+          pairing_id: string
+          pgn: string
+          source: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          pairing_id: string
+          pgn: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          pairing_id?: string
+          pgn?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pairing_pgns_pairing_id_fkey"
+            columns: ["pairing_id"]
+            isOneToOne: true
+            referencedRelation: "pairings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pairings: {
         Row: {
           black_points: number | null
@@ -709,6 +1114,7 @@ export type Database = {
           white_points: number | null
           white_tp_id: string | null
         }
+        ComputedFields: never
         Insert: {
           black_points?: number | null
           black_tp_id?: string | null
@@ -779,6 +1185,7 @@ export type Database = {
           limit_int: number | null
           plan_id: string
         }
+        ComputedFields: never
         Insert: {
           enabled?: boolean
           key: string
@@ -815,6 +1222,7 @@ export type Database = {
           sort_order: number
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           billing_interval?: string | null
           code: string
@@ -851,6 +1259,7 @@ export type Database = {
           tournament_id: string | null
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id?: string
@@ -882,6 +1291,76 @@ export type Database = {
           },
         ]
       }
+      player_group_members: {
+        Row: {
+          added_at: string
+          group_id: string
+          note: string | null
+          player_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          added_at?: string
+          group_id: string
+          note?: string | null
+          player_id: string
+        }
+        Update: {
+          added_at?: string
+          group_id?: string
+          note?: string | null
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "player_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_group_members_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_groups: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          owner_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_groups_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       players: {
         Row: {
           birth_year: number | null
@@ -905,6 +1384,7 @@ export type Database = {
           title: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           birth_year?: number | null
           cbx_id?: string | null
@@ -951,47 +1431,6 @@ export type Database = {
         }
         Relationships: []
       }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          created_at: string | null
-          endpoint: string
-          followed_player_ids: string[]
-          id: string
-          p256dh: string
-          tournament_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          auth: string
-          created_at?: string | null
-          endpoint: string
-          followed_player_ids?: string[]
-          id?: string
-          p256dh: string
-          tournament_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          auth?: string
-          created_at?: string | null
-          endpoint?: string
-          followed_player_ids?: string[]
-          id?: string
-          p256dh?: string
-          tournament_id?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_tournament_id_fkey"
-            columns: ["tournament_id"]
-            isOneToOne: false
-            referencedRelation: "tournaments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       push_notification_events: {
         Row: {
           created_at: string
@@ -1002,6 +1441,7 @@ export type Database = {
           round_number: number
           tournament_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           event_key: string
@@ -1037,6 +1477,141 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          followed_player_ids: string[]
+          id: string
+          p256dh: string
+          tournament_id: string | null
+          user_id: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          followed_player_ids?: string[]
+          id?: string
+          p256dh: string
+          tournament_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          followed_player_ids?: string[]
+          id?: string
+          p256dh?: string
+          tournament_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_orders: {
+        Row: {
+          asaas_customer_id: string | null
+          asaas_invoice_url: string | null
+          asaas_payment_id: string | null
+          created_at: string
+          delivered_at: string | null
+          delivery_path: string | null
+          guardian_consent: boolean
+          history_tournament_id: string | null
+          id: string
+          notes: string | null
+          payment_status: string
+          player_id: string
+          price_cents: number
+          status: string
+          tournament_id: string | null
+          tournament_name: string
+          updated_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          asaas_customer_id?: string | null
+          asaas_invoice_url?: string | null
+          asaas_payment_id?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          delivery_path?: string | null
+          guardian_consent?: boolean
+          history_tournament_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_status?: string
+          player_id: string
+          price_cents?: number
+          status?: string
+          tournament_id?: string | null
+          tournament_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asaas_customer_id?: string | null
+          asaas_invoice_url?: string | null
+          asaas_payment_id?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          delivery_path?: string | null
+          guardian_consent?: boolean
+          history_tournament_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_status?: string
+          player_id?: string
+          price_cents?: number
+          status?: string
+          tournament_id?: string | null
+          tournament_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_orders_history_tournament_id_fkey"
+            columns: ["history_tournament_id"]
+            isOneToOne: false
+            referencedRelation: "history_tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_orders_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_orders_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requested_byes: {
         Row: {
           created_at: string
@@ -1046,6 +1621,7 @@ export type Database = {
           tournament_id: string
           tp_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string | null
@@ -1091,6 +1667,7 @@ export type Database = {
           tournament_id: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id?: string
@@ -1144,6 +1721,7 @@ export type Database = {
           series_id: string
           tournament_id: string
         }
+        ComputedFields: never
         Insert: {
           chess_points?: number
           id?: string
@@ -1208,6 +1786,7 @@ export type Database = {
           points: number
           series_id: string
         }
+        ComputedFields: never
         Insert: {
           id?: string
           place: number
@@ -1239,6 +1818,7 @@ export type Database = {
           sort_order: number
           tournament_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id?: string
@@ -1274,23 +1854,30 @@ export type Database = {
       }
       site_access_events: {
         Row: {
+          city: string | null
           device_id: string
           id: number
           path: string
+          region: string | null
           user_id: string | null
           visited_at: string
         }
+        ComputedFields: never
         Insert: {
+          city?: string | null
           device_id: string
           id?: number
           path: string
+          region?: string | null
           user_id?: string | null
           visited_at?: string
         }
         Update: {
+          city?: string | null
           device_id?: string
           id?: number
           path?: string
+          region?: string | null
           user_id?: string | null
           visited_at?: string
         }
@@ -1312,11 +1899,14 @@ export type Database = {
           followed_player_ids: string[]
           id: string
           is_owner: boolean
+          last_city: string | null
           last_path: string | null
+          last_region: string | null
           last_seen_at: string
           os: string
           owner_label: string | null
         }
+        ComputedFields: never
         Insert: {
           browser: string
           device_type: string
@@ -1324,7 +1914,9 @@ export type Database = {
           followed_player_ids?: string[]
           id: string
           is_owner?: boolean
+          last_city?: string | null
           last_path?: string | null
+          last_region?: string | null
           last_seen_at?: string
           os: string
           owner_label?: string | null
@@ -1336,10 +1928,143 @@ export type Database = {
           followed_player_ids?: string[]
           id?: string
           is_owner?: boolean
+          last_city?: string | null
           last_path?: string | null
+          last_region?: string | null
           last_seen_at?: string
           os?: string
           owner_label?: string | null
+        }
+        Relationships: []
+      }
+      sparring_games: {
+        Row: {
+          black: string
+          black_elo: number | null
+          created_at: string
+          eco: string | null
+          event: string | null
+          hash: string
+          id: string
+          opening: string | null
+          owner_id: string
+          pgn: string
+          played_on: string | null
+          player_color: string
+          player_id: string
+          ply_count: number
+          result: string
+          site: string | null
+          source: string
+          source_id: string | null
+          time_class: string
+          time_control: string | null
+          white: string
+          white_elo: number | null
+        }
+        ComputedFields: never
+        Insert: {
+          black: string
+          black_elo?: number | null
+          created_at?: string
+          eco?: string | null
+          event?: string | null
+          hash: string
+          id?: string
+          opening?: string | null
+          owner_id?: string
+          pgn: string
+          played_on?: string | null
+          player_color: string
+          player_id: string
+          ply_count: number
+          result: string
+          site?: string | null
+          source: string
+          source_id?: string | null
+          time_class: string
+          time_control?: string | null
+          white: string
+          white_elo?: number | null
+        }
+        Update: {
+          black?: string
+          black_elo?: number | null
+          created_at?: string
+          eco?: string | null
+          event?: string | null
+          hash?: string
+          id?: string
+          opening?: string | null
+          owner_id?: string
+          pgn?: string
+          played_on?: string | null
+          player_color?: string
+          player_id?: string
+          ply_count?: number
+          result?: string
+          site?: string | null
+          source?: string
+          source_id?: string | null
+          time_class?: string
+          time_control?: string | null
+          white?: string
+          white_elo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sparring_games_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "sparring_player_stats"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "sparring_games_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "sparring_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sparring_players: {
+        Row: {
+          aliases: string[]
+          chesscom_username: string | null
+          created_at: string
+          id: string
+          lichess_username: string | null
+          name: string
+          notes: string | null
+          owner_id: string
+          rating: number | null
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          aliases?: string[]
+          chesscom_username?: string | null
+          created_at?: string
+          id?: string
+          lichess_username?: string | null
+          name: string
+          notes?: string | null
+          owner_id?: string
+          rating?: number | null
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          chesscom_username?: string | null
+          created_at?: string
+          id?: string
+          lichess_username?: string | null
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          rating?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1362,6 +2087,7 @@ export type Database = {
           updated_at: string
           wins: number
         }
+        ComputedFields: never
         Insert: {
           buchholz?: number | null
           buchholz_cut1?: number | null
@@ -1427,6 +2153,7 @@ export type Database = {
           updated_at: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           asaas_subscription_id: string
           billing_type?: string
@@ -1450,8 +2177,92 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          { foreignKeyName: "subscriptions_plan_id_fkey"; columns: ["plan_id"]; isOneToOne: false; referencedRelation: "plans"; referencedColumns: ["id"] },
-          { foreignKeyName: "subscriptions_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "user_profiles"; referencedColumns: ["id"] },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_alert_deliveries: {
+        Row: {
+          delivered_at: string
+          ref_id: string
+          rule_id: string
+          source: string
+        }
+        ComputedFields: never
+        Insert: {
+          delivered_at?: string
+          ref_id: string
+          rule_id: string
+          source: string
+        }
+        Update: {
+          delivered_at?: string
+          ref_id?: string
+          rule_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_alert_deliveries_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_alert_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_alert_rules: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          include_cbx: boolean
+          name: string | null
+          time_controls: string[]
+          ufs: string[]
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          include_cbx?: boolean
+          name?: string | null
+          time_controls?: string[]
+          ufs?: string[]
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          include_cbx?: boolean
+          name?: string | null
+          time_controls?: string[]
+          ufs?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_alert_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tournament_categories: {
@@ -1468,6 +2279,7 @@ export type Database = {
           sort_order: number
           tournament_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id?: string
@@ -1517,24 +2329,31 @@ export type Database = {
           created_at: string
           discovered_rounds_count: number | null
           enabled: boolean
+          force_requested_at: string | null
           id: string
           last_message: string | null
           last_run_at: string | null
           last_status: string | null
           pairing_group_name: string | null
+          pgn_check_count: number
+          pgn_checked_at: string | null
           tournament_id: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           base_url: string
           created_at?: string
           discovered_rounds_count?: number | null
           enabled?: boolean
+          force_requested_at?: string | null
           id?: string
           last_message?: string | null
           last_run_at?: string | null
           last_status?: string | null
           pairing_group_name?: string | null
+          pgn_check_count?: number
+          pgn_checked_at?: string | null
           tournament_id: string
           updated_at?: string
         }
@@ -1543,17 +2362,69 @@ export type Database = {
           created_at?: string
           discovered_rounds_count?: number | null
           enabled?: boolean
+          force_requested_at?: string | null
           id?: string
           last_message?: string | null
           last_run_at?: string | null
           last_status?: string | null
           pairing_group_name?: string | null
+          pgn_check_count?: number
+          pgn_checked_at?: string | null
           tournament_id?: string
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "tournament_imports_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_payouts: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          id: string
+          method: string
+          note: string | null
+          paid_on: string
+          tournament_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method?: string
+          note?: string | null
+          paid_on?: string
+          tournament_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method?: string
+          note?: string | null
+          paid_on?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_payouts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_payouts_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
             referencedRelation: "tournaments"
@@ -1585,6 +2456,7 @@ export type Database = {
           tournament_id: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           buchholz?: number | null
           buchholz_cut1?: number | null
@@ -1664,11 +2536,11 @@ export type Database = {
       }
       tournament_registrations: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           asaas_customer_id: string | null
           asaas_invoice_url: string | null
           asaas_payment_id: string | null
-          approved_at: string | null
-          approved_by: string | null
           birth_year: number | null
           category_id: string | null
           cbx_id: string | null
@@ -1682,10 +2554,14 @@ export type Database = {
           full_name: string
           id: string
           is_waitlisted: boolean
+          net_value_cents: number | null
+          paid_at: string | null
+          paid_value_cents: number | null
           pairing_group_id: string | null
           payment_receipt_path: string | null
           payment_status: string
           phone: string | null
+          platform_fee_cents: number
           player_id: string | null
           promoted_at: string | null
           rating_std: number | null
@@ -1699,12 +2575,13 @@ export type Database = {
           user_id: string | null
           waitlisted_at: string | null
         }
+        ComputedFields: never
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           asaas_customer_id?: string | null
           asaas_invoice_url?: string | null
           asaas_payment_id?: string | null
-          approved_at?: string | null
-          approved_by?: string | null
           birth_year?: number | null
           category_id?: string | null
           cbx_id?: string | null
@@ -1718,10 +2595,14 @@ export type Database = {
           full_name: string
           id?: string
           is_waitlisted?: boolean
+          net_value_cents?: number | null
+          paid_at?: string | null
+          paid_value_cents?: number | null
           pairing_group_id?: string | null
           payment_receipt_path?: string | null
           payment_status?: string
           phone?: string | null
+          platform_fee_cents?: number
           player_id?: string | null
           promoted_at?: string | null
           rating_std?: number | null
@@ -1736,11 +2617,11 @@ export type Database = {
           waitlisted_at?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           asaas_customer_id?: string | null
           asaas_invoice_url?: string | null
           asaas_payment_id?: string | null
-          approved_at?: string | null
-          approved_by?: string | null
           birth_year?: number | null
           category_id?: string | null
           cbx_id?: string | null
@@ -1754,10 +2635,14 @@ export type Database = {
           full_name?: string
           id?: string
           is_waitlisted?: boolean
+          net_value_cents?: number | null
+          paid_at?: string | null
+          paid_value_cents?: number | null
           pairing_group_id?: string | null
           payment_receipt_path?: string | null
           payment_status?: string
           phone?: string | null
+          platform_fee_cents?: number
           player_id?: string | null
           promoted_at?: string | null
           rating_std?: number | null
@@ -1830,6 +2715,7 @@ export type Database = {
           tiebreak_order: string[]
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           banner_url?: string | null
           city?: string | null
@@ -1881,6 +2767,7 @@ export type Database = {
           tournament_id: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id?: string
@@ -1911,10 +2798,10 @@ export type Database = {
         Row: {
           accept_online_payment: boolean
           banner_url: string | null
-          chief_arbiter: string | null
           checkin_closes_at: string | null
           checkin_enabled: boolean
           checkin_opens_at: string | null
+          chief_arbiter: string | null
           city: string
           classification_dimensions: string[]
           created_at: string
@@ -1922,11 +2809,15 @@ export type Database = {
           description: string | null
           end_date: string | null
           has_absolute_classification: boolean
+          has_female_classification: boolean
+          homologated: boolean | null
           id: string
           initial_color: Database["public"]["Enums"]["initial_color"]
           is_free: boolean
           is_international: boolean
           is_public: boolean
+          live_broadcast_note: string | null
+          live_broadcast_url: string | null
           max_participants: number | null
           mode: Database["public"]["Enums"]["tournament_mode"]
           name: string
@@ -1956,13 +2847,14 @@ export type Database = {
           venue: string | null
           waitlist_enabled: boolean
         }
+        ComputedFields: never
         Insert: {
           accept_online_payment?: boolean
           banner_url?: string | null
-          chief_arbiter?: string | null
           checkin_closes_at?: string | null
           checkin_enabled?: boolean
           checkin_opens_at?: string | null
+          chief_arbiter?: string | null
           city: string
           classification_dimensions?: string[]
           created_at?: string
@@ -1970,11 +2862,15 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           has_absolute_classification?: boolean
+          has_female_classification?: boolean
+          homologated?: boolean | null
           id?: string
           initial_color?: Database["public"]["Enums"]["initial_color"]
           is_free?: boolean
           is_international?: boolean
           is_public?: boolean
+          live_broadcast_note?: string | null
+          live_broadcast_url?: string | null
           max_participants?: number | null
           mode?: Database["public"]["Enums"]["tournament_mode"]
           name: string
@@ -2007,10 +2903,10 @@ export type Database = {
         Update: {
           accept_online_payment?: boolean
           banner_url?: string | null
-          chief_arbiter?: string | null
           checkin_closes_at?: string | null
           checkin_enabled?: boolean
           checkin_opens_at?: string | null
+          chief_arbiter?: string | null
           city?: string
           classification_dimensions?: string[]
           created_at?: string
@@ -2018,11 +2914,15 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           has_absolute_classification?: boolean
+          has_female_classification?: boolean
+          homologated?: boolean | null
           id?: string
           initial_color?: Database["public"]["Enums"]["initial_color"]
           is_free?: boolean
           is_international?: boolean
           is_public?: boolean
+          live_broadcast_note?: string | null
+          live_broadcast_url?: string | null
           max_participants?: number | null
           mode?: Database["public"]["Enums"]["tournament_mode"]
           name?: string
@@ -2062,6 +2962,7 @@ export type Database = {
           session_id: string | null
           user_id: string | null
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id?: string
@@ -2098,6 +2999,7 @@ export type Database = {
           updated_at: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           evidence_tournament_id?: string | null
@@ -2161,6 +3063,7 @@ export type Database = {
           state: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           asaas_customer_id?: string | null
           avatar_url?: string | null
@@ -2219,17 +3122,26 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      sparring_player_stats: {
+        Row: {
+          as_black: number | null
+          as_white: number | null
+          classical: number | null
+          fast: number | null
+          first_game: string | null
+          from_chesscom: number | null
+          from_lichess: number | null
+          from_pgn: number | null
+          last_game: string | null
+          player_id: string | null
+          rapid: number | null
+          total: number | null
+        }
+        ComputedFields: never
+        Relationships: []
+      }
     }
     Functions: {
-      set_my_checkin: {
-        Args: { p_tournament_player_id: string }
-        Returns: string
-      }
-      set_player_checkin: {
-        Args: { p_checked_in: boolean; p_tournament_player_id: string }
-        Returns: string
-      }
       _audit: {
         Args: {
           p_action: string
@@ -2243,6 +3155,25 @@ export type Database = {
       _generate_initial_ranking: {
         Args: { p_group_id: string }
         Returns: undefined
+      }
+      _group_member_games: {
+        Args: { p_group_id: string; p_since: string }
+        Returns: {
+          color: string
+          game_id: string
+          has_pgn: boolean
+          opponent_name: string
+          opponent_rating: number
+          player_id: string
+          points: number
+          result: Database["public"]["Enums"]["game_result"]
+          round_number: number
+          source: string
+          start_date: string
+          tournament_id: string
+          tournament_name: string
+          tournament_slug: string
+        }[]
       }
       _recalculate_series_standings: {
         Args: { p_series_id: string }
@@ -2266,6 +3197,19 @@ export type Database = {
         }
         Returns: string
       }
+      apply_broadcast_move: {
+        Args: {
+          p_broadcast_id: string
+          p_confidence?: number
+          p_fen_after: string
+          p_pgn: string
+          p_ply: number
+          p_san: string
+          p_uci: string
+          p_video_timestamp?: number
+        }
+        Returns: string
+      }
       approve_registration: {
         Args: { p_registration_id: string }
         Returns: string
@@ -2275,11 +3219,19 @@ export type Database = {
         Returns: undefined
       }
       auth_user_role: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      billing_enabled: { Args: Record<PropertyKey, never>; Returns: boolean }
       chess_normalize_name_key: { Args: { p: string }; Returns: string }
-      cleanup_test_players: { Args: never; Returns: number }
+      claim_broadcast_create_slot: {
+        Args: { p_fingerprint: string; p_limit?: number }
+        Returns: boolean
+      }
+      cleanup_test_players: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       derive_player_category: {
         Args: { p_tournament_id: string; p_tp_id: string }
         Returns: string
@@ -2294,8 +3246,60 @@ export type Database = {
         Args: { p_count: number; p_group_id: string; p_tournament_id: string }
         Returns: number
       }
+      get_group_overview: {
+        Args: { p_days?: number; p_group_id: string }
+        Returns: {
+          birth_year: number
+          cbx_id: string
+          full_name: string
+          games: number
+          last_tournament_date: string
+          last_tournament_name: string
+          note: string
+          pgn_games: number
+          player_id: string
+          points: number
+          rating_blz: number
+          rating_rpd: number
+          rating_std: number
+          state: string
+          title: string
+        }[]
+      }
+      get_group_recent_games: {
+        Args: { p_days?: number; p_group_id: string; p_only_pgn?: boolean }
+        Returns: {
+          color: string
+          game_id: string
+          has_pgn: boolean
+          opponent_name: string
+          opponent_rating: number
+          player_id: string
+          player_name: string
+          points: number
+          result: Database["public"]["Enums"]["game_result"]
+          round_number: number
+          source: string
+          start_date: string
+          tournament_name: string
+          tournament_slug: string
+        }[]
+      }
+      get_history_tournament_players: {
+        Args: { p_tournament_id: string }
+        Returns: {
+          draws: number
+          games: number
+          group_name: string
+          losses: number
+          player_id: string
+          player_name: string
+          points: number
+          wins: number
+        }[]
+      }
       get_my_entitlements: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           enabled: boolean
           key: string
@@ -2307,6 +3311,49 @@ export type Database = {
         Args: { p_tournament_id: string }
         Returns: string
       }
+      get_pairing_ids_with_pgn: {
+        Args: { p_pairing_ids: string[] }
+        Returns: string[]
+      }
+      get_payout_overview: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          balance_cents: number
+          name: string
+          organizer_name: string
+          organizer_net_cents: number
+          paid_count: number
+          paid_out_cents: number
+          slug: string
+          start_date: string
+          tournament_id: string
+        }[]
+      }
+      get_player_history: {
+        Args: { p_player_id: string }
+        Returns: {
+          color: string
+          game_id: string
+          group_name: string
+          has_pgn: boolean
+          homologated: boolean
+          my_rating: number
+          opponent_cbx_id: string
+          opponent_name: string
+          opponent_player_id: string
+          opponent_rating: number
+          opponent_title: string
+          points: number
+          result: Database["public"]["Enums"]["game_result"]
+          round_number: number
+          source: string
+          start_date: string
+          time_control_kind: Database["public"]["Enums"]["time_control_kind"]
+          tournament_id: string
+          tournament_name: string
+          tournament_slug: string
+        }[]
+      }
       get_player_tournament_history: {
         Args: { p_tournament_id: string; p_tp_id: string }
         Returns: {
@@ -2314,11 +3361,14 @@ export type Database = {
           color: string
           cumulative_pts: number
           is_bye: boolean
+          opponent_federation: string
+          opponent_fide_name: string
           opponent_name: string
           opponent_points: number
           opponent_rank: number
           opponent_rating: number
           opponent_title: string
+          opponent_tp_id: string
           points_earned: number
           result: Database["public"]["Enums"]["game_result"]
           round_number: number
@@ -2328,6 +3378,8 @@ export type Database = {
       get_round_pairings: {
         Args: { p_round_id: string }
         Returns: {
+          black_federation: string
+          black_fide_name: string
           black_name: string
           black_points: number
           black_rank: number
@@ -2340,6 +3392,8 @@ export type Database = {
           manual_override: boolean
           pairing_id: string
           result: Database["public"]["Enums"]["game_result"]
+          white_federation: string
+          white_fide_name: string
           white_name: string
           white_points: number
           white_rank: number
@@ -2395,7 +3449,11 @@ export type Database = {
       get_tournament_by_slug: {
         Args: { p_slug: string }
         Returns: {
+          accept_online_payment: boolean
           banner_url: string | null
+          checkin_closes_at: string | null
+          checkin_enabled: boolean
+          checkin_opens_at: string | null
           chief_arbiter: string | null
           city: string
           classification_dimensions: string[]
@@ -2404,10 +3462,16 @@ export type Database = {
           description: string | null
           end_date: string | null
           has_absolute_classification: boolean
+          has_female_classification: boolean
+          homologated: boolean | null
           id: string
           initial_color: Database["public"]["Enums"]["initial_color"]
           is_free: boolean
+          is_international: boolean
           is_public: boolean
+          live_broadcast_note: string | null
+          live_broadcast_url: string | null
+          max_participants: number | null
           mode: Database["public"]["Enums"]["tournament_mode"]
           name: string
           organizer_name: string
@@ -2416,6 +3480,7 @@ export type Database = {
           rating_kind: Database["public"]["Enums"]["rating_kind"]
           registration_closes_by_date: boolean
           registration_end_date: string | null
+          registration_fee_cents: number | null
           registration_fee_text: string | null
           registration_start_date: string | null
           requested_bye_score: number
@@ -2433,6 +3498,7 @@ export type Database = {
           tournament_type: Database["public"]["Enums"]["tournament_type"]
           updated_at: string
           venue: string | null
+          waitlist_enabled: boolean
         }
         SetofOptions: {
           from: "*"
@@ -2449,6 +3515,24 @@ export type Database = {
           last_import_at: string
           last_import_status: string
           tournament: Database["public"]["Tables"]["tournaments"]["Row"]
+        }[]
+      }
+      get_tournament_pgn_count: {
+        Args: { p_tournament_id: string }
+        Returns: number
+      }
+      get_tournament_settlement: {
+        Args: { p_tournament_id: string }
+        Returns: {
+          balance_cents: number
+          estimated_count: number
+          gateway_fee_cents: number
+          gross_cents: number
+          organizer_net_cents: number
+          paid_count: number
+          paid_out_cents: number
+          platform_fee_cents: number
+          refunded_count: number
         }[]
       }
       get_tournament_staff: {
@@ -2470,6 +3554,7 @@ export type Database = {
           category_name: string
           draws: number
           federation: string
+          fide_name: string
           full_name: string
           games_played: number
           initial_ranking: number
@@ -2483,16 +3568,24 @@ export type Database = {
           progressive: number
           rank: number
           rating_std: number
+          sex: string
           sonneborn_berger: number
           state: string
-          tp_id: string
           title: string
+          tp_id: string
           wins: number
         }[]
       }
       has_entitlement: { Args: { p_key: string }; Returns: boolean }
-      is_arbiter_or_admin: { Args: never; Returns: boolean }
-      is_organizer_or_admin: { Args: never; Returns: boolean }
+      is_arbiter_or_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_organizer_or_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_player_group_owner: { Args: { p_group_id: string }; Returns: boolean }
       is_series_manager: { Args: { p_series_id: string }; Returns: boolean }
       is_tournament_manager: {
         Args: { p_tournament_id: string }
@@ -2502,6 +3595,12 @@ export type Database = {
         Args: { p_tournament_id: string }
         Returns: boolean
       }
+      lite_delete: {
+        Args: { p_id: string; p_owner: string }
+        Returns: undefined
+      }
+      lite_publish: { Args: { p_id: string; p_slug: string }; Returns: string }
+      lite_unpublish: { Args: { p_id: string }; Returns: undefined }
       match_kb_chunks: {
         Args: {
           match_count?: number
@@ -2515,11 +3614,11 @@ export type Database = {
           similarity: number
         }[]
       }
-      lite_delete: { Args: { p_id: string; p_owner: string }; Returns: undefined }
-      lite_publish: { Args: { p_id: string; p_slug: string }; Returns: string }
-      lite_unpublish: { Args: { p_id: string }; Returns: undefined }
-      my_plan_id: { Args: never; Returns: string }
-      my_unread_chat_count: { Args: never; Returns: number }
+      my_plan_id: { Args: Record<PropertyKey, never>; Returns: string }
+      my_unread_chat_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       next_status_by_date: {
         Args: {
           p_created_at: string
@@ -2531,10 +3630,14 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["tournament_status"]
       }
-      now_brt: { Args: never; Returns: string }
+      now_brt: { Args: Record<PropertyKey, never>; Returns: string }
       override_pairing_players: {
         Args: { p_justification: string; p_moves: Json; p_round_id: string }
         Returns: undefined
+      }
+      promote_tournament_waitlist: {
+        Args: { p_tournament_id: string }
+        Returns: number
       }
       publish_round: { Args: { p_round_id: string }; Returns: undefined }
       recalculate_series_standings: {
@@ -2613,12 +3716,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_my_checkin: {
+        Args: { p_tournament_player_id: string }
+        Returns: string
+      }
       set_pairing_result: {
         Args: {
           p_pairing_id: string
           p_result: Database["public"]["Enums"]["game_result"]
         }
         Returns: undefined
+      }
+      set_player_checkin: {
+        Args: { p_checked_in: boolean; p_tournament_player_id: string }
+        Returns: string
       }
       set_series_points_rules: {
         Args: { p_rules: Json; p_series_id: string }
@@ -2628,13 +3739,17 @@ export type Database = {
         Args: { p_plan_code: string; p_user_id: string }
         Returns: undefined
       }
-      show_limit: { Args: never; Returns: number }
+      show_limit: { Args: Record<PropertyKey, never>; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       swap_draft_players: {
         Args: { p_moves: Json; p_round_id: string }
         Returns: undefined
       }
-      today_brt: { Args: never; Returns: string }
+      today_brt: { Args: Record<PropertyKey, never>; Returns: string }
+      truncate_broadcast_moves: {
+        Args: { p_broadcast_id: string; p_to_ply: number }
+        Returns: number
+      }
       unassign_board_arbiter: {
         Args: { p_board_number: number; p_group_id: string }
         Returns: undefined
@@ -2654,10 +3769,10 @@ export type Database = {
         | "1/2-1/2"
         | "*"
         | "bye"
-        | "not_paired"
         | "forfeit_white"
         | "forfeit_black"
         | "double_forfeit"
+        | "not_paired"
       initial_color: "white1" | "black1"
       pairing_mode: "absolute" | "per_category" | "custom"
       player_tournament_status: "active" | "withdrawn" | "absent"
@@ -2819,10 +3934,10 @@ export const Constants = {
         "1/2-1/2",
         "*",
         "bye",
-        "not_paired",
         "forfeit_white",
         "forfeit_black",
         "double_forfeit",
+        "not_paired",
       ],
       initial_color: ["white1", "black1"],
       pairing_mode: ["absolute", "per_category", "custom"],

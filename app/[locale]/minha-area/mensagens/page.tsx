@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { redirect, Link } from '@/i18n/navigation';
+import { Link } from '@/i18n/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getSessionUser } from '@/lib/data/session';
+import { getSessionUser, redirectToLogin } from '@/lib/data/session';
 import { PlayerAreaTabs } from '@/components/player-hub/player-area-tabs';
 import { Gambito } from '@/components/mascot/gambito';
 
@@ -28,7 +28,7 @@ function when(iso: string) {
 /** Caixa de mensagens: todas as conversas do usuário com o Gambito (bot ou equipe), mais recente primeiro. */
 export default async function MessagesPage() {
   const user = await getSessionUser();
-  if (!user) redirect('/login?next=/minha-area/mensagens');
+  if (!user) return redirectToLogin('/minha-area/mensagens');
   const admin = createAdminClient();
 
   const { data: sessionsRaw } = await admin

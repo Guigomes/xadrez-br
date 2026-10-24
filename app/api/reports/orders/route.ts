@@ -37,8 +37,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
 
   const { data: link } = await admin
     .from('user_player_links').select('player_id')

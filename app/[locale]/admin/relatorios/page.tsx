@@ -31,13 +31,12 @@ export default async function AdminReportOrdersPage() {
     return <EmptyState icon="🔒" title="Acesso restrito" description="Este painel é exclusivo para administradores do sistema." />;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
   const { data } = await admin
     .from('report_orders')
     .select('id, tournament_name, status, payment_status, price_cents, created_at, delivered_at, players(full_name), user_profiles:user_id(full_name, email)')
     .order('created_at', { ascending: false }).limit(200);
-  const rows: Row[] = data ?? [];
+  const rows = (data ?? []) as unknown as Row[];
   const open = rows.filter((r) => r.status !== 'delivered' && r.status !== 'canceled');
   const closed = rows.filter((r) => r.status === 'delivered' || r.status === 'canceled');
 

@@ -18,8 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { data: tournament } = await supabase.from('tournaments').select('id').eq('slug', slug).maybeSingle();
   if (!tournament) return NextResponse.json({ error: 'Torneio não encontrado.' }, { status: 404 });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from('tournament_payouts')
     .insert({ tournament_id: tournament.id, created_by: user.id, ...parsed.value });
   if (error) {

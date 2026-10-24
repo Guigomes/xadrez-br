@@ -1,6 +1,6 @@
-import { redirect, Link } from '@/i18n/navigation';
+import { Link } from '@/i18n/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getSessionUser } from '@/lib/data/session';
+import { getSessionUser, redirectToLogin } from '@/lib/data/session';
 import { Badge } from '@/components/ui/badge';
 import { Gambito } from '@/components/mascot/gambito';
 import { CheckinButton } from '@/components/player-hub/checkin-button';
@@ -41,7 +41,7 @@ type HubRegistration = {
 
 export default async function PlayerHubPage() {
   const user = await getSessionUser();
-  if (!user) redirect('/login?next=/minha-area');
+  if (!user) return redirectToLogin('/minha-area');
   const admin = createAdminClient();
 
   const { data: links } = await admin

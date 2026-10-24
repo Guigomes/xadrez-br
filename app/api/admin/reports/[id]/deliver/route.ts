@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { canDeliver } from '@/lib/reports/orders';
+import { canDeliver, type ReportOrderStatus, type ReportPaymentStatus } from '@/lib/reports/orders';
 
 // Admin: anexa o PDF pronto ao pedido e marca como entregue. Recusa pedido
 // cobrado e ainda não pago (canDeliver) — o arquivo só sai depois do pagamento.
@@ -13,15 +13,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
   const { data: profile } = await admin.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
   if (profile?.role !== 'admin') return NextResponse.json({ error: 'Acesso restrito.' }, { status: 403 });
 
   const { data: order } = await admin
     .from('report_orders').select('id, status, price_cents, payment_status').eq('id', id).maybeSingle();
   if (!order) return NextResponse.json({ error: 'Pedido não encontrado.' }, { status: 404 });
-  if (!canDeliver({ priceCents: order.price_cents, paymentStatus: order.payment_status, status: order.status })) {
+  if (!canDeliver({ priceCents: order.price_cents, paymentStatus: order.payment_status as ReportPaymentStatus, status: order.status as ReportOrderStatus })) {
     return NextResponse.json({ error: 'Pedido cancelado ou ainda sem pagamento confirmado.' }, { status: 409 });
   }
 

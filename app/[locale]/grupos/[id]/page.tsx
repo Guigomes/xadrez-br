@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Link, redirect } from '@/i18n/navigation';
+import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getSessionUser } from '@/lib/data/session';
+import { getSessionUser, redirectToLogin } from '@/lib/data/session';
 import { PlayerAreaTabs } from '@/components/player-hub/player-area-tabs';
 import { AddMember, DeleteGroup, MemberNote, RemoveMember } from '@/components/groups/group-actions';
 import {
@@ -33,15 +33,14 @@ export default async function GroupPage({
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const user = await getSessionUser();
-  if (!user) redirect(`/login?next=/grupos/${id}`);
+  if (!user) return redirectToLogin(`/grupos/${id}`);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const sort: SortKey = (Object.keys(SORT_LABEL) as SortKey[]).includes(sp.ordem as SortKey) ? (sp.ordem as SortKey) : 'std';
   const days = PERIODS.includes(Number(sp.dias)) ? Number(sp.dias) : 90;
   const onlyPgn = sp.lances === '1';
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any;
+  const supabase = await createClient();
   const { data: group } = await supabase.from('player_groups').select('id, name, kind').eq('id', id).maybeSingle();
   if (!group) notFound();
 

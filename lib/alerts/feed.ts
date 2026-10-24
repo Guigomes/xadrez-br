@@ -1,6 +1,9 @@
 // Torneios futuros das duas fontes do alerta, no formato comum. Só servidor.
 
+import type { createAdminClient } from '@/lib/supabase/server';
 import { dedupeAcrossSources, type AlertItem, type TimeControl } from './match';
+
+type AdminClient = ReturnType<typeof createAdminClient>;
 
 export interface FeedItem extends AlertItem {
   /** Quando o torneio apareceu para nós (criação no site / primeira leitura da CBX). */
@@ -17,8 +20,7 @@ export interface FeedItem extends AlertItem {
 // dos torneios importados (rápido/blitz marcados como std).
 const KIND_TC: Record<string, TimeControl> = { classical: 'std', rapid: 'rpd', blitz: 'blz', bullet: 'blz' };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function loadUpcomingItems(admin: any, today: string, untilDays = 120): Promise<FeedItem[]> {
+export async function loadUpcomingItems(admin: AdminClient, today: string, untilDays = 120): Promise<FeedItem[]> {
   const until = new Date(`${today}T12:00:00Z`);
   until.setUTCDate(until.getUTCDate() + untilDays);
   const untilIso = until.toISOString().slice(0, 10);

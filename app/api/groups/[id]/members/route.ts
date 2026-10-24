@@ -8,8 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 async function session() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { supabase: supabase as any, user };
+  return { supabase: supabase, user };
 }
 
 function fail(error: { message?: string; code?: string }) {

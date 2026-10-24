@@ -29,13 +29,12 @@ export default async function GruposPage() {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any;
+  const supabase = await createClient();
   const [{ data }, entitlements] = await Promise.all([
     supabase.from('player_groups').select('id, name, kind, created_at, player_group_members(count)').order('created_at'),
     getEntitlements(),
   ]);
-  const groups: GroupRow[] = data ?? [];
+  const groups = (data ?? []) as unknown as GroupRow[];
   const limit = entitlements.limitOf('groups.players');
 
   return (

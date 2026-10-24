@@ -25,8 +25,7 @@ export async function POST(request: NextRequest) {
   if (!secret) return NextResponse.json({ error: 'CRON_PUSH_SECRET não configurado no servidor.' }, { status: 500 });
   if (request.headers.get('x-cron-secret') !== secret) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
   const force = request.nextUrl.searchParams.get('force') === '1';
 
   const { data: last } = await admin.from('app_settings').select('value').eq('key', 'alerts_last_run_at').maybeSingle();

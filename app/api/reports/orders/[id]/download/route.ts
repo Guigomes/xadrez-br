@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { canDeliver } from '@/lib/reports/orders';
+import { canDeliver, type ReportOrderStatus, type ReportPaymentStatus } from '@/lib/reports/orders';
 
 // Link temporário (60 s) do PDF entregue. O arquivo vive num bucket privado e
 // só o dono do pedido, ou um admin, recebe o link — nunca uma URL fixa.
@@ -11,8 +11,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
   const { data: order } = await admin
     .from('report_orders')
     .select('id, user_id, status, price_cents, payment_status, delivery_path')
@@ -28,7 +27,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'O relatório ainda não foi entregue.' }, { status: 409 });
   }
   if (!isAdmin && !canDeliver({
-    priceCents: order.price_cents, paymentStatus: order.payment_status, status: order.status,
+    priceCents: order.price_cents, paymentStatus: order.payment_status as ReportPaymentStatus, status: order.status as ReportOrderStatus,
   })) {
     return NextResponse.json({ error: 'Pagamento não confirmado.' }, { status: 402 });
   }

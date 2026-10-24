@@ -13,8 +13,7 @@ export async function POST(request: NextRequest) {
   const { name, kind } = await request.json().catch(() => ({}));
   const cleanName = String(name ?? '').trim().slice(0, 80);
   if (!cleanName) return NextResponse.json({ error: 'Dê um nome ao grupo.' }, { status: 400 });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('player_groups')
     .insert({ owner_id: user.id, name: cleanName, kind: KINDS.includes(kind) ? kind : 'club' })
     .select('id').single();
@@ -28,8 +27,7 @@ export async function DELETE(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   const { id } = await request.json().catch(() => ({}));
   if (!id) return NextResponse.json({ error: 'Pedido inválido.' }, { status: 400 });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('player_groups').delete().eq('id', id);
+  const { error } = await supabase.from('player_groups').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

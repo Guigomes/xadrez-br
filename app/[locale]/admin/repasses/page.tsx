@@ -27,8 +27,7 @@ export default async function PayoutsPage() {
     return <EmptyState icon="🔒" title="Acesso restrito" description="Este painel é exclusivo para administradores do sistema." />;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any;
+  const supabase = await createClient();
   const [{ data: overview, error }, { data: payouts }, { data: feeSetting }] = await Promise.all([
     supabase.rpc('get_payout_overview'),
     supabase.from('tournament_payouts').select('tournament_id, amount_cents, paid_on, method, note').order('paid_on', { ascending: false }),

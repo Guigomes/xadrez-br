@@ -27,8 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'tournamentId inválido.' }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
   const { data, error } = await admin
     .from('tournament_imports')
     .update({ force_requested_at: new Date().toISOString() })

@@ -2,6 +2,10 @@
 // partida do jogador com lances (PGN). Sem lances não há o que analisar.
 // Só servidor (recebe o client service_role).
 
+import type { createAdminClient } from '@/lib/supabase/server';
+
+type AdminClient = ReturnType<typeof createAdminClient>;
+
 export interface ReportCandidate {
   kind: 'live' | 'history';
   tournamentId: string;
@@ -15,8 +19,7 @@ export interface ReportCandidate {
 const chunk = <T,>(arr: T[], size: number): T[][] =>
   Array.from({ length: Math.ceil(arr.length / size) }, (_, i) => arr.slice(i * size, i * size + size));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function loadReportCandidates(admin: any, playerIds: string[]): Promise<ReportCandidate[]> {
+export async function loadReportCandidates(admin: AdminClient, playerIds: string[]): Promise<ReportCandidate[]> {
   if (!playerIds.length) return [];
   const out = new Map<string, ReportCandidate>();
   const bump = (c: Omit<ReportCandidate, 'games' | 'pgnGames'>, hasPgn: boolean) => {
@@ -30,8 +33,8 @@ export async function loadReportCandidates(admin: any, playerIds: string[]): Pro
   // Ao vivo: inscrições do jogador -> mesas jogadas (sem bye) -> PGN da mesa.
   const { data: tps } = await admin
     .from('tournament_players').select('id, player_id, tournaments(id, name, start_date)').in('player_id', playerIds);
-  const tpById = new Map<string, { player_id: string; tournaments: { id: string; name: string; start_date: string | null } | null }>(
-    (tps ?? []).map((tp: { id: string }) => [tp.id, tp]));
+  const tpById = new Map(
+    (tps ?? []).map((tp) => [tp.id, { player_id: tp.player_id, tournaments: tp.tournaments }] as const));
   for (const ids of chunk([...tpById.keys()], 100)) {
     const list = ids.join(',');
     const { data: pairings } = await admin
@@ -58,7 +61,7 @@ export async function loadReportCandidates(admin: any, playerIds: string[]): Pro
   for (const g of games ?? []) {
     const hasPgn = Array.isArray(g.history_game_pgns) ? g.history_game_pgns.length > 0 : !!g.history_game_pgns;
     for (const pid of [g.white_player_id, g.black_player_id]) {
-      if (!playerIds.includes(pid)) continue;
+      if (!pid || !playerIds.includes(pid)) continue;
       bump({ kind: 'history', tournamentId: g.tournament_id, playerId: pid, name: g.history_tournaments?.name ?? 'Torneio', startDate: g.history_tournaments?.start_date ?? null }, hasPgn);
     }
   }

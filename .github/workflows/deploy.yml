@@ -11,10 +11,11 @@ env:
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
 jobs:
-  # Barreira antes de produção: push no main publica direto, então lint e
-  # testes unitários precisam passar aqui. Tipos (tsc) ainda não entram: há
-  # erros antigos de tipagem do cliente Supabase (next.config ignora no build);
-  # quando zerarem, adicionar `npm run type-check` a este job.
+  # Barreira antes de produção: push no main publica direto, então tipos, lint e
+  # testes unitários precisam passar aqui. O `next build` ignora erro de tipo
+  # (next.config), então ESTE passo é o único que impede tipo quebrado de ir ao ar.
+  # Os tipos do banco vêm de types/database.generated.ts: regenerar com
+  # `node --env-file=.env.local scripts/gen-types.mjs` depois de cada migration.
   check:
     runs-on: ubuntu-latest
     steps:
@@ -26,6 +27,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Tipos
+        run: npm run type-check
 
       - name: Lint
         run: npm run lint

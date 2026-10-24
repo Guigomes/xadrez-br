@@ -11,13 +11,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
   const { data: profile } = await admin.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
   if (profile?.role !== 'admin') return NextResponse.json({ error: 'Acesso restrito.' }, { status: 403 });
 
   const { status, notes } = (await request.json().catch(() => ({}))) as { status?: ReportOrderStatus; notes?: string };
-  const patch: Record<string, unknown> = {};
+  const patch: { status?: ReportOrderStatus; notes?: string } = {};
   if (status !== undefined) {
     if (!ADMIN_SETTABLE_STATUSES.includes(status)) {
       return NextResponse.json({ error: 'Status inválido para alteração manual.' }, { status: 400 });

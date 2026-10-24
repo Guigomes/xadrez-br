@@ -41,8 +41,7 @@ const INCLUDES = [
 
 export default async function RelatoriosPage() {
   const user = await getSessionUser();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
 
   const [billingEnabled, { data: setting }] = await Promise.all([
     isBillingEnabled(),
@@ -79,7 +78,7 @@ export default async function RelatoriosPage() {
       .from('report_orders')
       .select('id, tournament_name, status, payment_status, price_cents, asaas_invoice_url, created_at, players(full_name)')
       .eq('user_id', user.id).order('created_at', { ascending: false });
-    orders = orderRows ?? [];
+    orders = (orderRows ?? []) as unknown as OrderRow[];
   }
 
   return (

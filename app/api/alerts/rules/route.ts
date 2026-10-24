@@ -27,8 +27,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Faça login para criar alertas.' }, { status: 401 });
   const body = await request.json().catch(() => ({}));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('tournament_alert_rules').insert({ user_id: user.id, ...clean(body) });
+  const { error } = await supabase.from('tournament_alert_rules').insert({ user_id: user.id, ...clean(body) });
   if (error) return limitError(error);
   return NextResponse.json({ ok: true });
 }
@@ -39,8 +38,7 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   const { id, active } = await request.json().catch(() => ({}));
   if (!id || typeof active !== 'boolean') return NextResponse.json({ error: 'Pedido inválido.' }, { status: 400 });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('tournament_alert_rules').update({ active }).eq('id', id);
+  const { error } = await supabase.from('tournament_alert_rules').update({ active }).eq('id', id);
   if (error) return limitError(error);
   return NextResponse.json({ ok: true });
 }
@@ -51,8 +49,7 @@ export async function DELETE(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   const { id } = await request.json().catch(() => ({}));
   if (!id) return NextResponse.json({ error: 'Pedido inválido.' }, { status: 400 });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('tournament_alert_rules').delete().eq('id', id);
+  const { error } = await supabase.from('tournament_alert_rules').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

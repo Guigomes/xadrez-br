@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     device_id: deviceId,
     name: t.name.trim().slice(0, 200),
     is_public: isPublic,
-    backup: body.backup as Json,
+    backup: body.backup as NonNullable<Json>,
     app_version: t.updatedAt,
   });
   if (saveError) {

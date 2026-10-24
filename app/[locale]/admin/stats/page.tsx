@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { getSessionUser } from '@/lib/data/session';
-import { redirect, Link } from '@/i18n/navigation';
+import { getSessionUser, redirectToLogin } from '@/lib/data/session';
+import { Link } from '@/i18n/navigation';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = { title: 'Estatísticas' };
@@ -10,7 +10,7 @@ export const revalidate = 300; // revalidate every 5 minutes
 export default async function StatsPage() {
   const supabase = await createClient();
   const user = await getSessionUser();
-  if (!user) redirect('/login');
+  if (!user) return redirectToLogin();
 
   const [
     { count: totalTournaments },

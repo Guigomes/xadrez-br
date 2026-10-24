@@ -1,6 +1,6 @@
-import { redirect, Link } from '@/i18n/navigation';
+import { Link } from '@/i18n/navigation';
 import { TournamentTour } from '@/components/admin/tournament-tour';
-import { getSessionUser, getSessionProfile } from '@/lib/data/session';
+import { getSessionUser, getSessionProfile, redirectToLogin } from '@/lib/data/session';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // Ambos memoizados por request (lib/data/session.ts): o layout raiz já pediu
@@ -8,7 +8,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // round-trip dentro do mesmo render.
   const user = await getSessionUser();
 
-  if (!user) redirect('/login');
+  if (!user) return redirectToLogin();
 
   const typedProfile = await getSessionProfile();
 

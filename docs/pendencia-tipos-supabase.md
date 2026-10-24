@@ -1,6 +1,6 @@
 # Pendência: tipagem do cliente Supabase (erros `never`)
 
-**Status:** aberto — adiado de propósito (não bloqueia deploy).
+**Status:** RESOLVIDO em 2026-10-24. `types/database.generated.ts` passou a ser gerado do banco (`scripts/gen-types.mjs`), `tsc` está em 0 erros e roda no CI. O texto abaixo fica como histórico do diagnóstico.
 **Registrado em:** 2026-08-07.
 
 ## Sintoma

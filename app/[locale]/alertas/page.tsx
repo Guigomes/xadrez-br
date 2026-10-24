@@ -41,8 +41,7 @@ export default async function AlertasPage() {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any;
+  const supabase = await createClient();
   const [{ data: rulesRaw }, entitlements, items] = await Promise.all([
     supabase.from('tournament_alert_rules').select('id, name, ufs, time_controls, include_cbx, active, created_at').order('created_at'),
     getEntitlements(),
