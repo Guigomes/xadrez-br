@@ -3745,6 +3745,10 @@ export type Database = {
         Args: { p_moves: Json; p_round_id: string }
         Returns: undefined
       }
+      sync_player_scores_from_standings: {
+        Args: { p_tournament_id: string }
+        Returns: number
+      }
       today_brt: { Args: Record<PropertyKey, never>; Returns: string }
       truncate_broadcast_moves: {
         Args: { p_broadcast_id: string; p_to_ply: number }
