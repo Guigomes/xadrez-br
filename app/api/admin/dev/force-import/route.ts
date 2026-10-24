@@ -10,7 +10,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
  *
  * Antes este endpoint rodava uma cópia do importador (lib/import/) que tinha
  * ficado para trás: cortava a planilha em 150 linhas, não casava jogador pelo
- * ID CBX e não baixava PGN. Ver migration 20261022210000_import_force_request.
+ * ID CBX e não baixava PGN. Ver migration 20261022210500_import_force_request.
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
