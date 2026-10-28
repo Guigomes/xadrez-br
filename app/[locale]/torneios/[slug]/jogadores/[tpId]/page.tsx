@@ -71,7 +71,8 @@ export default function PlayerTournamentPage({ params }: Props) {
     locale,
   );
   const displayTitle = playerRow?.title ?? profile?.title ?? null;
-  const displayRating = playerRow?.rating_std ?? profile?.rating_std ?? null;
+  // Rating do ritmo do torneio (get_tournament_standings.rating_tempo) — não o clássico do cadastro.
+  const displayRating = playerRow?.rating_tempo ?? null;
   const displayState = playerRow?.state ?? profile?.state ?? null;
   const displayFederation = playerRow?.federation ?? profile?.federation ?? null;
   const displayCategory = playerRow?.category_name ?? tp?.category?.name ?? null;
@@ -80,7 +81,7 @@ export default function PlayerTournamentPage({ params }: Props) {
   const hasPlayed = (playerRow?.games_played ?? 0) > 0 || (history as PlayerHistoryRow[] | undefined)?.some((row) => row.result !== '*') === true;
   const displayRank = hasPlayed
     ? (playerRow?.rank ?? null)
-    : (playerRow?.initial_ranking ?? tp?.initial_ranking ?? null);
+    : (playerRow?.initial_ranking ?? playerRow?.rank ?? tp?.initial_ranking ?? null); // rank = posição provisória antes da semeadura
   const groupSize = standings
     ? standings.filter((row) => displayGroupId ? row.pairing_group_id === displayGroupId : !row.pairing_group_id).length
     : null;

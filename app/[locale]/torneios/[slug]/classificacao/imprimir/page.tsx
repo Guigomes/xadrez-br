@@ -81,7 +81,7 @@ function StandingsPrintTable({ title, rows }: { title?: string; rows: any[] }) {
             <tr key={r.tp_id}>
               <td>{r.rank}</td>
               <td className="name">{r.full_name}</td>
-              <td>{r.rating_std ?? '—'}</td>
+              <td>{r.rating_tempo ?? '—'}</td>
               <td className="pts">{formatScore(r.points)}</td>
               <td>{r.buchholz ?? '—'}</td>
               <td>{r.buchholz_cut1 ?? '—'}</td>
