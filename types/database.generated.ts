@@ -3768,6 +3768,7 @@ export type Database = {
           progressive: number
           rank: number
           rating_std: number
+          rating_tempo: number
           sex: string
           sonneborn_berger: number
           state: string

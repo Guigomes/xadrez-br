@@ -391,6 +391,8 @@ export interface StandingRow {
   sex: 'm' | 'w' | null;
   /** Nome no formato FIDE ("Sobrenome, Nome"), quando a fonte trouxe — ver playerDisplayName. */
   fide_name: string | null;
+  /** Rating do ritmo do torneio (std/rpd/blz conforme rating_kind) — migration 20261028180000. */
+  rating_tempo: number | null;
 }
 
 export interface PlayerHistoryRow {

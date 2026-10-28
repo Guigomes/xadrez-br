@@ -355,9 +355,6 @@ export function RegistrationForm({
 
       <div className="card p-5 space-y-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Registros</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-          Tem ID CBX? Digite primeiro: buscamos seus dados e preenchemos o resto. A organização confirma seu rating a partir do ID.
-        </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Input

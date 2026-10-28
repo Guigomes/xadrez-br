@@ -67,15 +67,15 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, i
           </div>
           <p className="mt-0.5 text-xs text-gray-400 sm:hidden">
             {isInitialRanking
-              ? (row.rating_std ? `Rating ${row.rating_std}` : 'Sem rating informado')
-              : `BH: ${formatTiebreak(row.buchholz)} · BH-1: ${formatTiebreak(row.buchholz_cut1)} · SB: ${formatTiebreak(row.sonneborn_berger)}${row.rating_std ? ` · Rating ${row.rating_std}` : ''}`}
+              ? (row.rating_tempo ? `Rating ${row.rating_tempo}` : 'Sem rating informado')
+              : `BH: ${formatTiebreak(row.buchholz)} · BH-1: ${formatTiebreak(row.buchholz_cut1)} · SB: ${formatTiebreak(row.sonneborn_berger)}${row.rating_tempo ? ` · Rating ${row.rating_tempo}` : ''}`}
           </p>
         </td>
         {!isInitialRanking && <td className="py-3 px-3 text-center font-bold text-gray-900 dark:text-gray-100">{formatScore(row.points)}</td>}
         {!isInitialRanking && <td className="hidden py-3 px-3 text-center text-gray-600 dark:text-gray-400 tabular-nums sm:table-cell">{formatTiebreak(row.buchholz)}</td>}
         {!isInitialRanking && <td className="hidden py-3 px-3 text-center text-gray-600 dark:text-gray-400 tabular-nums sm:table-cell">{formatTiebreak(row.buchholz_cut1)}</td>}
         {!isInitialRanking && <td className="hidden py-3 px-3 text-center text-gray-600 dark:text-gray-400 tabular-nums sm:table-cell">{formatTiebreak(row.sonneborn_berger)}</td>}
-        <td className="hidden py-3 px-3 text-center text-gray-500 dark:text-gray-400 sm:table-cell">{row.rating_std ?? '–'}</td>
+        <td className="hidden py-3 px-3 text-center text-gray-500 dark:text-gray-400 sm:table-cell">{row.rating_tempo ?? '–'}</td>
       </tr>
     );
   }
