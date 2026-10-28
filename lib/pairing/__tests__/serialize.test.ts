@@ -75,6 +75,38 @@ describe('serializeForPairing', () => {
 });
 
 describe('serializeForExport', () => {
+  it.each(['forfeit_white', 'forfeit_black', 'double_forfeit'] as const)(
+    'preserva os adversários e omite as cores de %s no TRF', async (result) => {
+      const s = c5State();
+      s.games = [{
+        roundNumber: 1, whiteTpId: 'tp-1', blackTpId: 'tp-4', result,
+        isBye: false, byeKind: null,
+        whitePoints: result === 'forfeit_black' ? 1 : 0,
+        blackPoints: result === 'forfeit_white' ? 1 : 0,
+      }];
+      s.targetRound = 2;
+      s.requestedByeTpIds.clear();
+      const exported = serializeForExport({
+        ...s, lastRound: 1, city: null, federation: 'BRA', startDate: '2026-10-28',
+        endDate: null, chiefArbiter: null, timeControl: '15+10',
+        players: s.players.map(p => ({ ...p, rank: null })),
+      });
+      for (const trf of [serializeForPairing(s), exported]) {
+        const lines = trf.split('\n').filter(l => l.startsWith('001'));
+        const white = lines.find(l => Number(l.slice(4, 8)) === 1)!;
+        const black = lines.find(l => Number(l.slice(4, 8)) === 4)!;
+        expect(Number(white.slice(91, 95))).toBe(4);
+        expect(Number(black.slice(91, 95))).toBe(1);
+        expect(white[96]).toBe('-');
+        expect(black[96]).toBe('-');
+        expect(white[98]).toBe(result === 'forfeit_black' ? '+' : '-');
+        expect(black[98]).toBe(result === 'forfeit_white' ? '+' : '-');
+      }
+      const engine = await runDutchPairing(serializeForPairing(s));
+      expect(engine.ok, engine.ok ? '' : engine.detail).toBe(true);
+    },
+  );
+
   it('emite cabeçalhos FIDE, pontos e rank de todas as rodadas', () => {
     const P = (n: number) => `tp-${n}`;
     const state: TrfExportState = {

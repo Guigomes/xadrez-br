@@ -62,7 +62,9 @@ function mapGameCell(g: TrfGame, tpId: string, startnoByTp: Map<string, number>)
     case '1/2-1/2':  return { opp, color: isWhite ? 'w' : 'b', result: '=' };
     case 'forfeit_white': return { opp, color: '-', result: isWhite ? '-' : '+' };
     case 'forfeit_black': return { opp, color: '-', result: isWhite ? '+' : '-' };
-    case 'double_forfeit': return { opp: '0000', color: '-', result: '-' };
+    // Both players were paired, although neither played. Erasing the opponent
+    // turns this into two unpaired absences in the TRF checker.
+    case 'double_forfeit': return { opp, color: '-', result: '-' };
     default:
       throw new Error(`Resultado pendente na rodada ${g.roundNumber} (mesa com '${g.result}') — feche a rodada antes de exportar/parear.`);
   }

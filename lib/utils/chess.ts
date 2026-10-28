@@ -166,25 +166,25 @@ export const TIEBREAK_INFO = {
     label: 'Buchholz',
     short: 'BH',
     description:
-      'Soma dos pontos de todos os adversários. Mede a força dos adversários enfrentados.',
+      'Soma dos pontos dos adversários. Em torneios suíços organizados no sistema, rodadas sem jogo são ajustadas conforme as regras FIDE.',
   },
   buchholz_cut1: {
     label: 'Buchholz Corte 1',
     short: 'BH-1',
     description:
-      'Buchholz sem o adversário com menor pontuação. Reduz o impacto de adversários muito fracos.',
+      'Buchholz com um corte. No suíço, havendo ausência voluntária ou derrota por WO, aplica-se a regra especial de corte da FIDE.',
   },
   sonneborn_berger: {
     label: 'Sonneborn-Berger',
     short: 'SB',
     description:
-      'Soma dos pontos dos adversários derrotados + metade dos pontos dos adversários empatados. Premia vitórias contra adversários fortes.',
+      'Soma dos pontos dos adversários, ponderados pelo resultado obtido contra eles. No suíço, WO e byes recebem os ajustes FIDE para rodadas sem jogo.',
   },
   wins: {
-    label: 'Número de vitórias',
+    label: 'Vitórias no tabuleiro',
     short: 'Vit',
     description:
-      'Quantidade total de partidas vencidas. Premia quem venceu mais jogos, independente do adversário.',
+      'Partidas efetivamente vencidas no tabuleiro (critério FIDE WON). Não inclui WO nem bye; esses resultados continuam valendo pontos.',
   },
   progressive: {
     label: 'Progressivo',

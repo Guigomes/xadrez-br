@@ -7,7 +7,7 @@ const LABELS: Record<TiebreakKey, string> = {
   buchholz: 'Buchholz',
   buchholz_cut1: 'Buchholz Cut-1',
   sonneborn_berger: 'Sonneborn-Berger',
-  wins: 'Nº de vitórias',
+  wins: 'Vitórias no tabuleiro (WON)',
   progressive: 'Progressivo',
 };
 const ALL: TiebreakKey[] = ['buchholz', 'buchholz_cut1', 'sonneborn_berger', 'wins', 'progressive'];
