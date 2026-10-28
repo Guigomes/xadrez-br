@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory, useSetPlayerCheckin } from '@/lib/hooks/use-tournament';
+import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory, useSetPlayerCheckin, useCheckinEnabled } from '@/lib/hooks/use-tournament';
 import { useCreatePlayer, useUpdatePlayer, useSyncCbxRating } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { useCategories } from '@/lib/hooks/use-classifications';
@@ -38,6 +38,8 @@ export default function AdminPlayersPage({ params }: Props) {
   const { data: groups, isLoading: loadingGroups } = useGroups(isNative ? tournament!.id : '');
   const createGroup = useCreateDefaultGroup(tournament?.id ?? '');
   const setCheckin = useSetPlayerCheckin(tournament?.id ?? '');
+  // Interruptor global: com o check-in desligado no sistema, selo e contagem somem.
+  const checkinOn = useCheckinEnabled().data === true;
 
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -177,7 +179,7 @@ export default function AdminPlayersPage({ params }: Props) {
         <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 tabular-nums shrink-0">
           {formatScore(tp.current_score)}
         </span>
-        {tournament?.checkin_enabled && (
+        {tournament?.checkin_enabled && checkinOn && (
           <button
             type="button"
             disabled={setCheckin.isPending}
@@ -252,7 +254,7 @@ export default function AdminPlayersPage({ params }: Props) {
         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
           <p className="font-semibold text-gray-900 dark:text-gray-100">
             Participantes ({tPlayers?.length ?? 0})
-            {tournament.checkin_enabled && ` · ${(tPlayers ?? []).filter((tp) => (tp as any).checkin_status === 'checked_in').length} presentes`}
+            {tournament.checkin_enabled && checkinOn && ` · ${(tPlayers ?? []).filter((tp) => (tp as any).checkin_status === 'checked_in').length} presentes`}
           </p>
           <Input
             type="search"

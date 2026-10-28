@@ -1,6 +1,7 @@
 import { Link } from '@/i18n/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getSessionUser, redirectToLogin } from '@/lib/data/session';
+import { isCheckinEnabled } from '@/lib/data/checkin';
 import { Badge } from '@/components/ui/badge';
 import { Gambito } from '@/components/mascot/gambito';
 import { CheckinButton } from '@/components/player-hub/checkin-button';
@@ -69,6 +70,8 @@ export default async function PlayerHubPage() {
   }));
 
   const now = Date.now();
+  // Interruptor global: desligado, nem o botão nem o selo de presença aparecem.
+  const checkinOn = await isCheckinEnabled();
   const active = withPairings.filter((entry) => entry.tournaments?.status !== 'finished' && entry.tournaments?.status !== 'cancelled');
   const past = withPairings.filter((entry) => entry.tournaments?.status === 'finished');
 
@@ -98,7 +101,7 @@ export default async function PlayerHubPage() {
               const p = entry.nextPairing;
               const mineWhite = p?.white_tp_id === entry.id;
               const opponent = mineWhite ? p?.black?.players?.full_name : p?.white?.players?.full_name;
-              const checkinOpen = t.checkin_enabled && (!t.checkin_opens_at || now >= new Date(t.checkin_opens_at).getTime()) && (!t.checkin_closes_at || now <= new Date(t.checkin_closes_at).getTime());
+              const checkinOpen = checkinOn && t.checkin_enabled && (!t.checkin_opens_at || now >= new Date(t.checkin_opens_at).getTime()) && (!t.checkin_closes_at || now <= new Date(t.checkin_closes_at).getTime());
               return (
                 <article key={entry.id} className="card p-5">
                   <div className="flex items-start justify-between gap-3">
@@ -107,7 +110,7 @@ export default async function PlayerHubPage() {
                   </div>
                   {p && <div className="mt-4 rounded-lg bg-gray-50 p-3 dark:bg-gray-800"><p className="text-sm font-semibold">Rodada {p.rounds?.round_number}{p.board_number ? ` · Mesa ${p.board_number}` : ''}</p><p className="mt-1 text-sm">{opponent ? `${mineWhite ? 'Brancas' : 'Pretas'} contra ${opponent}` : 'BYE'}</p></div>}
                   <div className="mt-4 flex flex-wrap items-center gap-3">
-                    {entry.checkin_status === 'checked_in' ? <span className="text-sm font-semibold text-green-600">✓ Presença confirmada</span> : checkinOpen ? <CheckinButton tournamentPlayerId={entry.id} /> : null}
+                    {checkinOn && entry.checkin_status === 'checked_in' ? <span className="text-sm font-semibold text-green-600">✓ Presença confirmada</span> : checkinOpen ? <CheckinButton tournamentPlayerId={entry.id} /> : null}
                     <Link href={`/torneios/${t.slug}/players/${entry.id}`} className="text-sm font-semibold text-brand-600 hover:underline dark:text-brand-400">Ver histórico</Link>
                   </div>
                 </article>

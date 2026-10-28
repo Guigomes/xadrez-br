@@ -11,6 +11,7 @@ import { TiebreakOrderPicker } from '@/components/tournament/tiebreak-order-pick
 import { Gambito } from '@/components/mascot/gambito';
 import { BR_STATES } from '@/lib/utils/chess';
 import { useEntitlements } from '@/lib/hooks/use-entitlements';
+import { useCheckinEnabled } from '@/lib/hooks/use-tournament';
 import {
   TIME_CONTROL_PRESETS, TIME_CONTROL_OTHER, findPresetByValue,
 } from '@/lib/utils/time-control';
@@ -212,6 +213,8 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
   const registrationFeeCents = watch('registration_fee_cents');
   const maxParticipants = watch('max_participants');
   const checkinEnabled = watch('checkin_enabled');
+  // Interruptor global: desligado, a opção some do formulário e o valor salvo do torneio fica intacto.
+  const checkinFeature = useCheckinEnabled().data === true;
 
   // Estado do select de ritmo: valor do preset, sentinela "Outro" ou vazio.
   const initialPreset = findPresetByValue(defaultValues?.time_control);
@@ -526,22 +529,26 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             </p>
           </div>
         </label>
-        <label className="flex items-start gap-3 cursor-pointer pt-2 border-t border-gray-100 dark:border-gray-800">
-          <input
-            type="checkbox"
-            className="h-5 w-5 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-            {...register('checkin_enabled')}
-          />
-          <span>
-            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Check-in digital</span>
-            <span className="block text-sm text-gray-500 dark:text-gray-400">Jogadores vinculados à conta poderão confirmar presença.</span>
-          </span>
-        </label>
-        {checkinEnabled && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Input label="Abertura do check-in" type="datetime-local" {...register('checkin_opens_at')} />
-            <Input label="Encerramento do check-in" type="datetime-local" error={errors.checkin_closes_at?.message} {...register('checkin_closes_at')} />
-          </div>
+        {checkinFeature && (
+          <>
+          <label className="flex items-start gap-3 cursor-pointer pt-2 border-t border-gray-100 dark:border-gray-800">
+            <input
+              type="checkbox"
+              className="h-5 w-5 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              {...register('checkin_enabled')}
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Check-in digital</span>
+              <span className="block text-sm text-gray-500 dark:text-gray-400">Jogadores vinculados à conta poderão confirmar presença.</span>
+            </span>
+          </label>
+          {checkinEnabled && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Input label="Abertura do check-in" type="datetime-local" {...register('checkin_opens_at')} />
+              <Input label="Encerramento do check-in" type="datetime-local" error={errors.checkin_closes_at?.message} {...register('checkin_closes_at')} />
+            </div>
+          )}
+          </>
         )}
       </div>
 

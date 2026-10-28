@@ -88,6 +88,21 @@ export function useSetPlayerCheckin(tournamentId: string) {
   });
 }
 
+/**
+ * Interruptor global do check-in (`app_settings.checkin_enabled`). Só vale `true` quando a chave
+ * está ligada: enquanto carrega, o check-in fica escondido (nada pisca na tela).
+ */
+export function useCheckinEnabled() {
+  return useQuery({
+    queryKey: ['checkin-enabled'],
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await supabase.rpc('checkin_enabled');
+      return error || typeof data !== 'boolean' ? true : data;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useTournamentRounds(tournamentId: string) {
   return useQuery({
     queryKey: tournamentKeys.rounds(tournamentId),

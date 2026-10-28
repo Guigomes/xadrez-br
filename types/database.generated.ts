@@ -2016,6 +2016,13 @@ export type Database = {
             foreignKeyName: "sparring_games_player_id_fkey"
             columns: ["player_id"]
             isOneToOne: false
+            referencedRelation: "sparring_player_analysis"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "sparring_games_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
             referencedRelation: "sparring_player_stats"
             referencedColumns: ["player_id"]
           },
@@ -2067,6 +2074,188 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sparring_positions: {
+        Row: {
+          analyzed_at: string
+          best_cp: number
+          best_move_uci: string
+          candidates: NonNullable<Json>
+          color: string
+          depth: number
+          engine: string | null
+          fen: string
+          game_id: string
+          id: string
+          legal_moves: number
+          loss_cp: number
+          move_san: string
+          move_uci: string
+          multipv: number
+          owner_id: string
+          phase: string
+          played_cp: number
+          played_rank: number | null
+          player_id: string
+          ply: number
+        }
+        ComputedFields: never
+        Insert: {
+          analyzed_at?: string
+          best_cp: number
+          best_move_uci: string
+          candidates?: NonNullable<Json>
+          color: string
+          depth: number
+          engine?: string | null
+          fen: string
+          game_id: string
+          id?: string
+          legal_moves: number
+          loss_cp: number
+          move_san: string
+          move_uci: string
+          multipv: number
+          owner_id: string
+          phase: string
+          played_cp: number
+          played_rank?: number | null
+          player_id: string
+          ply: number
+        }
+        Update: {
+          analyzed_at?: string
+          best_cp?: number
+          best_move_uci?: string
+          candidates?: NonNullable<Json>
+          color?: string
+          depth?: number
+          engine?: string | null
+          fen?: string
+          game_id?: string
+          id?: string
+          legal_moves?: number
+          loss_cp?: number
+          move_san?: string
+          move_uci?: string
+          multipv?: number
+          owner_id?: string
+          phase?: string
+          played_cp?: number
+          played_rank?: number | null
+          player_id?: string
+          ply?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sparring_positions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "sparring_games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sparring_positions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "sparring_player_analysis"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "sparring_positions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "sparring_player_stats"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "sparring_positions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "sparring_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sparring_training_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          depth: number
+          error: string | null
+          finished_at: string | null
+          games_total: number
+          heartbeat_at: string | null
+          id: string
+          multipv: number
+          owner_id: string
+          player_id: string
+          positions_base: number
+          positions_done: number
+          positions_total: number
+          started_at: string | null
+          status: string
+        }
+        ComputedFields: never
+        Insert: {
+          attempts?: number
+          created_at?: string
+          depth?: number
+          error?: string | null
+          finished_at?: string | null
+          games_total?: number
+          heartbeat_at?: string | null
+          id?: string
+          multipv?: number
+          owner_id?: string
+          player_id: string
+          positions_base?: number
+          positions_done?: number
+          positions_total?: number
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          depth?: number
+          error?: string | null
+          finished_at?: string | null
+          games_total?: number
+          heartbeat_at?: string | null
+          id?: string
+          multipv?: number
+          owner_id?: string
+          player_id?: string
+          positions_base?: number
+          positions_done?: number
+          positions_total?: number
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sparring_training_jobs_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "sparring_player_analysis"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "sparring_training_jobs_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "sparring_player_stats"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "sparring_training_jobs_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "sparring_players"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       standings: {
         Row: {
@@ -3122,6 +3311,16 @@ export type Database = {
       }
     }
     Views: {
+      sparring_player_analysis: {
+        Row: {
+          games_analyzed: number | null
+          last_analyzed_at: string | null
+          player_id: string | null
+          positions: number | null
+        }
+        ComputedFields: never
+        Relationships: []
+      }
       sparring_player_stats: {
         Row: {
           as_black: number | null
@@ -3223,6 +3422,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"]
       }
       billing_enabled: { Args: Record<PropertyKey, never>; Returns: boolean }
+      checkin_enabled: { Args: Record<PropertyKey, never>; Returns: boolean }
       chess_normalize_name_key: { Args: { p: string }; Returns: string }
       claim_broadcast_create_slot: {
         Args: { p_fingerprint: string; p_limit?: number }
@@ -3741,6 +3941,49 @@ export type Database = {
       }
       show_limit: { Args: Record<PropertyKey, never>; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      sparring_cancel_job: { Args: { p_job: string }; Returns: undefined }
+      sparring_claim_job: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          attempts: number
+          created_at: string
+          depth: number
+          error: string | null
+          finished_at: string | null
+          games_total: number
+          heartbeat_at: string | null
+          id: string
+          multipv: number
+          owner_id: string
+          player_id: string
+          positions_base: number
+          positions_done: number
+          positions_total: number
+          started_at: string | null
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "sparring_training_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      sparring_profile_stats: {
+        Args: { p_classes?: string[]; p_player: string }
+        Returns: {
+          acpl: number
+          blunders: number
+          bucket: string
+          color: string
+          dim: string
+          inaccuracies: number
+          mistakes: number
+          n: number
+          top1: number
+          top3: number
+        }[]
+      }
       swap_draft_players: {
         Args: { p_moves: Json; p_round_id: string }
         Returns: undefined

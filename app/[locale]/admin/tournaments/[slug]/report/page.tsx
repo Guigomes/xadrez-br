@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { isCheckinEnabled } from '@/lib/data/checkin';
 import { PrintReportButton } from '@/components/admin/print-report-button';
 import { compareGroupNames } from '@/lib/utils/chess';
 import { SettlementCard, type Settlement } from '@/components/finance/settlement-card';
@@ -32,6 +33,7 @@ export default async function TournamentReportPage({ params }: { params: Promise
   if (!tournament) notFound();
 
   const isNative = tournament.mode === 'native';
+  const checkinOn = await isCheckinEnabled();
   const [{ data: players }, { data: registrations }, { data: rounds }, { data: pairings }, { data: standingsRaw }, { data: pgnCount }] = await Promise.all([
     supabase.from('tournament_players').select('status, checkin_status').eq('tournament_id', tournament.id),
     isNative
@@ -114,7 +116,7 @@ export default async function TournamentReportPage({ params }: { params: Promise
         <Metric label="Participantes" value={String(players?.length ?? 0)} />
         <Metric label="Rodadas finalizadas" value={`${finishedRounds}/${tournament.rounds_count}`} />
         <Metric label="Partidas jogadas" value={String(played.length)} />
-        {isNative
+        {isNative && checkinOn
           ? <Metric label="Check-ins" value={String(checkins)} />
           : <Metric label="Partidas com lances" value={String(pgnCount ?? 0)} />}
       </section>
