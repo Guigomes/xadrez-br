@@ -43,6 +43,15 @@ export async function updateSession(request: NextRequest, carrierResponse: NextR
   // /en/admin ou /es/admin passariam direto sem checar sessão.
   const bare = stripLocale(request.nextUrl.pathname);
   const isAdminRoute = bare.startsWith('/admin');
+  // Página de admin DE UM TORNEIO (/admin/torneios/<slug>/...): quem não está logado volta
+  // para a página pública do torneio, não para o login. (/admin/torneios/novo não é de um
+  // torneio.) Quem está logado mas não gerencia o torneio é barrado no layout da rota.
+  const adminTournamentSlug = /^\/admin\/torneios\/([^/]+)(?:\/|$)/.exec(bare)?.[1];
+  if (adminTournamentSlug && adminTournamentSlug !== 'novo' && !user) {
+    const localePrefix = getLocalePrefix(request.nextUrl.pathname);
+    const tournamentUrl = new URL(`${localePrefix}/torneios/${adminTournamentSlug}`, request.url);
+    return { response: NextResponse.redirect(tournamentUrl), user };
+  }
   if (isAdminRoute && !user) {
     // getLocalePrefix, não subtração de comprimento — ver o comentário em
     // i18n/routing.ts e o mesmo fix em middleware.ts (bug real achado ali:

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { AdminTournamentChrome } from '@/components/admin/admin-tournament-chrome';
+import { getSessionUser, redirectToTournamentPage } from '@/lib/data/session';
 
 interface Props {
   children: React.ReactNode;
@@ -11,6 +12,13 @@ export default async function AdminTournamentLayout({ children, params }: Props)
   const { slug } = await params;
   const supabase = await createClient();
 
+  // Painel do torneio é só de quem gerencia (dono, equipe, admin — is_tournament_manager).
+  // Os demais, inclusive logados, voltam para a página pública do torneio. A decisão é
+  // tomada aqui, no servidor, antes de qualquer tela do painel renderizar. Quem não está
+  // logado já foi mandado pra lá pelo middleware; o teste aqui cobre o resto.
+  const user = await getSessionUser();
+  if (!user) return redirectToTournamentPage(slug);
+
   const { data: tournament } = await supabase
     .from('tournaments')
     .select('id, name, mode, status, registration_end_date, registration_closes_by_date, pairing_mode')
@@ -18,6 +26,9 @@ export default async function AdminTournamentLayout({ children, params }: Props)
     .single();
 
   if (!tournament) notFound();
+
+  const { data: isManager } = await supabase.rpc('is_tournament_manager', { p_tournament_id: tournament.id });
+  if (!isManager) return redirectToTournamentPage(slug);
 
   // "Publicar" (draft -> published) fica bloqueado com emparceiramento
   // 'custom' incompleto — sem grupo criado ou com classificação sem grupo

@@ -60,6 +60,16 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile | null> 
 });
 
 /**
+ * Manda para a página pública de um torneio — destino de quem abre uma tela de admin do
+ * torneio sem poder (não logado ou sem permissão). Mesmo cuidado do `redirectToLogin`:
+ * `redirect` do next-intl exige `{ href, locale }`.
+ */
+export async function redirectToTournamentPage(slug: string): Promise<never> {
+  const locale = await getLocale();
+  return redirect({ href: `/torneios/${slug}`, locale });
+}
+
+/**
  * Manda para o login e volta para `next` depois (a tela de login lê ?next=).
  *
  * Use ESTA função, não `redirect('/login…')` direto: o redirect do next-intl
