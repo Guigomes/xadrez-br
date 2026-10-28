@@ -256,7 +256,7 @@ export function PlayerHistoryView({ games }: { games: HGame[] }) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       {o.id ? (
-                        <Link href={`/players/${o.id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline break-words">{o.name}</Link>
+                        <Link href={`/jogadores/${o.id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline break-words">{o.name}</Link>
                       ) : (
                         <span className="font-medium text-gray-900 dark:text-gray-100 break-words">{o.name}</span>
                       )}
@@ -344,7 +344,7 @@ export function PlayerHistoryView({ games }: { games: HGame[] }) {
 
 function OpponentName({ g, className }: { g: HGame; className?: string }) {
   return g.opp.id ? (
-    <Link href={`/players/${g.opp.id}`} className={className}>{g.opp.name}</Link>
+    <Link href={`/jogadores/${g.opp.id}`} className={className}>{g.opp.name}</Link>
   ) : (
     <span className={className}>{g.opp.name}</span>
   );

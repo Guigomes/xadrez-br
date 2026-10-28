@@ -134,7 +134,7 @@ export function HistoryTournamentView({ slug }: { slug: string }) {
                   <td className="py-2 pr-3 text-gray-400 tabular-nums">{i + 1}</td>
                   <td className="py-2 pr-3">
                     {p.player_id ? (
-                      <Link href={`/players/${p.player_id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">{p.player_name}</Link>
+                      <Link href={`/jogadores/${p.player_id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">{p.player_name}</Link>
                     ) : (
                       <span className="font-medium text-gray-900 dark:text-gray-100">{p.player_name}</span>
                     )}
@@ -171,7 +171,7 @@ export function HistoryTournamentView({ slug }: { slug: string }) {
         {t.pgn_count > 0 && !user && (
           <p className="text-sm text-gray-500 dark:text-gray-400">
             🔒 Esta página tem lances de {t.pgn_count} partidas.{' '}
-            <Link href="/login" className="text-brand-700 dark:text-brand-300 underline">Entre na sua conta</Link> para ver.
+            <Link href="/entrar" className="text-brand-700 dark:text-brand-300 underline">Entre na sua conta</Link> para ver.
           </p>
         )}
 
@@ -213,7 +213,7 @@ export function HistoryTournamentView({ slug }: { slug: string }) {
 
 function PlayerLink({ id, name }: { id: string | null; name: string }) {
   return id ? (
-    <Link href={`/players/${id}`} className="truncate hover:underline">{name}</Link>
+    <Link href={`/jogadores/${id}`} className="truncate hover:underline">{name}</Link>
   ) : (
     <span className="truncate">{name}</span>
   );

@@ -49,7 +49,7 @@ export async function updateSession(request: NextRequest, carrierResponse: NextR
     // '/en' cortava pra '/e'). Não repetir o padrão aqui, mesmo que hoje
     // não dispare de fato (isAdminRoute nunca é true com bare === '/').
     const localePrefix = getLocalePrefix(request.nextUrl.pathname);
-    const loginUrl = new URL(`${localePrefix}/login`, request.url);
+    const loginUrl = new URL(`${localePrefix}/entrar`, request.url);
     loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
     return { response: NextResponse.redirect(loginUrl), user };
   }

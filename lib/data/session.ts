@@ -66,10 +66,10 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile | null> 
  * (`@/i18n/navigation`) exige `{ href, locale }`. Com uma string ele não dá erro
  * em tempo de execução — emite NEXT_REDIRECT para "/undefinedundefined" e a
  * pessoa deslogada cai numa página 404 em vez do login (aconteceu em /minha-area,
- * /grupos/[id] e /admin/stats até 2026-10-24). O tsc acusava, mas o erro estava
+ * /grupos/[id] e /admin/estatisticas até 2026-10-24). O tsc acusava, mas o erro estava
  * escondido entre centenas de outros.
  */
 export async function redirectToLogin(next?: string): Promise<never> {
   const locale = await getLocale();
-  return redirect({ href: next ? `/login?next=${next}` : '/login', locale });
+  return redirect({ href: next ? `/entrar?next=${next}` : '/entrar', locale });
 }

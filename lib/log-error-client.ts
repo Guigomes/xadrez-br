@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Erros que não são da aplicação e só poluem o painel (/admin/dev/errors):
+ * Erros que não são da aplicação e só poluem o painel (/admin/dev/erros):
  * extensão de carteira cripto injetada em toda página (MetaMask e afins) e
  * o loop benigno do ResizeObserver, que os navegadores reportam sozinhos.
  * Lista curta e literal de propósito — filtro largo demais engoliria erro

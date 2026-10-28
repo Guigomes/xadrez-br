@@ -6,7 +6,7 @@
  * Cada rota tem seu bloco de passos; quando o bloco acaba, o progresso é
  * gravado e o tour se cala até o componente remontar na rota seguinte. Isso
  * evita duplicar aqui as regras de navegação que já existem nas páginas —
- * notavelmente o `router.push` de app/admin/tournaments/new/page.tsx.
+ * notavelmente o `router.push` de app/admin/torneios/novo/page.tsx.
  *
  * Os alvos são atributos `data-tour` explícitos. Ancorar por classe ou por
  * texto quebraria no primeiro ajuste de layout.
@@ -111,7 +111,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   // Bloco de Classificação: mora em 'new' porque é ali que as perguntas
   // aparecem hoje (as mesmas âncoras data-tour existem em
-  // app/admin/tournaments/new/page.tsx). Ficou marcado como 'edit' de quando
+  // app/admin/torneios/novo/page.tsx). Ficou marcado como 'edit' de quando
   // classificação só era editável depois de criar — e como criar pousa direto
   // em /groups, o organizador nunca passava por /edit e o tour pulava a
   // explicação inteira. A tela /edit segue tendo as mesmas seções pra quem
@@ -211,11 +211,11 @@ export const TOUR_STEPS: TourStep[] = [
 /** Rota do tour correspondente ao pathname, ou null se estamos fora do fluxo. */
 export function matchRoute(pathname: string): TourRoute | null {
   if (/^\/admin\/?$/.test(pathname)) return 'admin';
-  if (/^\/admin\/tournaments\/new\/?$/.test(pathname)) return 'new';
-  if (/^\/admin\/tournaments\/[^/]+\/edit\/?$/.test(pathname)) return 'edit';
-  if (/^\/admin\/tournaments\/[^/]+\/groups\/?$/.test(pathname)) return 'groups';
-  if (/^\/admin\/tournaments\/[^/]+\/registrations\/?$/.test(pathname)) return 'registrations';
-  if (/^\/admin\/tournaments\/[^/]+\/players\/?$/.test(pathname)) return 'players';
+  if (/^\/admin\/torneios\/novo\/?$/.test(pathname)) return 'new';
+  if (/^\/admin\/torneios\/[^/]+\/editar\/?$/.test(pathname)) return 'edit';
+  if (/^\/admin\/torneios\/[^/]+\/emparceiramento\/?$/.test(pathname)) return 'groups';
+  if (/^\/admin\/torneios\/[^/]+\/inscricoes\/?$/.test(pathname)) return 'registrations';
+  if (/^\/admin\/torneios\/[^/]+\/jogadores\/?$/.test(pathname)) return 'players';
   return null;
 }
 

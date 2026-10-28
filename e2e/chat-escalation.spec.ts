@@ -28,7 +28,7 @@ test.describe('escalonamento pra atendimento humano', () => {
   });
 
   async function login(page: Page, org: TestOrganizer) {
-    await page.goto('/login');
+    await page.goto('/entrar');
     await page.getByLabel('Email').fill(org.email);
     await page.getByLabel('Senha').fill(org.password);
     await page.getByRole('button', { name: 'Entrar' }).click();
@@ -56,7 +56,7 @@ test.describe('escalonamento pra atendimento humano', () => {
       localStorage.setItem('xbr_tour_criar_torneio_dispensado', '1');
     }, session!.id);
     const userPage = await userContext.newPage();
-    await userPage.goto('/login');
+    await userPage.goto('/entrar');
     await userPage.getByLabel('Email').fill(user.email);
     await userPage.getByLabel('Senha').fill(user.password);
     await userPage.getByRole('button', { name: 'Entrar' }).click();

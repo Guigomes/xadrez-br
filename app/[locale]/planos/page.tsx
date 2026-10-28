@@ -91,7 +91,7 @@ function SubscribeForm({
 
   if (!isLoggedIn) {
     return (
-      <Button variant="secondary" onClick={() => router.push('/login')}>
+      <Button variant="secondary" onClick={() => router.push('/entrar')}>
         Entrar para assinar
       </Button>
     );

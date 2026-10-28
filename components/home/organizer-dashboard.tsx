@@ -23,14 +23,14 @@ import { Gambito } from '@/components/mascot/gambito';
 const MAX_SHOWN = 6;
 
 function nextAction(slug: string, status: string, pending: number, hasRounds: boolean) {
-  const base = `/admin/tournaments/${slug}`;
-  if (pending > 0) return { href: `${base}/registrations`, label: `Revisar ${pending} inscrição${pending > 1 ? 'ões' : ''}` };
+  const base = `/admin/torneios/${slug}`;
+  if (pending > 0) return { href: `${base}/inscricoes`, label: `Revisar ${pending} inscrição${pending > 1 ? 'ões' : ''}` };
   // Em andamento mas sem rodada publicada (ex.: torneio importado que o chess-results
   // ainda não divulgou): a aba Rodadas só mostraria "ainda não publicada" — abre a visão geral.
-  if (status === 'ongoing' && hasRounds) return { href: `${base}/rounds`, label: 'Abrir rodadas' };
-  if (status === 'draft') return { href: `${base}/edit`, label: 'Continuar configuração' };
-  if (status === 'registration_closed') return { href: `${base}/players`, label: 'Conferir participantes' };
-  if (status === 'finished') return { href: `${base}/standings`, label: 'Ver classificação final' };
+  if (status === 'ongoing' && hasRounds) return { href: `${base}/rodadas`, label: 'Abrir rodadas' };
+  if (status === 'draft') return { href: `${base}/editar`, label: 'Continuar configuração' };
+  if (status === 'registration_closed') return { href: `${base}/jogadores`, label: 'Conferir participantes' };
+  if (status === 'finished') return { href: `${base}/classificacao`, label: 'Ver classificação final' };
   return { href: base, label: 'Abrir painel' };
 }
 
@@ -99,7 +99,7 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
           </p>
         </div>
         <Link
-          href="/admin/tournaments/new"
+          href="/admin/torneios/novo"
           className="inline-flex items-center gap-2 self-start rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -124,7 +124,7 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
             Monte a estrutura uma vez e deixe o sistema cuidar de pareamento e classificação.
           </p>
           <Link
-            href="/admin/tournaments/new"
+            href="/admin/torneios/novo"
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
           >
             Criar torneio

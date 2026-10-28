@@ -120,7 +120,7 @@ export default async function GroupPage({
                       <td className="px-3 py-2 tabular-nums text-gray-500">{i + 1}</td>
                       <td className="px-3 py-2">
                         <div className="flex items-baseline gap-2">
-                          <Link href={`/players/${m.player_id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">
+                          <Link href={`/jogadores/${m.player_id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">
                             {m.title ? `${m.title} ` : ''}{m.full_name}
                           </Link>
                           <RemoveMember groupId={id} playerId={m.player_id} name={m.full_name} />
@@ -167,7 +167,7 @@ export default async function GroupPage({
             {games.map((g) => (
               <li key={`${g.source}:${g.game_id}:${g.player_id}`} className="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2 text-sm">
                 <span>
-                  <Link href={`/players/${g.player_id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">{g.player_name}</Link>
+                  <Link href={`/jogadores/${g.player_id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">{g.player_name}</Link>
                   <span className="text-gray-500 dark:text-gray-400"> {g.color === 'white' ? 'de brancas' : 'de pretas'} x {g.opponent_name ?? '?'}{g.opponent_rating ? ` (${g.opponent_rating})` : ''}</span>
                 </span>
                 <span className="flex items-baseline gap-2">

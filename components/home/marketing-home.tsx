@@ -348,7 +348,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
               </svg>
             </Link>
             <Link
-              href="/players"
+              href="/jogadores"
               className="text-sm font-medium text-gray-600 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
             >
               Sou jogador, quero buscar meu histórico →

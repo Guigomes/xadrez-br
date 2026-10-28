@@ -11,7 +11,7 @@ import { createTournament } from './utils/tournament';
  */
 
 async function login(page: import('@playwright/test').Page, org: TestOrganizer) {
-  await page.goto('/login');
+  await page.goto('/entrar');
   await page.getByLabel('Email').fill(org.email);
   await page.getByLabel('Senha').fill(org.password);
   await page.getByRole('button', { name: 'Entrar' }).click();
@@ -32,7 +32,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     await deleteTestOrganizer(org.id);
   });
 
-  test('percorre o bloco de /new, pula o passo opcional de classificação e termina em /players', async ({ page }) => {
+  test('percorre o bloco de /novo, pula o passo opcional de classificação e termina em /jogadores', async ({ page }) => {
     await login(page, org);
     await page.goto('/admin');
 
@@ -47,7 +47,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     // TournamentTour não desmonta nessa transição (mesmo layout /admin), só
     // reage à mudança de pathname.
     await page.locator('[data-tour="novo-torneio"]').click();
-    await page.waitForURL(/\/admin\/tournaments\/new/);
+    await page.waitForURL(/\/admin\/torneios\/novo/);
 
     // 7 passos em /new: info-basica, organizacao, formato, pergunta-gratuita,
     // gerenciamento, visibilidade, criar.
@@ -99,7 +99,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     // "Agora falta gente" mora em Inscrições agora — o link de inscrição
     // saiu de Participantes.
     await page.getByRole('link', { name: 'Inscrições' }).click();
-    await page.waitForURL(/\/admin\/tournaments\/[^/]+\/registrations/);
+    await page.waitForURL(/\/admin\/torneios\/[^/]+\/inscricoes/);
 
     await expect(popoverTitle(page)).toHaveText('Agora falta gente');
     // Último passo do bloco de Inscrições — botão "Entendi", não "Próximo".
@@ -107,7 +107,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
     await expect(page.locator('.driver-popover')).toHaveCount(0);
 
     await page.getByRole('link', { name: 'Participantes' }).click();
-    await page.waitForURL(/\/admin\/tournaments\/[^/]+\/players/);
+    await page.waitForURL(/\/admin\/torneios\/[^/]+\/jogadores/);
 
     await expect(popoverTitle(page)).toHaveText('Ou cadastre você mesmo');
     // Último passo do tour inteiro — nextStepAfter('cadastrar') é null, então
@@ -139,7 +139,7 @@ test.describe.serial('tour guiado de criação de torneio', () => {
       // Não sobrou botão de ajuda em /admin de propósito — achar "Novo
       // torneio" não é o ponto de confusão. O botão de rever mora na tela de
       // criar torneio e dentro de um torneio já existente.
-      await page.goto('/admin/tournaments/new');
+      await page.goto('/admin/torneios/novo');
       await page.getByRole('button', { name: 'Dicas de como criar um torneio' }).click();
       await expect(popoverTitle(page)).toHaveText('Informações básicas');
     } finally {

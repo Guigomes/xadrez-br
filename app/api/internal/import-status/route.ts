@@ -46,12 +46,12 @@ export async function POST(request: NextRequest) {
       ? {
           title: '⚠ Sincronização com erro',
           body: `${where}: ${message || 'erro sem mensagem'}`,
-          url: tournament ? `/admin/tournaments/${tournament.slug}/imports` : '/admin/dev',
+          url: tournament ? `/admin/torneios/${tournament.slug}/importacoes` : '/admin/dev',
         }
       : {
           title: '✅ Sincronização normalizada',
           body: `${where} voltou a sincronizar com o chess-results.`,
-          url: tournament ? `/admin/tournaments/${tournament.slug}/imports` : '/admin/dev',
+          url: tournament ? `/admin/torneios/${tournament.slug}/importacoes` : '/admin/dev',
         },
   );
 

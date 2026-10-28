@@ -7,24 +7,24 @@ import { readProgress, isDismissed, shouldAutoStart } from '../state';
 describe('matchRoute', () => {
   it('reconhece as seis rotas do fluxo', () => {
     expect(matchRoute('/admin')).toBe('admin');
-    expect(matchRoute('/admin/tournaments/new')).toBe('new');
-    expect(matchRoute('/admin/tournaments/aberto-sp-20260315/edit')).toBe('edit');
+    expect(matchRoute('/admin/torneios/novo')).toBe('new');
+    expect(matchRoute('/admin/torneios/aberto-sp-20260315/editar')).toBe('edit');
     // Emparceiramento tem aba própria — Editar mostra só Classificação
     // (components/admin/classification-setup.tsx, showPairing={false} lá).
-    expect(matchRoute('/admin/tournaments/aberto-sp-20260315/groups')).toBe('groups');
-    expect(matchRoute('/admin/tournaments/aberto-sp-20260315/registrations')).toBe('registrations');
-    expect(matchRoute('/admin/tournaments/aberto-sp-20260315/players')).toBe('players');
+    expect(matchRoute('/admin/torneios/aberto-sp-20260315/emparceiramento')).toBe('groups');
+    expect(matchRoute('/admin/torneios/aberto-sp-20260315/inscricoes')).toBe('registrations');
+    expect(matchRoute('/admin/torneios/aberto-sp-20260315/jogadores')).toBe('players');
   });
 
   it('tolera barra final', () => {
     expect(matchRoute('/admin/')).toBe('admin');
-    expect(matchRoute('/admin/tournaments/new/')).toBe('new');
+    expect(matchRoute('/admin/torneios/novo/')).toBe('new');
   });
 
   it('ignora o resto do admin e o site público', () => {
-    expect(matchRoute('/admin/tournaments/x/rounds')).toBeNull();
-    expect(matchRoute('/admin/stats')).toBeNull();
-    expect(matchRoute('/torneios/x/players')).toBeNull();
+    expect(matchRoute('/admin/torneios/x/rodadas')).toBeNull();
+    expect(matchRoute('/admin/estatisticas')).toBeNull();
+    expect(matchRoute('/torneios/x/jogadores')).toBeNull();
     expect(matchRoute('/')).toBeNull();
   });
 });

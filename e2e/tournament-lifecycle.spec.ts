@@ -14,7 +14,7 @@ import { adminClient } from './utils/admin';
  */
 
 async function login(page: Page, org: TestOrganizer) {
-  await page.goto('/login');
+  await page.goto('/entrar');
   await page.getByLabel('Email').fill(org.email);
   await page.getByLabel('Senha').fill(org.password);
   await page.getByRole('button', { name: 'Entrar' }).click();
@@ -22,13 +22,13 @@ async function login(page: Page, org: TestOrganizer) {
 }
 
 function slugFromUrl(page: Page): string {
-  const match = page.url().match(/\/admin\/tournaments\/([^/]+)\//);
+  const match = page.url().match(/\/admin\/torneios\/([^/]+)\//);
   if (!match) throw new Error(`URL sem slug de torneio: ${page.url()}`);
   return match[1];
 }
 
 async function register(page: Page, slug: string, opts: { fullName: string; birthYear: number; sex?: 'm' | 'w' }) {
-  await page.goto(`/torneios/${slug}/register`);
+  await page.goto(`/torneios/${slug}/inscricao`);
   await page.getByLabel('Nome completo *').fill(opts.fullName);
   await page.getByLabel('Ano de nascimento').fill(String(opts.birthYear));
   if (opts.sex) await page.getByLabel('Sexo').selectOption(opts.sex);
@@ -44,7 +44,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     // Dispensa o tour antes de qualquer navegação — este teste verifica
     // funcionalidade, o localStorage precisa existir antes do primeiro mount
     // de TournamentTour (app/admin/layout.tsx).
-    await page.goto('/login');
+    await page.goto('/entrar');
     await page.evaluate(() => localStorage.setItem('xbr_tour_criar_torneio_dispensado', '1'));
   });
 
@@ -59,12 +59,12 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     test.setTimeout(240_000);
 
     await login(page, org);
-    await page.goto('/admin/tournaments/new');
+    await page.goto('/admin/torneios/novo');
 
     // --- Classificação: idade (Sub-17) + feminina ---
     // Fica NA TELA DE CRIAÇÃO, antes de "Criar torneio" — as classificações
     // são aplicadas junto com o insert (applyClassificationDraft, ver
-    // app/admin/tournaments/new/page.tsx). Não existe mais um "Salvar
+    // app/admin/torneios/novo/page.tsx). Não existe mais um "Salvar
     // classificações" separado aqui; a prévia é o feedback.
     await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sim', exact: true }).click();
     await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sub-17', exact: true }).click();
@@ -85,7 +85,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     // --- Publicar e abrir inscrições: torneio nasce 'draft'. Sequência
     //     agora é draft → published → registration → registration_closed →
     //     ongoing → finished (migration 038); /register só abre inscrição
-    //     com status === 'registration' (app/torneios/[slug]/register/
+    //     com status === 'registration' (app/torneios/[slug]/inscricao/
     //     page.tsx). Botão nomeado por status (migration 040 cobre o avanço
     //     automático por data; aqui é o caminho manual mesmo) — precisa dos
     //     dois cliques pra sair de draft. Espera o toast entre eles porque
@@ -94,7 +94,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     // existe naquele status) em vez do "✓ Salvo": aquele toast some em 2,5s
     // e o router.refresh() remonta o cabeçalho, então esperar por ele é
     // corrida — a ação passava e o teste falhava mesmo assim.
-    await page.goto(`/admin/tournaments/${slug}/edit`);
+    await page.goto(`/admin/torneios/${slug}/editar`);
     await page.getByRole('button', { name: 'Publicar' }).click();
     await expect(page.getByRole('button', { name: 'Abrir Inscrições' })).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: 'Abrir Inscrições' }).click();
@@ -106,7 +106,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
 
     // --- Aprovar as duas inscrições ---
     await login(page, org); // register() navegou pra páginas públicas; volta autenticado
-    await page.goto(`/admin/tournaments/${slug}/registrations`);
+    await page.goto(`/admin/torneios/${slug}/inscricoes`);
     const pendingCards = page.locator('div.card', { hasText: 'Aprovar' });
     await expect(pendingCards).toHaveCount(2);
     // Aprova uma de cada vez — a lista reordena/filtra após cada aprovação.
@@ -120,7 +120,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     // de "✏️ Editar". O select lista TODAS as opções no DOM, então
     // toContainText pegaria "Feminino" da própria lista de opções do menino —
     // lê a opção realmente marcada.
-    await page.goto(`/admin/tournaments/${slug}/players`);
+    await page.goto(`/admin/torneios/${slug}/jogadores`);
 
     async function classificacaoDe(nome: string): Promise<string | null | undefined> {
       await page.locator('div.px-4.py-3', { hasText: nome })
@@ -140,7 +140,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     // --- Ranking inicial + 1ª rodada ---
     // Sem botão manual (migration 058) — "Gerar rodada 1" semeia sozinho se
     // o grupo ainda não tiver seed (generateRoundDraft, lib/pairing/service.ts).
-    await page.goto(`/admin/tournaments/${slug}/rounds`);
+    await page.goto(`/admin/torneios/${slug}/rodadas`);
     await page.getByRole('button', { name: /Gerar rodada 1 de \d+/ }).click();
     // O card da rodada (native-rounds.tsx RoundCard) é um <button> cujo nome
     // acessível inclui "Rodada 1" + o texto do badge de status — getByText
@@ -154,7 +154,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     test.setTimeout(240_000);
 
     await login(page, org);
-    await page.goto('/admin/tournaments/new');
+    await page.goto('/admin/torneios/novo');
 
     // Duas faixas de idade — dois grupos de emparceiramento, nenhum "Absoluto".
     await page.locator('[data-tour="pergunta-idade"]').getByRole('button', { name: 'Sim', exact: true }).click();
@@ -192,7 +192,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     }
 
     // Iniciar o torneio: além do seed, a rodada 1 já sai pareada em rascunho.
-    await page.goto(`/admin/tournaments/${slug}/edit`);
+    await page.goto(`/admin/torneios/${slug}/editar`);
     await page.getByRole('button', { name: 'Publicar' }).click();
     await expect(page.getByRole('button', { name: 'Abrir Inscrições' })).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: 'Abrir Inscrições' }).click();
@@ -202,7 +202,7 @@ test.describe('ciclo de vida do torneio — classificação, inscrição, rodada
     await page.getByRole('button', { name: 'Iniciar Torneio' }).click();
     await expect(page.getByRole('button', { name: 'Encerrar Torneio' })).toBeVisible({ timeout: 30_000 });
 
-    await page.goto(`/admin/tournaments/${slug}/rounds`);
+    await page.goto(`/admin/torneios/${slug}/rodadas`);
 
     // Só as duas faixas aparecem como aba — sem "Absoluto" sobrando.
     await expect(page.getByRole('button', { name: 'Sub-11', exact: true })).toBeVisible();

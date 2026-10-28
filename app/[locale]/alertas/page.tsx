@@ -36,7 +36,7 @@ export default async function AlertasPage() {
         <p className="text-gray-600 dark:text-gray-400">
           Escolha estados e ritmos e receba aviso quando surgir um torneio novo que combine com você — dos torneios do site e do calendário oficial da CBX.
         </p>
-        <Link href="/login?next=/alertas" className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 underline">Entrar para criar alertas</Link>
+        <Link href="/entrar?next=/alertas" className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 underline">Entrar para criar alertas</Link>
       </div>
     );
   }

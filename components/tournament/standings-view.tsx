@@ -20,8 +20,8 @@ import { useTournamentGroupPreference } from '@/lib/hooks/use-tournament-group-p
 
 /**
  * Classificação do torneio — a MESMA tela para o público
- * (app/torneios/[slug]/standings) e para o organizador
- * (app/admin/tournaments/[slug]/standings). Extraído da página pública pra
+ * (app/torneios/[slug]/classificacao) e para o organizador
+ * (app/admin/torneios/[slug]/classificacao). Extraído da página pública pra
  * não duplicar chips de grupo/faixa, desempates e o polling de 30s; a única
  * coisa que muda entre os dois é a moldura de layout ao redor.
  */
@@ -253,7 +253,7 @@ export function StandingsView({
                           ? `Rodada ${latestRound.round_number} · ${(roundStatusLabel[latestRound.status] ?? roundStatusLabel.pending).label}`
                           : null,
                         rows: displayed.map((r) => ({ rank: r.rank, full_name: r.full_name, points: r.points })),
-                        url: typeof window !== 'undefined' ? `${window.location.origin}/torneios/${slug}/standings` : undefined,
+                        url: typeof window !== 'undefined' ? `${window.location.origin}/torneios/${slug}/classificacao` : undefined,
                       })
                     }
                   />

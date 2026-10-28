@@ -8,7 +8,7 @@ import { createTestOrganizer, deleteTestOrganizer, type TestOrganizer } from './
  */
 
 async function login(page: Page, org: TestOrganizer) {
-  await page.goto('/login');
+  await page.goto('/entrar');
   await page.getByLabel('Email').fill(org.email);
   await page.getByLabel('Senha').fill(org.password);
   await page.getByRole('button', { name: 'Entrar' }).click();
@@ -20,7 +20,7 @@ test.describe('chatbot de suporte (Gambito)', () => {
 
   test.beforeEach(async ({ page }) => {
     org = await createTestOrganizer();
-    await page.goto('/login');
+    await page.goto('/entrar');
     await page.evaluate(() => localStorage.setItem('xbr_tour_criar_torneio_dispensado', '1'));
   });
 

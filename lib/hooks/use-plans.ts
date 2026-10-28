@@ -101,7 +101,7 @@ export function useSetUserPlan() {
 }
 
 /** Rótulo legível pra cada chave de entitlement — usado no matriz de dev
- * (/admin/dev/plans) e na tela pública de planos (/planos). A chave em si
+ * (/admin/dev/planos) e na tela pública de planos (/planos). A chave em si
  * (tournaments.active etc) é o que o código lê (has_entitlement/
  * entitlement_limit) — não muda. */
 export const ENTITLEMENT_LABELS: Record<string, string> = {

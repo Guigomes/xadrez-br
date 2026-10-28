@@ -57,7 +57,7 @@ export function PlayerProfileView({ id }: { id: string }) {
                 {isFollowing ? '★ Seguindo' : '☆ Seguir'}
               </Button>
             ) : (
-              <Link href="/login">
+              <Link href="/entrar">
                 <Button variant="secondary" size="sm">☆ Seguir</Button>
               </Link>
             )}
@@ -103,7 +103,7 @@ export function PlayerProfileView({ id }: { id: string }) {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Entre na sua conta para ver todos os torneios, os adversários e os lances deste jogador.
           </p>
-          <Link href="/login" className="inline-block mt-3">
+          <Link href="/entrar" className="inline-block mt-3">
             <Button size="sm">Entrar</Button>
           </Link>
         </div>
@@ -124,7 +124,7 @@ export function PlayerProfileView({ id }: { id: string }) {
             return (
               <Link
                 key={tp.id}
-                href={`/torneios/${t.slug}/players/${tp.id}`}
+                href={`/torneios/${t.slug}/jogadores/${tp.id}`}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
               >
                 <div className="flex-1 min-w-0">

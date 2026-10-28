@@ -18,7 +18,7 @@ import { useTournamentGroupPreference } from '@/lib/hooks/use-tournament-group-p
  * via cron-import, não é editável por aqui).
  *
  * `basePath` monta os links de navegação (anterior/próxima rodada, filtro de
- * grupo) — `/torneios/{slug}/rounds` no público, `/admin/tournaments/
+ * grupo) — `/torneios/{slug}/rodadas` no público, `/admin/torneios/
  * {slug}/rounds` no admin.
  */
 function aggregateStatus(statuses: string[]): 'draft' | 'pending' | 'ongoing' | 'finished' {

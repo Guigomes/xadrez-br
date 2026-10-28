@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="container-app py-8 pb-28 sm:pb-8">{children}</div>
 
       {/* Fica aqui, e não numa página, porque o tour atravessa quatro rotas
-          (/admin, /new, /[slug]/edit, /[slug]/players) — este layout é o
+          (/admin, /novo, /[slug]/editar, /[slug]/jogadores) — este layout é o
           ancestral comum das quatro e não remonta entre elas. */}
       <TournamentTour />
     </div>

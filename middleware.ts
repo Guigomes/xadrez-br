@@ -3,6 +3,7 @@ import createIntlMiddleware from 'next-intl/middleware';
 import { routing, stripLocale, getLocalePrefix } from '@/i18n/routing';
 import { resolveLocale } from '@/i18n/detect';
 import { updateSession } from '@/lib/supabase/middleware';
+import { toPortuguesePath } from '@/lib/routing/legacy-paths';
 
 const intlMiddleware = createIntlMiddleware(routing);
 const LOCALE_COOKIE = 'NEXT_LOCALE';
@@ -10,6 +11,17 @@ const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // 0. URLs antigas em inglês (/torneios/x/rounds, /admin/tournaments/...) viraram
+  // português — redireciona para a nova mantendo idioma e query, para link
+  // compartilhado, QR code e notificação já enviada não quebrarem.
+  const bareForLegacy = stripLocale(pathname);
+  const portuguese = toPortuguesePath(bareForLegacy);
+  if (portuguese !== bareForLegacy) {
+    const url = request.nextUrl.clone();
+    url.pathname = `${getLocalePrefix(pathname)}${portuguese}`;
+    return NextResponse.redirect(url, 308);
+  }
   const hasLocalePrefix = routing.locales.some(
     (l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`)
   );

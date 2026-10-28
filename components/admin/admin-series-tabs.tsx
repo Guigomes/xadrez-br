@@ -13,7 +13,7 @@ export function AdminSeriesTabs({ slug }: { slug: string }) {
     { href: `${base}/etapas`, label: 'Etapas', icon: '🗓' },
     { href: `${base}/pontuacao`, label: 'Pontuação', icon: '🔢' },
     { href: `${base}/classificacao`, label: 'Classificação', icon: '📊' },
-    { href: `${base}/edit`, label: 'Editar', icon: '✏️' },
+    { href: `${base}/editar`, label: 'Editar', icon: '✏️' },
   ];
 
   return (

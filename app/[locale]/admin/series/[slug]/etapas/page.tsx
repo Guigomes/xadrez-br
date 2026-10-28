@@ -83,7 +83,7 @@ export default function SeriesStagesPage({ params }: { params: Promise<{ slug: s
         {options.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Nenhum torneio disponível.{' '}
-            <Link href="/admin/tournaments/new" className="text-brand-600 hover:underline dark:text-brand-400">
+            <Link href="/admin/torneios/novo" className="text-brand-600 hover:underline dark:text-brand-400">
               Criar um torneio
             </Link>
             .
@@ -124,7 +124,7 @@ export default function SeriesStagesPage({ params }: { params: Promise<{ slug: s
             <strong>{describeDimensions(pickedTournament.classification_dimensions)}</strong> e a série,
             por <strong>{describeDimensions(series.classification_dimensions)}</strong>.{' '}
             <Link
-              href={`/admin/tournaments/${pickedTournament.slug}/edit`}
+              href={`/admin/torneios/${pickedTournament.slug}/editar`}
               className="underline"
             >
               Ajustar a classificação desta etapa
@@ -165,7 +165,7 @@ export default function SeriesStagesPage({ params }: { params: Promise<{ slug: s
               <li key={s.id} className="flex flex-wrap items-center gap-2 py-3">
                 <span className="text-sm tabular-nums text-gray-400 dark:text-gray-500">{i + 1}.</span>
                 <Link
-                  href={`/admin/tournaments/${s.tournament.slug}`}
+                  href={`/admin/torneios/${s.tournament.slug}`}
                   className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 hover:underline dark:text-gray-100"
                 >
                   {s.label || s.tournament.name}

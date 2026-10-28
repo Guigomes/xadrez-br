@@ -46,7 +46,7 @@ export function isLikelyCrawler(city: string | null | undefined): boolean {
   return !!city && CRAWLER_CITIES.has(city);
 }
 
-/** "/es/torneios/x/rounds/3" → { slug: 'x', tab: 'rounds' }; fora de torneio → null. */
+/** "/es/torneios/x/rodadas/3" (ou o caminho antigo, /rounds/3) → { slug: 'x', tab: 'rounds' }; fora de torneio → null. */
 export function classifyTournamentPath(path: string): { slug: string; tab: TournamentTabKey } | null {
   const clean = path.split(/[?#]/)[0].replace(/^\/(?:es|en)(?=\/)/, '');
   const m = clean.match(/^\/torneios\/([^/]+)(?:\/([^/]+))?/);
@@ -54,14 +54,14 @@ export function classifyTournamentPath(path: string): { slug: string; tab: Tourn
   const [, slug, section] = m;
   const tab: TournamentTabKey =
     !section ? 'overview'
-    : section === 'participants' ? 'participants'
-    : section === 'rounds' ? 'rounds'
-    : section === 'standings' ? 'standings'
+    : section === 'participantes' || section === 'participants' ? 'participants'
+    : section === 'rodadas' || section === 'rounds' ? 'rounds'
+    : section === 'classificacao' || section === 'standings' ? 'standings'
     : section === 'ao-vivo' ? 'live'
     : section === 'paises' ? 'countries'
-    : section === 'players' ? 'player'
-    : section === 'register' ? 'register'
-    : section === 'statistics' ? 'statistics'
+    : section === 'jogadores' || section === 'players' ? 'player'
+    : section === 'inscricao' || section === 'register' ? 'register'
+    : section === 'estatisticas' || section === 'statistics' ? 'statistics'
     : section === 'painel' ? 'tv'
     : 'other';
   return { slug, tab };

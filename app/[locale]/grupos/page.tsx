@@ -24,7 +24,7 @@ export default async function GruposPage() {
           Para clubes, escolas e treinadores: junte seus jogadores num painel com ranking interno, atividade recente,
           partidas com lances para revisar e anotações privadas.
         </p>
-        <Link href="/login?next=/grupos" className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 underline">Entrar para criar um grupo</Link>
+        <Link href="/entrar?next=/grupos" className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 underline">Entrar para criar um grupo</Link>
       </div>
     );
   }

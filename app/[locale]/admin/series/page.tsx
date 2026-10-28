@@ -30,7 +30,7 @@ export default async function AdminSeriesIndex() {
         </div>
         {canCreate && (
           <Link
-            href="/admin/series/new"
+            href="/admin/series/nova"
             className="inline-flex items-center gap-2 self-start rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -52,7 +52,7 @@ export default async function AdminSeriesIndex() {
           </p>
           {canCreate && (
             <Link
-              href="/admin/series/new"
+              href="/admin/series/nova"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
             >
               Criar série

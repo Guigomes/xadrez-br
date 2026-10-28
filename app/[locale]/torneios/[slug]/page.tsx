@@ -66,7 +66,7 @@ export default async function TournamentOverviewPage({ params, searchParams }: P
   // Links de fora (lista, agenda, push) caem aqui e seguem pra rodada em andamento; a aba
   // "Visão geral" manda ?visao=geral e fica na visão geral.
   if (tournament.status === 'ongoing' && currentRound && visao !== 'geral') {
-    redirect(`/torneios/${slug}/rounds/${currentRound.round_number}`);
+    redirect(`/torneios/${slug}/rodadas/${currentRound.round_number}`);
   }
 
   // Sort groups by the age number in their name (SUB7 < SUB9 < SUB11 …),
@@ -105,7 +105,7 @@ export default async function TournamentOverviewPage({ params, searchParams }: P
         {/* Current round highlight */}
         {currentRound && (
           <Link
-            href={`/torneios/${slug}/rounds/${currentRound.round_number}`}
+            href={`/torneios/${slug}/rodadas/${currentRound.round_number}`}
             className="card p-4 flex items-center justify-between gap-4 bg-amber-50 border-amber-200 hover:border-amber-300 dark:bg-amber-950/20 dark:border-amber-900 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -128,7 +128,7 @@ export default async function TournamentOverviewPage({ params, searchParams }: P
             filtro de grupo próprio), não repete a navegação aqui. */}
         {!currentRound && (participantCount ?? 0) > 0 && (
           <Link
-            href={`/torneios/${slug}/participants`}
+            href={`/torneios/${slug}/participantes`}
             className="card p-4 flex items-center justify-between gap-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -176,7 +176,7 @@ export default async function TournamentOverviewPage({ params, searchParams }: P
               {aggregatedRounds.map((round) => (
               <Link
                 key={round.round_number}
-                href={`/torneios/${slug}/rounds/${round.round_number}`}
+                href={`/torneios/${slug}/rodadas/${round.round_number}`}
                 className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold transition-colors
                   ${ROUND_STATUS_COLORS[round.status]}
                   hover:opacity-80

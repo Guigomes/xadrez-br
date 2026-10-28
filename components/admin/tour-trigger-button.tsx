@@ -13,7 +13,7 @@ export function TourTriggerButton({
   stepId, label, className,
 }: {
   stepId: string; label: string;
-  /** Sobrescreve o estilo padrão (borda cinza) — telas que precisam de mais destaque, como app/admin/tournaments/new/page.tsx. */
+  /** Sobrescreve o estilo padrão (borda cinza) — telas que precisam de mais destaque, como app/admin/torneios/novo/page.tsx. */
   className?: string;
 }) {
   // Tour desligado temporariamente: some todo botão/link que o dispara.

@@ -79,7 +79,7 @@ function ParticipationChart({
 }
 
 function AthleteLink({ athlete, slug }: { athlete: StateAthleteStatistic; slug: string }) {
-  const href = `/torneios/${slug}/players/${athlete.participantId}${athlete.groupId ? `?group=${athlete.groupId}` : ''}`;
+  const href = `/torneios/${slug}/jogadores/${athlete.participantId}${athlete.groupId ? `?group=${athlete.groupId}` : ''}`;
   return (
     <Link
       href={href}

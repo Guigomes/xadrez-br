@@ -3,8 +3,8 @@ import { createTestOrganizer, deleteTestOrganizer, type TestOrganizer } from './
 import { adminClient } from './utils/admin';
 
 /**
- * Smoke test dos painéis novos de admin (/admin/dev/errors,
- * /admin/dev/unanswered, /admin/dev/chat) — só confirma que carregam sem
+ * Smoke test dos painéis novos de admin (/admin/dev/erros,
+ * /admin/dev/sem-resposta, /admin/dev/chat) — só confirma que carregam sem
  * quebrar pra quem é role='admin'. Cria um organizador de teste e promove
  * pra admin na hora (revertido no cleanup).
  */
@@ -14,7 +14,7 @@ test.describe('painéis admin novos', () => {
   test.beforeEach(async ({ page }) => {
     org = await createTestOrganizer();
     await adminClient().from('user_profiles').update({ role: 'admin' }).eq('id', org.id);
-    await page.goto('/login');
+    await page.goto('/entrar');
     await page.getByLabel('Email').fill(org.email);
     await page.getByLabel('Senha').fill(org.password);
     await page.getByRole('button', { name: 'Entrar' }).click();
@@ -30,13 +30,13 @@ test.describe('painéis admin novos', () => {
   });
 
   test('painel de erros carrega', async ({ page }) => {
-    await page.goto('/admin/dev/errors');
+    await page.goto('/admin/dev/erros');
     await expect(page.getByText('Log de erros')).toBeVisible();
     await expect(page.getByText('Acesso restrito')).not.toBeVisible();
   });
 
   test('painel de perguntas sem resposta carrega', async ({ page }) => {
-    await page.goto('/admin/dev/unanswered');
+    await page.goto('/admin/dev/sem-resposta');
     await expect(page.getByText('Perguntas sem resposta')).toBeVisible();
     await expect(page.getByText('Acesso restrito')).not.toBeVisible();
   });

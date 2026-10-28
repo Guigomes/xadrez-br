@@ -15,7 +15,7 @@ export interface ClassificationDraft {
 
 /**
  * Grava de uma vez, na criação do torneio, o que o organizador respondeu no
- * rascunho de Classificação (app/admin/tournaments/new) — nada disso existe
+ * rascunho de Classificação (app/admin/torneios/novo) — nada disso existe
  * em banco antes daqui, porque classificação tem FK pro torneio, que só
  * passa a existir depois do insert em `tournaments`. Mesma lógica de
  * components/admin/classification-setup.tsx, só que sem reconciliar contra

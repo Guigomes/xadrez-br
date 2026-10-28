@@ -119,7 +119,7 @@ export default async function CountriesPage({ params, searchParams }: Props) {
 
   // Links antigos continuam abrindo a ficha completa do jogador.
   if (sp.jogador && rows.some((row) => row.tp_id === sp.jogador)) {
-    redirect({ href: `/torneios/${slug}/players/${sp.jogador}`, locale });
+    redirect({ href: `/torneios/${slug}/jogadores/${sp.jogador}`, locale });
   }
   const searchQuery = sp.q?.trim().slice(0, 80) ?? '';
   const normalize = normalizeSearchText;

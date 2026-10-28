@@ -19,7 +19,7 @@ interface Props {
  */
 export function AdminTournamentTabs({ slug, mode, status }: Props) {
   const pathname = usePathname();
-  const base = `/admin/tournaments/${slug}`;
+  const base = `/admin/torneios/${slug}`;
 
   // A partir do torneio em andamento a montagem acabou: Emparceiramento e
   // Inscrições viram abas que não mudam mais nada (as telas já congelam por
@@ -39,18 +39,18 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
     ...(hasStarted || mode !== 'native'
       ? []
       : [
-          { href: `${base}/groups`,        label: 'Emparceiramento', icon: 'pairing' as TournamentTabIconName },
-          { href: `${base}/registrations`, label: 'Inscrições', icon: 'registrations' as TournamentTabIconName },
+          { href: `${base}/emparceiramento`,        label: 'Emparceiramento', icon: 'pairing' as TournamentTabIconName },
+          { href: `${base}/inscricoes`, label: 'Inscrições', icon: 'registrations' as TournamentTabIconName },
         ]),
-    { href: `${base}/players`, label: 'Participantes', icon: 'participants' as TournamentTabIconName },
+    { href: `${base}/jogadores`, label: 'Participantes', icon: 'participants' as TournamentTabIconName },
     ...(hasStarted
       ? [
-          { href: `${base}/rounds`,    label: 'Rodadas', icon: 'rounds' as TournamentTabIconName },
-          { href: `${base}/standings`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
+          { href: `${base}/rodadas`,    label: 'Rodadas', icon: 'rounds' as TournamentTabIconName },
+          { href: `${base}/classificacao`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
           // Relatório: no nativo, só com o torneio encerrado (antes disso inscrições/check-in ainda
           // mudam). No importado não há inscrição nem check-in — é só o retrato do chess-results —,
           // então já vale como relatório parcial durante o torneio.
-          ...(status === 'finished' || mode !== 'native' ? [{ href: `${base}/report`, label: 'Relatório', icon: 'report' as TournamentTabIconName }] : []),
+          ...(status === 'finished' || mode !== 'native' ? [{ href: `${base}/relatorio`, label: 'Relatório', icon: 'report' as TournamentTabIconName }] : []),
         ]
       : []),
     // Torneio importado não tem arbitragem local (é espelho do chess-results,
@@ -58,7 +58,7 @@ export function AdminTournamentTabs({ slug, mode, status }: Props) {
     // a sincronização mora no botão do cabeçalho (AdminTournamentChrome). A
     // rota /imports continua existindo pra quem editar a URL/grupo (mesmo
     // padrão de "some a navegação, não o acesso" já usado acima pro hasStarted).
-    ...(mode !== 'native' ? [] : [{ href: `${base}/staff`, label: 'Árbitros', icon: 'staff' as TournamentTabIconName }]),
+    ...(mode !== 'native' ? [] : [{ href: `${base}/equipe`, label: 'Árbitros', icon: 'staff' as TournamentTabIconName }]),
   ];
 
   return (

@@ -82,7 +82,7 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
   // vez (que era o "pulo" dos componentes na troca de situação).
   const [isPending, startTransition] = useTransition();
 
-  if (/\/rounds\/[^/]+\/results/.test(pathname)) return null;
+  if (/\/rodadas\/[^/]+\/resultados/.test(pathname)) return null;
 
   async function handleStatusChange(newStatus: TournamentStatus, extra?: Record<string, unknown>) {
     setError('');
@@ -283,7 +283,7 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
         <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 animate-fade-in">
           Emparceiramento personalizado incompleto — falta criar grupo ou mapear classificação na
           aba{' '}
-          <a href={`/admin/tournaments/${slug}/groups`} className="underline">Emparceiramento</a>
+          <a href={`/admin/torneios/${slug}/emparceiramento`} className="underline">Emparceiramento</a>
           {' '}antes de publicar.
         </p>
       )}

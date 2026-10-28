@@ -16,6 +16,6 @@ export async function createTournament(page: Page, name: string) {
   await page.locator('[data-tour="pergunta-gratuita"]').getByRole('button', { name: 'Sim', exact: true }).click();
   await page.getByRole('button', { name: 'Criar torneio' }).click();
   // Pousa direto no Emparceiramento (?criado=1 abre o aviso lá), não em
-  // /edit — ver app/admin/tournaments/new/page.tsx.
-  await page.waitForURL(/\/admin\/tournaments\/[^/]+\/groups/);
+  // /edit — ver app/admin/torneios/novo/page.tsx.
+  await page.waitForURL(/\/admin\/torneios\/[^/]+\/emparceiramento/);
 }

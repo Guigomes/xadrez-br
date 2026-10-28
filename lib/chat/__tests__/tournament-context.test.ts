@@ -3,22 +3,22 @@ import { tournamentSlugFromPathname, normalizeName, matchPlayerNames } from '../
 
 describe('tournamentSlugFromPathname', () => {
   it('extrai slug de página pública de torneio', () => {
-    expect(tournamentSlugFromPathname('/torneios/copa-2026/standings')).toBe('copa-2026');
+    expect(tournamentSlugFromPathname('/torneios/copa-2026/classificacao')).toBe('copa-2026');
     expect(tournamentSlugFromPathname('/torneios/copa-2026')).toBe('copa-2026');
   });
 
   it('extrai slug de página admin de torneio', () => {
-    expect(tournamentSlugFromPathname('/admin/tournaments/copa-2026/rounds')).toBe('copa-2026');
+    expect(tournamentSlugFromPathname('/admin/torneios/copa-2026/rodadas')).toBe('copa-2026');
   });
 
-  it('ignora o segmento reservado /new', () => {
-    expect(tournamentSlugFromPathname('/admin/tournaments/new')).toBeNull();
+  it('ignora o segmento reservado /novo', () => {
+    expect(tournamentSlugFromPathname('/admin/torneios/novo')).toBeNull();
   });
 
   it('retorna null fora de páginas de torneio', () => {
     expect(tournamentSlugFromPathname('/')).toBeNull();
     expect(tournamentSlugFromPathname('/admin')).toBeNull();
-    expect(tournamentSlugFromPathname('/players')).toBeNull();
+    expect(tournamentSlugFromPathname('/jogadores')).toBeNull();
     expect(tournamentSlugFromPathname(null)).toBeNull();
     expect(tournamentSlugFromPathname(undefined)).toBeNull();
   });

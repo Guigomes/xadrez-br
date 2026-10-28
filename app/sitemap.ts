@@ -47,7 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry('/torneios', null, 0.9),
     entry('/agenda', null, 0.8),
     entry('/noticias', null, 0.5),
-    entry('/players', null, 0.4),
+    entry('/jogadores', null, 0.4),
     entry('/privacidade', null, 0.3),
     entry('/termos', null, 0.3),
     entry('/contato', null, 0.3),
@@ -57,8 +57,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const base = `/torneios/${t.slug}`;
     return [
       entry(base, t.updated_at, 0.8),
-      entry(`${base}/participants`, t.updated_at, 0.5),
-      entry(`${base}/standings`, t.updated_at, 0.6),
+      entry(`${base}/participantes`, t.updated_at, 0.5),
+      entry(`${base}/classificacao`, t.updated_at, 0.6),
     ];
   });
 

@@ -19,10 +19,10 @@ export function Footer() {
           <Link href="/torneios" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
             {t('tournaments')}
           </Link>
-          <Link href="/players" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+          <Link href="/jogadores" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
             {t('players')}
           </Link>
-          <Link href={user ? '/admin' : '/login'} className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+          <Link href={user ? '/admin' : '/entrar'} className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
             {t('organizers')}
           </Link>
           <Link href="/privacidade" className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors">

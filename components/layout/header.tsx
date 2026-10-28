@@ -44,7 +44,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
     { href: '/torneios', label: tNav('tournaments') },
     { href: '/agenda',     label: tNav('agenda') },
     { href: '/series',      label: tNav('series') },
-    { href: '/players',     label: tNav('players') },
+    { href: '/jogadores',     label: tNav('players') },
     // Histórico e Notícias fora do menu para todos (pedido do dono, 2026-10-28) — as
     // páginas continuam no ar pelo endereço direto.
   ];
@@ -138,7 +138,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                     {unread > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white">{unread}</span>}
                   </Link>
                   <Link
-                    href="/account"
+                    href="/conta"
                     className="block min-h-11 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                     onClick={() => setDropdownOpen(false)}
                   >
@@ -156,7 +156,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
             </div>
           ) : (
             <Link
-              href="/login"
+              href="/entrar"
               className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 transition-colors"
             >
               {tNav('signIn')}
@@ -227,7 +227,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                 {unread > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white">{unread}</span>}
               </Link>
               <Link
-                href="/account"
+                href="/conta"
                 className="block min-h-11 py-3 text-sm font-medium text-gray-700 dark:text-gray-300"
                 onClick={() => setMobileOpen(false)}
               >

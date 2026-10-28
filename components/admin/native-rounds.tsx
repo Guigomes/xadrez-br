@@ -71,7 +71,7 @@ export function NativeRounds({ tournament }: { tournament: Tournament }) {
           <p className="font-semibold text-gray-900 dark:text-gray-100">🏆 Torneio encerrado!</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
             Todas as rodadas terminaram.{' '}
-            <Link href={`/torneios/${tournament.slug}/standings`} className="underline font-medium">
+            <Link href={`/torneios/${tournament.slug}/classificacao`} className="underline font-medium">
               Ver classificação final →
             </Link>
           </p>
@@ -204,7 +204,7 @@ function GroupPanel({
     <>
       ⚠ Adicione participantes antes de parear a primeira rodada.{' '}
       <Link
-        href={`/admin/tournaments/${tournament.slug}/players`}
+        href={`/admin/torneios/${tournament.slug}/jogadores`}
         className="font-medium underline hover:no-underline"
       >
         Ir para Participantes
@@ -270,7 +270,7 @@ function GroupPanel({
               // Reabrir, em especial, só existe pra corrigir algo — e o
               // lugar de corrigir é o painel, não a lista.
               if (action === 'publish' || action === 'reopen') {
-                router.push(`/admin/tournaments/${tournament.slug}/rounds/${selectedRound.id}/results`);
+                router.push(`/admin/torneios/${tournament.slug}/rodadas/${selectedRound.id}/resultados`);
               }
             })
           }
@@ -337,7 +337,7 @@ function GroupPanel({
             ⬇️ Exportar TRF (homologação)
           </a>
           <a
-            href={`/torneios/${tournament.slug}/standings/print`}
+            href={`/torneios/${tournament.slug}/classificacao/imprimir`}
             target="_blank"
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-9 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
@@ -502,7 +502,7 @@ function RoundPanel({
                 o que dava a sensação de passar por uma tela intermediária
                 entre a lista e o painel. */}
             <Link
-              href={`/admin/tournaments/${tournament.slug}/rounds/${round.id}/results`}
+              href={`/admin/torneios/${tournament.slug}/rodadas/${round.id}/resultados`}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 h-8 text-sm font-medium text-white hover:bg-brand-700"
             >
               📱 Painel de resultados
@@ -519,7 +519,7 @@ function RoundPanel({
         )}
         {round.status !== 'draft' && (
           <a
-            href={`/torneios/${tournament.slug}/rounds/${round.round_number}/print`}
+            href={`/torneios/${tournament.slug}/rodadas/${round.round_number}/imprimir`}
             target="_blank"
             className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-8 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
@@ -656,7 +656,7 @@ function RoundBoards({ tournament, groupId, groupName, round }: { tournament: To
                   white_points: p.white_points,
                 })),
                 url: typeof window !== 'undefined'
-                  ? `${window.location.origin}/torneios/${tournament.slug}/rounds/${round.round_number}`
+                  ? `${window.location.origin}/torneios/${tournament.slug}/rodadas/${round.round_number}`
                   : undefined,
               })
             }

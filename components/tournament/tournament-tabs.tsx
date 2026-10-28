@@ -35,14 +35,14 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
     // de grupo é escolha de DENTRO da própria aba (select "Grupo" ali), não
     // algo herdado de um link de fora — senão a aba nunca abria "zerada"
     // depois que a pessoa já tinha filtrado uma vez em qualquer outra aba.
-    { href: `${base}/participants`, activePath: `${base}/participants`, label: 'Participantes', icon: 'participants' as TournamentTabIconName, carryContext: false },
+    { href: `${base}/participantes`, activePath: `${base}/participantes`, label: 'Participantes', icon: 'participants' as TournamentTabIconName, carryContext: false },
     {
-      href: `${base}/rounds${currentRoundNumber ? `/${currentRoundNumber}` : ''}`,
-      activePath: `${base}/rounds`,
+      href: `${base}/rodadas${currentRoundNumber ? `/${currentRoundNumber}` : ''}`,
+      activePath: `${base}/rodadas`,
       label: `Rodadas · ${roundsCount}`,
       icon: 'rounds' as TournamentTabIconName,
     },
-    { href: `${base}/standings`, activePath: `${base}/standings`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
+    { href: `${base}/classificacao`, activePath: `${base}/classificacao`, label: 'Classificação', icon: 'standings' as TournamentTabIconName },
     // Linha inteira no celular (grade de 2 colunas): é a aba que mais se procura durante
     // a rodada e não pode ficar espremida ao lado de outra.
     ...(hasLiveBroadcast ? [{
@@ -61,8 +61,8 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
       carryContext: false,
     }] : []),
     ...(showStatistics ? [{
-      href: `${base}/statistics`,
-      activePath: `${base}/statistics`,
+      href: `${base}/estatisticas`,
+      activePath: `${base}/estatisticas`,
       label: 'Desempenho por Grupos',
       icon: 'statistics' as TournamentTabIconName,
       mobileFull: true,

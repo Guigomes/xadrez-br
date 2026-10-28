@@ -56,8 +56,8 @@ export function GameViewerButton({
   const { data: pgn, isLoading, isError } = useGamePgn(game.source, game.gameId, open && !needsLogin);
   // Volta exatamente para onde a pessoa estava (rodada, filtros) depois de entrar.
   const loginHref = typeof window === 'undefined'
-    ? '/login'
-    : `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+    ? '/entrar'
+    : `/entrar?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
   useEffect(() => {
     if (!open) return;

@@ -12,8 +12,8 @@ import { formatDate, getTournamentStartLabel } from '@/lib/utils/date';
 
 /**
  * Lista de rodadas do torneio — client component, usado tanto pelo público
- * (app/torneios/[slug]/rounds) quanto pela visão do organizador de
- * torneio IMPORTADO (app/admin/tournaments/[slug]/rounds). Torneio
+ * (app/torneios/[slug]/rodadas) quanto pela visão do organizador de
+ * torneio IMPORTADO (app/admin/torneios/[slug]/rodadas). Torneio
  * importado é espelho do chess-results.com: o organizador não pareia nem
  * lança resultado por aqui, então a visão dele não precisa (e não deve) ser
  * diferente da pública — é o mesmo dado, só que dentro do painel admin.
@@ -24,7 +24,7 @@ import { formatDate, getTournamentStartLabel } from '@/lib/utils/date';
  * um Client Component — só o inverso. Mesmo padrão de standings-view.tsx.
  *
  * `basePath` monta o link de cada rodada (`${basePath}/${numero}`) — público
- * usa `/torneios/{slug}/rounds`, admin usa `/admin/tournaments/{slug}/rounds`.
+ * usa `/torneios/{slug}/rodadas`, admin usa `/admin/torneios/{slug}/rodadas`.
  */
 export function RoundsList({ slug, basePath }: { slug: string; basePath: string }) {
   const searchParams = useSearchParams();

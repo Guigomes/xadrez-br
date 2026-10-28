@@ -52,7 +52,7 @@ export default function MockCheckoutPage() {
             <p className="text-sm font-medium text-green-600 dark:text-green-400">
               ✓ Pagamento simulado confirmado — plano liberado.
             </p>
-            <Button onClick={() => router.push('/account')}>Ir para minha conta</Button>
+            <Button onClick={() => router.push('/conta')}>Ir para minha conta</Button>
           </>
         ) : (
           <>

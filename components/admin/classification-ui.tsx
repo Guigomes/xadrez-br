@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 /**
  * Peças de UI compartilhadas entre o setup de classificação/emparceiramento
  * "ao vivo" (components/admin/classification-setup.tsx, na aba Editar de um
- * torneio já existente) e o "rascunho" (app/admin/tournaments/new/page.tsx,
+ * torneio já existente) e o "rascunho" (app/admin/torneios/novo/page.tsx,
  * mesma pergunta/aparência, mas nada persiste até o torneio ser criado).
  */
 

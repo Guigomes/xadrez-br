@@ -216,7 +216,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const base = countryCode
     ? `/torneios/${slug}/paises/${selectedCountry}`
-    : `/torneios/${slug}/participants`;
+    : `/torneios/${slug}/participantes`;
 
   /** Preserva o filtro de grupo ao paginar, e omite `page=1` da URL. */
   function pageHref(n: number) {
@@ -404,7 +404,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                       </td>
                       <td className="py-3 px-3">
                         <Link
-                          href={`/torneios/${slug}/players/${tp.id}${tp.pairing_group_id ? `?group=${tp.pairing_group_id}` : ''}`}
+                          href={`/torneios/${slug}/jogadores/${tp.id}${tp.pairing_group_id ? `?group=${tp.pairing_group_id}` : ''}`}
                           className="font-medium text-gray-900 dark:text-gray-100 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
                         >
                           {player?.title && <span className="mr-1 text-gray-400 dark:text-gray-500">{player.title}</span>}

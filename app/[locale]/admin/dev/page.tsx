@@ -121,7 +121,7 @@ function DevPanel() {
 
         {selectedTournament && (
           <a
-            href={`/admin/tournaments/${selectedTournament.slug}/rounds`}
+            href={`/admin/torneios/${selectedTournament.slug}/rodadas`}
             className="block text-xs text-brand-600 dark:text-brand-400 hover:underline"
           >
             → Ir para as rodadas deste torneio
@@ -132,7 +132,7 @@ function DevPanel() {
       <div className="card p-5 space-y-2 mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Planos</h2>
         <Link
-          href="/admin/dev/plans"
+          href="/admin/dev/planos"
           className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
         >
           → Trocar o plano de assinatura de um usuário
@@ -188,7 +188,7 @@ function DevPanel() {
       <div className="card p-5 space-y-2 mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Acessos do site</h2>
         <Link
-          href="/admin/dev/accesses"
+          href="/admin/dev/acessos"
           className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
         >
           → Ver acessos separados por aparelho
@@ -198,7 +198,7 @@ function DevPanel() {
       <div className="card p-5 space-y-2 mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Log de erros</h2>
         <Link
-          href="/admin/dev/errors"
+          href="/admin/dev/erros"
           className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
         >
           → Ver erros não esperados capturados no site
@@ -208,7 +208,7 @@ function DevPanel() {
       <div className="card p-5 space-y-2 mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Perguntas sem resposta</h2>
         <Link
-          href="/admin/dev/unanswered"
+          href="/admin/dev/sem-resposta"
           className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
         >
           → Ver o que o Gambito não conseguiu responder
@@ -221,7 +221,7 @@ function DevPanel() {
           Torneios comuns são sempre nativos. O modo &quot;importado&quot; é exclusivo daqui.
         </p>
         <Link
-          href="/admin/tournaments/new/from-chess-results"
+          href="/admin/torneios/novo/do-chess-results"
           className="inline-block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
         >
           → Criar torneio importado do chess-results

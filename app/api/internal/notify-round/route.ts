@@ -188,7 +188,7 @@ async function sendTournamentSummaryEvents(
 
   for (const roundNumber of roundNumbers) {
     const summary = await getRoundSummary(admin, tournamentId, roundNumber);
-    const roundUrl = `/torneios/${tournament.slug}/rounds/${roundNumber}`;
+    const roundUrl = `/torneios/${tournament.slug}/rodadas/${roundNumber}`;
 
     if (summary.allStarted && await claimEvent(admin, {
       tournamentId,
@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
   }
 
   const categoryName = pairingGroup?.name ?? 'Categoria geral';
-  const roundUrl = `/torneios/${tournament.slug}/rounds/${roundNumber}`;
+  const roundUrl = `/torneios/${tournament.slug}/rodadas/${roundNumber}`;
   const allTpIds = [...new Set(inserted.flatMap((pairing) =>
     [pairing.white_tp_id, pairing.black_tp_id].filter(Boolean) as string[]
   ))];

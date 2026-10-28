@@ -75,7 +75,7 @@ export default async function AdminDashboard({
           )}
           {isAdmin && (
             <Link
-              href="/admin/stats"
+              href="/admin/estatisticas"
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -106,7 +106,7 @@ export default async function AdminDashboard({
               </span>
             ) : (
               <Link
-                href="/admin/tournaments/new"
+                href="/admin/torneios/novo"
                 data-tour="novo-torneio"
                 className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
               >
@@ -131,7 +131,7 @@ export default async function AdminDashboard({
           </p>
           {canCreateTournament && !atTournamentLimit && (
             <Link
-              href="/admin/tournaments/new"
+              href="/admin/torneios/novo"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
             >
               Criar torneio
@@ -143,7 +143,7 @@ export default async function AdminDashboard({
           {tournaments.map((t) => (
             <Link
               key={t.id}
-              href={`/admin/tournaments/${t.slug}`}
+              href={`/admin/torneios/${t.slug}`}
               className="card p-4 flex flex-col gap-1 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
             >
               <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -171,7 +171,7 @@ export default async function AdminDashboard({
             {others!.map((t) => (
               <Link
                 key={t.id}
-                href={`/admin/tournaments/${t.slug}`}
+                href={`/admin/torneios/${t.slug}`}
                 className="card p-4 flex flex-col gap-1 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
               >
                 <div className="flex flex-wrap items-center gap-2 mb-1">

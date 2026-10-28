@@ -104,7 +104,7 @@ export default async function RelatoriosPage() {
           <p className="text-sm text-gray-700 dark:text-gray-300">
             Entre na sua conta para pedir um relatório do jogador vinculado a você.
           </p>
-          <Link href="/login?next=/relatorios" className="mt-3 inline-block text-sm font-medium text-brand-600 dark:text-brand-400 underline">
+          <Link href="/entrar?next=/relatorios" className="mt-3 inline-block text-sm font-medium text-brand-600 dark:text-brand-400 underline">
             Entrar
           </Link>
         </section>

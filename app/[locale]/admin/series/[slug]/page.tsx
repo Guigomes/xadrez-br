@@ -92,7 +92,7 @@ export default async function AdminSeriesOverview({
               <li key={s.tournament?.slug ?? i} className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-gray-400 dark:text-gray-500 tabular-nums">{i + 1}.</span>
                 <Link
-                  href={`/admin/tournaments/${s.tournament?.slug}`}
+                  href={`/admin/torneios/${s.tournament?.slug}`}
                   className="font-medium text-gray-900 hover:underline dark:text-gray-100"
                 >
                   {s.label || s.tournament?.name}

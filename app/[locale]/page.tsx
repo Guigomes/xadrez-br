@@ -28,7 +28,7 @@ export default async function HomePage() {
     if (canCreate) {
       return (
         <MarketingHome
-          ctaHref="/admin/tournaments/new"
+          ctaHref="/admin/torneios/novo"
           dashboard={<OrganizerDashboard userId={user.id} userName={profile?.full_name ?? null} />}
         />
       );
@@ -39,5 +39,5 @@ export default async function HomePage() {
     return <MarketingHome ctaHref="/admin" />;
   }
 
-  return <MarketingHome ctaHref="/login" />;
+  return <MarketingHome ctaHref="/entrar" />;
 }

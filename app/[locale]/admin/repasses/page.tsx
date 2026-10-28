@@ -60,7 +60,7 @@ export default async function PayoutsPage() {
             <li key={r.tournament_id} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <Link href={`/admin/tournaments/${r.slug}/report`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">{r.name}</Link>
+                  <Link href={`/admin/torneios/${r.slug}/relatorio`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">{r.name}</Link>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {r.organizer_name ?? 'Organizador não informado'} · {r.paid_count} inscrição(ões) paga(s) · líquido {formatCents(r.organizer_net_cents)} · repassado {formatCents(r.paid_out_cents)}
                   </p>
