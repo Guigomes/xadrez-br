@@ -185,6 +185,10 @@ Fase 5 do plano. Migration `20261022150000_player_stats.sql`.
 - Gate: entitlement `player.stats` (gratuito não; demais sim; cobrança desligada = todos). É gate de **apresentação**: o histórico em si já é livre para logado.
 - Plano `player` ("Jogador+") = gratuito + `player.stats` + alertas sem limite. (Grupos: `groups.players` também limitado a 5 no Jogador+.) Nasce sem preço e `is_public = false`; para vender: `update plans set price_cents=..., billing_interval='month', is_public=true where code='player'`.
 
+## PGN anexado em torneio nativo (2026-10-28)
+
+`pairing_pgns` (um PGN por mesa) não tem política de escrita: quem grava é o robô de importação (importados) ou a rota `PUT/DELETE /api/admin/tournaments/[slug]/pairings/[pairingId]/pgn` (nativos), que checa `is_tournament_manager` (dono, equipe/árbitro, admin), exige `mode = 'native'` e rodada publicada, e grava pelo cliente administrativo com `source = 'manual'`. O PGN é aceito como veio (`lib/pgn/normalize.ts` só tira BOM/CRLF e recusa vazio, grande demais ou sem cabeçalho/lance) — sem conferir jogadores nem resultado contra a mesa, por pedido do dono. UI: `PgnAttachButton` em cada mesa de `/admin/torneios/[slug]/rodadas/[id]/resultados`. A leitura segue a de sempre (só logado).
+
 ## O que NÃO existe ainda (não assumir implementado)
 
 - Exportação de PDF server-side (usa `window.print()` do navegador, páginas `/print` dedicadas).

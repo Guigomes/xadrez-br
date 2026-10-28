@@ -11,6 +11,8 @@ import {
   useMyTournamentRole, useStaff, useBoardArbiters, useAssignBoard, useUnassignBoard,
 } from '@/lib/hooks/use-staff';
 import { useUser } from '@/lib/hooks/use-auth';
+import { useLivePgnIds } from '@/lib/hooks/use-player-history';
+import { PgnAttachButton } from '@/components/tournament/pgn-attach';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,6 +72,7 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
     () => (pairings ?? []).filter((p: any) => !p.is_bye),
     [pairings],
   );
+  const { data: pgnIds } = useLivePgnIds(games.map((p: any) => p.pairing_id as string), true);
   const done = games.filter((p: any) => p.result !== '*').length;
   const allDone = games.length > 0 && done === games.length;
 
@@ -263,6 +266,15 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                     : p.result === '1/2-1/2' ? '½ – ½' : p.result}
                 </p>
               ) : null}
+              {/* PGN só em torneio nativo (importado vem do robô) e com a rodada já publicada. */}
+              {tournament.mode === 'native' && round.status !== 'draft' && (
+                <PgnAttachButton
+                  slug={slug}
+                  pairingId={p.pairing_id}
+                  hasPgn={!!pgnIds?.has(p.pairing_id)}
+                  boardLabel={`Mesa ${p.board_number}`}
+                />
+              )}
             </div>
           );
         })}
