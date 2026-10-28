@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, Link } from '@/i18n/navigation';
 import { useSignIn, useSignUp, useSignInWithGoogle } from '@/lib/hooks/use-auth';
 import { canSignUp, BETA_SIGNUP_MESSAGE } from '@/lib/auth/beta';
@@ -9,9 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Gambito } from '@/components/mascot/gambito';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 
-// Produção entra só com Google (primeiro login já cria a conta). E-mail/senha
-// continua existindo atrás desta flag porque os testes e2e e o teste manual
-// com conta inventada dependem dele — e serve de volta rápida se precisar.
+// Google é a entrada principal. A flag mostra também e-mail/senha na tela normal;
+// /login?metodo=email abre o acesso alternativo para testes, com a mesma autenticação.
 const EMAIL_LOGIN_ENABLED = process.env.NEXT_PUBLIC_EMAIL_LOGIN === 'true';
 
 /**
@@ -39,6 +38,14 @@ export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailRequested, setEmailRequested] = useState(false);
+  const emailLoginEnabled = EMAIL_LOGIN_ENABLED || emailRequested;
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('metodo') === 'email') {
+      setEmailRequested(true);
+      setShowEmailForm(true);
+    }
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -154,7 +161,7 @@ export default function LoginPage() {
             </>
           )}
 
-          {EMAIL_LOGIN_ENABLED ? (
+          {emailLoginEnabled ? (
           <div className="mt-4 flex flex-col items-center gap-2 text-center">
             <button
               type="button"
@@ -187,7 +194,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        {EMAIL_LOGIN_ENABLED && showEmailForm && (
+        {emailLoginEnabled && showEmailForm && (
         <div className="card p-6 mt-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
