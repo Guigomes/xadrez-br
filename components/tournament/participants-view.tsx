@@ -69,7 +69,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
     .select(
       `
         id, player_id, initial_ranking, current_score, current_rank, status, pairing_group_id,
-        player:players!inner(id, full_name, fide_name, title, rating_std, state, city, federation, cbx_id, fide_id, club_or_school),
+        player:players!inner(id, full_name, fide_name, title, rating_std, rating_rpd, rating_blz, state, city, federation, cbx_id, fide_id, club_or_school),
         category:tournament_categories(id, name, pairing_group_id)
       `,
       { count: 'exact' },
@@ -131,7 +131,19 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
   // banco não significa nada — reordena por rating/nome (chess.ts). Só dentro
   // da página atual: com seed gerado a ordem do banco já é a definitiva, e sem
   // seed nenhuma ordem entre páginas seria estável de qualquer jeito.
-  const seeded = playersData ? [...playersData].sort(compareParticipantOrder) : playersData;
+  // Rating mostrado = o do ritmo escolhido pelo organizador no torneio nativo (o mesmo do ranking
+  // inicial). Importado e app gravam o rating da fonte em rating_std, qualquer que seja o ritmo.
+  const ratingKind = tournament.mode === 'native' ? tournament.rating_kind : 'std';
+  const ratingLabel = tournament.mode === 'native' ? ({ std: 'clássico', rpd: 'rápido', blz: 'blitz' } as const)[ratingKind] : null;
+  const ratingOf = (p: { rating_std: number | null; rating_rpd: number | null; rating_blz: number | null } | null | undefined) =>
+    !p ? null : ratingKind === 'rpd' ? p.rating_rpd : ratingKind === 'blz' ? p.rating_blz : p.rating_std;
+
+  // Sem seed, a ordem é por rating — o do ritmo do torneio, igual ao ranking inicial que vai sair.
+  const byRating = (tp: NonNullable<typeof playersData>[number]) => ({
+    initial_ranking: tp.initial_ranking,
+    player: { rating_std: ratingOf(tp.player), full_name: tp.player?.full_name },
+  });
+  const seeded = playersData ? [...playersData].sort((a, b) => compareParticipantOrder(byRating(a), byRating(b))) : playersData;
 
   // A posição da categoria segue exatamente a ordem devolvida pela mesma RPC
   // usada na aba Classificação. Ao filtrar uma categoria, aquela tela apenas
@@ -150,6 +162,10 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
       groupHasResults.set(key, true);
     }
   }
+
+  // Desempenho (pontos e colocação) só aparece depois do primeiro resultado de alguma rodada:
+  // antes disso seria "0 pts" para todo mundo.
+  const showPerformance = [...groupHasResults.values()].some(Boolean);
 
   const categoryCounters = new Map<string, number>();
   const performanceByTpId = new Map<string, {
@@ -190,7 +206,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
       pontos: (a, b) => points(b) - points(a) || placement(a) - placement(b) || byName(a, b),
       grupo: (a, b) => (groupOrder.get(a.pairing_group_id ?? '') ?? 999) - (groupOrder.get(b.pairing_group_id ?? '') ?? 999)
         || (rankByTp.get(a.id) ?? 9999) - (rankByTp.get(b.id) ?? 9999) || byName(a, b),
-      rating: (a, b) => (b.player?.rating_std ?? -1) - (a.player?.rating_std ?? -1) || byName(a, b),
+      rating: (a, b) => (ratingOf(b.player) ?? -1) - (ratingOf(a.player) ?? -1) || byName(a, b),
       nome: byName,
     };
     players = [...seeded].sort(sorters[countrySort]).slice(from, from + PAGE_SIZE);
@@ -338,8 +354,12 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                     <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Grupo</th>
                   )}
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Categoria</th>
-                  <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Desempenho</th>
-                  <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Rating</th>
+                  {showPerformance && (
+                    <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Desempenho</th>
+                  )}
+                  <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400" title={ratingLabel ? `Rating ${ratingLabel}, o ritmo deste torneio` : undefined}>
+                    {ratingLabel ? `Rating ${ratingLabel}` : 'Rating'}
+                  </th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Cidade</th>
                   <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">{international ? 'País' : 'UF'}</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Escola/Clube</th>
@@ -401,12 +421,14 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                           {playerGroup?.name && <span className="font-medium text-brand-600 dark:text-brand-400">{playerGroup.name}</span>}
                           <OriginBadge state={player?.state} federation={player?.federation} international={international} />
                           {cat?.name && <span>{cat.name}</span>}
-                          <span className="font-medium text-gray-600 dark:text-gray-300">
-                            {formatScore(performance.points)} pts · {performanceLabel}
-                          </span>
+                          {showPerformance && (
+                            <span className="font-medium text-gray-600 dark:text-gray-300">
+                              {formatScore(performance.points)} pts · {performanceLabel}
+                            </span>
+                          )}
                           {displayCity && <span>{displayCity}</span>}
                           {displayClub && <span>{displayClub}</span>}
-                          {player?.rating_std && <span>Rating {player.rating_std}</span>}
+                          {ratingOf(player) && <span>Rating {ratingLabel ? `${ratingLabel} ` : ''}{ratingOf(player)}</span>}
                           <ExternalIdLinks cbxId={player?.cbx_id} fideId={player?.fide_id} />
                         </span>
                       </td>
@@ -429,15 +451,17 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                           </Badge>
                         ) : '–'}
                       </td>
-                      <td
-                        className="hidden py-3 px-3 text-gray-700 dark:text-gray-300 sm:table-cell whitespace-nowrap"
-                        title="Pontuação e posição na classificação da categoria"
-                      >
-                        <span className="font-semibold tabular-nums">{formatScore(performance.points)} pts</span>
-                        <span className="block text-xs text-gray-400 dark:text-gray-500">{performanceLabel}</span>
-                      </td>
+                      {showPerformance && (
+                        <td
+                          className="hidden py-3 px-3 text-gray-700 dark:text-gray-300 sm:table-cell whitespace-nowrap"
+                          title="Pontuação e posição na classificação da categoria"
+                        >
+                          <span className="font-semibold tabular-nums">{formatScore(performance.points)} pts</span>
+                          <span className="block text-xs text-gray-400 dark:text-gray-500">{performanceLabel}</span>
+                        </td>
+                      )}
                       <td className="hidden py-3 px-3 text-center tabular-nums text-gray-700 dark:text-gray-300 sm:table-cell">
-                        {player?.rating_std ?? '–'}
+                        {ratingOf(player) ?? '–'}
                       </td>
                       <td className="hidden py-3 px-3 text-gray-500 dark:text-gray-400 sm:table-cell">
                         {displayCity || '–'}
