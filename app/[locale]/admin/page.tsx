@@ -41,6 +41,22 @@ export default async function AdminDashboard({
     .order('start_date', { ascending: false })
     .order('created_at', { ascending: false });
 
+  // Admin gerencia qualquer torneio (o banco já libera); sem esta lista ele só chegava no
+  // torneio de outro organizador digitando a URL. Os 50 mais recentes por data de realização.
+  const { data: others } = isAdmin
+    ? await supabase
+        .from('tournaments')
+        .select('id, slug, name, status, start_date, end_date, registration_end_date, registration_closes_by_date, rounds_count, is_public, city, state, mode, organizer_name, created_by')
+        .neq('created_by', user!.id)
+        .order('start_date', { ascending: false })
+        .limit(50)
+    : { data: null };
+  const creatorIds = [...new Set((others ?? []).map((t) => t.created_by))];
+  const { data: creators } = creatorIds.length
+    ? await supabase.from('user_profiles').select('id, full_name').in('id', creatorIds)
+    : { data: null };
+  const creatorName = new Map((creators ?? []).map((c) => [c.id, c.full_name]));
+
   return (
     <div>
       {excluido && (
@@ -143,6 +159,39 @@ export default async function AdminDashboard({
             </Link>
           ))}
         </div>
+      )}
+
+      {isAdmin && (others?.length ?? 0) > 0 && (
+        <section className="mt-10">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Torneios de outros organizadores</h2>
+          <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
+            Como admin, você gerencia qualquer torneio. Os 50 mais recentes.
+          </p>
+          <div className="space-y-3">
+            {others!.map((t) => (
+              <Link
+                key={t.id}
+                href={`/admin/tournaments/${t.slug}`}
+                className="card p-4 flex flex-col gap-1 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <Badge className={getTournamentStatusColor(t.status, t.registration_end_date, t.registration_closes_by_date)}>{getTournamentStatusLabel(t.status, t.registration_end_date, t.registration_closes_by_date)}</Badge>
+                  {t.mode !== 'native' && (
+                    <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">{t.mode === 'imported' ? 'Importado' : 'App'}</Badge>
+                  )}
+                  {!t.is_public && t.status !== 'draft' && (
+                    <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Privado</Badge>
+                  )}
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t.city}, {t.state} · {formatDateRange(t.start_date, t.end_date)} · {t.rounds_count} rodadas
+                  {' · '}organizado por {creatorName.get(t.created_by)?.trim() || t.organizer_name}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

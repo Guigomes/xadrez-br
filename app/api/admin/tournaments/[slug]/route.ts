@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getSessionProfile } from '@/lib/data/session';
 
 export async function DELETE(
   _request: NextRequest,
@@ -18,7 +19,10 @@ export async function DELETE(
     .single();
 
   if (!tournament) return NextResponse.json({ error: 'Torneio não encontrado.' }, { status: 404 });
-  if (tournament.created_by !== user.id) return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 });
+  // Dono ou admin do sistema — o mesmo critério do RLS de tournaments (admin gerencia qualquer torneio).
+  if (tournament.created_by !== user.id && (await getSessionProfile())?.role !== 'admin') {
+    return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 });
+  }
 
   const { error } = await supabase
     .from('tournaments')
