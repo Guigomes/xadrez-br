@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
 import { createClient } from '@/lib/supabase/server';
+import { fetchCbxProfile } from '@/lib/cbx/profile';
 
-const UA = 'Mozilla/5.0 (compatible; chess-viewer-admin)';
 const CACHE_DAYS = 30;
 
 interface CbxRatingResult {
@@ -12,53 +11,6 @@ interface CbxRatingResult {
   checkedAt: string;
   fromCache: boolean;
   playerName: string | null;
-}
-
-/**
- * Busca o rating de um jogador direto no perfil dele na CBX — não pelo
- * formulário de busca (cbx.org.br/rating), que é um único <form method=post>
- * ASP.NET WebForms por página inteira, com __VIEWSTATE, bem mais frágil de
- * simular. O perfil individual é uma URL GET direta, sem token nenhum:
- * cbx.org.br/jogador/{id}. Confirmado ao vivo em 2026-07: jogador existente
- * tem <div id="dados-jogador-row1"><h2>{nome}</h2>...</div> e uma tabela
- * <table id="ContentPlaceHolder1_gdvRating"> com colunas
- * Mês/Ano | Clássico | Rápido | Blitz — a primeira linha de dados é a mais
- * recente. Jogador inexistente: mesma página, sem #dados-jogador-row1.
- */
-async function fetchCbxRating(cbxId: string): Promise<{ playerName: string | null; ratingStd: number | null; ratingRpd: number | null; ratingBlz: number | null } | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
-  let html: string;
-  try {
-    const res = await fetch(`https://cbx.org.br/jogador/${encodeURIComponent(cbxId)}`, {
-      headers: { 'User-Agent': UA },
-      signal: controller.signal,
-      cache: 'no-store',
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    html = await res.text();
-  } finally {
-    clearTimeout(timer);
-  }
-
-  const $ = cheerio.load(html);
-  const playerName = $('#dados-jogador-row1 h2').first().text().trim();
-  if (!playerName) return null; // ID não encontrado na CBX
-
-  const firstDataRow = $('table#ContentPlaceHolder1_gdvRating tbody tr').eq(1); // eq(0) é o cabeçalho
-  const cells = firstDataRow.find('td');
-  const parseCell = (i: number): number | null => {
-    const raw = cells.eq(i).text().trim();
-    const n = parseInt(raw, 10);
-    return Number.isFinite(n) ? n : null;
-  };
-
-  return {
-    playerName,
-    ratingStd: parseCell(1),
-    ratingRpd: parseCell(2),
-    ratingBlz: parseCell(3),
-  };
 }
 
 export async function POST(
@@ -98,9 +50,9 @@ export async function POST(
     }
   }
 
-  let cbx: Awaited<ReturnType<typeof fetchCbxRating>>;
+  let cbx: Awaited<ReturnType<typeof fetchCbxProfile>>;
   try {
-    cbx = await fetchCbxRating(player.cbx_id);
+    cbx = await fetchCbxProfile(player.cbx_id);
   } catch (err) {
     const msg = (err as Error).name === 'AbortError'
       ? 'Tempo limite excedido ao conectar na CBX (10s).'

@@ -89,7 +89,8 @@ export function useCreatePlayer() {
       const cbxId = values.cbx_id?.trim();
       if (cbxId) {
         const { data: existing, error: findError } = await supabase
-          .from('players').select('*').eq('cbx_id', cbxId).maybeSingle();
+          .from('players').select('*').eq('cbx_id', cbxId).eq('is_test', false)
+          .order('updated_at', { ascending: false }).limit(1).maybeSingle(); // mesmo critério de /api/players/cbx-lookup
         if (findError) throw findError;
         if (existing) return existing;
       }

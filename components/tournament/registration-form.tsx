@@ -11,6 +11,8 @@ import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { BR_STATES } from '@/lib/utils/chess';
 import { deriveCategory, type CategoryCandidate } from '@/lib/utils/classification-match';
+import { useCbxLookup } from '@/lib/hooks/use-cbx-lookup';
+import { CbxLookupHint } from '@/components/player/cbx-lookup-hint';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
@@ -124,6 +126,21 @@ export function RegistrationForm({
   const watchedSex = watch('sex');
   const watchedBirthYear = watch('birth_year');
   const watchedCategoryId = watch('category_id');
+  // Digitou o ID CBX: busca primeiro no nosso cadastro e, se não houver, na CBX, e
+  // preenche os dados do jogador com o que vier.
+  const cbxLookup = useCbxLookup(watch('cbx_id'), (found) => {
+    // Substitui tudo (vazio quando a fonte não sabe): trocar de ID não pode deixar
+    // FIDE/sexo/escola do jogador consultado antes.
+    const opts = { shouldValidate: true, shouldDirty: true };
+    setValue('full_name', found.full_name, opts);
+    setValue('birth_year', found.birth_year ?? undefined, opts);
+    setValue('sex', found.sex ?? '', opts);
+    setValue('city', found.city ?? '', opts);
+    setValue('state', found.state ?? '', opts);
+    setValue('club_or_school', found.club_or_school ?? '', opts);
+    setValue('federation', found.federation ?? 'BRA', opts);
+    setValue('fide_id', found.fide_id ?? '', opts);
+  }, { initialId: autofill?.cbx_id || '' });
 
   // Espelho client-side de derive_player_category (035) — mesma regra, mesmo
   // desempate por especificidade. Só usa birth_year/sex: rating não é
@@ -337,6 +354,26 @@ export function RegistrationForm({
       )}
 
       <div className="card p-5 space-y-4">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Registros</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+          Tem ID CBX? Digite primeiro: buscamos seus dados e preenchemos o resto. A organização confirma seu rating a partir do ID.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Input
+              label={`ID CBX${requireCbxId ? ' *' : ''}`}
+              inputMode="numeric"
+              {...register('cbx_id')}
+              error={errors.cbx_id?.message}
+            />
+            <CbxLookupHint lookup={cbxLookup} />
+          </div>
+          <Input label="ID FIDE" inputMode="numeric" {...register('fide_id')} error={errors.fide_id?.message} />
+        </div>
+        <Input label="Federação" maxLength={3} {...register('federation')} error={errors.federation?.message} hint="Sigla de 3 letras. Padrão: BRA" />
+      </div>
+
+      <div className="card p-5 space-y-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Dados do jogador</h2>
         <Input label="Nome completo *" placeholder="Como consta na CBX/FIDE" {...register('full_name')} error={errors.full_name?.message} />
         <div className="grid gap-4 sm:grid-cols-2">
@@ -380,23 +417,6 @@ export function RegistrationForm({
             )}
           </div>
         )}
-      </div>
-
-      <div className="card p-5 space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Registros</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-          Preencha se tiver — a organização confirma seu rating a partir do ID.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label={`ID CBX${requireCbxId ? ' *' : ''}`}
-            inputMode="numeric"
-            {...register('cbx_id')}
-            error={errors.cbx_id?.message}
-          />
-          <Input label="ID FIDE" inputMode="numeric" {...register('fide_id')} error={errors.fide_id?.message} />
-        </div>
-        <Input label="Federação" maxLength={3} {...register('federation')} error={errors.federation?.message} hint="Sigla de 3 letras. Padrão: BRA" />
       </div>
 
       <div className="card p-5 space-y-4">

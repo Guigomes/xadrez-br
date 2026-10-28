@@ -12,6 +12,8 @@ import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { ExternalIdLinks } from '@/components/player/external-id-links';
+import { CbxLookupHint } from '@/components/player/cbx-lookup-hint';
+import { useCbxLookup } from '@/lib/hooks/use-cbx-lookup';
 import { formatScore, BR_STATES, compareGroupNames } from '@/lib/utils/chess';
 import { normalizeSearchText } from '@/lib/utils/text';
 import type { PlayerFormValues, PairingGroup, TournamentCategory } from '@/types/database';
@@ -356,6 +358,27 @@ function PlayerFormModal({
   const [categoryTouched, setCategoryTouched] = useState(!!editing);
   const [error, setError] = useState('');
 
+  // Cadastro novo: digitar o ID CBX busca o jogador (nosso cadastro primeiro, depois a CBX)
+  // e preenche o resto — e, se ele já existe aqui, useCreatePlayer reaproveita o mesmo
+  // cadastro em vez de criar duplicado. Na edição não roda: não sobrescreve dado salvo.
+  const cbxLookup = useCbxLookup(values.cbx_id, (found) => {
+    // Substitui tudo (vazio quando a fonte não sabe): trocar de ID não pode deixar
+    // FIDE/sexo do jogador consultado antes.
+    setValues((v) => ({
+      ...v,
+      full_name: found.full_name,
+      birth_year: found.birth_year ?? undefined,
+      sex: found.sex ?? undefined,
+      state: found.state ?? undefined,
+      city: found.city ?? undefined,
+      fide_id: found.fide_id ?? undefined,
+      federation: found.federation ?? 'BRA',
+    }));
+    if (!categoryTouched) {
+      setCategoryId(deriveCategoryId({ sex: found.sex, birth_year: found.birth_year, rating_std: null }) ?? '');
+    }
+  }, { enabled: !editing });
+
   const categoryCandidates: CategoryCandidate[] = (categories ?? []).map((c) => ({
     id: c.id, sortOrder: c.sort_order, sex: c.sex,
     minAge: c.min_age, maxAge: c.max_age, minRating: c.min_rating, maxRating: c.max_rating,
@@ -425,6 +448,14 @@ function PlayerFormModal({
         {error && (
           <p className="rounded-lg bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs text-red-600 dark:text-red-400">{error}</p>
         )}
+        <div>
+          <Input
+            label="ID CBX" inputMode="numeric" value={values.cbx_id ?? ''}
+            hint={editing ? 'Rating vem da CBX depois — sem precisar digitar.' : 'Digite primeiro: buscamos o jogador aqui e na CBX e preenchemos o resto. O rating vem da CBX depois.'}
+            onChange={(e) => setValues((v) => ({ ...v, cbx_id: e.target.value }))}
+          />
+          <CbxLookupHint lookup={cbxLookup} />
+        </div>
         <Input
           label="Nome completo *" required value={values.full_name ?? ''}
           onChange={(e) => setValues((v) => ({ ...v, full_name: e.target.value }))}
@@ -473,20 +504,13 @@ function PlayerFormModal({
             <option value="">Selecione…</option>
             {BR_STATES.map((s) => <option key={s.uf} value={s.uf}>{s.uf} — {s.name}</option>)}
           </Select>
-          <Input
-            label="ID CBX" value={values.cbx_id ?? ''}
-            hint="Rating vem da CBX depois — sem precisar digitar."
-            onChange={(e) => setValues((v) => ({ ...v, cbx_id: e.target.value }))}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
           <Input label="ID FIDE" value={values.fide_id ?? ''} onChange={(e) => setValues((v) => ({ ...v, fide_id: e.target.value }))} />
-          <Input
-            label="Federação" maxLength={3} value={values.federation ?? ''}
-            onChange={(e) => setValues((v) => ({ ...v, federation: e.target.value.toUpperCase() }))}
-            hint="Sigla de 3 letras. Padrão: BRA"
-          />
         </div>
+        <Input
+          label="Federação" maxLength={3} value={values.federation ?? ''}
+          onChange={(e) => setValues((v) => ({ ...v, federation: e.target.value.toUpperCase() }))}
+          hint="Sigla de 3 letras. Padrão: BRA"
+        />
         <div className="flex gap-2">
           <Button type="submit" loading={saving} disabled={isNative && !editing && !groups?.length}>
             {editing ? 'Salvar' : 'Adicionar'}

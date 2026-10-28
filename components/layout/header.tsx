@@ -45,8 +45,8 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
     { href: '/agenda',     label: tNav('agenda') },
     { href: '/series',      label: tNav('series') },
     { href: '/players',     label: tNav('players') },
-    { href: '/historico',   label: tNav('history') },
-    { href: '/noticias',    label: tNav('news') },
+    // Histórico e Notícias fora do menu para todos (pedido do dono, 2026-10-28) — as
+    // páginas continuam no ar pelo endereço direto.
   ];
 
   return (
