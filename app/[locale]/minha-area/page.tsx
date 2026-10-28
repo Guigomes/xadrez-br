@@ -2,6 +2,7 @@ import { Link } from '@/i18n/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getSessionUser, redirectToLogin } from '@/lib/data/session';
 import { isCheckinEnabled } from '@/lib/data/checkin';
+import { isRegistrationPaymentEnabled } from '@/lib/data/registration-payment';
 import { Badge } from '@/components/ui/badge';
 import { Gambito } from '@/components/mascot/gambito';
 import { CheckinButton } from '@/components/player-hub/checkin-button';
@@ -72,6 +73,7 @@ export default async function PlayerHubPage() {
   const now = Date.now();
   // Interruptor global: desligado, nem o botão nem o selo de presença aparecem.
   const checkinOn = await isCheckinEnabled();
+  const paymentOn = await isRegistrationPaymentEnabled();
   const active = withPairings.filter((entry) => entry.tournaments?.status !== 'finished' && entry.tournaments?.status !== 'cancelled');
   const past = withPairings.filter((entry) => entry.tournaments?.status === 'finished');
 
@@ -120,7 +122,7 @@ export default async function PlayerHubPage() {
         )}
       </section>
 
-      {(registrations ?? []).length > 0 && <section className="mb-8"><h2 className="mb-3 text-lg font-bold">Minhas inscrições</h2><div className="space-y-2">{(registrations as unknown as HubRegistration[]).map((r) => <div key={r.id} className="card flex items-center justify-between gap-3 p-4"><Link href={`/torneios/${r.tournaments.slug}`} className="min-w-0 font-medium hover:text-brand-600">{r.tournaments.name}</Link><div className="flex shrink-0 items-center gap-2"><Badge className={r.is_waitlisted ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}>{r.is_waitlisted ? 'Lista de espera' : r.status === 'approved' ? 'Aprovada' : r.status === 'rejected' ? 'Rejeitada' : r.payment_status === 'pending' ? 'Vaga liberada' : 'Em análise'}</Badge>{!r.is_waitlisted && r.payment_status === 'pending' && <PayRegistrationButton registrationId={r.id} />}</div></div>)}</div></section>}
+      {(registrations ?? []).length > 0 && <section className="mb-8"><h2 className="mb-3 text-lg font-bold">Minhas inscrições</h2><div className="space-y-2">{(registrations as unknown as HubRegistration[]).map((r) => <div key={r.id} className="card flex items-center justify-between gap-3 p-4"><Link href={`/torneios/${r.tournaments.slug}`} className="min-w-0 font-medium hover:text-brand-600">{r.tournaments.name}</Link><div className="flex shrink-0 items-center gap-2"><Badge className={r.is_waitlisted ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}>{r.is_waitlisted ? 'Lista de espera' : r.status === 'approved' ? 'Aprovada' : r.status === 'rejected' ? 'Rejeitada' : r.payment_status === 'pending' ? 'Vaga liberada' : 'Em análise'}</Badge>{paymentOn && !r.is_waitlisted && r.payment_status === 'pending' && <PayRegistrationButton registrationId={r.id} />}</div></div>)}</div></section>}
 
       {past.length > 0 && <section><h2 className="mb-3 text-lg font-bold">Histórico</h2><div className="grid gap-3 sm:grid-cols-2">{past.map((entry) => <div key={entry.id} className="card p-4"><p className="font-semibold">{entry.tournaments?.name}</p><p className="mt-1 text-sm text-gray-500">{entry.current_score} pontos · {entry.current_rank ? `${entry.current_rank}º lugar` : 'sem posição'}</p><div className="mt-3 flex flex-wrap items-center gap-3"><Link href={`/torneios/${entry.tournaments?.slug}/players/${entry.id}`} className="text-sm text-brand-600 hover:underline">Desempenho</Link><a href={`/api/certificates/${entry.id}`} className="text-sm text-brand-600 hover:underline">Certificado</a><ShareResultButton tournamentPlayerId={entry.id} playerName={entry.players?.full_name ?? 'Jogador'} /></div></div>)}</div></section>}
     </div>

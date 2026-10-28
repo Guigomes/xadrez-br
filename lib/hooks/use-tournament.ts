@@ -103,6 +103,21 @@ export function useCheckinEnabled() {
   });
 }
 
+/**
+ * Interruptor global do pagamento online de inscrição (`app_settings.registration_payment_enabled`).
+ * Só vale `true` quando a chave está ligada.
+ */
+export function useRegistrationPaymentEnabled() {
+  return useQuery({
+    queryKey: ['registration-payment-enabled'],
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await supabase.rpc('registration_payment_enabled');
+      return error || typeof data !== 'boolean' ? true : data;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useTournamentRounds(tournamentId: string) {
   return useQuery({
     queryKey: tournamentKeys.rounds(tournamentId),

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
 import { getSessionUser } from '@/lib/data/session';
+import { isRegistrationPaymentEnabled } from '@/lib/data/registration-payment';
 import { RegistrationForm } from '@/components/tournament/registration-form';
 import { formatDateRange } from '@/lib/utils/date';
 import { todayInBrazil } from '@/lib/utils/date';
@@ -96,6 +97,7 @@ export default async function RegisterPage({ params }: Props) {
     tournament.registration_start_date && today < tournament.registration_start_date;
   const afterWindow =
     tournament.registration_end_date && today > tournament.registration_end_date;
+  const paymentOn = await isRegistrationPaymentEnabled();
   const isOpen =
     tournament.status === 'registration' && !beforeWindow && !afterWindow;
   // status ainda pode estar 'registration' com o prazo já vencido, se o
@@ -126,7 +128,7 @@ export default async function RegisterPage({ params }: Props) {
           requirePaymentReceipt={tournament.require_payment_receipt}
           registrationFeeText={tournament.registration_fee_text}
           isFree={tournament.is_free}
-          acceptOnlinePayment={tournament.accept_online_payment}
+          acceptOnlinePayment={tournament.accept_online_payment && paymentOn}
           registrationFeeCents={tournament.registration_fee_cents}
           requireCbxId={tournament.require_cbx_id}
           hasAbsoluteClassification={tournament.has_absolute_classification ?? true}

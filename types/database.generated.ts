@@ -3852,6 +3852,10 @@ export type Database = {
         Args: { p_tournament_id: string }
         Returns: number
       }
+      registration_payment_enabled: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       remove_staff: { Args: { p_staff_id: string }; Returns: undefined }
       remove_tournament_from_series: {
         Args: { p_series_id: string; p_tournament_id: string }

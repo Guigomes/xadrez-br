@@ -11,7 +11,7 @@ import { TiebreakOrderPicker } from '@/components/tournament/tiebreak-order-pick
 import { Gambito } from '@/components/mascot/gambito';
 import { BR_STATES } from '@/lib/utils/chess';
 import { useEntitlements } from '@/lib/hooks/use-entitlements';
-import { useCheckinEnabled } from '@/lib/hooks/use-tournament';
+import { useCheckinEnabled, useRegistrationPaymentEnabled } from '@/lib/hooks/use-tournament';
 import {
   TIME_CONTROL_PRESETS, TIME_CONTROL_OTHER, findPresetByValue,
 } from '@/lib/utils/time-control';
@@ -209,7 +209,9 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
 
   const isFree = watch('is_free');
   const requireCbxId = watch('require_cbx_id');
-  const acceptOnlinePayment = watch('accept_online_payment');
+  // Interruptor global: com o pagamento online desligado, o formulário mostra só o fluxo manual.
+  const paymentFeature = useRegistrationPaymentEnabled().data === true;
+  const acceptOnlinePayment = watch('accept_online_payment') && paymentFeature;
   const registrationFeeCents = watch('registration_fee_cents');
   const maxParticipants = watch('max_participants');
   const checkinEnabled = watch('checkin_enabled');
@@ -580,24 +582,26 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
         )}
         {isFree === false && (
           <div className="space-y-4 pt-1">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                className="h-5 w-5 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                {...register('accept_online_payment', {
-                  onChange: (e) => {
-                    if (e.target.checked) setValue('require_payment_receipt', false, { shouldDirty: true });
-                  },
-                })}
-              />
-              <div>
-                <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Aceitar pagamento online na inscrição</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  O inscrito paga a taxa na hora via Pix/cartão (Asaas), sem precisar anexar comprovante.
-                  {lacksOnlinePayment && ' Requer plano com essa funcionalidade liberada.'}
-                </p>
-              </div>
-            </label>
+            {paymentFeature && (
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                  {...register('accept_online_payment', {
+                    onChange: (e) => {
+                      if (e.target.checked) setValue('require_payment_receipt', false, { shouldDirty: true });
+                    },
+                  })}
+                />
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">Aceitar pagamento online na inscrição</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    O inscrito paga a taxa na hora via Pix/cartão (Asaas), sem precisar anexar comprovante.
+                    {lacksOnlinePayment && ' Requer plano com essa funcionalidade liberada.'}
+                  </p>
+                </div>
+              </label>
+            )}
 
             {acceptOnlinePayment ? (
               <Input

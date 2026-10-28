@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { createAsaasCustomer, createAsaasPayment, type AsaasBillingType } from '@/lib/asaas/client';
 import { todayInBrazil } from '@/lib/utils/date';
 import { platformFeeCents } from '@/lib/finance/settlement';
+import { isRegistrationPaymentEnabled } from '@/lib/data/registration-payment';
 
 // Inicia a cobrança avulsa da taxa de inscrição (migration 078) — chamada
 // pelo próprio formulário público logo após o insert em
@@ -39,6 +40,10 @@ export async function POST(
   // em vez de gerar uma segunda cobrança pra mesma inscrição.
   if (registration.asaas_invoice_url) {
     return NextResponse.json({ invoiceUrl: registration.asaas_invoice_url });
+  }
+  // Interruptor global (20261028140000): desligado, nenhuma cobrança nova é gerada.
+  if (!(await isRegistrationPaymentEnabled())) {
+    return NextResponse.json({ error: 'O pagamento online de inscrição está temporariamente desativado. Combine o pagamento com a organização.' }, { status: 409 });
   }
   if (!registration.cpf_cnpj || !registration.email) {
     return NextResponse.json(
