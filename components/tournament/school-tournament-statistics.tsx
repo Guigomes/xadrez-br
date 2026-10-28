@@ -1,4 +1,6 @@
+import { useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+import { localizedTitle } from '@/lib/utils/player-title';
 import type {
   MedalKind,
   ParticipationEntry,
@@ -79,6 +81,7 @@ function ParticipationChart({
 }
 
 function AthleteLink({ athlete, slug }: { athlete: StateAthleteStatistic; slug: string }) {
+  const locale = useLocale();
   const href = `/torneios/${slug}/jogadores/${athlete.participantId}${athlete.groupId ? `?group=${athlete.groupId}` : ''}`;
   return (
     <Link
@@ -86,7 +89,7 @@ function AthleteLink({ athlete, slug }: { athlete: StateAthleteStatistic; slug: 
       className="font-semibold text-gray-900 transition-colors hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400"
     >
       {athlete.playerTitle && (
-        <span className="mr-1 text-xs text-gray-400 dark:text-gray-500">{athlete.playerTitle}</span>
+        <span className="mr-1 text-xs text-gray-400 dark:text-gray-500">{localizedTitle(athlete.playerTitle, locale)}</span>
       )}
       {athlete.playerName}
     </Link>

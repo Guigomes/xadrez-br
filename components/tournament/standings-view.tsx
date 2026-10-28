@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useLocale } from 'next-intl';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { useSearchParams } from 'next/navigation';
 import { usePathname, useRouter } from '@/i18n/navigation';
 import { useTournament, useTournamentStandings, useTournamentRounds } from '@/lib/hooks/use-tournament';
@@ -41,6 +43,7 @@ export function StandingsView({
    *  pronto, as três saem juntas no primeiro render. */
   tournamentId?: string;
 }) {
+  const locale = useLocale();
   const { data: tournament, isLoading: loadingTournament } = useTournament(slug);
   const id = tournamentId ?? tournament?.id ?? '';
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(id);
@@ -204,7 +207,7 @@ export function StandingsView({
               <div className="mt-1.5 space-y-0.5">
                 {podium.map(({ medal, row }) => (
                   <p key={row!.rank} className="text-sm text-gray-700 dark:text-gray-300">
-                    {medal} {row!.title ? `${row!.title} ` : ''}{row!.full_name}
+                    {medal} {row!.title ? `${localizedTitle(row!.title, locale)} ` : ''}{row!.full_name}
                   </p>
                 ))}
               </div>

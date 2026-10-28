@@ -3,6 +3,7 @@
 import { Link } from '@/i18n/navigation';
 import { useLocale } from 'next-intl';
 import { playerDisplayName } from '@/lib/utils/player-name';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { FederationBadge } from '@/components/player/origin-badge';
 import { Badge } from '@/components/ui/badge';
 import { formatScore, winnerSide, resultLabel, resultBadgeColor } from '@/lib/utils/chess';
@@ -124,6 +125,7 @@ function PlayerLink({
   state: 'winner' | 'loser' | 'draw' | 'pending';
   alignRight?: boolean; followed?: boolean; federation?: string | null;
 }) {
+  const locale = useLocale();
   const isWinner = state === 'winner';
   const isLoser  = state === 'loser';
 
@@ -146,7 +148,7 @@ function PlayerLink({
           {federation && <FederationBadge federation={federation} className="px-1 py-0 text-[10px]" />}
         </div>
         <span className={`text-center text-sm leading-tight ${nameClass}`}>
-          {title && <span className="text-gray-400 dark:text-gray-500 font-normal">{title} </span>}
+          {title && <span className="text-gray-400 dark:text-gray-500 font-normal">{localizedTitle(title, locale)} </span>}
           {name}
         </span>
         {isWinner && <span className="text-xs">🏆</span>}

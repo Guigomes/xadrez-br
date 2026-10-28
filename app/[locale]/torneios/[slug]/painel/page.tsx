@@ -1,4 +1,6 @@
 import { notFound } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { createAdminClient } from '@/lib/supabase/server';
 import { TvControls } from '@/components/tournament/tv-controls';
 
@@ -6,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function TournamentTvPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const locale = await getLocale();
   const admin = createAdminClient();
   const { data: tournament } = await admin.from('tournaments')
     .select('id, name, city, state, is_public, status')
@@ -47,9 +50,9 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
             {(pairings ?? []).map((pairing) => (
               <article key={pairing.pairing_id} className="grid grid-cols-[5rem_1fr_auto_1fr] items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 sm:grid-cols-[7rem_1fr_auto_1fr]">
                 <div className="text-center"><span className="text-sm uppercase text-gray-500">Mesa</span><p className="text-4xl font-black text-brand-300">{pairing.board_number ?? '—'}</p></div>
-                <PlayerName title={pairing.white_title} name={pairing.white_name} align="right" />
+                <PlayerName title={localizedTitle(pairing.white_title, locale)} name={pairing.white_name} align="right" />
                 <span className="text-xl font-black text-gray-500">×</span>
-                <PlayerName title={pairing.black_title} name={pairing.black_name} />
+                <PlayerName title={localizedTitle(pairing.black_title, locale)} name={pairing.black_name} />
               </article>
             ))}
           </div>

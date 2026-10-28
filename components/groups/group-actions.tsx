@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale } from 'next-intl';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { usePlayerSearch } from '@/lib/hooks/use-player';
@@ -47,6 +49,7 @@ export function CreateGroupForm() {
 }
 
 export function AddMember({ groupId, memberIds }: { groupId: string; memberIds: string[] }) {
+  const locale = useLocale();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const { data: results, isFetching } = usePlayerSearch(query);
@@ -78,7 +81,7 @@ export function AddMember({ groupId, memberIds }: { groupId: string; memberIds: 
             return (
               <li key={p.id} className="flex items-center justify-between gap-2 px-3 py-2">
                 <span className="text-sm text-gray-900 dark:text-gray-100">
-                  {p.title ? `${p.title} ` : ''}{p.full_name}
+                  {p.title ? `${localizedTitle(p.title, locale)} ` : ''}{p.full_name}
                   <span className="ml-1 text-xs text-gray-500">{[p.state, p.rating_std, p.cbx_id ? `CBX ${p.cbx_id}` : null].filter(Boolean).join(' · ')}</span>
                 </span>
                 <Button size="sm" variant="secondary" disabled={already || busyId === p.id} onClick={() => add(p.id)}>

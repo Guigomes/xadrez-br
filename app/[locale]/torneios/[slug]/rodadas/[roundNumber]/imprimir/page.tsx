@@ -1,4 +1,6 @@
 import { notFound } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { createClient } from '@/lib/supabase/server';
 import { PrintFrame } from '@/components/tournament/print-frame';
 
@@ -8,6 +10,7 @@ interface Props { params: Promise<{ slug: string; roundNumber: string }> }
 
 export default async function RoundPrintPage({ params }: Props) {
   const { slug, roundNumber } = await params;
+  const locale = await getLocale();
   const supabase = await createClient();
 
   const { data: tournament } = await supabase
@@ -43,11 +46,11 @@ export default async function RoundPrintPage({ params }: Props) {
               {s.pairings.map((p: any) => (
                 <tr key={p.pairing_id}>
                   <td>{p.board_number ?? '—'}</td>
-                  <td className="name">{p.white_title ? `${p.white_title} ` : ''}{p.white_name}</td>
+                  <td className="name">{p.white_title ? `${localizedTitle(p.white_title, locale)} ` : ''}{p.white_name}</td>
                   <td className="result">
                     {p.result === 'bye' ? 'BYE' : p.result === 'not_paired' ? 'NÃO EMPARC.' : resultLabel(p.result)}
                   </td>
-                  <td className="name">{p.black_title ? `${p.black_title} ` : ''}{p.black_name ?? '—'}</td>
+                  <td className="name">{p.black_title ? `${localizedTitle(p.black_title, locale)} ` : ''}{p.black_name ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,5 +1,6 @@
 'use client';
 
+import { localizedTitle } from '@/lib/utils/player-title';
 import { use } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
@@ -70,7 +71,7 @@ export default function PlayerTournamentPage({ params }: Props) {
     playerRow?.fide_name ?? profile?.fide_name ?? null,
     locale,
   );
-  const displayTitle = playerRow?.title ?? profile?.title ?? null;
+  const displayTitle = localizedTitle(playerRow?.title ?? profile?.title ?? null, locale);
   // Rating do ritmo do torneio (get_tournament_standings.rating_tempo) — não o clássico do cadastro.
   const displayRating = playerRow?.rating_tempo ?? null;
   const displayState = playerRow?.state ?? profile?.state ?? null;
@@ -335,7 +336,7 @@ function HistoryRow({ row, tournamentSlug, international }: { row: PlayerHistory
     <>
       <p className={`text-sm font-medium break-words ${opponentHref ? 'text-brand-700 dark:text-brand-300' : 'text-gray-900 dark:text-gray-100'}`}>
         {international && <FederationBadge federation={row.opponent_federation} className="mr-1.5 px-1 py-0 align-middle text-[10px]" />}
-        {row.opponent_title && <span className="text-gray-400 dark:text-gray-500 font-normal">{row.opponent_title} </span>}
+        {row.opponent_title && <span className="text-gray-400 dark:text-gray-500 font-normal">{localizedTitle(row.opponent_title, locale)} </span>}
         {playerDisplayName(row.opponent_name, row.opponent_fide_name, locale)}
       </p>
       <p className="text-xs text-gray-400 mt-0.5">

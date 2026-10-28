@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionUser, redirectToLogin } from '@/lib/data/session';
 import { PlayerAreaTabs } from '@/components/player-hub/player-area-tabs';
@@ -32,6 +34,7 @@ export default async function GroupPage({
   searchParams: Promise<{ ordem?: string; dias?: string; lances?: string }>;
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
+  const locale = await getLocale();
   const user = await getSessionUser();
   if (!user) return redirectToLogin(`/grupos/${id}`);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
@@ -121,7 +124,7 @@ export default async function GroupPage({
                       <td className="px-3 py-2">
                         <div className="flex items-baseline gap-2">
                           <Link href={`/jogadores/${m.player_id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">
-                            {m.title ? `${m.title} ` : ''}{m.full_name}
+                            {m.title ? `${localizedTitle(m.title, locale)} ` : ''}{m.full_name}
                           </Link>
                           <RemoveMember groupId={id} playerId={m.player_id} name={m.full_name} />
                         </div>

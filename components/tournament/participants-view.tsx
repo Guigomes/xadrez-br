@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { OriginBadge } from '@/components/player/origin-badge';
 import { isInternationalTournament, federationName } from '@/lib/utils/federation';
 import { getLocale } from 'next-intl/server';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { playerDisplayName } from '@/lib/utils/player-name';
 import { cn } from '@/lib/utils/cn';
 import { ExternalIdLinks } from '@/components/player/external-id-links';
@@ -407,7 +408,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                           href={`/torneios/${slug}/jogadores/${tp.id}${tp.pairing_group_id ? `?group=${tp.pairing_group_id}` : ''}`}
                           className="font-medium text-gray-900 dark:text-gray-100 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
                         >
-                          {player?.title && <span className="mr-1 text-gray-400 dark:text-gray-500">{player.title}</span>}
+                          {player?.title && <span className="mr-1 text-gray-400 dark:text-gray-500">{localizedTitle(player.title, locale)}</span>}
                           {playerDisplayName(player?.full_name, player?.fide_name, locale)}
                         </Link>
                         {tp.status === 'withdrawn' && (

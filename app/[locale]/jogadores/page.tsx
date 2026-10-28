@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale } from 'next-intl';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { Link } from '@/i18n/navigation';
 import { usePlayerSearch } from '@/lib/hooks/use-player';
 import { Input } from '@/components/ui/input';
@@ -8,6 +10,7 @@ import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 
 export default function PlayersPage() {
+  const locale = useLocale();
   const [query, setQuery] = useState('');
   const { data: players, isLoading } = usePlayerSearch(query);
 
@@ -53,7 +56,7 @@ export default function PlayersPage() {
             >
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                  {player.title && <span className="text-amber-600 dark:text-amber-400 mr-1">{player.title}</span>}
+                  {player.title && <span className="text-amber-600 dark:text-amber-400 mr-1">{localizedTitle(player.title, locale)}</span>}
                   {player.full_name}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">

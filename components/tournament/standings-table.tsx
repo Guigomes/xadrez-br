@@ -4,6 +4,7 @@ import React from 'react';
 import { Link } from '@/i18n/navigation';
 import { useLocale } from 'next-intl';
 import { playerDisplayName } from '@/lib/utils/player-name';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
 import { OriginBadge } from '@/components/player/origin-badge';
 import { formatScore, formatTiebreak } from '@/lib/utils/chess';
@@ -59,7 +60,7 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, i
               href={`/torneios/${tournamentSlug}/jogadores/${row.tp_id}${row.pairing_group_id ? `?group=${row.pairing_group_id}` : ''}`}
               className="font-medium text-gray-900 dark:text-gray-100 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
             >
-              {row.title && <span className="text-gray-400 dark:text-gray-500 font-normal">{row.title} </span>}
+              {row.title && <span className="text-gray-400 dark:text-gray-500 font-normal">{localizedTitle(row.title, locale)} </span>}
               {playerDisplayName(row.full_name, row.fide_name, locale)}
             </Link>
             <OriginBadge state={row.state} federation={row.federation} international={international} />

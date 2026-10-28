@@ -1,4 +1,5 @@
 import React from 'react';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { ImageResponse } from 'next/og';
 import { createAdminClient } from '@/lib/supabase/server';
 
@@ -27,7 +28,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       ),
       h('div', { style: { display: 'flex', flexDirection: 'column' } },
         h('div', { style: { fontSize: 30, color: '#d1d5db', marginBottom: 16 } }, row.tournaments.name),
-        h('div', { style: { fontSize: 62, lineHeight: 1.05, fontWeight: 900 } }, `${row.players.title ? `${row.players.title} ` : ''}${row.players.full_name}`),
+        h('div', { style: { fontSize: 62, lineHeight: 1.05, fontWeight: 900 } }, `${row.players.title ? `${localizedTitle(row.players.title, 'pt-BR')} ` : ''}${row.players.full_name}`),
         row.tournament_categories?.name ? h('div', { style: { marginTop: 18, fontSize: 25, color: '#fcd34d' } }, row.tournament_categories.name) : null
       ),
       h('div', { style: { display: 'flex', gap: 30 } },

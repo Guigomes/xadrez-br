@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isCheckinEnabled } from '@/lib/data/checkin';
 import { PrintReportButton } from '@/components/admin/print-report-button';
 import { compareGroupNames } from '@/lib/utils/chess';
+import { localizedTitle } from '@/lib/utils/player-title';
 import { SettlementCard, type Settlement } from '@/components/finance/settlement-card';
 
 interface StandingRow {
@@ -208,7 +209,7 @@ function Podium({ rows, compact = false }: { rows: StandingRow[]; compact?: bool
         <li key={row.tp_id} className="flex items-center justify-between gap-3">
           <span className="min-w-0">
             <strong className="mr-2 text-brand-600">{i + 1}º</strong>
-            {row.title && `${row.title} `}{row.full_name}
+            {row.title && `${localizedTitle(row.title, 'pt-BR')} `}{row.full_name}
           </span>
           <span className="shrink-0 text-sm text-gray-500">{row.points} pts</span>
         </li>
