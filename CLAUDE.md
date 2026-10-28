@@ -50,6 +50,10 @@ Trigger `trg_prevent_role_escalation` (migration 026) bloqueia usuário comum de
 - O limite conta participantes ativos mais inscrições pendentes fora da fila. A alocação e a promoção FIFO da lista de espera são serializadas com lock na linha de `tournaments`; não reproduzir essa conta apenas no cliente.
 - Check-in do próprio jogador usa `set_my_checkin`; alteração pela organização usa `set_player_checkin`. Ambos são RPCs com autorização no banco — não fazer update direto de `tournament_players` para presença.
 
+### Inscrição pública sem login
+
+O formulário envia para `POST /api/registrations`. A rota gera o UUID e faz INSERT sem `.select()` com o cliente da sessão (inclusive anônimo), preservando RLS e triggers. Só após sucesso, lê via cliente administrativo os três campos de confirmação (`id`, `payment_status`, `is_waitlisted`) exclusivamente desse UUID gerado no servidor. Não liberar SELECT público de `tournament_registrations`: contém dados pessoais. Encadear `.insert(...).select(...)` no cliente quebra a inscrição anônima, pois apenas a organização pode ler a linha. Regressão: `lib/__tests__/anonymous-registration.test.ts`.
+
 ## Convenções deste projeto
 
 - **Migrations**: nome `<versão>_<nome>.sql`, sempre idempotentes (`if not exists`, `create or replace`). As `001`–`083` são o histórico antigo, congelado (não criar mais nesse formato). **Novas usam timestamp `AAAAMMDDHHMMSS_nome.sql`** (o mesmo formato do Supabase CLI e do MCP), e a versão tem que ser ÚNICA entre arquivos — duas sessões criando migration no mesmo minuto já colidiram (`…210000_`); confira com `check-migrations`. **Toda migration aplicada precisa estar registrada** em `supabase_migrations.schema_migrations`: o `apply-sql.mjs` registra sozinho, na mesma transação. Se alguém aplicar por fora (painel do Supabase ou MCP `apply_migration`, que gera a própria versão), traga o arquivo para cá com o MESMO nome que o registro tem. As cinco `20260831…`/`20260910…` (`broadcast_*`) são do app de transmissão "Chess Match Film", que divide este banco, e foram recuperadas do registro.

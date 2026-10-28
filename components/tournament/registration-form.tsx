@@ -202,23 +202,32 @@ export function RegistrationForm({
         payment_receipt_path = data.path;
       }
 
-      const { data: inserted, error: insErr } = await supabase.from('tournament_registrations').insert({
-        tournament_id: tournamentId,
-        category_id: values.category_id || null,
-        full_name: values.full_name.trim(),
-        birth_year: values.birth_year ?? null,
-        sex: values.sex || null,
-        city: values.city?.trim() || null,
-        state: values.state || null,
-        club_or_school: values.club_or_school?.trim() || null,
-        federation: values.federation.toUpperCase(),
-        fide_id: values.fide_id || null,
-        cbx_id: values.cbx_id || null,
-        email: values.email || null,
-        phone: values.phone?.trim() || null,
-        cpf_cnpj: values.cpf_cnpj?.replace(/\D/g, '') || null,
-        payment_receipt_path,
-      }).select('id, payment_status, is_waitlisted').single();
+      const registrationResponse = await fetch('/api/registrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournament_id: tournamentId,
+          category_id: values.category_id || null,
+          full_name: values.full_name.trim(),
+          birth_year: values.birth_year ?? null,
+          sex: values.sex || null,
+          city: values.city?.trim() || null,
+          state: values.state || null,
+          club_or_school: values.club_or_school?.trim() || null,
+          federation: values.federation.toUpperCase(),
+          fide_id: values.fide_id || null,
+          cbx_id: values.cbx_id || null,
+          email: values.email || null,
+          phone: values.phone?.trim() || null,
+          cpf_cnpj: values.cpf_cnpj?.replace(/\D/g, '') || null,
+          payment_receipt_path,
+        }),
+      });
+      const registrationBody = await registrationResponse.json();
+      const inserted = registrationResponse.ok ? registrationBody as {
+        id: string; payment_status: string; is_waitlisted: boolean;
+      } : null;
+      const insErr = registrationResponse.ok ? null : new Error(registrationBody.error ?? 'Erro ao enviar inscrição.');
       if (insErr) {
         if (insErr.message.includes('row-level security')) {
           throw new Error('As inscrições não estão abertas para este torneio.');
