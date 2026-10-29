@@ -17,8 +17,8 @@ function fixSwappedPlace(city: string | null, club: string | null) {
 /**
  * Autopreenchimento do formulário de inscrição pelo ID CBX (público, inclusive
  * anônimo). Procura primeiro em `players` — leitura já pública pela RLS
- * (`players_select_public`), então nada novo é exposto — e só se não houver
- * cadastro interno consulta o perfil na CBX. Nunca grava nada.
+ * (`players_select_public`), então nada novo é exposto — e consulta o perfil na CBX
+ * quando não há cadastro interno ou ele está incompleto. Nunca grava nada.
  */
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id')?.trim() ?? '';
@@ -45,6 +45,24 @@ export async function GET(request: NextRequest) {
       club_or_school: place.club,
       sex: player.sex === 'm' || player.sex === 'w' ? player.sex : null,
     };
+    // Cadastro importado costuma vir só com o nome (sem nascimento, UF, FIDE): completa o
+    // que falta com o perfil da CBX, sem trocar nada que o cadastro já tem. Melhor esforço —
+    // se a CBX não responder, devolve o cadastro como está.
+    if (result.birth_year == null || result.state == null || result.fide_id == null) {
+      try {
+        const cbx = await fetchCbxProfile(id);
+        if (cbx) {
+          const filled = {
+            birth_year: result.birth_year ?? cbx.birthYear,
+            state: result.state ?? cbx.state,
+            fide_id: result.fide_id ?? cbx.fideId,
+          };
+          if (filled.birth_year !== result.birth_year || filled.state !== result.state || filled.fide_id !== result.fide_id) {
+            Object.assign(result, filled, { source: 'cbx' });
+          }
+        }
+      } catch { /* CBX fora do ar: segue só com o cadastro */ }
+    }
     return NextResponse.json(result);
   }
 
