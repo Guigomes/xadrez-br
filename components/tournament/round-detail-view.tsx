@@ -53,7 +53,10 @@ export function RoundDetailView({
   }
 
   const headerStatus = aggregateStatus(sections.map((s) => s.status));
-  const isMultiGroup = sections.length > 1 || sections.some((s) => s.groupName);
+  // Torneio nativo com um grupo só (o "Absoluto" que todo nativo ganha) não mostra seletor
+  // nem título de grupo — repetiria o nome do torneio inteiro. Importado com um único grupo
+  // nomeado (ex.: a categoria do chess-results) continua mostrando o nome.
+  const isMultiGroup = sections.length > 1 || (tournament.mode !== 'native' && sections.some((s) => s.groupName));
 
   const visibleSections = isMultiGroup
     ? sections.filter((s) => s.groupId === selectedGroupId)

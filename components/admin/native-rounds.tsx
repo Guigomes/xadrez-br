@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, Link } from '@/i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -142,50 +142,31 @@ function GroupPanel({
     setOpenRoundId(atual.id);
   }, [rounds, openRoundId]);
 
-  // Rodada 1 automática pro torneio que virou 'ongoing' sozinho por data
-  // (next_status_by_date, migrations 040/047): esse caminho não passa pelo
-  // clique em "Iniciar Torneio" (admin-tournament-chrome.tsx), que já gera a
-  // rodada 1. E não dá pra parear junto com o seed no banco (migration 058)
-  // porque a engine é WASM e só roda em Node. Então gera aqui, na primeira
-  // abertura da aba Rodadas com o torneio em andamento e o grupo ainda sem
-  // rodada nenhuma. Rascunho não tem consumidor externo (o público só vê
-  // rodada publicada), então gerar na leitura do organizador equivale a gerar
-  // no instante da virada — mesmo padrão "lazy" que o status por data já usa.
-  // Não existe caminho pra excluir rodada no app, então "em andamento + zero
-  // rodadas" só pode significar "a 1ª nunca foi gerada" — não há risco de
-  // reparear por cima de algo que o organizador tirou de propósito.
-  const rodada1Disparada = useRef(false);
-  useEffect(() => {
-    if (rodada1Disparada.current) return;
-    if (tournament.status !== 'ongoing' || tournament.mode !== 'native') return;
-    if (!rounds || rounds.length > 0 || !tPlayers) return;
-    // Grupo vazio não é erro — o organizador ainda vai cadastrar gente. Sem
-    // esta guarda, cada abertura da aba jogaria um NO_PLAYERS na tela dele.
-    if (!tPlayers.some((p: any) => p.pairing_group_id === groupId)) return;
-    rodada1Disparada.current = true;
-    generate.mutateAsync(undefined)
-      .then((res: any) => { if (res?.roundId) setOpenRoundId(res.roundId); })
-      .catch((e: any) => onError(e.message ?? 'Erro ao gerar a rodada 1 automaticamente'));
-  }, [tournament.status, tournament.mode, rounds, tPlayers, groupId, generate, onError]);
+  // A rodada 1 NÃO é gerada sozinha (nem ao iniciar o torneio, nem ao abrir esta aba): o
+  // organizador marca as ausências (bye pedido) primeiro e gera pelo botão "Gerar rodada 1".
+  // Rodada 1 pareada antes disso já nascia sem considerar quem não vai jogar.
 
   // Hooks precisam rodar antes de qualquer early return (regra dos hooks) —
   // nextRoundNumber é calculado com dados possivelmente ainda undefined.
   const lastRoundPre = rounds?.[rounds.length - 1];
   const nextRoundNumberPre = (lastRoundPre?.round_number ?? 0) + 1;
-  const byes = useRequestedByes(tournament.id, nextRoundNumberPre);
-  const toggleBye = useToggleRequestedBye(tournament.id, nextRoundNumberPre);
+  // Com a rodada mais recente ainda em rascunho (a 1ª nasce sozinha ao abrir esta aba), as
+  // ausências marcadas valem para ELA: dá para marcar e regerar o pareamento antes de publicar.
+  const byeRound = lastRoundPre?.status === 'draft' ? lastRoundPre.round_number : nextRoundNumberPre;
+  const byes = useRequestedByes(tournament.id, byeRound);
+  const toggleBye = useToggleRequestedBye(tournament.id, byeRound);
 
   if (isLoading) return <PageSpinner />;
 
   const isRoundRobin = tournament.tournament_type === 'round_robin';
   const groupPlayers = (tPlayers ?? []).filter((p: any) => p.pairing_group_id === groupId);
-  const seededCount = groupPlayers.filter((p: any) => p.initial_ranking != null).length;
   const lastRound = rounds?.[rounds.length - 1];
   const selectedRound = rounds?.find((r) => r.id === openRoundId);
   const finishedCount = (rounds ?? []).filter((r) => r.status === 'finished').length;
   const nextRoundNumber = (lastRound?.round_number ?? 0) + 1;
+  const draftPending = lastRound?.status === 'draft';
   const eligibleForBye = groupPlayers.filter(
-    (p: any) => p.status === 'active' && (p.joined_at_round ?? 1) <= nextRoundNumber
+    (p: any) => p.status === 'active' && (p.joined_at_round ?? 1) <= byeRound
   );
   const canGenerate =
     finishedCount < groupRoundsCount &&
@@ -214,17 +195,10 @@ function GroupPanel({
 
   return (
     <div className="space-y-4">
-      {/* Seed — gerado sozinho (ao iniciar o torneio, ou na hora de gerar a
-          1ª rodada se ninguém tiver clicado "Iniciar Torneio" antes; ver
-          generateRoundDraft em lib/pairing/service.ts). Sem botão manual. */}
-      <div className="card p-4">
-        <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-          Jogadores: {groupPlayers.length} · Com seed: {seededCount}
-        </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          O ranking inicial ordena por rating e congela quando a rodada 1 é publicada.
-        </p>
-      </div>
+      {/* O seed (ranking inicial) é gerado sozinho — ao iniciar o torneio, ou na hora de
+          gerar a 1ª rodada se ninguém tiver clicado "Iniciar Torneio" antes; ver
+          generateRoundDraft em lib/pairing/service.ts. Sem botão nem aviso aqui: a contagem
+          de jogadores já está na aba Participantes. */}
 
       {/* Rodadas — navegação por chips, não acordeão: um clique troca qual
           rodada está visível, sempre uma só por vez (mesma linguagem visual
@@ -288,12 +262,18 @@ function GroupPanel({
         <div className="card p-4 space-y-3">
           {!isRoundRobin && (
             <ByeSelector
-              roundNumber={nextRoundNumber}
+              roundNumber={byeRound}
               byeScore={tournament.requested_bye_score}
               players={eligibleForBye}
               requestedIds={byes.data}
-              disabled={toggleBye.isPending || !canGenerate}
+              disabled={toggleBye.isPending || (!canGenerate && !draftPending)}
               onToggle={(tpId, requested) => run(() => toggleBye.mutateAsync({ tpId, requested }))}
+              // Rodada em rascunho já está pareada: a mudança só entra ao regerar.
+              onRegenerate={draftPending ? () => run(async () => {
+                const res: any = await generate.mutateAsync(lastRound!.round_number);
+                if (res?.roundId) setOpenRoundId(res.roundId);
+              }) : undefined}
+              regenerating={generate.isPending}
             />
           )}
 
@@ -358,7 +338,7 @@ function GroupPanel({
  * fato); a lista inteira, com busca por nome, fica a um clique.
  */
 function ByeSelector({
-  roundNumber, byeScore, players, requestedIds, disabled, onToggle,
+  roundNumber, byeScore, players, requestedIds, disabled, onToggle, onRegenerate, regenerating,
 }: {
   roundNumber: number;
   byeScore: number | null;
@@ -366,6 +346,9 @@ function ByeSelector({
   requestedIds: Set<string> | undefined;
   disabled: boolean;
   onToggle: (tpId: string, requested: boolean) => void;
+  /** Só quando a rodada já está pareada em rascunho: aplica as ausências refazendo o pareamento. */
+  onRegenerate?: () => void;
+  regenerating?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -397,15 +380,23 @@ function ByeSelector({
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Quem não vai jogar recebe bye ({byeScore === 0.5 ? '½ ponto' : '0 pontos'}) e fica fora do pareamento.
+            {onRegenerate && ' O pareamento atual só muda ao regerar.'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-        >
-          {open ? 'Fechar' : 'Marcar ausência'}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {onRegenerate && (
+            <Button size="sm" variant="secondary" loading={regenerating} onClick={onRegenerate}>
+              Regerar pareamento
+            </Button>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            {open ? 'Fechar' : 'Marcar ausência'}
+          </button>
+        </div>
       </div>
 
       {/* Recolhido: só quem está marcado, que é a informação que importa de relance. */}
@@ -474,6 +465,7 @@ function RoundPanel({
   canReopen: boolean; busy: boolean;
   onRegenerate: () => void; regenerating: boolean;
 }) {
+  const { data: pairings } = useRoundPairings(round.id);
   return (
     <div className="card p-4 space-y-3">
       <div className="flex items-center gap-3">
@@ -526,8 +518,36 @@ function RoundPanel({
             🖨️ Imprimir mesas
           </a>
         )}
+        {/* Divulgar no zap só depois de publicar — rascunho não tem confronto
+            definitivo pra mandar. Na mesma linha dos outros botões da rodada. */}
+        {round.status !== 'draft' && (pairings?.length ?? 0) > 0 && (
+          <WhatsAppButton
+            compact
+            label="Enviar mesas no WhatsApp"
+            getText={() =>
+              buildRoundMessage({
+                tournamentName: tournament.name,
+                roundNumber: round.round_number,
+                groupName,
+                statusLabel: ROUND_STATUS_LABELS[round.status],
+                resultLabels: RESULT_LABELS,
+                pairings: (pairings ?? []).map((p: any) => ({
+                  board_number: p.board_number,
+                  white_name: p.white_name,
+                  black_name: p.black_name,
+                  result: p.result,
+                  is_bye: p.is_bye,
+                  white_points: p.white_points,
+                })),
+                url: typeof window !== 'undefined'
+                  ? `${window.location.origin}/torneios/${tournament.slug}/rodadas/${round.round_number}`
+                  : undefined,
+              })
+            }
+          />
+        )}
       </div>
-      <RoundBoards tournament={tournament} groupId={groupId} groupName={groupName} round={round} />
+      <RoundBoards tournament={tournament} groupId={groupId} round={round} />
     </div>
   );
 }
@@ -541,7 +561,7 @@ const WARNING_LABELS: Record<string, string> = {
   MANUAL_OVERRIDE: 'Mesa alterada à mão',
 };
 
-function RoundBoards({ tournament, groupId, groupName, round }: { tournament: Tournament; groupId: string; groupName: string | null; round: Round }) {
+function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; groupId: string; round: Round }) {
   const { data: pairings, isLoading } = useRoundPairings(round.id);
   const override = useOverridePairing(tournament.id, groupId, round.id);
   const isDraft = round.status === 'draft';
@@ -634,35 +654,6 @@ function RoundBoards({ tournament, groupId, groupName, round }: { tournament: To
 
   return (
     <div className="space-y-2">
-      {/* Divulgar no zap só depois de publicar — rascunho não tem confronto
-          definitivo pra mandar. */}
-      {!isDraft && (pairings?.length ?? 0) > 0 && (
-        <div>
-          <WhatsAppButton
-            label="Enviar mesas no WhatsApp"
-            getText={() =>
-              buildRoundMessage({
-                tournamentName: tournament.name,
-                roundNumber: round.round_number,
-                groupName,
-                statusLabel: ROUND_STATUS_LABELS[round.status],
-                resultLabels: RESULT_LABELS,
-                pairings: (pairings ?? []).map((p: any) => ({
-                  board_number: p.board_number,
-                  white_name: p.white_name,
-                  black_name: p.black_name,
-                  result: p.result,
-                  is_bye: p.is_bye,
-                  white_points: p.white_points,
-                })),
-                url: typeof window !== 'undefined'
-                  ? `${window.location.origin}/torneios/${tournament.slug}/rodadas/${round.round_number}`
-                  : undefined,
-              })
-            }
-          />
-        </div>
-      )}
       {isDraft && (warnings?.length ?? 0) > 0 && (
         <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
           Avisos do pareamento (regenere se necessário):
