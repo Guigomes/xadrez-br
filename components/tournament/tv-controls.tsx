@@ -11,12 +11,12 @@ export function TvControls() {
   }, [router]);
 
   return (
-    <div className="flex items-center gap-3 text-xs text-gray-500">
-      <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />Atualiza a cada 20s</span>
-      <button className="rounded-lg border border-gray-300 px-3 py-2 font-semibold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" onClick={() => document.documentElement.requestFullscreen?.()}>
+    <div className="flex items-center gap-3 text-xs text-brand-200">
+      <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 animate-pulse rounded-full bg-brand-300" />Atualiza a cada 20s</span>
+      <button className="rounded-lg border border-white/30 px-3 py-2 font-semibold text-white hover:bg-white/10" onClick={() => document.documentElement.requestFullscreen?.()}>
         Tela cheia
       </button>
-      <button className="rounded-lg border border-gray-700 px-3 py-2 font-semibold text-gray-300 hover:bg-gray-800" onClick={() => history.back()}>
+      <button className="rounded-lg border border-white/30 px-3 py-2 font-semibold text-white hover:bg-white/10" onClick={() => history.back()}>
         Sair
       </button>
     </div>
