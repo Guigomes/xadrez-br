@@ -106,6 +106,15 @@ export function useCreatePlayer() {
   });
 }
 
+/** Id do jogador que já usa esse ID CBX (mesmo critério de /api/players/cbx-lookup), se houver. */
+export async function findPlayerIdByCbx(cbxId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('players').select('id').eq('cbx_id', cbxId).eq('is_test', false)
+    .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
 /** Edita os dados cadastrais de um jogador já existente (nome, nascimento, IDs...). */
 export function useUpdatePlayer(tournamentId: string) {
   const qc = useQueryClient();

@@ -1,8 +1,8 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory, useSetPlayerCheckin, useCheckinEnabled } from '@/lib/hooks/use-tournament';
-import { useCreatePlayer, useUpdatePlayer, useSyncCbxRating } from '@/lib/hooks/use-player';
+import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory, useRelinkTournamentPlayer, useSetPlayerCheckin, useCheckinEnabled } from '@/lib/hooks/use-tournament';
+import { useCreatePlayer, useUpdatePlayer, useSyncCbxRating, findPlayerIdByCbx } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { useCategories } from '@/lib/hooks/use-classifications';
 import { deriveCategory, type CategoryCandidate } from '@/lib/utils/classification-match';
@@ -348,6 +348,7 @@ function PlayerFormModal({
   const updatePlayer = useUpdatePlayer(tournamentId);
   const addPlayer = useAddTournamentPlayer(tournamentId);
   const setCategory = useSetPlayerCategory(tournamentId);
+  const relinkPlayer = useRelinkTournamentPlayer(tournamentId);
   const syncCbxRating = useSyncCbxRating(tournamentId);
 
   const [values, setValues] = useState<Partial<PlayerFormValues>>(editing?.values ?? { federation: 'BRA' });
@@ -412,7 +413,18 @@ function PlayerFormModal({
     setError('');
     try {
       if (editing) {
-        await updatePlayer.mutateAsync({ id: editing.playerId, patch: values });
+        // O ID CBX é único em `players`. Se o organizador trocou por um que já é de outro
+        // jogador, o participante passa a ser esse jogador (cadastro dele fica como está)
+        // em vez de tentar repetir o ID neste — era o "players_cbx_id_unique".
+        let playerId = editing.playerId;
+        const cbxId = values.cbx_id?.trim();
+        const owner = cbxId && cbxId !== editing.values.cbx_id?.trim() ? await findPlayerIdByCbx(cbxId) : null;
+        if (owner && owner !== editing.playerId) {
+          await relinkPlayer.mutateAsync({ tpId: editing.tpId, playerId: owner });
+          playerId = owner;
+        } else {
+          await updatePlayer.mutateAsync({ id: editing.playerId, patch: values });
+        }
         if (categoryId !== editing.categoryId) {
           await setCategory.mutateAsync({ tpId: editing.tpId, categoryId: categoryId || null });
         }
@@ -420,7 +432,7 @@ function PlayerFormModal({
         // manual da lista, a consulta acontece sozinha aqui e na aprovação de
         // inscrição (use-registrations.ts). Melhor esforço: não bloqueia o
         // fechamento do modal nem vira erro visível se a CBX falhar.
-        if (values.cbx_id?.trim()) syncCbxRating.mutate(editing.playerId);
+        if (values.cbx_id?.trim()) syncCbxRating.mutate(playerId);
       } else {
         const p = await createPlayer.mutateAsync(values as PlayerFormValues);
         // categoryId reflete a sugestão automática (idade/sexo) ou a escolha
@@ -441,7 +453,7 @@ function PlayerFormModal({
     }
   }
 
-  const saving = createPlayer.isPending || addPlayer.isPending || updatePlayer.isPending || setCategory.isPending;
+  const saving = createPlayer.isPending || addPlayer.isPending || updatePlayer.isPending || setCategory.isPending || relinkPlayer.isPending;
 
   return (
     <Modal title={editing ? 'Editar participante' : 'Cadastrar participante'} onClose={onClose}>

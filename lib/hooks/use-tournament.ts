@@ -347,6 +347,32 @@ export function useAssignPlayerGroup(tournamentId: string) {
  * (refresh_tournament_categories, 035) reprocessa todo mundo e some com essa
  * correção sem aviso — é assim de propósito, não uma omissão.
  */
+/**
+ * Aponta um participante do torneio para OUTRO cadastro de jogador — usado quando o
+ * organizador troca o ID CBX por um que já pertence a um jogador existente (o ID é único
+ * em `players`, então em vez de duplicar o ID o participante passa a ser esse jogador).
+ * Mesa, resultado e classificação ficam no `tournament_players`, então nada se perde.
+ */
+export function useRelinkTournamentPlayer(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tpId, playerId }: { tpId: string; playerId: string }) => {
+      const { error } = await supabase
+        .from('tournament_players')
+        .update({ player_id: playerId })
+        .eq('id', tpId);
+      if (error) {
+        if (error.code === '23505') throw new Error('Esse jogador já é participante deste torneio.');
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) });
+      qc.invalidateQueries({ queryKey: tournamentKeys.standings(tournamentId) });
+    },
+  });
+}
+
 export function useSetPlayerCategory(tournamentId: string) {
   const qc = useQueryClient();
   return useMutation({
