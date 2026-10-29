@@ -14,7 +14,7 @@ import { Modal } from '@/components/ui/modal';
 import { ExternalIdLinks } from '@/components/player/external-id-links';
 import { CbxLookupHint } from '@/components/player/cbx-lookup-hint';
 import { useCbxLookup } from '@/lib/hooks/use-cbx-lookup';
-import { formatScore, BR_STATES, compareGroupNames } from '@/lib/utils/chess';
+import { formatScore, BR_STATES, compareGroupNames, tournamentRating } from '@/lib/utils/chess';
 import { normalizeSearchText } from '@/lib/utils/text';
 import type { PlayerFormValues, PairingGroup, TournamentCategory } from '@/types/database';
 
@@ -88,6 +88,7 @@ export default function AdminPlayersPage({ params }: Props) {
   // já classificou.
   const classificationDims = tournament.classification_dimensions ?? [];
   const hasClassifications = classificationDims.length > 0;
+  const ratingOf = (p: any) => tournamentRating(tournament, p);
   function missingClassificationFields(player: any): string[] {
     const missing: string[] = [];
     if (classificationDims.includes('age') && player?.birth_year == null) missing.push('ano de nascimento');
@@ -154,7 +155,7 @@ export default function AdminPlayersPage({ params }: Props) {
           </p>
           <p className="text-xs text-gray-400">
             {tpAny.player?.city ?? tpAny.player?.state ?? ''}
-            {tpAny.player?.rating_std ? ` · ${tpAny.player.rating_std}` : ''}
+            {ratingOf(tpAny.player) ? ` · ${ratingOf(tpAny.player)}` : ''}
             {(tpAny.player?.cbx_id || tpAny.player?.fide_id) && ' · '}
             <ExternalIdLinks cbxId={tpAny.player?.cbx_id} fideId={tpAny.player?.fide_id} />
           </p>

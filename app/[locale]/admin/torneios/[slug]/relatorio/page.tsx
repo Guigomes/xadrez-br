@@ -12,7 +12,7 @@ interface StandingRow {
   full_name: string;
   title: string | null;
   points: number;
-  rating_std: number | null;
+  rating_tempo: number | null;
   state: string | null;
   federation: string | null;
   category_name: string | null;
@@ -69,8 +69,8 @@ export default async function TournamentReportPage({ params }: { params: Promise
   const isFinal = tournament.status === 'finished';
 
   // ---- jogadores ----
-  const rated = standings.filter((s) => (s.rating_std ?? 0) > 0);
-  const avgRating = rated.length ? Math.round(rated.reduce((a, s) => a + (s.rating_std ?? 0), 0) / rated.length) : null;
+  const rated = standings.filter((s) => (s.rating_tempo ?? 0) > 0);
+  const avgRating = rated.length ? Math.round(rated.reduce((a, s) => a + (s.rating_tempo ?? 0), 0) / rated.length) : null;
   const women = standings.filter((s) => s.sex === 'w').length;
   const byState = countBy(standings.map((s) => s.state || null));
   const foreign = standings.filter((s) => s.federation && s.federation !== 'BRA').length;

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { tournamentRating } from '@/lib/utils/chess';
 import {
   buildSchoolTournamentStatistics,
   type SchoolTournamentStatisticInput,
@@ -11,6 +12,8 @@ interface ParticipantRecord {
     full_name: string;
     title: string | null;
     rating_std: number | null;
+    rating_rpd: number | null;
+    rating_blz: number | null;
     state: string | null;
   } | null;
 }
@@ -27,10 +30,10 @@ interface StandingRecord {
  */
 export async function getSchoolTournamentStatistics(tournamentId: string) {
   const supabase = await createClient();
-  const [participantsResult, standingsResult, groupsResult] = await Promise.all([
+  const [participantsResult, standingsResult, groupsResult, tournamentResult] = await Promise.all([
     supabase
       .from('tournament_players')
-      .select('id, pairing_group_id, player:players(full_name, title, rating_std, state)')
+      .select('id, pairing_group_id, player:players(full_name, title, rating_std, rating_rpd, rating_blz, state)')
       .eq('tournament_id', tournamentId),
     supabase
       .from('standings')
@@ -40,10 +43,17 @@ export async function getSchoolTournamentStatistics(tournamentId: string) {
       .from('pairing_groups')
       .select('id, name')
       .eq('tournament_id', tournamentId),
+    supabase
+      .from('tournaments')
+      .select('mode, rating_kind')
+      .eq('id', tournamentId)
+      .single(),
   ]);
 
-  const error = participantsResult.error ?? standingsResult.error ?? groupsResult.error;
+  const error = participantsResult.error ?? standingsResult.error ?? groupsResult.error ?? tournamentResult.error;
   if (error) throw new Error(`Falha ao carregar estatísticas do torneio: ${error.message}`);
+  const tournament = tournamentResult.data;
+  if (!tournament) throw new Error('Falha ao carregar estatísticas do torneio: torneio não encontrado.');
 
   const participants = (participantsResult.data ?? []) as unknown as ParticipantRecord[];
   const standings = (standingsResult.data ?? []) as StandingRecord[];
@@ -58,7 +68,7 @@ export async function getSchoolTournamentStatistics(tournamentId: string) {
       participantId: participant.id,
       playerName: participant.player?.full_name ?? 'Jogador sem nome',
       playerTitle: participant.player?.title ?? null,
-      rating: participant.player?.rating_std ?? null,
+      rating: tournamentRating(tournament, participant.player),
       state: participant.player?.state ?? null,
       groupId: participant.pairing_group_id,
       groupName: participant.pairing_group_id

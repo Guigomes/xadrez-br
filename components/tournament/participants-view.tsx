@@ -11,7 +11,7 @@ import { localizedTitle } from '@/lib/utils/player-title';
 import { playerDisplayName } from '@/lib/utils/player-name';
 import { cn } from '@/lib/utils/cn';
 import { ExternalIdLinks } from '@/components/player/external-id-links';
-import { compareParticipantOrder, compareGroupNames, formatScore } from '@/lib/utils/chess';
+import { compareParticipantOrder, compareGroupNames, formatScore, tournamentRating } from '@/lib/utils/chess';
 import { AutoSubmitSelect } from '@/components/ui/auto-submit-select';
 
 interface Props {
@@ -137,7 +137,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
   const ratingKind = tournament.mode === 'native' ? tournament.rating_kind : 'std';
   const ratingLabel = tournament.mode === 'native' ? ({ std: 'clássico', rpd: 'rápido', blz: 'blitz' } as const)[ratingKind] : null;
   const ratingOf = (p: { rating_std: number | null; rating_rpd: number | null; rating_blz: number | null } | null | undefined) =>
-    !p ? null : ratingKind === 'rpd' ? p.rating_rpd : ratingKind === 'blz' ? p.rating_blz : p.rating_std;
+    tournamentRating(tournament, p);
 
   // Sem seed, a ordem é por rating — o do ritmo do torneio, igual ao ranking inicial que vai sair.
   const byRating = (tp: NonNullable<typeof playersData>[number]) => ({

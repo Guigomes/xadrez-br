@@ -114,8 +114,8 @@ export default async function CountriesPage({ params, searchParams }: Props) {
     draw: boardGames.filter((p) => p.result === '1/2-1/2').length,
   };
   const playedOnBoard = decided.white + decided.black + decided.draw;
-  const rated = rows.filter((r) => (r.rating_std ?? 0) > 0);
-  const avgRating = rated.length ? Math.round(rated.reduce((a, r) => a + (r.rating_std ?? 0), 0) / rated.length) : null;
+  const rated = rows.filter((r) => (r.rating_tempo ?? 0) > 0);
+  const avgRating = rated.length ? Math.round(rated.reduce((a, r) => a + (r.rating_tempo ?? 0), 0) / rated.length) : null;
 
   // Links antigos continuam abrindo a ficha completa do jogador.
   if (sp.jogador && rows.some((row) => row.tp_id === sp.jogador)) {
@@ -190,9 +190,9 @@ export default async function CountriesPage({ params, searchParams }: Props) {
   const homePlayers = rows
     .filter((r) => r.federation?.toUpperCase() === sel)
     .sort((a, b) => groupOrder.indexOf(a.pairing_group_name ?? '—') - groupOrder.indexOf(b.pairing_group_name ?? '—') || (a.rank ?? 999) - (b.rank ?? 999));
-  const homeRated = homePlayers.filter((r) => (r.rating_std ?? 0) > 0);
+  const homeRated = homePlayers.filter((r) => (r.rating_tempo ?? 0) > 0);
   const homeAvgRating = homeRated.length
-    ? Math.round(homeRated.reduce((a, r) => a + (r.rating_std ?? 0), 0) / homeRated.length)
+    ? Math.round(homeRated.reduce((a, r) => a + (r.rating_tempo ?? 0), 0) / homeRated.length)
     : null;
   const countrySortOptions = [
     { key: 'posicao', label: 'Posição oficial', href: sortHref('posicao', 'asc') },

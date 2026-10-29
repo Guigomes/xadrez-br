@@ -211,6 +211,21 @@ export const TIEBREAK_INFO = {
 // ============================================================
 
 /**
+ * Rating do jogador no ritmo do torneio: nativo usa `rating_kind` (o mesmo do ranking
+ * inicial e do pareamento); importado e app gravam o rating da fonte em `rating_std`,
+ * qualquer que seja o ritmo. Mesma regra do banco (`rating_tempo`, migration 20261028190000)
+ * — use esta nas telas que leem `players` direto, sem passar por get_tournament_standings.
+ */
+export function tournamentRating(
+  tournament: { mode: string; rating_kind: string },
+  player: { rating_std?: number | null; rating_rpd?: number | null; rating_blz?: number | null } | null | undefined,
+): number | null {
+  if (!player) return null;
+  const kind = tournament.mode === 'native' ? tournament.rating_kind : 'std';
+  return (kind === 'rpd' ? player.rating_rpd : kind === 'blz' ? player.rating_blz : player.rating_std) ?? null;
+}
+
+/**
  * Ordem de exibição de participantes: por initial_ranking (seed) quando já
  * foi gerado; enquanto não foi (todos null), cai numa ordem natural por
  * rating (maior primeiro) e nome — em vez da ordem crua do banco, que não
