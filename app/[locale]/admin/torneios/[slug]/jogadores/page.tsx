@@ -360,7 +360,8 @@ function PlayerFormModal({
 
   // Cadastro novo: digitar o ID CBX busca o jogador (nosso cadastro primeiro, depois a CBX)
   // e preenche o resto — e, se ele já existe aqui, useCreatePlayer reaproveita o mesmo
-  // cadastro em vez de criar duplicado. Na edição não roda: não sobrescreve dado salvo.
+  // cadastro em vez de criar duplicado. Na edição o ID já salvo não é consultado (não
+  // sobrescreve dado salvo); só trocar o ID por outro dispara a busca.
   const cbxLookup = useCbxLookup(values.cbx_id, (found) => {
     // Substitui tudo (vazio quando a fonte não sabe): trocar de ID não pode deixar
     // FIDE/sexo do jogador consultado antes.
@@ -377,7 +378,7 @@ function PlayerFormModal({
     if (!categoryTouched) {
       setCategoryId(deriveCategoryId({ sex: found.sex, birth_year: found.birth_year, rating_std: null }) ?? '');
     }
-  }, { enabled: !editing });
+  }, { initialId: (editing?.values.cbx_id ?? '').trim() });
 
   const categoryCandidates: CategoryCandidate[] = (categories ?? []).map((c) => ({
     id: c.id, sortOrder: c.sort_order, sex: c.sex,
@@ -451,7 +452,7 @@ function PlayerFormModal({
         <div>
           <Input
             label="ID CBX" inputMode="numeric" value={values.cbx_id ?? ''}
-            hint={editing ? 'Rating vem da CBX depois — sem precisar digitar.' : 'Digite primeiro: buscamos o jogador aqui e na CBX e preenchemos o resto. O rating vem da CBX depois.'}
+            hint={editing ? 'Trocar o ID busca o jogador aqui e na CBX e refaz o preenchimento. O rating vem da CBX depois.' : 'Digite primeiro: buscamos o jogador aqui e na CBX e preenchemos o resto. O rating vem da CBX depois.'}
             onChange={(e) => setValues((v) => ({ ...v, cbx_id: e.target.value }))}
           />
           <CbxLookupHint lookup={cbxLookup} />
