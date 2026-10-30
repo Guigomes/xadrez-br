@@ -5,7 +5,7 @@ import { useLocale } from 'next-intl';
 import { localizedTitle } from '@/lib/utils/player-title';
 import { useSearchParams } from 'next/navigation';
 import { usePathname, useRouter } from '@/i18n/navigation';
-import { useTournament, useTournamentStandings, useTournamentRounds } from '@/lib/hooks/use-tournament';
+import { useGroupHasResults, useTournament, useTournamentStandings, useTournamentRounds } from '@/lib/hooks/use-tournament';
 import { useFollowedInTournament } from '@/lib/hooks/use-auth';
 import { StandingsTable } from '@/components/tournament/standings-table';
 import { isInternationalTournament } from '@/lib/utils/federation';
@@ -19,6 +19,7 @@ import { summarizeRounds } from '@/lib/utils/rounds';
 import { buildStandingsMessage } from '@/lib/utils/whatsapp';
 import { matchesPlayerSearch } from '@/lib/utils/text';
 import { useTournamentGroupPreference } from '@/lib/hooks/use-tournament-group-preference';
+import { isInitialStandings } from '@/lib/utils/standings-state';
 
 /**
  * Classificação do torneio — a MESMA tela para o público
@@ -83,6 +84,9 @@ export function StandingsView({
     groupFromUrl,
     pairingGroupIds,
   );
+  const { data: hasRecordedResult = false } = useGroupHasResults(
+    id, hasGroups ? selectedGroupId : null, !!standings?.length && (!hasGroups || !!selectedGroupId),
+  );
 
   function selectGroup(groupId: string) {
     setSelectedCategory('all');
@@ -99,7 +103,7 @@ export function StandingsView({
       <EmptyState
         icon="📊"
         title="Classificação não disponível"
-        description="A classificação será publicada após a conclusão das rodadas."
+        description="A classificação aparecerá conforme os resultados forem lançados."
       />
     );
   }
@@ -162,7 +166,7 @@ export function StandingsView({
     : effectiveCategory === FEMALE
       ? 'Feminino'
       : (categories.find((c) => c.id === effectiveCategory)?.name ?? 'Absoluto');
-  const isInitialRanking = rowsInGroup.every((row) => (row.games_played ?? 0) === 0);
+  const isInitialRanking = isInitialStandings(rowsInGroup, hasRecordedResult);
   const rankingLabel = isInitialRanking ? 'Ranking inicial' : categoryLabel;
   const heading = groupLabel ? `${groupLabel} · ${rankingLabel}` : rankingLabel;
 
@@ -171,7 +175,9 @@ export function StandingsView({
   // For the round status pill: with multi-group there are multiple rows per
   // round_number; summarizeRounds collapses them and drops drafts. The last
   // entry is the highest-numbered non-draft round.
-  const summarized = summarizeRounds(rounds ?? []).rounds;
+  const summarized = summarizeRounds((rounds ?? []).filter(
+    (round) => !hasGroups || round.pairing_group_id === selectedGroupId,
+  )).rounds;
   const latest = summarized[summarized.length - 1];
   const latestRound = latest ? { round_number: latest.roundNumber, status: latest.status } : null;
 

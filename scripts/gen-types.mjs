@@ -13,11 +13,17 @@
 // public, e commitar o arquivo gerado junto com a migration.
 
 import { createRequire } from 'node:module';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
+// Generate types for a pending migration without publishing it to the database.
+// Usage: ... scripts/gen-types.mjs --migration <filename.sql>
+const migrationFile = process.argv[2] === '--migration' ? process.argv[3] : undefined;
+if (process.argv[2] && (!migrationFile || !/^\d+_[a-z0-9_]+\.sql$/.test(migrationFile))) {
+  throw new Error('Uso: gen-types.mjs [--migration <arquivo.sql de supabase/migrations>]');
+}
 const from = process.env.TYPEGEN_FROM ? resolve(process.env.TYPEGEN_FROM) : join(here, '..');
 const req = createRequire(join(from, 'package.json'));
 const { Client } = req('pg');
@@ -32,6 +38,10 @@ if (!connectionString) {
 const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
 await client.connect();
 try {
+  if (migrationFile) {
+    await client.query('begin');
+    await client.query(readFileSync(join(here, '..', 'supabase', 'migrations', migrationFile), 'utf8'));
+  }
   const queryable = { query: async (sql, params) => client.query(sql, params) };
   const metadata = await typegen.introspect(queryable, { includedSchemas: ['public'] });
   const language = typegen.findLanguage('typescript');
@@ -46,5 +56,9 @@ try {
   writeFileSync(target, code.endsWith('\n') ? code : code + '\n');
   console.log(`Gerado ${target} (${code.split('\n').length} linhas).`);
 } finally {
-  await client.end();
+  try {
+    if (migrationFile) await client.query('rollback');
+  } finally {
+    await client.end();
+  }
 }

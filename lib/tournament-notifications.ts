@@ -2,6 +2,21 @@ import type { GameResult } from '@/types/database';
 
 export const UNGROUPED_CATEGORY = '__ungrouped__';
 
+export type RoundNotificationEvent = 'published' | 'result' | 'finished';
+
+export function isRoundNotificationEvent(event: unknown): event is RoundNotificationEvent {
+  return event === 'published' || event === 'result' || event === 'finished';
+}
+
+/** A new publication after returning to draft is a new notification cycle. */
+export function roundLifecycleEventKey(
+  roundId: string,
+  publishedAt: string | null,
+  event: Exclude<RoundNotificationEvent, 'result'>,
+): string {
+  return `round-${event}:${roundId}:${publishedAt ?? 'legacy'}`;
+}
+
 export function categoryKey(pairingGroupId: string | null): string {
   return pairingGroupId ?? UNGROUPED_CATEGORY;
 }

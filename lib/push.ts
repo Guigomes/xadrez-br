@@ -222,6 +222,23 @@ async function getTrackedUserIds(
   ]);
 }
 
+/** Publicação e encerramento explícitos: todos que ativaram este torneio. */
+export async function sendTournamentNotification(tournamentId: string, payload: PushPayload) {
+  initVapid();
+  const admin = createAdminClient();
+  const { data: subs, error } = await admin
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .eq('tournament_id', tournamentId);
+  if (error) throw error;
+  await sendToSubscriptions(admin, subs ?? [], payload);
+
+  const follows = await getAppFollows(admin, tournamentId);
+  await sendAppFcm(admin, follows.map((follow) => follow.token), payload, {
+    type: 'tournament', slug: slugFromUrl(payload.url), name: payload.title,
+  }).catch((error) => console.error('[fcm-app] rodada:', error));
+}
+
 // Envia o resumo global apenas para quem acompanha o torneio, mas nao um
 // jogador dele. Assinaturas anonimas entram naturalmente neste grupo.
 export async function sendTournamentNotificationToNonFollowers(

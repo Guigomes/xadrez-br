@@ -1,5 +1,18 @@
 import type { RoundStatus } from '@/types/database';
 
+/** Publishing freezes the seats, including when a finished round is reopened. */
+export function canEditPairings(round: { status: RoundStatus; published_at: string | null }): boolean {
+  return round.status === 'draft' && round.published_at === null;
+}
+
+export function canReturnRoundToDraft(round: { status: RoundStatus }, isLatest: boolean): boolean {
+  return isLatest && (round.status === 'ongoing' || round.status === 'finished');
+}
+
+export function countEnteredResults(pairings: ReadonlyArray<{ is_bye: boolean; result: string }>): number {
+  return pairings.filter((pairing) => !pairing.is_bye && pairing.result !== '*').length;
+}
+
 /**
  * Agregação de rodada por número — fonte única. Um torneio multi-grupo tem
  * UMA linha em `rounds` por (round_number × pairing_group) (migration 007),

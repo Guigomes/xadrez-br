@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   sendPlayerFollowersNotification,
+  sendTournamentNotification,
   sendTournamentNotificationToNonFollowers,
 } from '@/lib/push';
 import {
@@ -12,8 +13,10 @@ import {
   groupRoundStartedStableKey,
   playerResultStableKey,
   isFinalResult,
+  isRoundNotificationEvent,
   playerResultEventKey,
   resultNotificationBody,
+  roundLifecycleEventKey,
   summarizeCategoryRounds,
 } from '@/lib/tournament-notifications';
 import { todayInBrazil } from '@/lib/utils/date';
@@ -26,6 +29,7 @@ type NotificationEventType =
   | 'all_results_finished';
 
 interface PairingRow {
+  id: string;
   board_number: number | null;
   white_tp_id: string | null;
   black_tp_id: string | null;
@@ -157,11 +161,11 @@ async function getRoundSummary(
   );
 }
 
-function tournamentSkipReason(tournament: TournamentInfo): string | null {
+function tournamentSkipReason(tournament: TournamentInfo, checkHistoricalDate = true): string | null {
   if (!tournament.is_public || tournament.status === 'draft') {
     return 'torneio não é público (rascunho ou privado)';
   }
-  if (tournament.status !== 'ongoing') {
+  if (checkHistoricalDate && tournament.status !== 'ongoing') {
     const eventDate = tournament.end_date ?? tournament.start_date;
     if (eventDate && eventDate < todayInBrazil()) {
       return 'torneio já encerrado por data — provável reimportação histórica';
@@ -233,10 +237,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
   }
 
-  const { roundId, tournamentId: summaryTournamentId } = await request.json().catch(() => ({}));
+  const { roundId, tournamentId: summaryTournamentId, event, pairingId } = await request.json().catch(() => ({})) ?? {};
+  if ((event !== undefined && !isRoundNotificationEvent(event))
+    || (pairingId !== undefined && (event !== 'result' || typeof pairingId !== 'string' || !pairingId))) {
+    return NextResponse.json({ error: 'Evento de notificação inválido.' }, { status: 400 });
+  }
   const admin = createAdminClient();
 
-  if (summaryTournamentId && typeof summaryTournamentId === 'string' && !roundId) {
+  if (summaryTournamentId && typeof summaryTournamentId === 'string' && !roundId && !event) {
     const { data: tournament, error } = await admin
       .from('tournaments')
       .select('name, slug, is_public, status, start_date, end_date')
@@ -259,7 +267,7 @@ export async function POST(request: NextRequest) {
 
   const { data: round, error: roundError } = await admin
     .from('rounds')
-    .select('id, round_number, tournament_id, pairing_group_id, status')
+    .select('id, round_number, tournament_id, pairing_group_id, status, published_at')
     .eq('id', roundId)
     .maybeSingle();
   if (roundError) throw roundError;
@@ -282,7 +290,7 @@ export async function POST(request: NextRequest) {
       : Promise.resolve({ data: null, error: null }),
     admin
       .from('pairings')
-      .select('white_tp_id, black_tp_id, board_number, result')
+      .select('id, white_tp_id, black_tp_id, board_number, result')
       .eq('round_id', roundId),
   ]);
   if (!tournament) {
@@ -290,7 +298,8 @@ export async function POST(request: NextRequest) {
   }
   if (pairingsError) throw pairingsError;
 
-  const skipped = tournamentSkipReason(tournament);
+  // Explicit actions are current, even if the organizer closes after the planned end date.
+  const skipped = tournamentSkipReason(tournament, !event);
   if (skipped) return NextResponse.json({ skipped });
 
   const inserted = (pairings ?? []) as PairingRow[];
@@ -300,6 +309,31 @@ export async function POST(request: NextRequest) {
 
   const categoryName = pairingGroup?.name ?? 'Categoria geral';
   const roundUrl = `/torneios/${tournament.slug}/rodadas/${roundNumber}`;
+  if (event === 'published' || event === 'finished') {
+    if ((event === 'published' && !round.published_at)
+      || (event === 'finished' && round.status !== 'finished')) {
+      return NextResponse.json({ skipped: 'rodada não atingiu o estado do evento' });
+    }
+    const sent = await claimEvent(admin, {
+      tournamentId, pairingGroupId, roundNumber,
+      type: event === 'published' ? 'group_round_started' : 'all_results_finished',
+      key: roundLifecycleEventKey(roundId, round.published_at, event),
+    });
+    if (sent) {
+      await sendTournamentNotification(tournamentId, {
+        title: tournament.name,
+        body: event === 'published'
+          ? `Emparceiramento publicado · Rodada ${roundNumber} · ${categoryName}`
+          : `Rodada ${roundNumber} encerrada · ${categoryName}. Confira a classificação.`,
+        url: event === 'published' ? roundUrl : `/torneios/${tournament.slug}/classificacao`,
+      });
+    }
+    return NextResponse.json({ ok: true, roundNumber, category: categoryName, event, sent });
+  }
+
+  if (event === 'result' && pairingId && !inserted.some((pairing) => pairing.id === pairingId)) {
+    return NextResponse.json({ error: 'Partida não pertence à rodada.' }, { status: 404 });
+  }
   const allTpIds = [...new Set(inserted.flatMap((pairing) =>
     [pairing.white_tp_id, pairing.black_tp_id].filter(Boolean) as string[]
   ))];
@@ -335,7 +369,7 @@ export async function POST(request: NextRequest) {
   ]));
 
   let groupRoundStarted = false;
-  if (await claimEvent(admin, {
+  if (!event && await claimEvent(admin, {
     tournamentId,
     pairingGroupId,
     roundNumber,
@@ -357,6 +391,7 @@ export async function POST(request: NextRequest) {
 
   let playerResults = 0;
   for (const pairing of inserted) {
+    if (event === 'result' && pairingId && pairing.id !== pairingId) continue;
     if (!isFinalResult(pairing.result)) continue;
 
     const legacyKey = playerResultEventKey({
@@ -366,7 +401,9 @@ export async function POST(request: NextRequest) {
       blackTpId: pairing.black_tp_id,
       result: pairing.result,
     });
-    const key = playerResultStableKey({
+    const key = event === 'result'
+      ? `native-player-result:${roundId}:${round.published_at ?? 'legacy'}:${pairing.id}:${pairing.result}`
+      : playerResultStableKey({
       tournamentId,
       pairingGroupId,
       roundNumber,
@@ -381,7 +418,7 @@ export async function POST(request: NextRequest) {
       roundNumber,
       type: 'player_result',
       key,
-      legacyKeys: [legacyKey],
+      legacyKeys: event === 'result' ? undefined : [legacyKey],
     })) continue;
 
     const white = pairing.white_tp_id ? tpMap.get(pairing.white_tp_id) : null;

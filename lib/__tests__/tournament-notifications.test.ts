@@ -9,9 +9,22 @@ import {
   resultNotificationBody,
   summarizeCategoryRounds,
   subscriptionTracksPlayers,
+  roundLifecycleEventKey,
 } from '../tournament-notifications';
 
 describe('eventos de notificação de torneio', () => {
+  it('deduplicates each lifecycle event per publication, allowing republication', () => {
+    const first = roundLifecycleEventKey('round-1', '2026-10-30T12:00:00Z', 'published');
+    expect(first).toBe(roundLifecycleEventKey('round-1', '2026-10-30T12:00:00Z', 'published'));
+    expect(first).not.toBe(roundLifecycleEventKey('round-1', '2026-10-30T12:00:00Z', 'finished'));
+    expect(first).not.toBe(roundLifecycleEventKey('round-1', '2026-10-30T13:00:00Z', 'published'));
+  });
+
+  it('all results entered is not a finished round', () => {
+    expect(summarizeCategoryRounds(['group'], [
+      { categoryKey: 'group', status: 'ongoing', results: ['1-0', '1/2-1/2', 'bye'] },
+    ]).allFinished).toBe(false);
+  });
   it('gera chaves estáveis por rodada, grupo e resultado', () => {
     expect(groupRoundStartedEventKey('round-1')).toBe('group-round-started:round-1');
     expect(allRoundsStartedEventKey('tournament-1', 3)).toBe('all-rounds-started:tournament-1:3');

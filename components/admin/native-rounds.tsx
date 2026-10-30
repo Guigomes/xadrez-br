@@ -5,7 +5,7 @@ import { useRouter, Link } from '@/i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 import {
   useGroups, useGroupRounds, useCreateDefaultGroup,
-  useGenerateRound, useRoundTransition,
+  useGenerateRound, useRoundTransition, useReturnRoundToDraft,
   useOverridePairing, usePairingHistory, useDraftWarnings,
   useRequestedByes, useToggleRequestedBye,
 } from '@/lib/hooks/use-native-rounds';
@@ -14,6 +14,7 @@ import { useLivePgnIds } from '@/lib/hooks/use-player-history';
 import { PgnAttachButton } from '@/components/tournament/pgn-attach';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageSpinner } from '@/components/ui/spinner';
 import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS, winnerSide } from '@/lib/utils/chess';
@@ -22,6 +23,7 @@ import { WhatsAppButton } from '@/components/ui/whatsapp-button';
 import { SearchField } from '@/components/ui/search-field';
 import { buildRoundMessage } from '@/lib/utils/whatsapp';
 import { matchesPlayerSearch, normalizeSearchText } from '@/lib/utils/text';
+import { canEditPairings, canReturnRoundToDraft, countEnteredResults } from '@/lib/utils/rounds';
 import type { Tournament, Round } from '@/types/database';
 
 /**
@@ -468,6 +470,28 @@ function RoundPanel({
   onRegenerate: () => void; regenerating: boolean;
 }) {
   const { data: pairings } = useRoundPairings(round.id);
+  const returnToDraft = useReturnRoundToDraft(tournament.id, groupId);
+  const [showReturnWarning, setShowReturnWarning] = useState(false);
+  const [discardConfirmed, setDiscardConfirmed] = useState(false);
+  const [returnError, setReturnError] = useState('');
+  const resultCount = countEnteredResults(pairings ?? []);
+  const hasResults = resultCount > 0;
+  const canReturn = tournament.mode === 'native' && canReturnRoundToDraft(round, canReopen);
+
+  async function confirmReturnToDraft() {
+    if (!canReturn || returnToDraft.isPending || (hasResults && !discardConfirmed)) return;
+    setReturnError('');
+    try {
+      await returnToDraft.mutateAsync({ roundId: round.id, discardResults: hasResults && discardConfirmed });
+      setShowReturnWarning(false);
+      setDiscardConfirmed(false);
+    } catch (error) {
+      const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : 'Não foi possível voltar para rascunho.';
+      setReturnError(message.includes('RESULTS_CONFIRMATION_REQUIRED')
+        ? 'Foram lançados resultados enquanto este aviso estava aberto. Confirme a exclusão abaixo para continuar.'
+        : message);
+    }
+  }
   return (
     <div className="card p-4 space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -511,6 +535,14 @@ function RoundPanel({
             Reabrir rodada
           </Button>
         )}
+        {canReturn && (
+          <Button
+            size="sm" variant="secondary" disabled={busy || !pairings}
+            onClick={() => { setReturnError(''); setDiscardConfirmed(false); setShowReturnWarning(true); }}
+          >
+            Voltar para rascunho
+          </Button>
+        )}
         {round.status !== 'draft' && (
           <a
             href={`/torneios/${tournament.slug}/rodadas/${round.round_number}/imprimir`}
@@ -550,6 +582,49 @@ function RoundPanel({
         )}
       </div>
       <RoundBoards tournament={tournament} groupId={groupId} round={round} />
+      {showReturnWarning && canReturn && (
+        <Modal
+          title={`Voltar a rodada ${round.round_number} para rascunho?`}
+          onClose={() => { if (!returnToDraft.isPending) setShowReturnWarning(false); }}
+        >
+          <div className="space-y-4">
+            <p className="rounded-lg bg-amber-50 px-3 py-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+              Esta rodada já foi publicada. Os jogadores podem já ter visto o pareamento e se dirigido às mesas.
+              Avise os participantes sobre a mudança antes de publicar novamente.
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              A rodada deixará de aparecer para o público. As mesas e os inscritos serão mantidos,
+              e você poderá revisar ou regerar o pareamento antes de publicar de novo.
+            </p>
+            {hasResults && (
+              <div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+                <p className="font-semibold">
+                  {resultCount === 1 ? 'O resultado lançado será apagado.' : `Os ${resultCount} resultados lançados serão apagados.`}
+                  {' '}Os pontos e a classificação serão recalculados sem esses resultados.
+                </p>
+                <label className="flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox" checked={discardConfirmed} disabled={returnToDraft.isPending}
+                    onChange={(event) => setDiscardConfirmed(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-red-600"
+                  />
+                  Confirmo a exclusão dos resultados desta rodada.
+                </label>
+              </div>
+            )}
+            {returnError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{returnError}</p>}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button autoFocus variant="secondary" disabled={returnToDraft.isPending} onClick={() => setShowReturnWarning(false)}>Cancelar</Button>
+              <Button
+                variant={hasResults ? 'danger' : 'primary'} loading={returnToDraft.isPending}
+                disabled={hasResults && !discardConfirmed} onClick={confirmReturnToDraft}
+              >
+                {hasResults ? 'Apagar resultados e voltar' : 'Voltar para rascunho'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -572,9 +647,9 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
   );
   const override = useOverridePairing(tournament.id, groupId, round.id);
   const isDraft = round.status === 'draft';
-  const canOverride = round.status === 'ongoing' || round.status === 'finished';
+  const canOverride = canEditPairings(round);
   const { data: warnings } = useDraftWarnings(tournament.slug, round.id, isDraft);
-  const { data: history } = usePairingHistory(round.id, canOverride);
+  const { data: history } = usePairingHistory(round.id, true);
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<{ pairingId: string; side: 'w' | 'b' } | null>(null);
   const [pendingMoves, setPendingMoves] = useState<
@@ -627,6 +702,7 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
   }
 
   async function confirmOverride() {
+    if (!canOverride) { cancelEditing(); return; }
     if (!pendingMoves) return;
     if (justification.trim().length < 3) { setError('Informe a justificativa (mín. 3 caracteres).'); return; }
     setError('');
@@ -639,7 +715,7 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
   const canSwap = editing && canOverride;
 
   const Seat = ({ p, side, name }: { p: any; side: 'w' | 'b'; name: string | null }) => {
-    if (!canSwap || !name) {
+    if (!canSwap || !name || p.is_bye) {
       return <span className="min-w-0 break-words text-gray-900 dark:text-gray-100">{name ?? 'BYE'}</span>;
     }
     const isSel = selected?.pairingId === p.pairing_id && selected?.side === side;
@@ -781,7 +857,7 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
         </div>
       )}
 
-      {pendingMoves && (
+      {pendingMoves && canOverride && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={cancelEditing}>
           <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Justificar alteração</p>

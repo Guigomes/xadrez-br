@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { POST as notifyInternalRound } from '@/app/api/internal/notify-round/route';
+import { isRoundNotificationEvent } from '@/lib/tournament-notifications';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -12,6 +13,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!round) return NextResponse.json({ error: 'Rodada não encontrada.' }, { status: 404 });
   const { data: canManage } = await supabase.rpc('is_tournament_manager', { p_tournament_id: round.tournament_id });
   if (!canManage) return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 });
+  // Older result panels sent an empty body. They may scan results, never lifecycle events.
+  const body = await request.json().catch(() => ({}));
+  const event = body?.event ?? 'result';
+  const pairingId = body?.pairingId;
+  if (!isRoundNotificationEvent(event)
+    || (pairingId !== undefined && (typeof pairingId !== 'string' || !pairingId))) {
+    return NextResponse.json({ error: 'Evento de notificação inválido.' }, { status: 400 });
+  }
   if (round.status !== 'ongoing' && round.status !== 'finished') {
     return NextResponse.json({ skipped: 'rodada ainda não publicada' });
   }
@@ -21,16 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const delegated = new NextRequest(new URL('/api/internal/notify-round', request.url), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-cron-secret': secret },
-    body: JSON.stringify({ roundId: id }),
+    body: JSON.stringify({ roundId: id, event, pairingId }),
   });
-  const roundResponse = await notifyInternalRound(delegated);
-  if (!roundResponse.ok) return roundResponse;
-
-  const summaryRequest = new NextRequest(new URL('/api/internal/notify-round', request.url), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-cron-secret': secret },
-    body: JSON.stringify({ tournamentId: round.tournament_id }),
-  });
-  await notifyInternalRound(summaryRequest);
-  return roundResponse;
+  return notifyInternalRound(delegated);
 }

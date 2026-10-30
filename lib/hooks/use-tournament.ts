@@ -153,6 +153,27 @@ export function useTournamentStandings(tournamentId: string) {
   });
 }
 
+/** Even a double WO / zero-point bye is a recorded result, with no games played. */
+export function useGroupHasResults(tournamentId: string, groupId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: [...tournamentKeys.standings(tournamentId), 'has-results', groupId],
+    enabled: enabled && !!tournamentId,
+    queryFn: async () => {
+      let query = supabase.from('pairings')
+        .select('id, round:rounds!inner(status,pairing_group_id)')
+        .eq('tournament_id', tournamentId)
+        .neq('result', '*')
+        .neq('round.status', 'draft');
+      if (groupId) query = query.eq('round.pairing_group_id', groupId);
+      const { data, error } = await query.limit(1);
+      if (error) throw error;
+      return !!data?.length;
+    },
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+}
+
 export function useRoundPairings(roundId: string) {
   return useQuery({
     queryKey: tournamentKeys.pairings(roundId),

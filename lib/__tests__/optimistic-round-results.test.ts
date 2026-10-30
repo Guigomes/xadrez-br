@@ -23,7 +23,10 @@ vi.mock('../hooks/use-tournament', () => ({
 }));
 
 // React hooks are mocked above: this captures production mutation options only.
-import { useSetResult as captureSetResultOptions } from '../hooks/use-native-rounds';
+import {
+  useSetResult as captureSetResultOptions,
+  useRoundTransition as captureRoundTransitionOptions,
+} from '../hooks/use-native-rounds';
 
 const row = (id: string, result: EnteredResult = '*'): RoundPairingRow => applyPairingResult({
   pairing_id: id, board_number: 1,
@@ -92,7 +95,53 @@ describe('immediate round result feedback', () => {
     expect(pending()).toEqual([]);
     expect(visible()[0]).toMatchObject({ result: '1-0', white_points: 1, black_points: 0 });
     expect(mocks.rpc).toHaveBeenCalledWith('set_pairing_result', { p_pairing_id: 'a', p_result: '1-0' });
-    expect(fetch).toHaveBeenCalledWith('/api/admin/rounds/round-1/notify', { method: 'POST' });
+    expect(fetch).toHaveBeenCalledWith('/api/admin/rounds/round-1/notify', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'result', pairingId: 'a' }),
+    });
+  });
+
+  it('clearing a result does not send any notification', async () => {
+    qc.setQueryData(key, [row('a', '1-0')]);
+    mocks.rpc.mockResolvedValue({ error: null });
+    await observer().mutate({ pairingId: 'a', result: '*' });
+    expect(confirmed()[0].result).toBe('*');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  const transition = () => new MutationObserver(qc,
+    captureRoundTransitionOptions('tournament', 'group') as unknown as MutationObserverOptions<
+      void, Error, { action: 'publish' | 'finish' | 'reopen'; roundId: string }
+    >,
+  );
+
+  it.each([['publish', 'published'], ['finish', 'finished']] as const)(
+    '%s sends only its own event after confirmation, without waiting for push', async (action, event) => {
+      const rpc = deferredRpc();
+      mocks.rpc.mockReturnValue(rpc.promise);
+      const saving = transition().mutate({ action, roundId: 'round-1' });
+      await vi.waitFor(() => expect(mocks.rpc).toHaveBeenCalled());
+      expect(fetch).not.toHaveBeenCalled();
+      rpc.resolve({ error: null });
+      await saving;
+      expect(mocks.rpc).toHaveBeenCalledWith(`${action}_round`, { p_round_id: 'round-1' });
+      expect(fetch).toHaveBeenCalledExactlyOnceWith('/api/admin/rounds/round-1/notify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event }),
+      });
+    },
+  );
+
+  it('reopening a round sends no publication or finish event', async () => {
+    mocks.rpc.mockResolvedValue({ error: null });
+    await transition().mutate({ action: 'reopen', roundId: 'round-1' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it.each(['publish', 'finish'] as const)('a rejected %s sends no event', async (action) => {
+    mocks.rpc.mockResolvedValue({ error: { message: 'INVALID_STATE' } });
+    await expect(transition().mutate({ action, roundId: 'round-1' })).rejects.toMatchObject({ message: 'INVALID_STATE' });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it.each(['0-1', '*'] as const)('restores the previous selection after a rejected correction to %s', async (result) => {

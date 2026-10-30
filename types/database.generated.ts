@@ -3863,6 +3863,10 @@ export type Database = {
         Returns: undefined
       }
       reopen_round: { Args: { p_round_id: string }; Returns: undefined }
+      return_round_to_draft: {
+        Args: { p_discard_results?: boolean; p_round_id: string }
+        Returns: number
+      }
       save_round_draft: {
         Args: { p_group_id: string; p_pairings: Json; p_round_number: number }
         Returns: string

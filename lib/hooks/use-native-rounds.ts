@@ -177,7 +177,43 @@ export function useRoundTransition(tournamentId: string, groupId: string) {
   return useMutation({
     mutationFn: async ({ action, roundId }: { action: 'publish' | 'finish' | 'reopen'; roundId: string }) =>
       roundRpc(`${action}_round` as any)(roundId),
-    onSuccess: invalidate,
+    onSuccess: (_, { action, roundId }) => {
+      if (action !== 'reopen') {
+        // Notify only after the RPC succeeds; delivery never delays the UI.
+        void fetch(`/api/admin/rounds/${roundId}/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event: action === 'publish' ? 'published' : 'finished' }),
+        }).catch(() => undefined);
+      }
+      invalidate();
+    },
+  });
+}
+
+export function useReturnRoundToDraft(tournamentId: string, groupId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidate(tournamentId, groupId);
+  return useMutation({
+    mutationFn: async ({ roundId, discardResults }: { roundId: string; discardResults: boolean }) => {
+      const { data, error } = await supabase.rpc('return_round_to_draft', {
+        p_round_id: roundId, p_discard_results: discardResults,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, { roundId }) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['round', roundId] });
+      qc.invalidateQueries({ queryKey: ['audit-log', tournamentId] });
+      qc.invalidateQueries({ queryKey: ['draft-warnings', roundId] });
+      qc.invalidateQueries({ queryKey: ['pairing-history', roundId] });
+    },
+    // A result may have arrived while the confirmation dialog was open.
+    onError: async (_, { roundId }) => {
+      invalidate();
+      await qc.invalidateQueries({ queryKey: tournamentKeys.pairings(roundId) });
+    },
   });
 }
 
@@ -211,6 +247,7 @@ export function useOverridePairing(tournamentId: string, groupId: string, roundI
       invalidate();
       qc.invalidateQueries({ queryKey: ['pairings', roundId] });
       qc.invalidateQueries({ queryKey: ['pairing-history', roundId] });
+      qc.invalidateQueries({ queryKey: ['draft-warnings', roundId] });
     },
   });
 }
@@ -264,7 +301,13 @@ export function useSetResult(tournamentId: string, groupId: string, roundId: str
         (pairing) => pairing.pairing_id === pairingId ? applyPairingResult(pairing, result) : pairing,
       ));
       // Push delivery must not hold the result button in its saving state.
-      void fetch(`/api/admin/rounds/${roundId}/notify`, { method: 'POST' }).catch(() => undefined);
+      if (result !== '*') {
+        void fetch(`/api/admin/rounds/${roundId}/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event: 'result', pairingId }),
+        }).catch(() => undefined);
+      }
       invalidate();
     },
   });

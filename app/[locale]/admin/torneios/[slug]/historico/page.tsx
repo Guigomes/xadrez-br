@@ -13,6 +13,7 @@ const ACTION_LABELS: Record<string, string> = {
   publish_round: 'Rodada publicada',
   finish_round: 'Rodada encerrada',
   reopen_round: 'Rodada reaberta',
+  return_round_to_draft: 'Rodada voltou para rascunho',
   set_result: 'Resultado lançado',
   swap_pairing: 'Mesas alteradas manualmente',
   generate_initial_ranking: 'Ranking inicial gerado',
