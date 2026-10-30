@@ -3,7 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { tournamentKeys } from './use-tournament';
-import type { Round, PairingGroup, GameResult, TablesUpdate } from '@/types/database';
+import { applyPairingResult, resultMutationKey, type ResultSubmission } from '../utils/round-results';
+import type { Round, PairingGroup, TablesUpdate, RoundPairingRow } from '@/types/database';
 
 const supabase = createClient();
 
@@ -245,24 +246,25 @@ export function usePairingHistory(roundId: string, enabled: boolean) {
   });
 }
 
-export function useSetResult(tournamentId: string, groupId: string) {
+export function useSetResult(tournamentId: string, groupId: string, roundId: string) {
+  const qc = useQueryClient();
   const invalidate = useInvalidate(tournamentId, groupId);
   return useMutation({
-    mutationFn: async ({ pairingId, result }: { pairingId: string; result: GameResult }) => {
+    mutationKey: resultMutationKey(roundId),
+    mutationFn: async ({ pairingId, result }: ResultSubmission) => {
       const { error } = await supabase.rpc('set_pairing_result', {
         p_pairing_id: pairingId, p_result: result,
       });
       if (error) throw error;
     },
-    onSuccess: async (_, { pairingId }) => {
-      const { data: pairing } = await supabase
-        .from('pairings')
-        .select('round_id')
-        .eq('id', pairingId)
-        .maybeSingle();
-      if (pairing?.round_id) {
-        await fetch(`/api/admin/rounds/${pairing.round_id}/notify`, { method: 'POST' }).catch(() => undefined);
-      }
+    onSuccess: (_, { pairingId, result }) => {
+      // Keep the confirmed value when the pending UI overlay disappears.
+      // Other in-flight boards stay in their own overlays, even during refetch.
+      qc.setQueryData<RoundPairingRow[]>(tournamentKeys.pairings(roundId), (rows) => rows?.map(
+        (pairing) => pairing.pairing_id === pairingId ? applyPairingResult(pairing, result) : pairing,
+      ));
+      // Push delivery must not hold the result button in its saving state.
+      void fetch(`/api/admin/rounds/${roundId}/notify`, { method: 'POST' }).catch(() => undefined);
       invalidate();
     },
   });

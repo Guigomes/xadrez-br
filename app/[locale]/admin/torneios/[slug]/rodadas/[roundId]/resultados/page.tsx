@@ -3,7 +3,7 @@
 // Painel mobile do árbitro (F6): lançamento rápido de resultados por mesa.
 import { use, useMemo, useRef, useState } from 'react';
 import { useRouter, Link } from '@/i18n/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useMutationState, useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useTournament, useRoundPairings } from '@/lib/hooks/use-tournament';
 import { useSetResult, useRoundTransition } from '@/lib/hooks/use-native-rounds';
@@ -11,21 +11,20 @@ import {
   useMyTournamentRole, useStaff, useBoardArbiters, useAssignBoard, useUnassignBoard,
 } from '@/lib/hooks/use-staff';
 import { useUser } from '@/lib/hooks/use-auth';
-import { useLivePgnIds } from '@/lib/hooks/use-player-history';
-import { PgnAttachButton } from '@/components/tournament/pgn-attach';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { winnerSide } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
-import type { GameResult, Round } from '@/types/database';
+import { previewRoundResults, resultMutationKey, type EnteredResult, type ResultSubmission } from '@/lib/utils/round-results';
+import type { Round, RoundPairingRow } from '@/types/database';
 
-const MAIN: { value: GameResult; label: string }[] = [
+const MAIN: { value: EnteredResult; label: string }[] = [
   { value: '1-0', label: '1 – 0' },
   { value: '1/2-1/2', label: '½ – ½' },
   { value: '0-1', label: '0 – 1' },
 ];
-const WO: { value: GameResult; label: string }[] = [
+const WO: { value: EnteredResult; label: string }[] = [
   { value: 'forfeit_black', label: 'WO pretas' },
   { value: 'forfeit_white', label: 'WO brancas' },
   { value: 'double_forfeit', label: 'WO duplo' },
@@ -47,7 +46,11 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
   });
 
   const { data: pairings, isLoading: loadingPairings } = useRoundPairings(roundId);
-  const setResult = useSetResult(tournament?.id ?? '', round?.pairing_group_id ?? '');
+  const setResult = useSetResult(tournament?.id ?? '', round?.pairing_group_id ?? '', roundId);
+  const pendingResults = useMutationState({
+    filters: { mutationKey: resultMutationKey(roundId), exact: true, status: 'pending' },
+    select: (mutation) => mutation.state.variables as ResultSubmission,
+  });
   const transition = useRoundTransition(tournament?.id ?? '', round?.pairing_group_id ?? '');
   const { user } = useUser();
   const { data: myRole } = useMyTournamentRole(tournament?.id ?? '');
@@ -66,35 +69,44 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
     ?? staff?.find((s) => s.user_id === userId)?.email
     ?? (userId === tournament?.created_by ? 'Organizador' : 'Árbitro');
   const [error, setError] = useState('');
+  const [boardErrors, setBoardErrors] = useState<Record<string, string>>({});
+  const submitting = useRef(new Set<string>());
   const boardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const games = useMemo(
-    () => (pairings ?? []).filter((p: any) => !p.is_bye),
-    [pairings],
+    () => previewRoundResults(pairings ?? [], pendingResults).filter((p) => !p.is_bye),
+    [pairings, pendingResults],
   );
-  const { data: pgnIds } = useLivePgnIds(games.map((p: any) => p.pairing_id as string), true);
-  const done = games.filter((p: any) => p.result !== '*').length;
+  const savingIds = new Set(pendingResults.map((entry) => entry.pairingId));
+  const done = games.filter((p) => p.result !== '*').length;
   const allDone = games.length > 0 && done === games.length;
 
   if (isLoading || loadingPairings) return <PageSpinner />;
   if (!tournament || !round) return <p>Rodada não encontrada.</p>;
 
-  async function submit(p: any, result: GameResult) {
+  async function submit(p: RoundPairingRow, result: EnteredResult) {
+    if (submitting.current.has(p.pairing_id) || p.result === result) return;
+    submitting.current.add(p.pairing_id);
     const wasPending = p.result === '*';
     setError('');
+    setBoardErrors((previous) => ({ ...previous, [p.pairing_id]: '' }));
     try {
       await setResult.mutateAsync({ pairingId: p.pairing_id, result });
       // avança para a próxima mesa pendente — só no primeiro lançamento; uma
       // correção (mesa já tinha resultado) não deveria pular a tela pro
       // árbitro, que ainda está olhando pra essa mesa.
       if (wasPending) {
-        const next = games.find((g: any) => g.result === '*' && g.pairing_id !== p.pairing_id);
+        const next = games.find((g) => g.result === '*' && g.pairing_id !== p.pairing_id && !submitting.current.has(g.pairing_id));
         if (next) {
           boardRefs.current[next.pairing_id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }
-    } catch (e: any) {
-      setError(e.message ?? 'Erro ao lançar resultado');
+    } catch (e) {
+      const message = e && typeof e === 'object' && 'message' in e ? String(e.message) : 'Erro ao lançar resultado';
+      setBoardErrors((previous) => ({ ...previous, [p.pairing_id]: `Não foi possível salvar. O resultado anterior foi restaurado. ${message}` }));
+      boardRefs.current[p.pairing_id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } finally {
+      submitting.current.delete(p.pairing_id);
     }
   }
 
@@ -136,9 +148,11 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
       )}
 
       <div className="space-y-3">
-        {games.map((p: any) => {
+        {games.map((p) => {
           const pending = p.result === '*';
-          const assignedTo = p.board_number != null ? arbiterByBoard.get(p.board_number) : undefined;
+          const saving = savingIds.has(p.pairing_id);
+          const boardNumber = p.board_number;
+          const assignedTo = boardNumber != null ? arbiterByBoard.get(boardNumber) : undefined;
           const isMine = assignedTo === user?.id;
           const locked = !!assignedTo && !isMine && myRole !== 'organizer';
           const canEnter = round.status !== 'draft' && round.status !== 'finished' && !locked;
@@ -149,7 +163,8 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
               className={`card p-4 ${!pending ? 'border-l-4 border-green-500 dark:border-green-600' : ''}`}
             >
               <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-gray-400">MESA {p.board_number}</span>
+                <span className="text-xs font-semibold text-gray-400">MESA {boardNumber}</span>
+                {saving && <span role="status" className="text-xs text-gray-500 dark:text-gray-400">Salvando…</span>}
                 <span className="flex items-center gap-1.5">
                   {assignedTo ? (
                     <>
@@ -158,9 +173,9 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                         : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}>
                         ⚖️ {isMine ? 'Sua mesa' : staffName(assignedTo)}
                       </Badge>
-                      {(isMine || myRole === 'organizer') && p.board_number != null && (
+                      {(isMine || myRole === 'organizer') && boardNumber != null && (
                         <button
-                          onClick={() => unassignBoard.mutate(p.board_number)}
+                          onClick={() => unassignBoard.mutate(boardNumber)}
                           disabled={unassignBoard.isPending}
                           className="text-xs text-gray-400 hover:text-red-500"
                         >
@@ -168,21 +183,21 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                         </button>
                       )}
                     </>
-                  ) : p.board_number != null && myRole ? (
+                  ) : boardNumber != null && myRole ? (
                     <button
-                      onClick={() => assignBoard.mutate({ boardNumber: p.board_number, userId: user!.id })}
+                      onClick={() => assignBoard.mutate({ boardNumber, userId: user!.id })}
                       disabled={assignBoard.isPending || !user}
                       className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline"
                     >
                       Assumir mesa
                     </button>
                   ) : null}
-                  {myRole === 'organizer' && p.board_number != null && (staff?.length ?? 0) > 0 && (
+                  {myRole === 'organizer' && boardNumber != null && (staff?.length ?? 0) > 0 && (
                     <select
                       className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-1.5 py-0.5 text-xs"
                       value=""
                       onChange={(e) => {
-                        if (e.target.value) assignBoard.mutate({ boardNumber: p.board_number, userId: e.target.value });
+                        if (e.target.value) assignBoard.mutate({ boardNumber, userId: e.target.value });
                       }}
                     >
                       <option value="">atribuir…</option>
@@ -198,17 +213,17 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                   Mesa atendida por {staffName(assignedTo!)} — só ele(a) ou um organizador lança o resultado.
                 </p>
               )}
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-3 text-sm">
-                <span className="flex items-center justify-end gap-1.5 font-medium text-gray-900 dark:text-gray-100 truncate">
-                  {winnerSide(p.result, 'white') === 'winner' && <span className="text-xs">🏆</span>}
-                  <WhitePawn className="h-4 w-3 shrink-0" />
-                  <span className="truncate">{p.white_name}</span>
+              <div className="grid gap-2 mb-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-start">
+                <span className="flex min-w-0 items-start gap-1.5 font-medium text-gray-900 dark:text-gray-100">
+                  <WhitePawn className="mt-0.5 h-4 w-3 shrink-0" />
+                  <span className="min-w-0 break-words">{p.white_name}</span>
+                  {winnerSide(p.result, 'white') === 'winner' && <span className="shrink-0 text-xs">🏆</span>}
                 </span>
-                <span className="text-gray-400 text-xs">×</span>
-                <span className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-gray-100 truncate">
-                  <BlackPawn className="h-4 w-3 shrink-0" />
-                  <span className="truncate">{p.black_name}</span>
-                  {winnerSide(p.result, 'black') === 'winner' && <span className="text-xs">🏆</span>}
+                <span aria-hidden="true" className="hidden text-gray-400 text-xs sm:block">×</span>
+                <span className="flex min-w-0 items-start gap-1.5 font-medium text-gray-900 dark:text-gray-100">
+                  <BlackPawn className="mt-0.5 h-4 w-3 shrink-0" />
+                  <span className="min-w-0 break-words">{p.black_name}</span>
+                  {winnerSide(p.result, 'black') === 'winner' && <span className="shrink-0 text-xs">🏆</span>}
                 </span>
               </div>
 
@@ -225,7 +240,8 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                       return (
                         <button
                           key={r.value}
-                          disabled={setResult.isPending}
+                          disabled={saving || transition.isPending}
+                          aria-pressed={active}
                           onClick={() => submit(p, r.value)}
                           className={`h-12 rounded-xl font-bold text-lg transition-colors ${
                             active
@@ -244,7 +260,8 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                       return (
                         <button
                           key={r.value}
-                          disabled={setResult.isPending}
+                          disabled={saving || transition.isPending}
+                          aria-pressed={active}
                           onClick={() => submit(p, r.value)}
                           className={`h-9 rounded-lg border text-xs transition-colors ${
                             active
@@ -266,14 +283,10 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                     : p.result === '1/2-1/2' ? '½ – ½' : p.result}
                 </p>
               ) : null}
-              {/* PGN só em torneio nativo (importado vem do robô) e com a rodada já publicada. */}
-              {tournament.mode === 'native' && round.status !== 'draft' && (
-                <PgnAttachButton
-                  slug={slug}
-                  pairingId={p.pairing_id}
-                  hasPgn={!!pgnIds?.has(p.pairing_id)}
-                  boardLabel={`Mesa ${p.board_number}`}
-                />
+              {boardErrors[p.pairing_id] && (
+                <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+                  {boardErrors[p.pairing_id]}
+                </p>
               )}
             </div>
           );
@@ -292,9 +305,10 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
           {round.status === 'ongoing' && (
             <Button
               className="flex-1 h-11"
-              disabled={!allDone}
+              disabled={!allDone || pendingResults.length > 0}
               loading={transition.isPending}
               onClick={async () => {
+                if (submitting.current.size > 0) return;
                 setError('');
                 try {
                   await transition.mutateAsync({ action: 'finish', roundId });
@@ -316,7 +330,7 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                 } catch (e: any) { setError(e.message); }
               }}
             >
-              {allDone ? 'Encerrar rodada' : `Faltam ${games.length - done}`}
+              {pendingResults.length > 0 ? 'Salvando…' : allDone ? 'Encerrar rodada' : `Faltam ${games.length - done}`}
             </Button>
           )}
         </div>

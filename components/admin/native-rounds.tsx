@@ -10,6 +10,8 @@ import {
   useRequestedByes, useToggleRequestedBye,
 } from '@/lib/hooks/use-native-rounds';
 import { useRoundPairings, useTournamentPlayers } from '@/lib/hooks/use-tournament';
+import { useLivePgnIds } from '@/lib/hooks/use-player-history';
+import { PgnAttachButton } from '@/components/tournament/pgn-attach';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -468,7 +470,7 @@ function RoundPanel({
   const { data: pairings } = useRoundPairings(round.id);
   return (
     <div className="card p-4 space-y-3">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-semibold text-gray-900 dark:text-gray-100">
           Rodada {round.round_number}
         </span>
@@ -477,13 +479,13 @@ function RoundPanel({
         </Badge>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
+      <div className={round.status === 'draft' ? 'grid gap-2 sm:flex sm:flex-wrap' : 'flex gap-2 flex-wrap'}>
         {round.status === 'draft' && (
           <>
-            <Button size="sm" loading={busy} onClick={() => onAction('publish')}>
+            <Button size="sm" className="h-11 sm:h-8" loading={busy} onClick={() => onAction('publish')}>
               Publicar rodada
             </Button>
-            <Button size="sm" variant="secondary" loading={regenerating} onClick={onRegenerate}>
+            <Button size="sm" className="h-11 sm:h-8" variant="secondary" loading={regenerating} onClick={onRegenerate}>
               Regerar pareamento
             </Button>
           </>
@@ -563,6 +565,11 @@ const WARNING_LABELS: Record<string, string> = {
 
 function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; groupId: string; round: Round }) {
   const { data: pairings, isLoading } = useRoundPairings(round.id);
+  const canAttachPgn = tournament.mode === 'native' && round.status !== 'draft';
+  const { data: pgnIds } = useLivePgnIds(
+    (pairings ?? []).filter((pairing) => !pairing.is_bye).map((pairing) => pairing.pairing_id),
+    canAttachPgn,
+  );
   const override = useOverridePairing(tournament.id, groupId, round.id);
   const isDraft = round.status === 'draft';
   const canOverride = round.status === 'ongoing' || round.status === 'finished';
@@ -633,14 +640,14 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
 
   const Seat = ({ p, side, name }: { p: any; side: 'w' | 'b'; name: string | null }) => {
     if (!canSwap || !name) {
-      return <span className="text-gray-900 dark:text-gray-100">{name ?? 'BYE'}</span>;
+      return <span className="min-w-0 break-words text-gray-900 dark:text-gray-100">{name ?? 'BYE'}</span>;
     }
     const isSel = selected?.pairingId === p.pairing_id && selected?.side === side;
     return (
       <button
         onClick={() => handleSeatClick(p, side)}
         disabled={override.isPending}
-        className={`rounded px-1.5 py-0.5 transition-colors ${
+        className={`min-w-0 break-words rounded px-1.5 py-0.5 text-left transition-colors ${
           isSel
             ? 'bg-brand-600 text-white'
             : 'text-gray-900 dark:text-gray-100 hover:bg-brand-100 dark:hover:bg-brand-900/40'
@@ -683,7 +690,7 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
 
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
-      <SearchField value={query} onChange={setQuery} className="max-w-xs" />
+      <SearchField value={query} onChange={setQuery} className="w-full sm:max-w-xs" />
 
       {filteredPairings.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400 py-2">Nenhuma mesa encontrada com esse nome.</p>
@@ -697,7 +704,9 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
         return (
         <div key={p.pairing_id} className="rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm">
           <div className="flex items-start gap-3">
-            <span className="w-6 shrink-0 pt-0.5 text-gray-400 tabular-nums">{p.board_number ?? '—'}</span>
+            <span className="w-6 shrink-0 pt-0.5 text-gray-400 tabular-nums">
+              <span className="sr-only">Mesa </span>{p.board_number ?? '—'}
+            </span>
 
             <div className="min-w-0 flex-1 grid gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-2">
               <div className="flex min-w-0 items-center gap-1.5">
@@ -713,21 +722,22 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
               </div>
             </div>
 
-            <div className="shrink-0 pt-0.5">
-              {p.is_bye ? (
-                <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                  Bye ({p.white_points ?? 0})
-                </Badge>
-              ) : isDraft ? (
-                <span className="text-xs text-gray-400">rascunho</span>
-              ) : (
-                <span className={`text-xs font-medium tabular-nums ${
-                  p.result === '*' ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'
-                }`}>
-                  {RESULT_LABELS[p.result] ?? p.result}
-                </span>
-              )}
-            </div>
+            {/* O status pertence à rodada; só reservar espaço por mesa para bye ou resultado. */}
+            {(p.is_bye || !isDraft) && (
+              <div className="shrink-0 pt-0.5">
+                {p.is_bye ? (
+                  <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                    Bye ({p.white_points ?? 0})
+                  </Badge>
+                ) : (
+                  <span className={`text-xs font-medium tabular-nums ${
+                    p.result === '*' ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                    {RESULT_LABELS[p.result] ?? p.result}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {p.manual_override && (
@@ -736,6 +746,14 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
                 alterada
               </Badge>
             </div>
+          )}
+          {canAttachPgn && !p.is_bye && (
+            <PgnAttachButton
+              slug={tournament.slug}
+              pairingId={p.pairing_id}
+              hasPgn={!!pgnIds?.has(p.pairing_id)}
+              boardLabel={`Mesa ${p.board_number}`}
+            />
           )}
         </div>
         );
