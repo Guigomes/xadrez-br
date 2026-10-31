@@ -26,7 +26,7 @@ export default async function TournamentTvPage({ params, searchParams }: {
     { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
   );
   const { data: tournament, error: tournamentError } = await publicClient.from('tournaments')
-    .select('id, name, city, state, is_public, status, has_absolute_classification, has_female_classification')
+    .select('id, name, city, state, is_public, status, has_absolute_classification, has_female_classification, tiebreak_order')
     .eq('slug', slug).maybeSingle();
   if (tournamentError) throw new Error('Não foi possível carregar o torneio do painel.');
   if (!tournament || tournament.status === 'draft') notFound();
@@ -131,6 +131,6 @@ export default async function TournamentTvPage({ params, searchParams }: {
           </div>
         </>
       )
-    } standings={<TvStandings rows={standings} locale={locale} groupName={groupName} />} />
+    } standings={<TvStandings rows={standings} locale={locale} groupName={groupName} tiebreakOrder={tournament.tiebreak_order ?? []} />} />
   );
 }

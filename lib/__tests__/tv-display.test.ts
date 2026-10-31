@@ -101,6 +101,20 @@ describe('TV standings', () => {
     expect($('tbody td').last().text()).toBe('0');
     expect($('tbody th').text()).toContain('Sem rating');
   });
+  it('lists the tie-break order and shows each criterion as a column, in that order', () => {
+    const $ = load(renderToStaticMarkup(React.createElement(TvStandings, {
+      rows: [row({ buchholz: 7.5, buchholz_cut1: 6, sonneborn_berger: 4.25, wins: 2 })], locale: 'pt-BR',
+      tiebreakOrder: ['buchholz_cut1', 'direct_encounter', 'wins', 'sonneborn_berger'],
+    })));
+    expect($('[data-tv-standings] > p').text()).toContain('Desempate: 1º Buchholz Corte 1 · 2º Confronto Direto · 3º Vitórias no tabuleiro · 4º Sonneborn-Berger');
+    expect($('thead th').map((_, el) => $(el).text()).get()).toEqual(['Pos.', 'Jogador', 'BH-1', 'Vit', 'SB', 'Pontos']);
+    expect($('tbody td').map((_, el) => $(el).text()).get()).toEqual(['2', '6.0', '2', '4.3', '2½']);
+  });
+  it('shows no tie-break legend or columns when the tournament defines none', () => {
+    const $ = render();
+    expect($('[data-tv-standings]').text()).not.toContain('Desempate');
+    expect($('thead th')).toHaveLength(3);
+  });
   it('shows half a point without a leading zero', () => {
     expect(render([row({ points: 0.5 })])('tbody td').last().text()).toBe('½');
   });

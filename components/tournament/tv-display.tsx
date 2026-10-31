@@ -56,22 +56,24 @@ export function TvDisplay({ header, rounds, standings, podium, initialMode = 'ro
 
   return (
     <main className="chess-pattern fixed inset-0 z-50 flex flex-col gap-2 overflow-hidden bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 px-4 py-3 text-white sm:px-6">
-      <div className={view === 'podium' ? 'hidden' : 'shrink-0'}>{header}</div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-black/15 p-2">
-        <label htmlFor="tv-display-mode" className="text-sm font-semibold text-brand-100">Exibir</label>
-        <select id="tv-display-mode" value={effectiveMode} onChange={(event) => selectMode(event.target.value as TvMode)} className="min-h-11 max-w-full rounded-lg border border-white/30 bg-brand-900 px-3 py-2 text-base font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-          <option value="round" disabled={waitingForRound}>Só rodada</option>
-          <option value="standings">Só classificação</option>
-          <option value="alternate" disabled={waitingForRound}>Alternar rodada e classificação</option>
-          {podium && <option value="podium">Pódio · premiação</option>}
-        </select>
-        {view === 'podium' ? <button type="button" onClick={() => document.documentElement.requestFullscreen?.()} className="min-h-11 rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10">Tela cheia</button> : <button type="button" aria-pressed={paused} onClick={() => setPaused((current) => !current)} className="min-h-11 rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-          {paused ? 'Retomar apresentação' : 'Pausar apresentação'}
-        </button>}
-        <p role="status" className="text-xs text-brand-200">
-          <span className="font-semibold">{view === 'round' ? 'Rodada' : view === 'podium' ? 'Pódio' : 'Classificação'}</span>
-          {' · '}{view === 'podium' ? 'Escolha a categoria e inicie a apresentação' : paused ? 'Rolagem e alternância pausadas' : effectiveMode === 'alternate' ? 'Alterna após exibir toda a lista · rolagem suave' : 'Rolagem automática suave'}
-        </p>
+      {/* Controles ao lado do cabeçalho (não numa faixa própria): a TV ganha uma linha inteira para as mesas. */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
+        <div className={view === 'podium' ? 'hidden' : 'min-w-0 flex-1'}>{header}</div>
+        <div className="flex shrink-0 flex-col gap-2 rounded-xl bg-black/15 p-2">
+          <div className="flex items-center gap-2">
+            <label htmlFor="tv-display-mode" className="text-sm font-semibold text-brand-100">Exibir</label>
+            <select id="tv-display-mode" value={effectiveMode} onChange={(event) => selectMode(event.target.value as TvMode)} className="min-h-11 max-w-full rounded-lg border border-white/30 bg-brand-900 px-3 py-2 text-base font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              <option value="round" disabled={waitingForRound}>Só rodada</option>
+              <option value="standings">Só classificação</option>
+              <option value="alternate" disabled={waitingForRound}>Alternar rodada e classificação</option>
+              {podium && <option value="podium">Pódio · premiação</option>}
+            </select>
+          </div>
+          {view === 'podium' ? <button type="button" onClick={() => document.documentElement.requestFullscreen?.()} className="min-h-11 rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10">Tela cheia</button> : <button type="button" aria-pressed={paused} onClick={() => setPaused((current) => !current)} className="min-h-11 rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+            {paused ? 'Retomar apresentação' : 'Pausar apresentação'}
+          </button>}
+          {view === 'podium' && <p role="status" className="max-w-[16rem] text-xs text-brand-200">Escolha a categoria e inicie a apresentação</p>}
+        </div>
       </div>
       {waitingForRound && view !== 'podium' && (
         <div role="status" className="shrink-0 rounded-xl border border-amber-200/30 bg-amber-100/10 px-4 py-3 text-sm font-semibold text-amber-100">
