@@ -342,6 +342,7 @@ export function StandingsView({
             tournamentSlug={slug}
             followedPlayerIds={followed?.playerIds}
             isInitialRanking={isInitialRanking}
+            showCategory={effectiveCategory === 'all' || effectiveCategory === FEMALE}
             international={isInternationalTournament(tournament?.is_international)}
           />
         )}

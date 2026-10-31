@@ -94,15 +94,16 @@ describe('result card hierarchy', () => {
   });
 
   it.each(['1-0', '1/2-1/2', '0-1', 'forfeit_white', 'forfeit_black', 'double_forfeit'] as const)(
-    'highlights only the selected %s control, not the card border', (result) => {
+    'frames cards with a green outline and thicker left edge for %s', (result) => {
       mocks.pairings[0].result = result;
       const $ = render();
       expect($('.card [aria-pressed="true"]')).toHaveLength(1);
       expect($('.card .bg-green-600')).toHaveLength(1);
       expect($('.card').hasClass('shadow-md')).toBe(true);
-      expect($('.card').hasClass('border-gray-300')).toBe(true);
-      expect($('.card').hasClass('border-l-4')).toBe(false);
-      expect($('.card').attr('class')).not.toContain('border-green');
+      expect($('.card').hasClass('border-green-500')).toBe(true);
+      expect($('.card').hasClass('dark:border-green-600')).toBe(true);
+      expect($('.card').hasClass('border-l-4')).toBe(true);
+      expect($('.card').hasClass('border-gray-300')).toBe(false);
     },
   );
 
@@ -113,6 +114,8 @@ describe('result card hierarchy', () => {
       expect(card.hasClass(style)).toBe(true);
     }
     expect(card.attr('class')).not.toMatch(/translate|scale|animate|hover:/);
+    expect(card.attr('class')).not.toContain('border-green');
+    expect(card.hasClass('border-l-4')).toBe(false);
     expect(card.find('[data-result-player]')).toHaveLength(2);
     expect(card.find('button[aria-pressed]')).toHaveLength(7);
   });
@@ -134,6 +137,18 @@ describe('result card hierarchy', () => {
     expect($('.card [role="status"]').text()).toBe('Salvando…');
     expect($('.card [aria-pressed="true"]').text()).toBe('Pretas0 – 1');
     expect($('.card button[disabled]')).toHaveLength(7);
+    expect($('.card').hasClass('border-green-500')).toBe(true);
+  });
+
+  it('restores the neutral frame when an optimistic result is rolled back or cleared', () => {
+    mocks.pending = [{ pairingId: 'game', result: '1-0' }];
+    expect(render()('.card').hasClass('border-green-500')).toBe(true);
+    mocks.pending = [];
+    const $ = render();
+    expect($('.card').hasClass('border-gray-300')).toBe(true);
+    expect($('.card').hasClass('border-l-4')).toBe(false);
+    expect($('.card').attr('class')).not.toContain('border-green');
+    expect($('.card [aria-pressed="true"]')).toHaveLength(0);
   });
 
   it('a finished round still prioritizes the players above its read-only result', () => {

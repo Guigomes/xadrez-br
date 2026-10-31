@@ -31,7 +31,7 @@ vi.mock('@/lib/hooks/use-tournament', () => ({
   useRoundPairings: () => ({ data: mocks.pairings }), useTournamentPlayers: () => ({ data: [] }),
 }));
 vi.mock('@/lib/hooks/use-player-history', () => ({ useLivePgnIds: () => ({ data: new Set() }) }));
-vi.mock('@/components/tournament/pgn-attach', () => ({ PgnAttachButton: () => null }));
+vi.mock('@/components/tournament/pgn-attach', () => ({ PgnAttachButton: () => React.createElement('button', { 'data-attach-pgn': true }, 'Anexar PGN') }));
 vi.mock('@/components/player-history/game-viewer', () => ({ GameViewerButton: () => null, RESULT_TEXT: {} }));
 vi.mock('@/components/player/origin-badge', () => ({ FederationBadge: () => null }));
 vi.mock('@/components/ui/button', async () => import('../../components/ui/button'));
@@ -76,6 +76,19 @@ describe('player details on round lists', () => {
     rounds_count: mocks.limit, requested_bye_score: 0.5, tournament_type: 'swiss',
   } as Tournament });
   const publicView = () => React.createElement(PairingsList, { pairings: mocks.pairings, tournamentSlug: 'teste' });
+
+  it.each(['draft', 'ongoing', 'finished'])('shows PGN attachment only for finished rounds, not %s otherwise', (status) => {
+    mocks.rounds[0].status = status;
+    const $ = load(renderToStaticMarkup(native()));
+    expect($('[data-attach-pgn]')).toHaveLength(status === 'finished' ? 1 : 0);
+  });
+
+  it('does not offer PGN attachment for a bye even in a finished round', () => {
+    mocks.rounds[0].status = 'finished';
+    Object.assign(mocks.pairings[0], { is_bye: true, result: 'bye', black_tp_id: null });
+    const $ = load(renderToStaticMarkup(native()));
+    expect($('[data-attach-pgn]')).toHaveLength(0);
+  });
 
   it.each([
     ['1-0', true, false],

@@ -200,7 +200,9 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
             <div
               key={p.pairing_id}
               ref={(el) => { boardRefs.current[p.pairing_id] = el; }}
-              className="card border-gray-300 p-4 shadow-md shadow-gray-900/10 dark:border-gray-700 dark:shadow-black/30"
+              className={`card p-4 shadow-md shadow-gray-900/10 dark:shadow-black/30 ${pending
+                ? 'border-gray-300 dark:border-gray-700'
+                : 'border-l-4 border-green-500 dark:border-green-600'}`}
             >
               <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                 <h2 className="text-base font-semibold tabular-nums text-gray-700 dark:text-gray-300">Mesa {boardNumber}</h2>

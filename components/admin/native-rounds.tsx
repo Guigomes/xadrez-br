@@ -671,7 +671,7 @@ const WARNING_LABELS: Record<string, string> = {
 
 function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; groupId: string; round: Round }) {
   const { data: pairings, isLoading } = useRoundPairings(round.id);
-  const canAttachPgn = tournament.mode === 'native' && round.status !== 'draft';
+  const canAttachPgn = tournament.mode === 'native' && round.status === 'finished';
   const { data: pgnIds } = useLivePgnIds(
     (pairings ?? []).filter((pairing) => !pairing.is_bye).map((pairing) => pairing.pairing_id),
     canAttachPgn,

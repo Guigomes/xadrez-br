@@ -15,11 +15,13 @@ interface StandingsTableProps {
   tournamentSlug: string;
   followedPlayerIds?: Set<string>;
   isInitialRanking?: boolean;
+  /** Oculta a categoria por jogador quando a tabela já está filtrada por ela. */
+  showCategory?: boolean;
   /** Torneio fora do Brasil: mostra o país de cada jogador em vez da UF. */
   international?: boolean;
 }
 
-export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, isInitialRanking = false, international = false }: StandingsTableProps) {
+export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, isInitialRanking = false, international = false, showCategory = true }: StandingsTableProps) {
   const locale = useLocale();
   const hasFollowed = !!followedPlayerIds?.size;
 
@@ -64,7 +66,7 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, i
               {playerDisplayName(row.full_name, row.fide_name, locale)}
             </Link>
             <OriginBadge state={row.state} federation={row.federation} international={international} />
-            {row.category_name && <span className="text-xs text-gray-400">{row.category_name}</span>}
+            {showCategory && row.category_name && <span className="text-xs text-gray-400">{row.category_name}</span>}
           </div>
           <p className="mt-0.5 text-xs text-gray-400 sm:hidden">
             {isInitialRanking
