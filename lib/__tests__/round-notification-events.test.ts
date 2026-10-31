@@ -138,7 +138,8 @@ describe('round notification event isolation', () => {
     expect(mocks.all).toHaveBeenCalledTimes(1);
   });
 
-  it('historical reimports still skip notifications', async () => {
+  it.each([true, false])('historical reimports still skip notifications (listed=%s)', async (listed) => {
+    tournament.is_public = listed;
     round.status = 'finished';
     tournament.status = 'finished';
     tournament.end_date = '2026-10-29';
@@ -176,10 +177,34 @@ describe('round notification event isolation', () => {
     expect(events.size).toBe(0);
   });
 
-  it('private tournaments cannot send to subscribers', async () => {
+  it.each(['published', 'finished', 'result'])('unlisted tournaments send %s to the correct recipients and deduplicate retries', async (event) => {
     tournament.is_public = false;
-    await notify({ event: 'published' });
+    if (event === 'finished') round.status = 'finished';
+    const body = { event, ...(event === 'result' ? { pairingId: 'game-a' } : {}) };
+    const response = await notify(body);
+    expect(response.status).toBe(200);
+    expect(await response.json()).not.toHaveProperty('skipped');
+    await notify(body);
+    expect(mocks.all).toHaveBeenCalledTimes(event === 'result' ? 0 : 1);
+    expect(mocks.followers).toHaveBeenCalledTimes(event === 'result' ? 1 : 0);
+    expect(mocks.nonFollowers).not.toHaveBeenCalled();
+    expect(events.size).toBe(1);
+    if (event === 'result') {
+      expect(mocks.followers.mock.calls[0].slice(0, 2)).toEqual(['tournament', ['player-a', 'player-b']]);
+    }
+  });
+
+  it.each(['published', 'finished', 'result'])('a draft tournament cannot send %s regardless of listing', async (event) => {
+    tournament.status = 'draft';
+    if (event === 'finished') round.status = 'finished';
+    for (const listed of [true, false]) {
+      tournament.is_public = listed;
+      const response = await notify({ event, ...(event === 'result' ? { pairingId: 'game-a' } : {}) });
+      expect(await response.json()).toMatchObject({ skipped: 'torneio em rascunho' });
+    }
     expect(mocks.all).not.toHaveBeenCalled();
+    expect(mocks.followers).not.toHaveBeenCalled();
+    expect(mocks.nonFollowers).not.toHaveBeenCalled();
     expect(events.size).toBe(0);
   });
 
@@ -193,6 +218,13 @@ describe('round notification event isolation', () => {
   it('keeps the import/Lite reconciliation path when no event is supplied', async () => {
     await notify({});
     expect(mocks.followers).toHaveBeenCalledTimes(3); // Category start and two game results.
+    expect(mocks.all).not.toHaveBeenCalled();
+  });
+
+  it('also reconciles unlisted import/Lite tournaments without lifecycle broadcasts', async () => {
+    tournament.is_public = false;
+    await notify({});
+    expect(mocks.followers).toHaveBeenCalledTimes(3);
     expect(mocks.all).not.toHaveBeenCalled();
   });
 

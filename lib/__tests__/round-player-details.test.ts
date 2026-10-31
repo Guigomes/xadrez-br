@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   rounds: [{ id: 'round', round_number: 1, status: 'ongoing', published_at: '2026-10-31T00:00:00Z' }],
   groups: [{ id: 'group', name: 'Absoluto', rounds_count: 1 }],
   generate: vi.fn(),
+  players: [] as Array<{ id: string; pairing_group_id: string; status: string; joined_at_round: number; player: { full_name: string } }>,
+  byes: new Set<string>(),
 }));
 vi.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -24,11 +26,11 @@ vi.mock('@/lib/hooks/use-native-rounds', () => {
     useCreateDefaultGroup: mutation, useGenerateRound: () => ({ ...mutation(), mutateAsync: mocks.generate }), useRoundTransition: mutation,
     useReturnRoundToDraft: mutation, useOverridePairing: mutation, useToggleRequestedBye: mutation,
     usePairingHistory: () => ({ data: [] }), useDraftWarnings: () => ({ data: [] }),
-    useRequestedByes: () => ({ data: new Set() }),
+    useRequestedByes: () => ({ data: mocks.byes }),
   };
 });
 vi.mock('@/lib/hooks/use-tournament', () => ({
-  useRoundPairings: () => ({ data: mocks.pairings }), useTournamentPlayers: () => ({ data: [] }),
+  useRoundPairings: () => ({ data: mocks.pairings }), useTournamentPlayers: () => ({ data: mocks.players }),
 }));
 vi.mock('@/lib/hooks/use-player-history', () => ({ useLivePgnIds: () => ({ data: new Set() }) }));
 vi.mock('@/components/tournament/pgn-attach', () => ({ PgnAttachButton: () => React.createElement('button', { 'data-attach-pgn': true }, 'Anexar PGN') }));
@@ -51,6 +53,7 @@ vi.mock('@/lib/utils/whatsapp', async () => import('../utils/whatsapp'));
 vi.mock('@/lib/utils/text', async () => import('../utils/text'));
 vi.mock('@/lib/utils/rounds', async () => import('../utils/rounds'));
 vi.mock('@/lib/utils/round-navigation', async () => import('../utils/round-navigation'));
+vi.mock('@/lib/utils/draft-pairing-state', async () => import('../utils/draft-pairing-state'));
 vi.mock('@/lib/pairing/requested-bye', async () => import('../pairing/requested-bye'));
 import { NativeRounds } from '../../components/admin/native-rounds';
 import { PairingsList } from '../../components/tournament/pairings-list';
@@ -60,6 +63,8 @@ describe('player details on round lists', () => {
     vi.stubGlobal('React', React);
     mocks.search = 'round=round'; mocks.limit = 1;
     mocks.generate.mockReset();
+    mocks.byes = new Set();
+    mocks.players = ['white', 'black'].map(id => ({ id, pairing_group_id: 'group', status: 'active', joined_at_round: 1, player: { full_name: id } }));
     mocks.groups = [{ id: 'group', name: 'Absoluto', rounds_count: 1 }];
     mocks.rounds = [{ id: 'round', round_number: 1, status: 'ongoing', published_at: '2026-10-31T00:00:00Z' }];
     mocks.pairings = [{
@@ -76,6 +81,34 @@ describe('player details on round lists', () => {
     rounds_count: mocks.limit, requested_bye_score: 0.5, tournament_type: 'swiss',
   } as Tournament });
   const publicView = () => React.createElement(PairingsList, { pairings: mocks.pairings, tournamentSlug: 'teste' });
+
+  it('does not offer a permanent regenerate action for an unchanged draft', () => {
+    mocks.rounds[0].status = 'draft';
+    const $ = load(renderToStaticMarkup(native()));
+    expect($.text()).not.toContain('Regerar pareamento');
+    expect($.text()).not.toContain('Atualizar emparceiramento');
+    expect($('button').filter((_, el) => $(el).text() === 'Publicar rodada').attr('disabled')).toBeUndefined();
+  });
+
+  it('warns and offers recalculation after an absence without automatically generating a round', () => {
+    mocks.rounds[0].status = 'draft';
+    mocks.byes.add('white');
+    const $ = load(renderToStaticMarkup(native()));
+    expect($('[role="alert"]').text()).toContain('O emparceiramento precisa ser atualizado.');
+    expect($.text()).toContain('As trocas manuais de jogadores serão substituídas');
+    expect($('button').filter((_, el) => $(el).text() === 'Atualizar emparceiramento')).toHaveLength(1);
+    expect($('button').filter((_, el) => $(el).text() === 'Publicar rodada').attr('disabled')).toBeDefined();
+    expect(mocks.generate).not.toHaveBeenCalled();
+  });
+
+  it('also warns after a roster change while retaining the generated boards for review', () => {
+    mocks.rounds[0].status = 'draft';
+    mocks.players.push({ ...mocks.players[0], id: 'newcomer' });
+    const $ = load(renderToStaticMarkup(native()));
+    expect($('[role="alert"]').text()).toContain('Os participantes ou as ausências mudaram.');
+    expect($.text()).toContain('Vitor Gabriel Felix Vilela');
+    expect(mocks.generate).not.toHaveBeenCalled();
+  });
 
   it.each(['draft', 'ongoing', 'finished'])('shows PGN attachment only for finished rounds, not %s otherwise', (status) => {
     mocks.rounds[0].status = status;

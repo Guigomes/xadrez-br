@@ -12,7 +12,8 @@ export const dynamic = 'force-dynamic';
 export default async function TournamentTvPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const locale = await getLocale();
-  // TV is always a public viewer, even on the organizer's logged-in browser.
+  // "Private" tournaments are unlisted, not protected: published tournaments
+  // open by direct link, as in migration 032. Drafts remain inaccessible here.
   const publicClient = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
@@ -21,7 +22,7 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
     .select('id, name, city, state, is_public, status')
     .eq('slug', slug).maybeSingle();
   if (tournamentError) throw new Error('Não foi possível carregar o torneio do painel.');
-  if (!tournament?.is_public || tournament.status === 'draft') notFound();
+  if (!tournament || tournament.status === 'draft') notFound();
 
   const [roundsResult, groupsResult] = await Promise.all([
     publicClient.from('rounds')

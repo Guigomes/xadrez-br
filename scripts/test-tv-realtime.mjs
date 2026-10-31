@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const tournament = 'fd807e1a-0b12-4f4a-b755-ae9112148d30';
 const topic = `tournament-tv:${tournament}`;
-const migration = new URL('../supabase/migrations/20261031032527_tournament_tv_realtime.sql', import.meta.url);
+const migration = new URL('../supabase/migrations/20261031114547_unlisted_tv_native_status.sql', import.meta.url);
 const client = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL });
 const warnings = [];
 client.on('notice', (notice) => { if (notice.severity === 'WARNING') warnings.push(notice.message); });
@@ -32,7 +32,8 @@ try {
 const q = async (sql, args = []) => (await client.query(sql, args)).rows;
 const schema = () => q(`select pg_get_functiondef(p.oid) as definition,p.proacl::text as acl
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname='public' and p.proname='notify_tournament_tv'`);
+  where n.nspname='public' and p.proname in ('notify_tournament_tv','get_tournament_page_data')
+  order by p.proname`);
 const snapshot = async () => {
   const data = {};
   for (const table of ['tournaments', 'rounds', 'pairings', 'standings', 'tournament_players', 'audit_log']) {
@@ -63,6 +64,22 @@ try {
   const [round] = await q('select id from rounds where tournament_id=$1 order by round_number limit 1', [tournament]);
   const boards = await q('select id from pairings where round_id=$1 and black_tp_id is not null order by board_number', [round.id]);
   assert.ok(boards.length >= 2);
+  // A fully entered round is NOT a finished native tournament. Same lifecycle
+  // for app tournaments; retain the legacy imported effective-status behavior.
+  await q("update tournaments set status='ongoing' where id=$1", [tournament]);
+  await q("update rounds set status='finished' where tournament_id=$1", [tournament]);
+  await q("update rounds set status='ongoing' where id=$1", [round.id]);
+  await q("update pairings set result='1-0',white_points=1,black_points=0 where tournament_id=$1 and result='*'", [tournament]);
+  const pageStatus = async () => (await q('select effective_status from get_tournament_page_data($1)', [fixture.slug]))[0].effective_status;
+  for (const [mode, expected] of [['native', 'ongoing'], ['app', 'ongoing'], ['imported', 'finished']]) {
+    await q('update tournaments set mode=$2 where id=$1', [tournament, mode]);
+    eq(await pageStatus(), expected, `${mode}: completed scores do not override native/app lifecycle`);
+  }
+  await q("update tournaments set mode='native',status='finished' where id=$1", [tournament]);
+  eq(await pageStatus(), 'finished', 'explicit tournament closure remains finished');
+  await q("update tournaments set status='ongoing' where id=$1", [tournament]);
+  await q("update rounds set status='finished' where id=$1", [round.id]);
+  eq(await pageStatus(), 'ongoing', 'between rounds remains ongoing until the tournament is closed');
   await q("update rounds set status='draft',published_at=null where tournament_id=$1", [tournament]);
   await change("update tournaments set status='ongoing',is_public=true where id=$1", [tournament], 1, 'public TV visibility change invalidates');
   await change("update pairings set result='1-0',white_points=1,black_points=0 where id=$1", [boards[0].id], 0, 'draft result never broadcasts');
@@ -84,8 +101,10 @@ try {
   await q("select set_config('request.jwt.claim.sub',$1,true)", [fixture.created_by]);
   await change("update rounds set status='ongoing' where id=$1", [round.id], 1, 'republication broadcasts');
   await change('delete from rounds where id=$1', [round.id], 1, 'deleting round broadcasts even after cascading boards');
-  await change('update tournaments set is_public=false where id=$1', [tournament], 1, 'hiding a formerly public TV invalidates');
-  await change("update tournaments set name=name where id=$1", [tournament], 0, 'private tournament changes remain silent');
+  await change('update tournaments set is_public=false where id=$1', [tournament], 1, 'removing public listing does not disable TV invalidation');
+  await change("update tournaments set name=name where id=$1", [tournament], 1, 'unlisted tournament TV remains live by direct link');
+  await change("update tournaments set status='draft' where id=$1", [tournament], 1, 'returning the tournament to draft invalidates open TV screens');
+  await change("update tournaments set name=name where id=$1", [tournament], 0, 'draft tournament changes remain silent');
   const payloads = await q('select payload from realtime.messages where topic=$1', [topic]);
   assert.ok(payloads.length > 0);
   // The installed Realtime version adds a generated message id to the empty payload.

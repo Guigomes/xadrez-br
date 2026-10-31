@@ -84,10 +84,21 @@ describe('public TV page', () => {
     expect(await render()).not.toContain('Sub-10');
   });
 
-  it('rejects a public-flagged draft tournament and a private tournament', async () => {
+  it('rejects draft tournaments regardless of the public-list flag', async () => {
     mocks.tournament.status = 'draft'; await expect(render()).rejects.toThrow('NOT_FOUND');
-    mocks.tournament.status = 'ongoing'; mocks.tournament.is_public = false;
+    mocks.tournament.is_public = false;
     await expect(render()).rejects.toThrow('NOT_FOUND');
+  });
+
+  it('opens an unlisted tournament by direct link without login and keeps the QR and published games', async () => {
+    mocks.tournament.is_public = false;
+    mocks.rounds = [round('draft', 4, 'draft'), round('current', 3, 'ongoing')];
+    const html = await render();
+    expect(html).toContain('Torneio da TV');
+    expect(html).toContain('published-game');
+    expect(html).toContain('acompanhe pelo celular');
+    expect(mocks.filters).toEqual([['ongoing', 'finished']]);
+    expect(mocks.rpc).toHaveBeenCalledWith('get_round_pairings', { p_round_id: 'current' });
   });
 
   it('does not present a query failure as an empty waiting room', async () => {

@@ -27,6 +27,7 @@ import { matchesPlayerSearch, normalizeSearchText } from '@/lib/utils/text';
 import { canEditPairings, canReturnRoundToDraft, countEnteredResults } from '@/lib/utils/rounds';
 import { requestedByeScoreForRound } from '@/lib/pairing/requested-bye';
 import { resolveRoundSelection, roundPreparationHref, type RoundSelection } from '@/lib/utils/round-navigation';
+import { draftNeedsRecalculation } from '@/lib/utils/draft-pairing-state';
 import type { Tournament, Round } from '@/types/database';
 
 /**
@@ -130,7 +131,7 @@ function GroupPanel({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: rounds, isLoading } = useGroupRounds(groupId);
-  const { data: tPlayers } = useTournamentPlayers(tournament.id);
+  const { data: tPlayers, isFetching: fetchingPlayers, isError: playersError } = useTournamentPlayers(tournament.id);
   const generate = useGenerateRound(tournament.slug, tournament.id, groupId);
   const transition = useRoundTransition(tournament.id, groupId);
   const preparationRef = useRef<HTMLDivElement>(null);
@@ -170,11 +171,11 @@ function GroupPanel({
     target.focus({ preventScroll: true });
     target.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   }, [selection, isLoading, nextRoundNumberPre, groupRoundsCount, lastRoundStatus]);
-  // Com a rodada mais recente ainda em rascunho (a 1ª nasce sozinha ao abrir esta aba), as
-  // ausências marcadas valem para ELA: dá para marcar e regerar o pareamento antes de publicar.
+  // Ausências alteram o rascunho atual; a rodada nunca é gerada automaticamente.
   const byeRound = lastRoundPre?.status === 'draft' ? lastRoundPre.round_number : nextRoundNumberPre;
   const byes = useRequestedByes(tournament.id, byeRound);
   const toggleBye = useToggleRequestedBye(tournament.id, byeRound);
+  const draftPairings = useRoundPairings(lastRoundPre?.status === 'draft' ? lastRoundPre.id : '');
 
   if (isLoading) return <PageSpinner />;
 
@@ -185,6 +186,20 @@ function GroupPanel({
   const finishedCount = (rounds ?? []).filter((r) => r.status === 'finished').length;
   const nextRoundNumber = (lastRound?.round_number ?? 0) + 1;
   const draftPending = lastRound?.status === 'draft';
+  const needsRecalculation = draftPending ? draftNeedsRecalculation({
+    pairings: draftPairings.data,
+    players: tPlayers ? groupPlayers : undefined,
+    requestedByeIds: byes.data,
+    roundNumber: lastRound.round_number,
+    requestedByeScore: tournament.requested_bye_score,
+    roundRobin: isRoundRobin,
+  }) : false;
+  const draftStatus: DraftStatus = playersError || draftPairings.isError || (!isRoundRobin && byes.isError)
+    ? 'error'
+    : needsRecalculation === null || fetchingPlayers || draftPairings.isFetching
+      || (!isRoundRobin && byes.isFetching) || toggleBye.isPending || generate.isPending
+      ? 'checking'
+      : needsRecalculation ? 'stale' : 'current';
   const eligibleForBye = groupPlayers.filter(
     (p: any) => p.status === 'active' && (p.joined_at_round ?? 1) <= byeRound
   );
@@ -266,6 +281,9 @@ function GroupPanel({
           round={selectedRound}
           onAction={(action) =>
             run(async () => {
+              if (action === 'publish' && draftStatus !== 'current') {
+                throw new Error('Confira e atualize o emparceiramento antes de publicar a rodada.');
+              }
               await transition.mutateAsync({ action, roundId: selectedRound.id });
               // Publicar e reabrir levam direto ao painel de resultados: são
               // os dois casos em que o próximo passo é mexer em resultado.
@@ -286,6 +304,7 @@ function GroupPanel({
             if (res?.roundId) setSelection(res.roundId);
           })}
           regenerating={generate.isPending}
+          draftStatus={draftStatus}
         />
       )}
 
@@ -299,14 +318,8 @@ function GroupPanel({
               byeScore={tournament.requested_bye_score}
               players={eligibleForBye}
               requestedIds={byes.data}
-              disabled={toggleBye.isPending || (!canGenerate && !draftPending)}
+              disabled={toggleBye.isPending || generate.isPending || transition.isPending || (!canGenerate && !draftPending)}
               onToggle={(tpId, requested) => run(() => toggleBye.mutateAsync({ tpId, requested }))}
-              // Rodada em rascunho já está pareada: a mudança só entra ao regerar.
-              onRegenerate={draftPending ? () => run(async () => {
-                const res: any = await generate.mutateAsync(lastRound!.round_number);
-                if (res?.roundId) setSelection(res.roundId);
-              }) : undefined}
-              regenerating={generate.isPending}
             />
           )}
 
@@ -371,7 +384,7 @@ function GroupPanel({
  * fato); a lista inteira, com busca por nome, fica a um clique.
  */
 function ByeSelector({
-  roundNumber, byeScore, players, requestedIds, disabled, onToggle, onRegenerate, regenerating,
+  roundNumber, byeScore, players, requestedIds, disabled, onToggle,
 }: {
   roundNumber: number;
   byeScore: number | null;
@@ -379,9 +392,6 @@ function ByeSelector({
   requestedIds: Set<string> | undefined;
   disabled: boolean;
   onToggle: (tpId: string, requested: boolean) => void;
-  /** Só quando a rodada já está pareada em rascunho: aplica as ausências refazendo o pareamento. */
-  onRegenerate?: () => void;
-  regenerating?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -415,15 +425,9 @@ function ByeSelector({
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Quem não vai jogar recebe bye ({roundByeScore === 0.5 ? '½ ponto' : '0 pontos'}) e fica fora do pareamento.
             {byeScore === 0.5 && ' O ½ ponto vale apenas na 1ª rodada.'}
-            {onRegenerate && ' O pareamento atual só muda ao regerar.'}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {onRegenerate && (
-            <Button size="sm" variant="secondary" loading={regenerating} onClick={onRegenerate}>
-              Regerar pareamento
-            </Button>
-          )}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -491,14 +495,17 @@ function ByeSelector({
  * expande/recolhe. Sem cabeçalho clicável: quem troca de rodada são os
  * chips, não isto aqui.
  */
+type DraftStatus = 'checking' | 'current' | 'stale' | 'error';
+
 function RoundPanel({
   tournament, groupId, groupName, round, onAction, canReopen, busy,
-  onRegenerate, regenerating,
+  onRegenerate, regenerating, draftStatus,
 }: {
   tournament: Tournament; groupId: string; groupName: string | null; round: Round;
   onAction: (a: 'publish' | 'finish' | 'reopen') => void;
   canReopen: boolean; busy: boolean;
   onRegenerate: () => void; regenerating: boolean;
+  draftStatus: DraftStatus;
 }) {
   const { data: pairings } = useRoundPairings(round.id);
   const returnToDraft = useReturnRoundToDraft(tournament.id, groupId);
@@ -534,14 +541,28 @@ function RoundPanel({
         </Badge>
       </div>
 
+      {round.status === 'draft' && draftStatus === 'stale' && (
+        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <p className="font-semibold">O emparceiramento precisa ser atualizado.</p>
+          <p className="mt-1">Os participantes ou as ausências mudaram. Atualize o emparceiramento antes de publicar esta rodada.</p>
+          <p className="mt-1 text-xs">As trocas manuais de jogadores serão substituídas pelo novo cálculo.</p>
+          <Button type="button" size="sm" variant="secondary" className="mt-3 min-h-11" loading={regenerating} onClick={onRegenerate}>
+            Atualizar emparceiramento
+          </Button>
+        </div>
+      )}
+      {round.status === 'draft' && draftStatus === 'checking' && (
+        <p role="status" className="text-sm text-gray-500 dark:text-gray-400">Conferindo o emparceiramento…</p>
+      )}
+      {round.status === 'draft' && draftStatus === 'error' && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">Não foi possível conferir o emparceiramento. Recarregue a página antes de publicar.</p>
+      )}
+
       <div className={round.status === 'draft' ? 'grid gap-2 sm:flex sm:flex-wrap' : 'flex gap-2 flex-wrap'}>
         {round.status === 'draft' && (
           <>
-            <Button size="sm" className="h-11 sm:h-8" loading={busy} onClick={() => onAction('publish')}>
+            <Button size="sm" className="h-11 sm:h-8" loading={busy} disabled={draftStatus !== 'current' || regenerating} onClick={() => onAction('publish')}>
               Publicar rodada
-            </Button>
-            <Button size="sm" className="h-11 sm:h-8" variant="secondary" loading={regenerating} onClick={onRegenerate}>
-              Regerar pareamento
             </Button>
           </>
         )}

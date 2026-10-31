@@ -162,8 +162,10 @@ async function getRoundSummary(
 }
 
 function tournamentSkipReason(tournament: TournamentInfo, checkHistoricalDate = true): string | null {
-  if (!tournament.is_public || tournament.status === 'draft') {
-    return 'torneio não é público (rascunho ou privado)';
+  // is_public controls discovery in public lists, not notifications for
+  // subscribers who opened an unlisted tournament by its direct link.
+  if (tournament.status === 'draft') {
+    return 'torneio em rascunho';
   }
   if (checkHistoricalDate && tournament.status !== 'ongoing') {
     const eventDate = tournament.end_date ?? tournament.start_date;

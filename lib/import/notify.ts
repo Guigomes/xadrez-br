@@ -7,7 +7,7 @@
 // via HTTP (CHESS_VIEWER_URL); aqui já ESTAMOS no chess-viewer, mas o
 // caminho continua sendo HTTP contra a própria rota interna
 // (/api/internal/notify-round) em vez de chamar a lógica de push direto —
-// evita duplicar as guardas dessa rota (torneio público, data não passada,
+// evita duplicar as guardas dessa rota (sem rascunhos, data não passada,
 // dedup por push_notification_events). Reaproveita NEXT_PUBLIC_APP_URL e
 // CRON_PUSH_SECRET, ambos já existentes no ambiente do chess-viewer (a
 // própria rota exige os dois pra aceitar a chamada do worker externo).
