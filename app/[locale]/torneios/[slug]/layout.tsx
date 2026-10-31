@@ -149,6 +149,21 @@ export default async function TournamentLayout({ children, params }: Props) {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <NotifyButton tournamentId={tournament.id} tournamentSlug={slug} />
+                {/* Painel da TV é público (cliente anônimo, só rodadas publicadas): qualquer visitante abre pelo link. */}
+                {effectiveStatus !== 'draft' && (
+                  <Link
+                    href={`/torneios/${slug}/painel`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-8 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+                  >
+                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span className="hidden sm:inline">Painel para TV</span>
+                    <span className="sr-only sm:hidden">Painel para TV</span>
+                  </Link>
+                )}
                 <ShareButton title={tournament.name} />
               </div>
             </div>
