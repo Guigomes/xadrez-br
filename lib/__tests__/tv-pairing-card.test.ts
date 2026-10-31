@@ -77,4 +77,13 @@ describe('TV score cards', () => {
     expect($('[data-tv-player="white"] [data-tv-trophy]')).toHaveLength(1);
     expect($('[data-tv-player="black"] [data-tv-trophy]')).toHaveLength(0);
   });
+
+  it('keeps current rating and tournament points visible below each full name', () => {
+    const $ = render({ white_rating: 1721, white_score: 2.5, black_rating: null, black_score: 0.5 });
+    expect($('[data-tv-player="white"] [data-player-score]').text()).toBe('Rating 1721 · 2½ pts');
+    expect($('[data-tv-player="black"] [data-player-score]').text()).toBe('Sem rating · ½ pts');
+    expect($('[data-tv-name] [data-player-score]')).toHaveLength(0);
+    expect($('img[src*="pawn-white-v1"]')).toHaveLength(1);
+    expect($('img[src*="pawn-black-v1"]')).toHaveLength(1);
+  });
 });

@@ -42,7 +42,9 @@ vi.mock('@/components/ui/badge', async () => import('../../components/ui/badge')
 vi.mock('@/lib/utils/cn', async () => import('../utils/cn'));
 vi.mock('@/lib/utils/chess', async () => import('../utils/chess'));
 vi.mock('@/lib/utils/round-results', async () => import('../utils/round-results'));
+vi.mock('@/lib/utils/round-navigation', async () => import('../utils/round-navigation'));
 vi.mock('@/components/tournament/piece-icons', async () => import('../../components/tournament/piece-icons'));
+vi.mock('@/components/tournament/player-score-summary', async () => import('../../components/tournament/player-score-summary'));
 import ResultsPage from '../../app/[locale]/admin/torneios/[slug]/rodadas/[roundId]/resultados/page';
 
 describe('result card hierarchy', () => {
@@ -68,7 +70,7 @@ describe('result card hierarchy', () => {
   it('makes the board identifiable and shows both full names on separate larger rows', () => {
     const $ = render();
     expect($('h2').text()).toBe('Mesa 7');
-    const players = $('.card .text-lg.font-semibold');
+    const players = $('.card [data-result-player]');
     expect(players).toHaveLength(2);
     expect(players.eq(0).text()).toContain('Brancas: Vitor Gabriel Felix Vilela');
     expect(players.eq(1).text()).toContain('Pretas: Royer Serafim Simon De Moura');
@@ -77,14 +79,16 @@ describe('result card hierarchy', () => {
     expect(players.parent().attr('class')).not.toContain('sm:grid-cols');
   });
 
-  it('keeps three one-tap result buttons with 44px targets and quieter typography', () => {
+  it('asks who won and keeps three one-tap choices with smaller scores below', () => {
     const $ = render();
     const buttons = $('[aria-label="Resultado da mesa 7"] button');
     expect(buttons).toHaveLength(3);
-    expect(buttons.map((_, element) => $(element).text()).get()).toEqual(['1 – 0', '½ – ½', '0 – 1']);
+    expect($('.card').text()).toContain('Quem venceu?');
+    expect(buttons.map((_, element) => $(element).children().first().text()).get()).toEqual(['Brancas', 'Empate', 'Pretas']);
+    expect(buttons.map((_, element) => $(element).children().last().text()).get()).toEqual(['1 – 0', '½ – ½', '0 – 1']);
     buttons.each((_, element) => {
-      expect($(element).hasClass('h-11')).toBe(true);
-      expect($(element).hasClass('text-base')).toBe(true);
+      expect($(element).hasClass('min-h-14')).toBe(true);
+      expect($(element).children().last().hasClass('text-xs')).toBe(true);
       expect($(element).hasClass('font-bold')).toBe(false);
     });
   });
@@ -114,7 +118,7 @@ describe('result card hierarchy', () => {
     mocks.pending = [{ pairingId: 'game', result: '0-1' }];
     const $ = render();
     expect($('.card [role="status"]').text()).toBe('Salvando…');
-    expect($('.card [aria-pressed="true"]').text()).toBe('0 – 1');
+    expect($('.card [aria-pressed="true"]').text()).toBe('Pretas0 – 1');
     expect($('.card button[disabled]')).toHaveLength(7);
   });
 
@@ -122,7 +126,7 @@ describe('result card hierarchy', () => {
     mocks.status = 'finished';
     mocks.pairings[0].result = '1/2-1/2';
     const $ = render();
-    expect($('.card .text-lg.font-semibold')).toHaveLength(2);
+    expect($('.card [data-result-player]')).toHaveLength(2);
     expect($('.card > p').text()).toBe('½ – ½');
     expect($('.card > p').hasClass('text-base')).toBe(true);
     expect($('.card button[aria-pressed]')).toHaveLength(0);
@@ -132,5 +136,21 @@ describe('result card hierarchy', () => {
     const $ = render();
     expect($('[aria-label="Filtrar mesas"]').text()).toContain('Todas (1)');
     expect($('[aria-label="Filtrar mesas"]').text()).toContain('Em andamento (1)');
+  });
+
+  it('shows current rating/points per player, not the points awarded by this game', () => {
+    Object.assign(mocks.pairings[0], { result: '1-0', white_rating: 2074, white_score: 2.5, black_rating: 1980, black_score: 0 });
+    const $ = render();
+    expect($('[data-result-player="white"] [data-player-score]').text()).toBe('Rating 2074 · 2½ pts');
+    expect($('[data-result-player="black"] [data-player-score]').text()).toBe('Rating 1980 · 0 pts');
+    expect($('[data-result-player="white"] [aria-label="Vencedor"]').hasClass('text-2xl')).toBe(true);
+    expect($('[data-result-player="white"] .font-bold')).toHaveLength(1);
+    expect($('[data-result-player="black"] [aria-label="Vencedor"]')).toHaveLength(0);
+  });
+
+  it('uses the new optimized pawn images in player rows and winner buttons', () => {
+    const $ = render();
+    expect($('.card img[src*="pawn-white-v1"]')).toHaveLength(2);
+    expect($('.card img[src*="pawn-black-v1"]')).toHaveLength(2);
   });
 });

@@ -16,13 +16,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { winnerSide } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
+import { PlayerScoreSummary } from '@/components/tournament/player-score-summary';
+import { afterRoundFinishHref } from '@/lib/utils/round-navigation';
 import { ongoingResultPairingIds, previewRoundResults, resultMutationKey, type EnteredResult, type ResultSubmission } from '@/lib/utils/round-results';
 import type { Round, RoundPairingRow } from '@/types/database';
 
-const MAIN: { value: EnteredResult; label: string }[] = [
-  { value: '1-0', label: '1 – 0' },
-  { value: '1/2-1/2', label: '½ – ½' },
-  { value: '0-1', label: '0 – 1' },
+const MAIN: { value: EnteredResult; label: string; score: string; side?: 'white' | 'black' }[] = [
+  { value: '1-0', label: 'Brancas', score: '1 – 0', side: 'white' },
+  { value: '1/2-1/2', label: 'Empate', score: '½ – ½' },
+  { value: '0-1', label: 'Pretas', score: '0 – 1', side: 'black' },
 ];
 const WO: { value: EnteredResult; label: string }[] = [
   { value: 'forfeit_black', label: 'WO pretas' },
@@ -252,16 +254,26 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                 </p>
               )}
               <div className="mb-4 grid gap-3">
-                <span className="flex min-w-0 items-start gap-2.5 text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100">
-                  <span aria-hidden="true" className="mt-0.5 shrink-0"><WhitePawn className="h-5 w-4" /></span>
-                  <span className="min-w-0 break-words"><span className="sr-only">Brancas: </span>{p.white_name}</span>
-                  {winnerSide(p.result, 'white') === 'winner' && <span className="shrink-0 text-xs">🏆</span>}
-                </span>
-                <span className="flex min-w-0 items-start gap-2.5 text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100">
-                  <span aria-hidden="true" className="mt-0.5 shrink-0"><BlackPawn className="h-5 w-4" /></span>
-                  <span className="min-w-0 break-words"><span className="sr-only">Pretas: </span>{p.black_name}</span>
-                  {winnerSide(p.result, 'black') === 'winner' && <span className="shrink-0 text-xs">🏆</span>}
-                </span>
+                <div data-result-player="white" className="flex min-w-0 items-start gap-2.5">
+                  <WhitePawn className="h-10 w-8 shrink-0" />
+                  <div className="min-w-0">
+                    <p className={`break-words text-lg leading-6 ${winnerSide(p.result, 'white') === 'winner' ? 'font-bold text-brand-700 dark:text-brand-300' : 'font-semibold text-gray-900 dark:text-gray-100'}`}>
+                      <span className="sr-only">Brancas: </span>{p.white_name}
+                      {winnerSide(p.result, 'white') === 'winner' && <span aria-label="Vencedor" className="ml-2 inline-block align-middle text-2xl leading-none">🏆</span>}
+                    </p>
+                    <PlayerScoreSummary rating={p.white_rating} score={p.white_score} className="text-sm text-gray-500 dark:text-gray-400" />
+                  </div>
+                </div>
+                <div data-result-player="black" className="flex min-w-0 items-start gap-2.5">
+                  <BlackPawn className="h-10 w-8 shrink-0" />
+                  <div className="min-w-0">
+                    <p className={`break-words text-lg leading-6 ${winnerSide(p.result, 'black') === 'winner' ? 'font-bold text-brand-700 dark:text-brand-300' : 'font-semibold text-gray-900 dark:text-gray-100'}`}>
+                      <span className="sr-only">Pretas: </span>{p.black_name}
+                      {winnerSide(p.result, 'black') === 'winner' && <span aria-label="Vencedor" className="ml-2 inline-block align-middle text-2xl leading-none">🏆</span>}
+                    </p>
+                    <PlayerScoreSummary rating={p.black_rating} score={p.black_score} className="text-sm text-gray-500 dark:text-gray-400" />
+                  </div>
+                </div>
               </div>
 
               {/* Botões continuam visíveis e clicáveis mesmo com resultado
@@ -271,6 +283,7 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                   parte pra reabrir os botões). */}
               {canEnter ? (
                 <>
+                  <p className="mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">Quem venceu?</p>
                   <div role="group" aria-label={`Resultado da mesa ${boardNumber}`} className="grid grid-cols-3 gap-2">
                     {MAIN.map((r) => {
                       const active = p.result === r.value;
@@ -281,13 +294,18 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                           disabled={saving || transition.isPending}
                           aria-pressed={active}
                           onClick={() => submit(p, r.value)}
-                          className={`h-11 rounded-lg border text-base font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-wait disabled:opacity-60 ${
+                          className={`min-h-14 rounded-lg border px-1 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-wait disabled:opacity-60 ${
                             active
                               ? 'border-green-600 bg-green-600 text-white'
                               : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-800'
                           }`}
                         >
-                          {r.label}
+                          <span className="flex items-center justify-center gap-1">
+                            {r.side === 'white' && <WhitePawn className="h-5 w-4 shrink-0" />}
+                            {r.side === 'black' && <BlackPawn className="h-5 w-4 shrink-0" />}
+                            <span>{r.label}</span>
+                          </span>
+                          <span className="mt-0.5 block text-xs font-normal tabular-nums opacity-75">{r.score}</span>
                         </button>
                       );
                     })}
@@ -336,7 +354,7 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
       <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 p-3">
         <div className="max-w-lg mx-auto flex gap-2">
           <Link
-            href={`/admin/torneios/${slug}/rodadas?round=${roundId}`}
+            href={`/admin/torneios/${slug}/rodadas?${new URLSearchParams({ group: groupId, round: roundId })}`}
             className="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 px-4 h-11 text-sm font-medium text-gray-600 dark:text-gray-400"
           >
             ← Rodadas
@@ -361,11 +379,7 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                   const supabase = createClient();
                   const { data: t } = await supabase
                     .from('tournaments').select('status').eq('slug', slug).maybeSingle();
-                  router.push(
-                    t?.status === 'finished'
-                      ? `/admin/torneios/${slug}/classificacao`
-                      : `/admin/torneios/${slug}/rodadas?round=${roundId}`
-                  );
+                  router.push(afterRoundFinishHref(slug, groupId, round.round_number + 1, t?.status));
                 } catch (e: any) { setError(e.message); }
               }}
             >

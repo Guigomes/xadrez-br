@@ -8,6 +8,7 @@ import { FederationBadge } from '@/components/player/origin-badge';
 import { Badge } from '@/components/ui/badge';
 import { formatScore, winnerSide, resultLabel, resultBadgeColor } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
+import { PlayerScoreSummary } from '@/components/tournament/player-score-summary';
 import { GameViewerButton, RESULT_TEXT } from '@/components/player-history/game-viewer';
 import type { RoundPairingRow } from '@/types/database';
 
@@ -142,8 +143,8 @@ function PlayerLink({
         {/* Peão da cor com a bandeira centralizada logo abaixo */}
         <div className="flex shrink-0 flex-col items-center gap-0.5">
           {color === 'white'
-            ? <WhitePawn className="h-4 w-3 shrink-0" />
-            : <BlackPawn className="h-4 w-3 shrink-0" />
+            ? <WhitePawn className="h-7 w-6 shrink-0" />
+            : <BlackPawn className="h-7 w-6 shrink-0" />
           }
           {federation && <FederationBadge federation={federation} className="px-1 py-0 text-[10px]" />}
         </div>
@@ -151,13 +152,10 @@ function PlayerLink({
           {title && <span className="text-gray-400 dark:text-gray-500 font-normal">{localizedTitle(title, locale)} </span>}
           {name}
         </span>
-        {isWinner && <span className="text-xs">🏆</span>}
+        {isWinner && <span className="shrink-0 text-lg">🏆</span>}
         {followed && alignRight && <span className="text-brand-500 text-xs">★</span>}
       </div>
-      <p className={`text-xs mt-0.5 flex flex-wrap items-center justify-center gap-x-1.5 ${isLoser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400'}`}>
-        {rating ? `Rating ${rating}` : 'Sem rating'}
-        {score !== null && ` · ${formatScore(score)} pts`}
-      </p>
+      <PlayerScoreSummary rating={rating} score={score} className={`text-center text-xs ${isLoser ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400'}`} />
     </>
   );
 

@@ -5,6 +5,7 @@ import { localizedTitle } from '@/lib/utils/player-title';
 import { playerDisplayName } from '@/lib/utils/player-name';
 import { formatScore, winnerSide } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from './piece-icons';
+import { PlayerScoreSummary } from './player-score-summary';
 import type { RoundPairingRow } from '@/types/database';
 import { animateTvVictory, newTvWinner, type TvResultSnapshot } from '@/lib/tournament/tv-victory';
 
@@ -32,7 +33,7 @@ export function TvPairingCard({ pairing, locale }: { pairing: RoundPairingRow; l
         <p className="text-4xl font-black leading-none text-brand-700 sm:text-5xl">{pairing.board_number ?? '—'}</p>
       </div>
       <div className={`relative grid min-w-0 items-center gap-3 ${bye ? '' : 'sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'}`}>
-        <PlayerName side="white" title={localizedTitle(pairing.white_title ?? null, locale)} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} winner={!bye && winnerSide(pairing.result, 'white') === 'winner'} />
+        <PlayerName side="white" title={localizedTitle(pairing.white_title ?? null, locale)} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} rating={pairing.white_rating} score={pairing.white_score} winner={!bye && winnerSide(pairing.result, 'white') === 'winner'} />
         {bye ? (
           <p className="text-base font-semibold text-gray-500">
             {pairing.result === 'not_paired' ? 'Não emparceirado' : 'Bye'}
@@ -46,7 +47,7 @@ export function TvPairingCard({ pairing, locale }: { pairing: RoundPairingRow; l
               </p>
               <p className="text-xs font-semibold text-gray-500">{pending ? 'Em andamento' : wo ? 'W.O.' : 'Finalizada'}</p>
             </div>
-            <PlayerName side="black" title={localizedTitle(pairing.black_title ?? null, locale)} name={playerDisplayName(pairing.black_name, pairing.black_fide_name, locale)} winner={winnerSide(pairing.result, 'black') === 'winner'} />
+            <PlayerName side="black" title={localizedTitle(pairing.black_title ?? null, locale)} name={playerDisplayName(pairing.black_name, pairing.black_fide_name, locale)} rating={pairing.black_rating} score={pairing.black_score} winner={winnerSide(pairing.result, 'black') === 'winner'} />
           </>
         )}
       </div>
@@ -54,18 +55,21 @@ export function TvPairingCard({ pairing, locale }: { pairing: RoundPairingRow; l
   );
 }
 
-function PlayerName({ side, title, name, winner }: {
-  side: 'white' | 'black'; title: string | null; name: string; winner: boolean;
+function PlayerName({ side, title, name, rating, score, winner }: {
+  side: 'white' | 'black'; title: string | null; name: string; rating: number | null; score: number | null; winner: boolean;
 }) {
   const Pawn = side === 'white' ? WhitePawn : BlackPawn;
   return (
     <div data-tv-player={side} className={`flex min-w-0 items-start gap-2 ${winner ? 'text-brand-800' : ''}`}>
-      <span className="shrink-0" aria-label={side === 'white' ? 'Brancas' : 'Pretas'}><Pawn className="mt-1 h-6 w-5 sm:h-8 sm:w-6" /></span>
-      <p data-tv-name className="min-w-0 break-words text-xl font-bold sm:text-3xl">
-        {title && <span className="mr-2 text-base font-semibold text-amber-600 sm:text-xl">{title}</span>}
-        {name || 'Jogador não informado'}
-        {winner && <span data-tv-trophy aria-label="Vencedor" className="ml-2 inline-block origin-bottom text-[1.2em] leading-none text-amber-600">🏆</span>}
-      </p>
+      <span className="shrink-0" aria-label={side === 'white' ? 'Brancas' : 'Pretas'}><Pawn className="h-10 w-8 sm:h-12 sm:w-10" /></span>
+      <div className="min-w-0">
+        <p data-tv-name className="break-words text-xl font-bold sm:text-3xl">
+          {title && <span className="mr-2 text-base font-semibold text-amber-600 sm:text-xl">{title}</span>}
+          {name || 'Jogador não informado'}
+          {winner && <span data-tv-trophy aria-label="Vencedor" className="ml-2 inline-block origin-bottom text-[1.2em] leading-none text-amber-600">🏆</span>}
+        </p>
+        <PlayerScoreSummary rating={rating} score={score} className="text-sm font-medium text-gray-500 sm:text-base" />
+      </div>
     </div>
   );
 }

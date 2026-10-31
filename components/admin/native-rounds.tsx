@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, Link } from '@/i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -19,12 +19,14 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageSpinner } from '@/components/ui/spinner';
 import { ROUND_STATUS_COLORS, ROUND_STATUS_LABELS, winnerSide } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
+import { PlayerScoreSummary } from '@/components/tournament/player-score-summary';
 import { WhatsAppButton } from '@/components/ui/whatsapp-button';
 import { SearchField } from '@/components/ui/search-field';
 import { buildRoundMessage } from '@/lib/utils/whatsapp';
 import { matchesPlayerSearch, normalizeSearchText } from '@/lib/utils/text';
 import { canEditPairings, canReturnRoundToDraft, countEnteredResults } from '@/lib/utils/rounds';
 import { requestedByeScoreForRound } from '@/lib/pairing/requested-bye';
+import { resolveRoundSelection, roundPreparationHref, type RoundSelection } from '@/lib/utils/round-navigation';
 import type { Tournament, Round } from '@/types/database';
 
 /**
@@ -44,6 +46,7 @@ const RESULT_LABELS: Record<string, string> = {
 };
 
 export function NativeRounds({ tournament }: { tournament: Tournament }) {
+  const searchParams = useSearchParams();
   const { data: groups, isLoading } = useGroups(tournament.id);
   const createGroup = useCreateDefaultGroup(tournament.id);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -66,7 +69,7 @@ export function NativeRounds({ tournament }: { tournament: Tournament }) {
     );
   }
 
-  const groupId = selectedGroupId ?? groups[0].id;
+  const groupId = selectedGroupId ?? groups.find((item) => item.id === searchParams.get('group'))?.id ?? groups[0].id;
   const group = groups.find((g) => g.id === groupId)!;
 
   return (
@@ -130,22 +133,25 @@ function GroupPanel({
   const { data: tPlayers } = useTournamentPlayers(tournament.id);
   const generate = useGenerateRound(tournament.slug, tournament.id, groupId);
   const transition = useRoundTransition(tournament.id, groupId);
-  // Rodada selecionada nos chips — sempre uma por vez, navegação tipo aba,
-  // não acordeão. null = ainda não escolheu; o useEffect abaixo seleciona a
-  // rodada corrente assim que os dados chegam. ?round=<id> vem de quem volta
-  // do painel de resultados — sem isso a seleção voltava pra rodada errada e
-  // exigia um clique a mais.
-  const [openRoundId, setOpenRoundId] = useState<string | null>(
-    () => searchParams.get('round') || null
+  const preparationRef = useRef<HTMLDivElement>(null);
+  const matchesRouteGroup = !searchParams.get('group') || searchParams.get('group') === groupId;
+  const requestedRound = matchesRouteGroup ? searchParams.get('round') : null;
+  const requestedPreparation = matchesRouteGroup ? searchParams.get('prepare') : null;
+  const [selection, setSelection] = useState<RoundSelection>(
+    () => rounds ? resolveRoundSelection(rounds, groupRoundsCount, requestedRound, requestedPreparation) : requestedRound
   );
 
-  // A rodada que importa é sempre a última não encerrada — sem isso a
-  // pessoa abria a aba e via a rodada 1 em vez do pareamento recém-gerado.
+  // After finishing, preparation is a distinct view: don't auto-open the old
+  // round while its query is still refetching. A newly generated round can open.
   useEffect(() => {
-    if (openRoundId !== null || !rounds?.length) return;
-    const atual = [...rounds].reverse().find((r) => r.status !== 'finished') ?? rounds[rounds.length - 1];
-    setOpenRoundId(atual.id);
-  }, [rounds, openRoundId]);
+    if (!rounds) return;
+    if (selection === null) {
+      setSelection(resolveRoundSelection(rounds, groupRoundsCount, requestedRound, requestedPreparation));
+    } else if (typeof selection === 'number') {
+      const generated = rounds.find((round) => round.round_number === selection);
+      if (generated) setSelection(generated.id);
+    }
+  }, [rounds, selection, groupRoundsCount, requestedRound, requestedPreparation]);
 
   // A rodada 1 NÃO é gerada sozinha (nem ao iniciar o torneio, nem ao abrir esta aba): o
   // organizador marca as ausências (bye pedido) primeiro e gera pelo botão "Gerar rodada 1".
@@ -154,7 +160,16 @@ function GroupPanel({
   // Hooks precisam rodar antes de qualquer early return (regra dos hooks) —
   // nextRoundNumber é calculado com dados possivelmente ainda undefined.
   const lastRoundPre = rounds?.[rounds.length - 1];
+  const lastRoundStatus = lastRoundPre?.status;
   const nextRoundNumberPre = (lastRoundPre?.round_number ?? 0) + 1;
+  useEffect(() => {
+    if (isLoading || typeof selection !== 'number' || selection !== nextRoundNumberPre
+      || selection > groupRoundsCount || (lastRoundStatus && lastRoundStatus !== 'finished')) return;
+    const target = preparationRef.current;
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }, [selection, isLoading, nextRoundNumberPre, groupRoundsCount, lastRoundStatus]);
   // Com a rodada mais recente ainda em rascunho (a 1ª nasce sozinha ao abrir esta aba), as
   // ausências marcadas valem para ELA: dá para marcar e regerar o pareamento antes de publicar.
   const byeRound = lastRoundPre?.status === 'draft' ? lastRoundPre.round_number : nextRoundNumberPre;
@@ -166,7 +181,7 @@ function GroupPanel({
   const isRoundRobin = tournament.tournament_type === 'round_robin';
   const groupPlayers = (tPlayers ?? []).filter((p: any) => p.pairing_group_id === groupId);
   const lastRound = rounds?.[rounds.length - 1];
-  const selectedRound = rounds?.find((r) => r.id === openRoundId);
+  const selectedRound = rounds?.find((r) => r.id === selection);
   const finishedCount = (rounds ?? []).filter((r) => r.status === 'finished').length;
   const nextRoundNumber = (lastRound?.round_number ?? 0) + 1;
   const draftPending = lastRound?.status === 'draft';
@@ -215,19 +230,27 @@ function GroupPanel({
             <button
               key={round.id}
               type="button"
-              onClick={() => setOpenRoundId(round.id)}
+              onClick={() => setSelection(round.id)}
+              aria-pressed={selection === round.id}
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-                openRoundId === round.id
+                selection === round.id
                   ? 'bg-brand-600 text-white'
                   : `${ROUND_STATUS_COLORS[round.status]} hover:opacity-80`
               }`}
             >
               Rodada {round.round_number}
               {round.status === 'ongoing' && (
-                <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${openRoundId === round.id ? 'bg-white' : 'bg-amber-500'}`} />
+                <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${selection === round.id ? 'bg-white' : 'bg-amber-500'}`} />
               )}
             </button>
           ))}
+          {canGenerate && (
+            <button type="button" aria-pressed={selection === nextRoundNumber}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium ${selection === nextRoundNumber ? 'bg-brand-600 text-white' : 'border border-brand-300 text-brand-700 dark:text-brand-300'}`}
+              onClick={() => setSelection(nextRoundNumber)}>
+              Preparar rodada {nextRoundNumber}
+            </button>
+          )}
         </div>
       )}
 
@@ -250,6 +273,9 @@ function GroupPanel({
               // lugar de corrigir é o painel, não a lista.
               if (action === 'publish' || action === 'reopen') {
                 router.push(`/admin/torneios/${tournament.slug}/rodadas/${selectedRound.id}/resultados`);
+              } else if (action === 'finish' && selectedRound.round_number < groupRoundsCount) {
+                setSelection(selectedRound.round_number + 1);
+                router.replace(roundPreparationHref(tournament.slug, groupId, selectedRound.round_number + 1), { scroll: false });
               }
             })
           }
@@ -257,14 +283,16 @@ function GroupPanel({
           busy={transition.isPending}
           onRegenerate={() => run(async () => {
             const res: any = await generate.mutateAsync(selectedRound.round_number);
-            if (res?.roundId) setOpenRoundId(res.roundId);
+            if (res?.roundId) setSelection(res.roundId);
           })}
           regenerating={generate.isPending}
         />
       )}
 
       {finishedCount < groupRoundsCount && (
-        <div className="card p-4 space-y-3">
+        <div ref={preparationRef} tabIndex={-1} aria-label={`Preparar rodada ${nextRoundNumber}`} className="card scroll-mt-28 p-4 space-y-3 focus:outline-none">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Preparar rodada {nextRoundNumber}</h2>
+          {canGenerate && <p className="text-sm text-gray-500 dark:text-gray-400">Confira as ausências antes de gerar o próximo emparceiramento.</p>}
           {!isRoundRobin && (
             <ByeSelector
               roundNumber={byeRound}
@@ -276,7 +304,7 @@ function GroupPanel({
               // Rodada em rascunho já está pareada: a mudança só entra ao regerar.
               onRegenerate={draftPending ? () => run(async () => {
                 const res: any = await generate.mutateAsync(lastRound!.round_number);
-                if (res?.roundId) setOpenRoundId(res.roundId);
+                if (res?.roundId) setSelection(res.roundId);
               }) : undefined}
               regenerating={generate.isPending}
             />
@@ -292,11 +320,11 @@ function GroupPanel({
             loading={generate.isPending}
             disabled={!canGenerate}
             // Abre o card da rodada recém-criada: o efeito de auto-abrir acima
-            // só cobre a primeira carga (guarda openRoundId === null), então a
+            // só cobre a primeira carga, então a
             // rodada nova nascia fechada e o pareamento ficava escondido.
             onClick={() => run(async () => {
               const res: any = await generate.mutateAsync(undefined);
-              if (res?.roundId) setOpenRoundId(res.roundId);
+              if (res?.roundId) setSelection(res.roundId);
             })}
           >
             ♟ Gerar rodada {nextRoundNumber} de {groupRoundsCount}
@@ -788,16 +816,26 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
             </span>
 
             <div className="min-w-0 flex-1 grid gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-2">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <WhitePawn className="h-4 w-3 shrink-0" />
-                <Seat p={p} side="w" name={p.white_name} />
-                {whiteWon && <span className="text-xs">🏆</span>}
+              <div className="flex min-w-0 items-start gap-1.5">
+                <WhitePawn className="h-8 w-6 shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-start gap-1.5">
+                    <Seat p={p} side="w" name={p.white_name} />
+                    {whiteWon && <span aria-label="Vencedor" className="shrink-0 text-lg">🏆</span>}
+                  </div>
+                  <PlayerScoreSummary rating={p.white_rating} score={p.white_score} />
+                </div>
               </div>
               <span className="hidden text-gray-400 sm:inline">×</span>
-              <div className="flex min-w-0 items-center gap-1.5">
-                <BlackPawn className="h-4 w-3 shrink-0" />
-                <Seat p={p} side="b" name={p.black_name} />
-                {blackWon && <span className="text-xs">🏆</span>}
+              <div className="flex min-w-0 items-start gap-1.5">
+                <BlackPawn className="h-8 w-6 shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-start gap-1.5">
+                    <Seat p={p} side="b" name={p.black_name} />
+                    {blackWon && <span aria-label="Vencedor" className="shrink-0 text-lg">🏆</span>}
+                  </div>
+                  {!p.is_bye && <PlayerScoreSummary rating={p.black_rating} score={p.black_score} />}
+                </div>
               </div>
             </div>
 
