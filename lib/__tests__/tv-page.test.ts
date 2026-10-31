@@ -1,5 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { load } from 'cheerio';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -86,6 +87,23 @@ describe('public TV page', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('get_round_pairings', { p_round_id: 'last' });
     expect(mocks.display.mock.calls.at(-1)?.[0].roundState.status).toBe('finished');
     expect(mocks.display.mock.calls.at(-1)?.[0].tournamentEnded).toBe(false);
+  });
+
+  it('keeps nine boards in one ordered list with shared column headings, not a two-card grid', async () => {
+    mocks.rounds = [round('current', 1, 'ongoing')];
+    mocks.rpc.mockImplementation(async (name: string) => ({
+      data: name === 'get_tournament_standings' ? [] : Array.from({ length: 9 }, (_, index) => ({ pairing_id: `board-${index + 1}` })),
+      error: null,
+    }));
+    const $ = load(await render());
+    const list = $('[data-tv-pairing-list]');
+    expect(list).toHaveLength(1);
+    expect(list.find('[role="list"] > article')).toHaveLength(9);
+    expect(list.find('article').map((_, row) => $(row).text()).get()).toEqual(
+      Array.from({ length: 9 }, (_, index) => `board-${index + 1}`),
+    );
+    expect(list.find('[aria-hidden="true"]').text()).toContain('MesaBrancasResultadoPretas');
+    expect(list.hasClass('2xl:grid-cols-2')).toBe(false);
   });
 
   it('labels the final round as a finished tournament, not waiting for another round', async () => {

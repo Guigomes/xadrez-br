@@ -26,23 +26,23 @@ export function TvPairingCard({ pairing, locale }: { pairing: RoundPairingRow; l
   const wo = ['forfeit_white', 'forfeit_black', 'double_forfeit'].includes(pairing.result);
   const points = (value: number | null) => value === 0.5 ? '½' : value === null ? '?' : formatScore(value);
   return (
-    <article ref={card} className="relative isolate grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-white p-3 text-gray-900 shadow-md sm:grid-cols-[6rem_minmax(0,1fr)] sm:gap-4 sm:p-4">
-      <div aria-hidden="true" data-tv-victory-glow className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-100 via-amber-50 to-transparent opacity-0 ring-2 ring-inset ring-amber-300" />
-      <div className="relative rounded-xl bg-brand-50 py-1 text-center">
-        <span className="text-xs font-bold uppercase tracking-wide text-brand-600">Mesa</span>
-        <p className="text-4xl font-black leading-none text-brand-700 sm:text-5xl">{pairing.board_number ?? '—'}</p>
+    <article ref={card} role="listitem" data-tv-pairing-row className="relative isolate grid min-h-14 grid-cols-[3rem_minmax(0,1fr)] items-center gap-3 bg-white px-3 py-1 text-gray-900 odd:bg-brand-50/60 sm:px-4">
+      <div aria-hidden="true" data-tv-victory-glow className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-100 via-amber-50 to-transparent opacity-0 ring-2 ring-inset ring-amber-300" />
+      <div className="relative text-center">
+        <span className="sr-only">Mesa</span>
+        <p className="text-2xl font-black leading-none tabular-nums text-brand-700">{pairing.board_number ?? '—'}</p>
       </div>
-      <div className={`relative grid min-w-0 items-center gap-3 ${bye ? '' : 'sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'}`}>
+      <div className={`relative grid min-w-0 items-center gap-x-3 gap-y-1 ${bye ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-[minmax(0,1fr)_5rem] sm:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)]'}`}>
         <PlayerName side="white" title={localizedTitle(pairing.white_title ?? null, locale)} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} rating={pairing.white_rating} score={pairing.white_score} winner={!bye && winnerSide(pairing.result, 'white') === 'winner'} />
         {bye ? (
-          <p className="text-base font-semibold text-gray-500">
+          <p className="max-w-40 text-right text-sm font-semibold text-gray-500 sm:text-base">
             {pairing.result === 'not_paired' ? 'Não emparceirado' : 'Bye'}
             {pairing.white_points !== null && ` · ${points(pairing.white_points)} ${pairing.white_points === 1 || pairing.white_points === 0.5 ? 'ponto' : 'pontos'}`}
           </p>
         ) : (
           <>
-            <div className="text-center" aria-label="Resultado">
-              <p className={`whitespace-nowrap text-2xl font-black ${pending ? 'text-brand-300' : 'text-brand-800'}`}>
+            <div className="col-start-2 row-span-2 row-start-1 text-center sm:row-span-1" aria-label="Resultado">
+              <p className={`whitespace-nowrap text-xl font-black tabular-nums ${pending ? 'text-brand-400' : 'text-brand-800'}`}>
                 {pending ? '×' : `${points(pairing.white_points)} – ${points(pairing.black_points)}`}
               </p>
               <p className="text-xs font-semibold text-gray-500">{pending ? 'Em andamento' : wo ? 'W.O.' : 'Finalizada'}</p>
@@ -60,15 +60,15 @@ function PlayerName({ side, title, name, rating, score, winner }: {
 }) {
   const Pawn = side === 'white' ? WhitePawn : BlackPawn;
   return (
-    <div data-tv-player={side} className={`flex min-w-0 items-start gap-2 ${winner ? 'text-brand-800' : ''}`}>
-      <span className="shrink-0" aria-label={side === 'white' ? 'Brancas' : 'Pretas'}><Pawn className="h-10 w-8 sm:h-12 sm:w-10" /></span>
+    <div data-tv-player={side} className={`flex min-w-0 items-center gap-2 ${side === 'black' ? 'col-start-1 row-start-2 sm:col-start-3 sm:row-start-1' : ''} ${winner ? 'text-brand-800' : ''}`}>
+      <span className="shrink-0" aria-label={side === 'white' ? 'Brancas' : 'Pretas'}><Pawn className="h-8 w-6" /></span>
       <div className="min-w-0">
-        <p data-tv-name className="break-words text-xl font-bold sm:text-3xl">
-          {title && <span className="mr-2 text-base font-semibold text-amber-600 sm:text-xl">{title}</span>}
+        <p data-tv-name className={`break-words text-lg leading-tight sm:text-xl xl:text-[1.375rem] ${winner ? 'font-bold' : 'font-medium'}`}>
+          {title && <span className="mr-1 text-sm font-semibold text-amber-600 sm:text-base">{title}</span>}
           {name || 'Jogador não informado'}
           {winner && <span data-tv-trophy aria-label="Vencedor" className="ml-2 inline-block origin-bottom text-[1.2em] leading-none text-amber-600">🏆</span>}
         </p>
-        <PlayerScoreSummary rating={rating} score={score} className="text-sm font-medium text-gray-500 sm:text-base" />
+        <PlayerScoreSummary rating={rating} score={score} className="text-xs leading-4 font-medium text-gray-500 sm:text-sm sm:leading-4" />
       </div>
     </div>
   );

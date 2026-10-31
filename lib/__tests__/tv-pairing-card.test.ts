@@ -40,6 +40,24 @@ describe('TV score cards', () => {
     expect($('[aria-label="Vencedor"]')).toHaveLength(0);
   });
 
+  it('uses a compact list row with smaller pawns instead of a large raised card', () => {
+    const $ = render();
+    const row = $('[data-tv-pairing-row]');
+    expect(row.attr('role')).toBe('listitem');
+    expect(row.hasClass('min-h-14')).toBe(true);
+    expect(row.hasClass('shadow-md')).toBe(false);
+    expect(row.hasClass('sm:p-4')).toBe(false);
+    expect($('[aria-label="Brancas"] img').hasClass('h-8')).toBe(true);
+    expect($('[data-tv-player="black"]').hasClass('sm:col-start-3')).toBe(true);
+    expect($('[aria-label="Resultado"]').hasClass('col-start-2')).toBe(true);
+  });
+
+  it('emphasizes the winning name without making every name equally bold', () => {
+    const $ = render({ result: '0-1', white_points: 0, black_points: 1 });
+    expect($('[data-tv-player="black"] [data-tv-name]').hasClass('font-bold')).toBe(true);
+    expect($('[data-tv-player="white"] [data-tv-name]').hasClass('font-bold')).toBe(false);
+  });
+
   it.each([
     ['1-0', 1, 0, '1 – 0', 1], ['0-1', 0, 1, '0 – 1', 1],
     ['1/2-1/2', 0.5, 0.5, '½ – ½', 0],

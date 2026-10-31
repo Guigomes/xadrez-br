@@ -76,25 +76,25 @@ export default async function TournamentTvPage({ params, searchParams }: {
       podium={tournament.status === 'finished'
       ? <TvPodium options={podiumOptions} tournamentId={tournament.id} tournamentName={tournament.name} slug={slug} locale={locale} />
       : undefined} header={
-      <header className="flex flex-wrap items-start justify-between gap-3 sm:gap-5">
-        <div className="min-w-0">
-          <p className="flex items-center gap-3 text-sm font-bold uppercase tracking-[0.2em] text-brand-200">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-xl leading-none text-brand-700 shadow">♞</span>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-brand-200">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-white text-lg leading-none text-brand-700 shadow">♞</span>
             Gambito Torneios · Painel para TV
           </p>
-          <div className="mt-2 flex min-w-0 items-center gap-4">
-            <TournamentLogo tournamentId={tournament.id} variant="tv" />
+          <div className="mt-1 flex min-w-0 items-center gap-3">
+            <TournamentLogo tournamentId={tournament.id} />
             <div className="min-w-0">
-              <h1 className="break-words text-2xl font-black leading-tight sm:text-4xl">{tournament.name}</h1>
-              <p className="mt-1 text-base text-brand-200">{tournament.city}, {tournament.state}</p>
+              <h1 className="break-words text-xl font-black leading-tight sm:text-2xl">{tournament.name}</h1>
+              <p className="text-sm text-brand-200">{tournament.city}, {tournament.state}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-3">
-          <div className="flex items-center gap-4 rounded-2xl bg-white p-3 text-brand-900 shadow-lg">
-            <div className="h-16 w-16 shrink-0 sm:h-24 sm:w-24 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
-            <p className="max-w-[9rem] text-sm font-bold leading-snug sm:text-base">
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-2 rounded-xl bg-white p-2 text-brand-900 shadow">
+            <div className="h-16 w-16 shrink-0 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+            <p className="max-w-[8rem] text-xs font-bold leading-snug">
               Aponte a câmera e acompanhe pelo celular
             </p>
           </div>
@@ -112,18 +112,22 @@ export default async function TournamentTvPage({ params, searchParams }: {
         </div>
       ) : (
         <>
-          <div className="mb-5 flex flex-wrap items-center gap-3">
-            <h2 className="rounded-full bg-white px-6 py-2 text-3xl font-black text-brand-800 shadow sm:text-4xl">
+          <div className="mb-2 flex flex-wrap items-center gap-3">
+            <h2 className="rounded-full bg-white px-4 py-1 text-xl font-black text-brand-800 shadow sm:text-2xl">
               Rodada {round.round_number}
             </h2>
-            {groupName && <p className="text-xl font-semibold text-brand-200">{groupName}</p>}
-            <p className="text-lg text-brand-200">{tournament.status === 'finished' ? 'Torneio encerrado' : round.status === 'finished' ? 'Finalizada · aguardando a próxima rodada' : 'Em andamento'}</p>
+            {groupName && <p className="text-base font-semibold text-brand-200">{groupName}</p>}
+            <p className="text-sm text-brand-200">{tournament.status === 'finished' ? 'Torneio encerrado' : round.status === 'finished' ? 'Finalizada · aguardando a próxima rodada' : 'Em andamento'}</p>
           </div>
-          {/* Duas colunas só em tela larga (TV Full HD): abaixo disso o nome cortava com "…". */}
-          <div className="grid gap-3 2xl:grid-cols-2">
-            {(pairings ?? []).map((pairing) => (
-              <TvPairingCard key={pairing.pairing_id} pairing={pairing} locale={locale} />
-            ))}
+          <div data-tv-pairing-list className="overflow-hidden rounded-xl bg-white shadow-md">
+            <div aria-hidden="true" className="hidden grid-cols-[3rem_minmax(0,1fr)_7rem_minmax(0,1fr)] items-center gap-3 border-b border-brand-100 bg-brand-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-brand-700 sm:grid">
+              <span className="text-center">Mesa</span><span>Brancas</span><span className="text-center">Resultado</span><span>Pretas</span>
+            </div>
+            <div role="list" aria-label="Mesas da rodada" className="divide-y divide-brand-100">
+              {(pairings ?? []).map((pairing) => (
+                <TvPairingCard key={pairing.pairing_id} pairing={pairing} locale={locale} />
+              ))}
+            </div>
           </div>
         </>
       )
