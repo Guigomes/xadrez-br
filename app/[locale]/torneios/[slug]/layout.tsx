@@ -5,6 +5,7 @@ import { getSessionProfile } from '@/lib/data/session';
 import { createClient } from '@/lib/supabase/server';
 import { SCHOOL_TOURNAMENT_SLUG } from '@/lib/statistics/school-tournament';
 import { TournamentTabs } from '@/components/tournament/tournament-tabs';
+import { TournamentLogo } from '@/components/tournament/tournament-logo';
 import { SaveLastTournament } from '@/components/tournament/save-last-tournament';
 import { Badge } from '@/components/ui/badge';
 import { ShareButton } from '@/components/ui/share-button';
@@ -140,9 +141,12 @@ export default async function TournamentLayout({ children, params }: Props) {
         <div className="container-app py-5">
           <div className="min-w-0 mb-1">
             <div className="flex items-center justify-between gap-2 mb-1">
-              <h1 className="min-w-0 flex-1 break-words text-xl font-bold leading-tight text-gray-900 dark:text-gray-100 sm:text-2xl">
-                {tournament.name}
-              </h1>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <TournamentLogo tournamentId={tournament.id} />
+                <h1 className="min-w-0 flex-1 break-words text-xl font-bold leading-tight text-gray-900 dark:text-gray-100 sm:text-2xl">
+                  {tournament.name}
+                </h1>
+              </div>
               <div className="flex items-center gap-2 shrink-0">
                 <NotifyButton tournamentId={tournament.id} tournamentSlug={slug} />
                 <ShareButton title={tournament.name} />

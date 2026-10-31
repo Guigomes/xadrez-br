@@ -4,6 +4,7 @@ import { load } from 'cheerio';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/tournament/tv-playback', async () => import('../tournament/tv-playback'));
+vi.mock('@/lib/tournament/tv-presentation', async () => import('../tournament/tv-presentation'));
 vi.mock('@/lib/utils/chess', async () => import('../utils/chess'));
 vi.mock('@/lib/utils/player-name', async () => import('../utils/player-name'));
 vi.mock('@/lib/utils/player-title', async () => import('../utils/player-title'));
@@ -29,6 +30,47 @@ describe('TV presentation shell', () => {
     expect($('[role="region"] header')).toHaveLength(0);
     expect($('main header').text()).toBe('Torneio');
   });
+  it('offers the podium only with a finished-event slot and opens a direct ceremony link', () => {
+    const $ = load(renderToStaticMarkup(React.createElement(TvDisplay, {
+      header: 'Header', rounds: 'Mesas', standings: 'Ranking', podium: 'Cerimônia', initialMode: 'podium',
+    })));
+    expect($('select option[selected]').attr('value')).toBe('podium');
+    expect($('[role="region"]').attr('aria-label')).toBe('Apresentação do pódio');
+    expect($('[role="region"]').text()).toContain('Cerimônia');
+    expect($('button').text()).toContain('Tela cheia');
+    expect($('button').text()).not.toContain('Pausar apresentação');
+  });
+  it('ignores a podium initial mode without a finished-event slot', () => {
+    const $ = load(renderToStaticMarkup(React.createElement(TvDisplay, { header: 'Header', rounds: 'Mesas', standings: 'Ranking', initialMode: 'podium' })));
+    expect($('select option[value="podium"]')).toHaveLength(0);
+    expect($('select option[selected]').attr('value')).toBe('round');
+  });
+  it('announces closure and displays standings until the next published round', () => {
+    const $ = load(renderToStaticMarkup(React.createElement(TvDisplay, {
+      header: 'Header', rounds: 'Mesas', standings: 'Ranking',
+      roundState: { id: 'round', number: 2, status: 'finished', publishedAt: '2026-10-31T12:00:00Z' },
+    })));
+    expect($('select option[selected]').attr('value')).toBe('standings');
+    expect($('select option[value="round"][disabled]')).toHaveLength(1);
+    expect($('select option[value="alternate"][disabled]')).toHaveLength(1);
+    expect($('section:not([hidden])').text()).toBe('Ranking');
+    expect($('section[hidden]').text()).toBe('Mesas');
+    expect($('[role="status"]').text()).toContain('Rodada 2 encerrada');
+    expect($('[role="status"]').text()).toContain('até a próxima rodada ser publicada');
+  });
+  it('keeps an ongoing round visible and makes final-event messaging explicit', () => {
+    const props = { header: 'Header', rounds: 'Mesas', standings: 'Ranking', roundState: {
+      id: 'round', number: 3, status: 'ongoing' as const, publishedAt: '2026-10-31T12:00:00Z',
+    } };
+    const ongoing = load(renderToStaticMarkup(React.createElement(TvDisplay, props)));
+    expect(ongoing('section:not([hidden])').text()).toBe('Mesas');
+    expect(ongoing('[role="status"]').text()).not.toContain('encerrada');
+    const final = load(renderToStaticMarkup(React.createElement(TvDisplay, {
+      ...props, tournamentEnded: true, roundState: { ...props.roundState, status: 'finished' },
+    })));
+    expect(final('[role="status"]').text()).toContain('classificação final');
+    expect(final('[role="status"]').text()).not.toContain('próxima rodada');
+  });
 });
 
 describe('TV standings', () => {
@@ -38,6 +80,13 @@ describe('TV standings', () => {
   });
   const render = (rows = [row()], groupName?: string, locale = 'pt-BR') =>
     load(renderToStaticMarkup(React.createElement(TvStandings, { rows, locale, groupName })));
+  it('centers a width-limited table with breathing room on TV screens', () => {
+    const $ = render();
+    expect($('[data-tv-standings]').hasClass('mx-auto')).toBe(true);
+    expect($('[data-tv-standings]').hasClass('max-w-5xl')).toBe(true);
+    expect($('[data-tv-standings]').hasClass('lg:px-8')).toBe(true);
+    expect($('[data-tv-standings] table')).toHaveLength(1);
+  });
   it('shows full names, server positions, tournament rating and current fractional points', () => {
     const $ = render();
     expect($('tbody th').text()).toContain('Miguel Oliveira Silva');

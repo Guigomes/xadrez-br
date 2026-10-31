@@ -76,9 +76,9 @@ describe('player details on round lists', () => {
     }];
   });
   afterEach(() => vi.unstubAllGlobals());
-  const native = () => React.createElement(NativeRounds, { tournament: {
+  const native = (patch: Partial<Tournament> = {}) => React.createElement(NativeRounds, { tournament: {
     id: 'tournament', slug: 'teste', name: 'Torneio', status: 'ongoing', mode: 'native',
-    rounds_count: mocks.limit, requested_bye_score: 0.5, tournament_type: 'swiss',
+    rounds_count: mocks.limit, requested_bye_score: 0.5, tournament_type: 'swiss', ...patch,
   } as Tournament });
   const publicView = () => React.createElement(PairingsList, { pairings: mocks.pairings, tournamentSlug: 'teste' });
 
@@ -99,6 +99,35 @@ describe('player details on round lists', () => {
     expect($('button').filter((_, el) => $(el).text() === 'Atualizar emparceiramento')).toHaveLength(1);
     expect($('button').filter((_, el) => $(el).text() === 'Publicar rodada').attr('disabled')).toBeDefined();
     expect(mocks.generate).not.toHaveBeenCalled();
+  });
+
+  it.each([1, 6])('allows absence edits inside a returned round %i draft, including the last round', (number) => {
+    mocks.limit = 6; mocks.groups[0].rounds_count = 6;
+    mocks.rounds[0] = { ...mocks.rounds[0], round_number: number, status: 'draft', published_at: '' };
+    mocks.byes.add('white');
+    const $ = load(renderToStaticMarkup(native()));
+    expect($.text()).toContain(`Ausências na rodada ${number}`);
+    expect($.text()).toContain('Marcar ausência');
+    expect($.text()).toContain('Ao alterar as ausências, atualize o emparceiramento');
+    expect($('button[title="Clique para desmarcar"]').attr('disabled')).toBeUndefined();
+    expect($('button[title="Clique para desmarcar"]')).toHaveLength(1);
+    expect($(`[aria-label="Preparar rodada ${number + 1}"]`)).toHaveLength(0);
+    expect($.text()).not.toContain(`Ausências na rodada ${number + 1}`);
+    expect(mocks.generate).not.toHaveBeenCalled();
+  });
+
+  it('does not unlock absence edits while the current round is still published', () => {
+    mocks.limit = 6; mocks.groups[0].rounds_count = 6; mocks.byes.add('white');
+    const $ = load(renderToStaticMarkup(native()));
+    expect($.text()).not.toContain('Ausências na rodada 1');
+    expect($('button[title="Clique para desmarcar"][disabled]')).toHaveLength(1);
+  });
+
+  it('does not offer absence editing in a Berger draft', () => {
+    mocks.rounds[0].status = 'draft';
+    const $ = load(renderToStaticMarkup(native({ tournament_type: 'round_robin' })));
+    expect($.text()).not.toContain('Marcar ausência');
+    expect($.text()).not.toContain('Ausências na rodada');
   });
 
   it('also warns after a roster change while retaining the generated boards for review', () => {

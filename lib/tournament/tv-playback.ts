@@ -24,7 +24,7 @@ export function startTvPlayback(
       } else if (elapsed > 4_000) {
         // Keep fractional pixels here: scrollTop can be rounded on some TVs.
         const wasAtBottom = position >= max - 1;
-        position = Math.min(max, position + Math.min(delta, elapsed - 4_000) * 18 / 1000);
+        position = Math.min(max, position + Math.min(delta, elapsed - 4_000) * 26 / 1000);
         viewport.scrollTop = position;
         bottomTime = wasAtBottom ? bottomTime + delta : 0;
         if (bottomTime >= 5_000) complete();

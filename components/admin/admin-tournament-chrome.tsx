@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter, usePathname } from '@/i18n/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { AdminTournamentTabs } from './admin-tournament-tabs';
+import { TournamentLogo } from '@/components/tournament/tournament-logo';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { createClient } from '@/lib/supabase/client';
@@ -184,7 +185,10 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
           truncate liga overflow:hidden, que pelo spec de flexbox zera o
           min-width automático do item, e os botões (shrink-0) levavam todo o
           espaço. O nome do torneio sumia por completo no mobile. */}
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">{name}</h1>
+      <div className="flex min-w-0 items-center gap-3">
+        <TournamentLogo tournamentId={id} />
+        <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900 dark:text-gray-100 truncate">{name}</h1>
+      </div>
       <div className={`mt-2 flex flex-wrap items-center justify-between gap-2 transition-opacity ${isPending ? 'opacity-60 cursor-progress' : ''}`}>
         {/* min-h reserva a altura da variante de 2 botões, pra a linha não
             mudar de altura quando a situação passa de 1 pra 2 ações e volta. */}

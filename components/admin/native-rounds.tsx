@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter, Link } from '@/i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -305,10 +305,16 @@ function GroupPanel({
           })}
           regenerating={generate.isPending}
           draftStatus={draftStatus}
+          draftAbsences={draftPending && selectedRound.id === lastRound?.id && !isRoundRobin ? (
+            <ByeSelector roundNumber={byeRound} byeScore={tournament.requested_bye_score}
+              players={eligibleForBye} requestedIds={byes.data}
+              disabled={toggleBye.isPending || generate.isPending || transition.isPending}
+              onToggle={(tpId, requested) => run(() => toggleBye.mutateAsync({ tpId, requested }))} />
+          ) : undefined}
         />
       )}
 
-      {finishedCount < groupRoundsCount && (
+      {!draftPending && finishedCount < groupRoundsCount && (
         <div ref={preparationRef} tabIndex={-1} aria-label={`Preparar rodada ${nextRoundNumber}`} className="card scroll-mt-28 p-4 space-y-3 focus:outline-none">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Preparar rodada {nextRoundNumber}</h2>
           {canGenerate && <p className="text-sm text-gray-500 dark:text-gray-400">Confira as ausências antes de gerar o próximo emparceiramento.</p>}
@@ -499,13 +505,14 @@ type DraftStatus = 'checking' | 'current' | 'stale' | 'error';
 
 function RoundPanel({
   tournament, groupId, groupName, round, onAction, canReopen, busy,
-  onRegenerate, regenerating, draftStatus,
+  onRegenerate, regenerating, draftStatus, draftAbsences,
 }: {
   tournament: Tournament; groupId: string; groupName: string | null; round: Round;
   onAction: (a: 'publish' | 'finish' | 'reopen') => void;
   canReopen: boolean; busy: boolean;
   onRegenerate: () => void; regenerating: boolean;
   draftStatus: DraftStatus;
+  draftAbsences?: ReactNode;
 }) {
   const { data: pairings } = useRoundPairings(round.id);
   const returnToDraft = useReturnRoundToDraft(tournament.id, groupId);
@@ -540,6 +547,13 @@ function RoundPanel({
           {ROUND_STATUS_LABELS[round.status]}
         </Badge>
       </div>
+
+      {round.status === 'draft' && draftAbsences && (
+        <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+          {draftAbsences}
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Ao alterar as ausências, atualize o emparceiramento antes de publicar novamente.</p>
+        </div>
+      )}
 
       {round.status === 'draft' && draftStatus === 'stale' && (
         <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">

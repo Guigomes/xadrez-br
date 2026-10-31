@@ -20,15 +20,15 @@ describe('TV reading cycle', () => {
   afterEach(() => vi.unstubAllGlobals());
   const viewport = (height = 1000) => ({ scrollTop: 0, clientHeight: 400, scrollHeight: height });
 
-  it('holds the top, then scrolls at 18 px/s without changing views early', () => {
+  it('holds the top, then scrolls at 26 px/s without changing views early', () => {
     const element = viewport(); const next = vi.fn(); const stop = startTvPlayback(element, next);
     advance(4050); expect(element.scrollTop).toBe(0);
-    advance(1000); expect(element.scrollTop).toBeCloseTo(18);
+    advance(1000); expect(element.scrollTop).toBeCloseTo(26);
     expect(next).not.toHaveBeenCalled(); stop();
   });
   it('waits until the last row has been visible before completing a long list', () => {
-    const element = viewport(580); const next = vi.fn(); const stop = startTvPlayback(element, next);
-    advance(14_050); expect(element.scrollTop).toBeCloseTo(180); expect(next).not.toHaveBeenCalled();
+    const element = viewport(660); const next = vi.fn(); const stop = startTvPlayback(element, next);
+    advance(14_050); expect(element.scrollTop).toBeCloseTo(260); expect(next).not.toHaveBeenCalled();
     advance(4900); expect(next).not.toHaveBeenCalled();
     advance(100); expect(next).toHaveBeenCalledOnce(); expect(element.scrollTop).toBe(0); stop();
   });
@@ -39,16 +39,16 @@ describe('TV reading cycle', () => {
     advance(15_000); expect(next).toHaveBeenCalledTimes(2); expect(element.scrollTop).toBe(0); stop();
   });
   it('does not skip new rows when live data grows during playback', () => {
-    const element = viewport(580); const next = vi.fn(); const stop = startTvPlayback(element, next);
+    const element = viewport(660); const next = vi.fn(); const stop = startTvPlayback(element, next);
     advance(14_050); element.scrollHeight = 1000;
-    advance(5000); expect(next).not.toHaveBeenCalled(); expect(element.scrollTop).toBeGreaterThan(180); stop();
+    advance(5000); expect(next).not.toHaveBeenCalled(); expect(element.scrollTop).toBeGreaterThan(260); stop();
   });
   it('pauses in background tabs and never jumps after a throttled frame', () => {
     const element = viewport(); const next = vi.fn(); const stop = startTvPlayback(element, next);
     advance(5050); const position = element.scrollTop; visibility = 'hidden'; advance(60_000);
     expect(element.scrollTop).toBe(position); expect(next).not.toHaveBeenCalled();
     visibility = 'visible'; time += 60_000; advance(50); expect(element.scrollTop).toBe(position);
-    time += 60_000; advance(50); expect(element.scrollTop - position).toBeCloseTo(1.8, 8); stop();
+    time += 60_000; advance(50); expect(element.scrollTop - position).toBeCloseTo(2.6, 8); stop();
   });
   it('cleans up the animation on pause, mode change or unmount', () => {
     const element = viewport(); const next = vi.fn(); const stop = startTvPlayback(element, next);

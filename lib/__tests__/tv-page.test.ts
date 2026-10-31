@@ -4,26 +4,33 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   tournament: { id: 'tv-test', name: 'Torneio da TV', city: 'Cidade', state: 'MS', is_public: true, status: 'ongoing' },
-  rounds: [] as { id: string; round_number: number; status: string; pairing_groups: { name: string } }[],
+  rounds: [] as { id: string; round_number: number; status: string; published_at: string | null; pairing_groups: { name: string } }[],
   groupCount: 1,
   standings: [] as { tp_id: string; pairing_group_id: string; rank: number; points: number }[],
   standingsError: false,
   rpc: vi.fn(), client: vi.fn(), filters: [] as string[][], error: false,
+  display: vi.fn(),
 }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: mocks.client }));
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('NOT_FOUND'); } }));
 vi.mock('next-intl/server', () => ({ getLocale: async () => 'pt-BR' }));
 vi.mock('qrcode', () => ({ default: { toString: async () => '<svg></svg>' } }));
 vi.mock('@/lib/seo', () => ({ siteUrl: () => 'https://example.test' }));
+vi.mock('@/lib/tournament/branding', async () => import('../tournament/branding'));
+vi.mock('@/components/tournament/tournament-logo', async () => import('../../components/tournament/tournament-logo'));
 vi.mock('@/components/tournament/tv-controls', () => ({ TvControls: ({ tournamentId }: { tournamentId: string }) => React.createElement('div', { 'data-tv': tournamentId }) }));
 vi.mock('@/components/tournament/tv-pairing-card', () => ({ TvPairingCard: ({ pairing }: { pairing: { pairing_id: string } }) => React.createElement('article', null, pairing.pairing_id) }));
-vi.mock('@/components/tournament/tv-display', () => ({ TvDisplay: ({ header, rounds, standings }: { header: React.ReactNode; rounds: React.ReactNode; standings: React.ReactNode }) => React.createElement('main', null, header, rounds, standings) }));
+vi.mock('@/components/tournament/tv-display', () => ({ TvDisplay: (props: { header: React.ReactNode; rounds: React.ReactNode; standings: React.ReactNode; podium?: React.ReactNode; initialMode?: string }) => { mocks.display(props); return React.createElement('main', null, props.header, props.rounds, props.standings, props.podium); } }));
+vi.mock('@/lib/tournament/podium', async () => import('../tournament/podium'));
+vi.mock('@/components/tournament/tv-podium', () => ({ TvPodium: () => React.createElement('div', { 'data-podium': true }, 'Premiação') }));
 vi.mock('@/components/tournament/tv-standings', () => ({ TvStandings: ({ rows }: { rows: { tp_id: string }[] }) => React.createElement('div', { 'data-standings': true }, rows.map((row) => row.tp_id).join(',')) }));
 import TvPage from '../../app/[locale]/torneios/[slug]/painel/page';
 
 describe('public TV page', () => {
   beforeEach(() => {
     vi.stubGlobal('React', React);
+    mocks.tournament.id = 'tv-test';
+    mocks.display.mockClear();
     mocks.tournament.status = 'ongoing'; mocks.tournament.is_public = true;
     mocks.rounds = []; mocks.filters = []; mocks.groupCount = 1; mocks.error = false;
     mocks.standings = []; mocks.standingsError = false;
@@ -49,7 +56,7 @@ describe('public TV page', () => {
   });
   afterEach(() => vi.unstubAllGlobals());
   const render = async () => renderToStaticMarkup(await TvPage({ params: Promise.resolve({ slug: 'tv-test' }) }));
-  const round = (id: string, n: number, status: string) => ({ id, round_number: n, status, pairing_group_id: 'group-0', pairing_groups: { name: 'Sub-10' } });
+  const round = (id: string, n: number, status: string) => ({ id, round_number: n, status, published_at: '2026-10-31T12:00:00Z', pairing_group_id: 'group-0', pairing_groups: { name: 'Sub-10' } });
 
   it('uses a cookie-free public client, including when an organizer opens the TV', async () => {
     await render();
@@ -69,6 +76,7 @@ describe('public TV page', () => {
     expect(html).toContain('published-game');
     expect(html).toContain('data-tv="tv-test"');
     expect(mocks.rpc).toHaveBeenCalledWith('get_round_pairings', { p_round_id: 'current' });
+    expect(mocks.display.mock.calls.at(-1)?.[0].roundState).toEqual({ id: 'current', number: 2, status: 'ongoing', publishedAt: '2026-10-31T12:00:00Z' });
   });
 
   it('retains the latest finished results between rounds without exposing the next draft', async () => {
@@ -76,6 +84,8 @@ describe('public TV page', () => {
     const html = await render();
     expect(html).toContain('Finalizada · aguardando a próxima rodada');
     expect(mocks.rpc).toHaveBeenCalledWith('get_round_pairings', { p_round_id: 'last' });
+    expect(mocks.display.mock.calls.at(-1)?.[0].roundState.status).toBe('finished');
+    expect(mocks.display.mock.calls.at(-1)?.[0].tournamentEnded).toBe(false);
   });
 
   it('labels the final round as a finished tournament, not waiting for another round', async () => {
@@ -83,6 +93,7 @@ describe('public TV page', () => {
     const html = await render();
     expect(html).toContain('Torneio encerrado');
     expect(html).not.toContain('aguardando a próxima rodada');
+    expect(mocks.display.mock.calls.at(-1)?.[0].tournamentEnded).toBe(true);
   });
 
   it('shows the group name only when there are multiple groups', async () => {
@@ -140,5 +151,29 @@ describe('public TV page', () => {
   it('does not disguise a standings failure as an empty ranking', async () => {
     mocks.standingsError = true;
     await expect(render()).rejects.toThrow('Não foi possível carregar a classificação');
+  });
+
+  it('shows the Chess And Kids logo only on the original event, not a copy', async () => {
+    mocks.tournament.id = '23cdc35b-b47a-4424-8cac-a32d878bd328';
+    expect(await render()).toContain('alt="Logo Chess And Kids"');
+    mocks.tournament.id = '01980ef8-a405-4bb5-b8bb-1550ed47ea00';
+    expect(await render()).not.toContain('Logo Chess And Kids');
+  });
+
+  it('makes podium mode available only for a truly finished tournament', async () => {
+    await render(); expect(mocks.display.mock.calls[0][0].podium).toBeUndefined();
+    mocks.tournament.status = 'finished';
+    const html = await render(); expect(html).toContain('data-podium');
+    expect(mocks.display.mock.calls.at(-1)?.[0].initialMode).toBe('round');
+  });
+  it('opens the final-standings podium link directly, but does not bypass the ongoing gate', async () => {
+    const params = Promise.resolve({ slug: 'test' });
+    const searchParams = Promise.resolve({ exibir: 'podio' });
+    mocks.tournament.status = 'finished';
+    renderToStaticMarkup(await TvPage({ params, searchParams }));
+    expect(mocks.display.mock.calls.at(-1)?.[0].initialMode).toBe('podium');
+    mocks.tournament.status = 'ongoing';
+    renderToStaticMarkup(await TvPage({ params, searchParams }));
+    expect(mocks.display.mock.calls.at(-1)?.[0].initialMode).toBe('round');
   });
 });

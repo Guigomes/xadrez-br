@@ -9,7 +9,7 @@ export function TvStandings({ rows, locale, groupName }: {
   rows: TvStandingRow[]; locale: string; groupName?: string | null;
 }) {
   return (
-    <>
+    <div data-tv-standings className="mx-auto w-full max-w-5xl px-2 py-3 sm:px-5 lg:px-8">
       <div className="mb-5 flex flex-wrap items-baseline gap-3">
         <h2 className="text-3xl font-black sm:text-4xl">Classificação</h2>
         {groupName && <p className="text-xl font-semibold text-brand-200">{groupName}</p>}
@@ -38,6 +38,6 @@ export function TvStandings({ rows, locale, groupName }: {
           </tbody>
         </table>
       )}
-    </>
+    </div>
   );
 }

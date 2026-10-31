@@ -8,10 +8,15 @@ import { TvControls } from '@/components/tournament/tv-controls';
 import { TvPairingCard } from '@/components/tournament/tv-pairing-card';
 import { TvDisplay } from '@/components/tournament/tv-display';
 import { TvStandings } from '@/components/tournament/tv-standings';
+import { TournamentLogo } from '@/components/tournament/tournament-logo';
+import { TvPodium } from '@/components/tournament/tv-podium';
+import { buildPodiumOptions } from '@/lib/tournament/podium';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TournamentTvPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function TournamentTvPage({ params, searchParams }: {
+  params: Promise<{ slug: string }>; searchParams?: Promise<{ exibir?: string }>;
+}) {
   const { slug } = await params;
   const locale = await getLocale();
   // "Private" tournaments are unlisted, not protected: published tournaments
@@ -21,14 +26,14 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
     { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
   );
   const { data: tournament, error: tournamentError } = await publicClient.from('tournaments')
-    .select('id, name, city, state, is_public, status')
+    .select('id, name, city, state, is_public, status, has_absolute_classification, has_female_classification')
     .eq('slug', slug).maybeSingle();
   if (tournamentError) throw new Error('Não foi possível carregar o torneio do painel.');
   if (!tournament || tournament.status === 'draft') notFound();
 
   const [roundsResult, groupsResult, standingsResult] = await Promise.all([
     publicClient.from('rounds')
-      .select('id, round_number, status, pairing_group_id, pairing_groups(name)')
+      .select('id, round_number, status, published_at, pairing_group_id, pairing_groups(name)')
       .eq('tournament_id', tournament.id)
       .in('status', ['ongoing', 'finished'])
       .order('round_number', { ascending: false }).order('id'),
@@ -62,17 +67,28 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
   // Keep the RPC's published positions/order. Never mix ranks from different groups.
   const standings = ((standingsResult.data ?? []) as StandingRow[])
     .filter((row) => row.pairing_group_id === selectedGroupId);
+  const podiumOptions = buildPodiumOptions((standingsResult.data ?? []) as StandingRow[], tournament);
+  const initialMode = tournament.status === 'finished' && (await searchParams)?.exibir === 'podio' ? 'podium' : 'round';
 
   return (
-    <TvDisplay header={
+    <TvDisplay initialMode={initialMode} tournamentEnded={tournament.status === 'finished'}
+      roundState={round ? { id: round.id, number: round.round_number, status: round.status as 'ongoing' | 'finished', publishedAt: round.published_at } : undefined}
+      podium={tournament.status === 'finished'
+      ? <TvPodium options={podiumOptions} tournamentId={tournament.id} tournamentName={tournament.name} slug={slug} locale={locale} />
+      : undefined} header={
       <header className="flex flex-wrap items-start justify-between gap-3 sm:gap-5">
         <div className="min-w-0">
           <p className="flex items-center gap-3 text-sm font-bold uppercase tracking-[0.2em] text-brand-200">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-xl leading-none text-brand-700 shadow">♞</span>
             Gambito Torneios · Painel para TV
           </p>
-          <h1 className="mt-2 text-2xl font-black leading-tight sm:text-4xl">{tournament.name}</h1>
-          <p className="mt-1 text-base text-brand-200">{tournament.city}, {tournament.state}</p>
+          <div className="mt-2 flex min-w-0 items-center gap-4">
+            <TournamentLogo tournamentId={tournament.id} variant="tv" />
+            <div className="min-w-0">
+              <h1 className="break-words text-2xl font-black leading-tight sm:text-4xl">{tournament.name}</h1>
+              <p className="mt-1 text-base text-brand-200">{tournament.city}, {tournament.state}</p>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col items-end gap-3">
