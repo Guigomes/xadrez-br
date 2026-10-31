@@ -77,6 +77,29 @@ describe('player details on round lists', () => {
   } as Tournament });
   const publicView = () => React.createElement(PairingsList, { pairings: mocks.pairings, tournamentSlug: 'teste' });
 
+  it.each([
+    ['1-0', true, false],
+    ['0-1', false, true],
+    ['forfeit_black', true, false],
+    ['forfeit_white', false, true],
+    ['1/2-1/2', false, false],
+    ['double_forfeit', false, false],
+    ['*', false, false],
+  ] as const)('organizer round list bolds only the winner for %s', (result, whiteBold, blackBold) => {
+    mocks.pairings[0].result = result;
+    const $ = load(renderToStaticMarkup(native()));
+    for (const [name, bold] of [
+      [mocks.pairings[0].white_name, whiteBold],
+      [mocks.pairings[0].black_name, blackBold],
+    ] as const) {
+      const player = $('span').filter((_, el) => $(el).text() === name);
+      expect(player).toHaveLength(1);
+      expect(player.hasClass('font-bold')).toBe(bold);
+    }
+    expect($('[data-player-score].font-bold')).toHaveLength(0);
+    expect($('[aria-label="Vencedor"]')).toHaveLength(Number(whiteBold) + Number(blackBold));
+  });
+
   for (const [label, view] of [['organizer', native], ['public', publicView]] as const) {
     it(`${label} round list shows each player's current rating/points and the generated pieces`, () => {
       const $ = load(renderToStaticMarkup(view()));

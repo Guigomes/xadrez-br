@@ -747,7 +747,8 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
 
   const Seat = ({ p, side, name }: { p: any; side: 'w' | 'b'; name: string | null }) => {
     if (!canSwap || !name || p.is_bye) {
-      return <span className="min-w-0 break-words text-gray-900 dark:text-gray-100">{name ?? 'BYE'}</span>;
+      const won = !p.is_bye && winnerSide(p.result, side === 'w' ? 'white' : 'black') === 'winner';
+      return <span className={`min-w-0 break-words text-gray-900 dark:text-gray-100 ${won ? 'font-bold' : ''}`}>{name ?? 'BYE'}</span>;
     }
     const isSel = selected?.pairingId === p.pairing_id && selected?.side === side;
     return (
