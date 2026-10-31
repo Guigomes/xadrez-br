@@ -99,9 +99,23 @@ describe('result card hierarchy', () => {
       const $ = render();
       expect($('.card [aria-pressed="true"]')).toHaveLength(1);
       expect($('.card .bg-green-600')).toHaveLength(1);
-      expect($('.card').attr('class')).toBe('card p-4');
+      expect($('.card').hasClass('shadow-md')).toBe(true);
+      expect($('.card').hasClass('border-gray-300')).toBe(true);
+      expect($('.card').hasClass('border-l-4')).toBe(false);
+      expect($('.card').attr('class')).not.toContain('border-green');
     },
   );
+
+  it('gives pending cards a soft elevation in both themes without motion or layout changes', () => {
+    const $ = render();
+    const card = $('.card');
+    for (const style of ['p-4', 'shadow-md', 'shadow-gray-900/10', 'border-gray-300', 'dark:border-gray-700', 'dark:shadow-black/30']) {
+      expect(card.hasClass(style)).toBe(true);
+    }
+    expect(card.attr('class')).not.toMatch(/translate|scale|animate|hover:/);
+    expect(card.find('[data-result-player]')).toHaveLength(2);
+    expect(card.find('button[aria-pressed]')).toHaveLength(7);
+  });
 
   it('keeps WO and clear visible as secondary controls without reducing touch targets', () => {
     const $ = render();
