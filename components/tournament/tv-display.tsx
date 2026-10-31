@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { TvVictoryContext, type TvVictoryAnnounce } from './tv-victory-context';
 import { startTvPlayback } from '@/lib/tournament/tv-playback';
-import { animateTvEntrance, tvEffectiveMode, tvPublicationKey, type TvMode, type TvRoundState } from '@/lib/tournament/tv-presentation';
+import { animateTvEntrance, tvEffectiveMode, tvPublicationKey, tvVictoryAction, type TvMode, type TvRoundState } from '@/lib/tournament/tv-presentation';
 
 type TvView = Exclude<TvMode, 'alternate'>;
+
 
 /** Server-rendered slots keep data fetching and rankings out of the playback loop. */
 export function TvDisplay({ header, rounds, standings, podium, initialMode = 'round', roundState, tournamentEnded = false }: {
@@ -40,6 +42,36 @@ export function TvDisplay({ header, rounds, standings, podium, initialMode = 'ro
 
   // Live server refreshes replace the slots, not the mode or scroll progress.
   useLayoutEffect(() => { if (viewport.current) viewport.current.scrollTop = 0; }, [view, mode, publication]);
+  // Vitória vista na classificação (modo Alternar): mostra as mesas na hora e toca a animação já
+  // com a mesa visível. Fica depois do reset de rolagem acima para a posição escolhida valer, e a
+  // apresentação (efeito abaixo) retoma dali.
+  const latest = useRef({ view, effectiveMode, paused, publication });
+  latest.current = { view, effectiveMode, paused, publication };
+  const pendingVictories = useRef<Array<{ card: HTMLElement; play: () => () => void; stop: (() => void) | null; cancelled: boolean }>>([]);
+  const announceVictory = useCallback<TvVictoryAnnounce>((card, play) => {
+    const now = latest.current;
+    const action = tvVictoryAction(now.view, now.effectiveMode, now.paused);
+    if (action === 'play') return play();
+    if (action === 'skip') return () => {};
+    const entry = { card, play, stop: null as (() => void) | null, cancelled: false };
+    pendingVictories.current.push(entry);
+    setAlternate({ publication: now.publication, view: 'round' });
+    return () => { entry.cancelled = true; entry.stop?.(); };
+  }, []);
+  useLayoutEffect(() => {
+    if (view !== 'round' || pendingVictories.current.length === 0) return;
+    const queued = pendingVictories.current.filter((entry) => !entry.cancelled);
+    pendingVictories.current = [];
+    const area = viewport.current;
+    const first = queued[0]?.card;
+    if (area && first) {
+      const box = area.getBoundingClientRect();
+      const row = first.getBoundingClientRect();
+      area.scrollTop += row.top - box.top - (box.height - row.height) / 2;
+    }
+    queued.forEach((entry) => { entry.stop = entry.play(); });
+  }, [view]);
+
   useEffect(() => {
     if (paused || view === 'podium' || !viewport.current) return;
     return startTvPlayback(viewport.current, () => {
@@ -85,7 +117,9 @@ export function TvDisplay({ header, rounds, standings, podium, initialMode = 'ro
         onKeyDown={(event) => { if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) setPaused(true); }}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2 [scroll-behavior:auto] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
         {/* Keep cards mounted between views: switching must not reset victory detection. */}
-        <section hidden={view !== 'round'}>{rounds}</section>
+        <TvVictoryContext.Provider value={announceVictory}>
+          <section hidden={view !== 'round'}>{rounds}</section>
+        </TvVictoryContext.Provider>
         <section hidden={view !== 'standings'}>{standings}</section>
         {view === 'podium' && podium}
       </div>

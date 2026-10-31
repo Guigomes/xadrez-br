@@ -1,7 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
-import { animateTvEntrance, tvEffectiveMode, tvPublicationKey, type TvRoundState } from '../tv-presentation';
+import { animateTvEntrance, tvEffectiveMode, tvPublicationKey, tvVictoryAction, type TvRoundState } from '../tv-presentation';
 
 const round: TvRoundState = { id: 'round-1', number: 1, status: 'ongoing', publishedAt: '2026-10-31T12:00:00Z' };
+
+describe('TV new-victory handling', () => {
+  it('plays at once when the boards are on screen, in any mode', () => {
+    expect(tvVictoryAction('round', 'round', false)).toBe('play');
+    expect(tvVictoryAction('round', 'alternate', false)).toBe('play');
+    expect(tvVictoryAction('round', 'alternate', true)).toBe('play');
+  });
+  it('goes back to the boards from the standings only while Alternar is running', () => {
+    expect(tvVictoryAction('standings', 'alternate', false)).toBe('show-round');
+    expect(tvVictoryAction('standings', 'alternate', true)).toBe('skip');
+    expect(tvVictoryAction('standings', 'standings', false)).toBe('skip');
+  });
+  it('never leaves the podium ceremony', () => {
+    expect(tvVictoryAction('podium', 'podium', false)).toBe('skip');
+    expect(tvVictoryAction('podium', 'alternate', false)).toBe('skip');
+  });
+});
 
 describe('TV lifecycle presentation', () => {
   it.each(['round', 'standings', 'alternate'] as const)('shows standings after finishing and restores the %s preference on publication', (mode) => {

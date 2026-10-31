@@ -14,6 +14,16 @@ export function tvEffectiveMode(mode: TvMode, hasPodium: boolean, round?: TvRoun
   return mode === 'podium' ? 'round' : mode;
 }
 
+/**
+ * O que fazer quando uma mesa observa uma vitória nova. Com as mesas na tela, a animação toca na hora.
+ * No modo Alternar e com a classificação aparecendo (e a apresentação rodando), a TV volta para as
+ * mesas e só então toca. Pausada, só classificação ou pódio: a animação não seria vista, então nada.
+ */
+export function tvVictoryAction(view: 'round' | 'standings' | 'podium', effectiveMode: TvMode, paused: boolean): 'play' | 'show-round' | 'skip' {
+  if (view === 'round') return 'play';
+  return view === 'standings' && effectiveMode === 'alternate' && !paused ? 'show-round' : 'skip';
+}
+
 export function tvPublicationKey(round?: TvRoundState): string {
   return round ? `${round.id}:${round.publishedAt ?? ''}` : 'waiting';
 }

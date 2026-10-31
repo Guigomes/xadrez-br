@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { localizedTitle } from '@/lib/utils/player-title';
 import { playerDisplayName } from '@/lib/utils/player-name';
 import { formatScore, winnerSide } from '@/lib/utils/chess';
@@ -8,17 +8,22 @@ import { WhitePawn, BlackPawn } from './piece-icons';
 import { PlayerScoreSummary } from './player-score-summary';
 import type { RoundPairingRow } from '@/types/database';
 import { animateTvVictory, newTvWinner, type TvResultSnapshot } from '@/lib/tournament/tv-victory';
+import { TvVictoryContext } from './tv-victory-context';
 
 export function TvPairingCard({ pairing, locale }: { pairing: RoundPairingRow; locale: string }) {
   const card = useRef<HTMLElement>(null);
+  const announce = useContext(TvVictoryContext);
   const previous = useRef<TvResultSnapshot>(pairing);
   const { pairing_id, white_tp_id, black_tp_id, result, is_bye } = pairing;
   useEffect(() => {
     const next = { pairing_id, white_tp_id, black_tp_id, result, is_bye };
     const winner = newTvWinner(previous.current, next);
     previous.current = next;
-    if (!winner || !card.current) return;
-    return animateTvVictory(card.current, winner, window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+    const element = card.current;
+    if (!winner || !element) return;
+    return announce(element, () => animateTvVictory(element, winner, window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false));
+    // announce é estável; trocar o provedor não deve repetir a animação.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pairing_id, white_tp_id, black_tp_id, result, is_bye]);
 
   const bye = pairing.is_bye;
