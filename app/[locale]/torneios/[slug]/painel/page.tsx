@@ -1,32 +1,45 @@
 import { notFound } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import QRCode from 'qrcode';
-import { localizedTitle } from '@/lib/utils/player-title';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 import { siteUrl } from '@/lib/seo';
 import { TvControls } from '@/components/tournament/tv-controls';
-import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
+import { TvPairingCard } from '@/components/tournament/tv-pairing-card';
 
 export const dynamic = 'force-dynamic';
 
 export default async function TournamentTvPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const locale = await getLocale();
-  const admin = createAdminClient();
-  const { data: tournament } = await admin.from('tournaments')
+  // TV is always a public viewer, even on the organizer's logged-in browser.
+  const publicClient = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+  );
+  const { data: tournament, error: tournamentError } = await publicClient.from('tournaments')
     .select('id, name, city, state, is_public, status')
     .eq('slug', slug).maybeSingle();
-  if (!tournament?.is_public) notFound();
+  if (tournamentError) throw new Error('Não foi possível carregar o torneio do painel.');
+  if (!tournament?.is_public || tournament.status === 'draft') notFound();
 
-  const { data: rounds } = await admin.from('rounds')
-    .select('id, round_number, status, pairing_groups(name)')
-    .eq('tournament_id', tournament.id)
-    .eq('status', 'ongoing')
-    .order('round_number').limit(1);
-  const round = rounds?.[0] ?? null;
-  const { data: pairings } = round
-    ? await admin.rpc('get_round_pairings', { p_round_id: round.id })
-    : { data: [] };
+  const [roundsResult, groupsResult] = await Promise.all([
+    publicClient.from('rounds')
+      .select('id, round_number, status, pairing_groups(name)')
+      .eq('tournament_id', tournament.id)
+      .in('status', ['ongoing', 'finished'])
+      .order('round_number', { ascending: false }).order('id'),
+    publicClient.from('pairing_groups').select('id', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
+  ]);
+  if (roundsResult.error) throw new Error('Não foi possível carregar as rodadas do painel.');
+  if (groupsResult.error) throw new Error('Não foi possível carregar os grupos do painel.');
+  const rounds = roundsResult.data ?? [];
+  // Prefer the current round; retain the last published results between rounds.
+  const round = rounds.find((item) => item.status === 'ongoing') ?? rounds[0] ?? null;
+  const { data: pairings, error: pairingsError } = round
+    ? await publicClient.rpc('get_round_pairings', { p_round_id: round.id })
+    : { data: [], error: null };
+  if (pairingsError) throw new Error('Não foi possível carregar as mesas do painel.');
 
   // QR no lugar do link: a TV está longe demais para ninguém digitar endereço. SVG gerado aqui
   // no servidor (sem JS nem imagem no navegador), verde-escuro da marca sobre fundo branco.
@@ -36,8 +49,7 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
   });
 
   // Torneio com um grupo só (o "Absoluto" de todo nativo) não precisa citar o grupo.
-  const { count: groupCount } = await admin.from('pairing_groups')
-    .select('id', { count: 'exact', head: true }).eq('tournament_id', tournament.id);
+  const groupCount = groupsResult.count;
   const groupName = (groupCount ?? 0) > 1
     ? (round?.pairing_groups as unknown as { name: string } | null)?.name
     : null;
@@ -61,7 +73,7 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
               Aponte a câmera e acompanhe pelo celular
             </p>
           </div>
-          <TvControls />
+          <TvControls tournamentId={tournament.id} />
         </div>
       </header>
 
@@ -80,48 +92,16 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
               Rodada {round.round_number}
             </h2>
             {groupName && <p className="text-xl font-semibold text-brand-200">{groupName}</p>}
+            <p className="text-lg text-brand-200">{tournament.status === 'finished' ? 'Torneio encerrado' : round.status === 'finished' ? 'Finalizada · aguardando a próxima rodada' : 'Em andamento'}</p>
           </div>
           {/* Duas colunas só em tela larga (TV Full HD): abaixo disso o nome cortava com "…". */}
           <div className="grid gap-3 2xl:grid-cols-2">
             {(pairings ?? []).map((pairing) => (
-              <article
-                key={pairing.pairing_id}
-                className="grid grid-cols-[4.5rem_1fr_auto_1fr] items-center gap-3 rounded-2xl bg-white p-3 text-gray-900 shadow-md sm:grid-cols-[6rem_1fr_auto_1fr] sm:gap-4 sm:p-4"
-              >
-                <div className="rounded-xl bg-brand-50 py-1 text-center">
-                  <span className="text-xs font-bold uppercase tracking-wide text-brand-600">Mesa</span>
-                  <p className="text-4xl font-black leading-none text-brand-700 sm:text-5xl">{pairing.board_number ?? '—'}</p>
-                </div>
-                <PlayerName side="w" title={localizedTitle(pairing.white_title, locale)} name={pairing.white_name} align="right" />
-                <span className="text-xl font-black text-brand-300">×</span>
-                <PlayerName side="b" title={localizedTitle(pairing.black_title, locale)} name={pairing.black_name} />
-              </article>
+              <TvPairingCard key={pairing.pairing_id} pairing={pairing} locale={locale} />
             ))}
           </div>
         </>
       )}
     </main>
-  );
-}
-
-function PlayerName({ side, title, name, align = 'left' }: {
-  side: 'w' | 'b'; title: string | null; name: string | null; align?: 'left' | 'right';
-}) {
-  const Pawn = side === 'w' ? WhitePawn : BlackPawn;
-  const right = align === 'right';
-  return (
-    <div className={`flex min-w-0 items-center gap-2 ${right ? 'flex-row-reverse text-right' : ''}`}>
-      <Pawn className="h-6 w-5 shrink-0 sm:h-8 sm:w-6" />
-      <p className="min-w-0 truncate text-xl font-bold sm:text-3xl">
-        {name ? (
-          <>
-            {title && <span className="mr-2 text-base font-semibold text-amber-600 sm:text-xl">{title}</span>}
-            {name}
-          </>
-        ) : (
-          <span className="font-semibold text-gray-400">Folga (bye)</span>
-        )}
-      </p>
-    </div>
   );
 }
