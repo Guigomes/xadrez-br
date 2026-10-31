@@ -271,7 +271,7 @@ export function StandingsView({
             </div>
 
             <div className="flex flex-col items-start sm:items-end gap-1.5">
-              {hasGroups && (
+              {pairingGroups.length > 1 && (
                 <label className="block min-w-48 text-left">
                   <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Grupo</span>
                   <select

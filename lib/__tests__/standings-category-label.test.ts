@@ -1,19 +1,42 @@
 import React, { type PropsWithChildren } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { load } from 'cheerio';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StandingRow } from '../../types/database';
 
+const mocks = vi.hoisted(() => ({ standings: [] as StandingRow[], search: '' }));
 vi.mock('@/i18n/navigation', () => ({
   Link: ({ children, ...props }: PropsWithChildren<{ href: string; className?: string }>) => React.createElement('a', props, children),
+  usePathname: () => '/torneios/teste/classificacao',
+  useRouter: () => ({ replace: vi.fn() }),
 }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(mocks.search) }));
 vi.mock('next-intl', () => ({ useLocale: () => 'pt-BR' }));
+vi.mock('@/lib/hooks/use-tournament', () => ({
+  useTournament: () => ({ data: { id: 'tournament', status: 'ongoing' }, isLoading: false }),
+  useTournamentStandings: () => ({ data: mocks.standings, isLoading: false }),
+  useTournamentRounds: () => ({ data: [] }),
+  useGroupHasResults: () => ({ data: true }),
+}));
+vi.mock('@/lib/hooks/use-auth', () => ({ useFollowedInTournament: () => ({ data: undefined }) }));
+vi.mock('@/lib/hooks/use-tournament-group-preference', async () => import('../hooks/use-tournament-group-preference'));
+vi.mock('@/components/tournament/standings-table', async () => import('../../components/tournament/standings-table'));
+vi.mock('@/components/ui/spinner', () => ({ PageSpinner: () => null }));
+vi.mock('@/components/ui/empty-state', () => ({ EmptyState: () => null }));
+vi.mock('@/components/ui/whatsapp-button', () => ({ WhatsAppButton: () => null }));
+vi.mock('@/components/ui/search-field', () => ({ SearchField: () => null }));
 vi.mock('@/components/tournament/tiebreak-legend-button', () => ({ TiebreakLegendButton: () => null }));
 vi.mock('@/components/player/origin-badge', () => ({ OriginBadge: () => React.createElement('span', {}, 'MS') }));
 vi.mock('@/lib/utils/chess', async () => import('../utils/chess'));
 vi.mock('@/lib/utils/player-name', async () => import('../utils/player-name'));
 vi.mock('@/lib/utils/player-title', async () => import('../utils/player-title'));
+vi.mock('@/lib/utils/federation', async () => import('../utils/federation'));
+vi.mock('@/lib/utils/rounds', async () => import('../utils/rounds'));
+vi.mock('@/lib/utils/whatsapp', async () => import('../utils/whatsapp'));
+vi.mock('@/lib/utils/text', async () => import('../utils/text'));
+vi.mock('@/lib/utils/standings-state', async () => import('../utils/standings-state'));
 import { StandingsTable } from '../../components/tournament/standings-table';
+import { StandingsView } from '../../components/tournament/standings-view';
 
 const rows: StandingRow[] = [
   {
@@ -64,5 +87,39 @@ describe('category labels in standings', () => {
     const $ = render(true);
     expect($('tbody').text()).toContain('Sub-10');
     expect($('tbody').text()).toContain('Sub-12');
+  });
+});
+
+describe('pairing group selector in standings', () => {
+  beforeEach(() => {
+    vi.stubGlobal('React', React);
+    mocks.standings = rows;
+    mocks.search = '';
+  });
+  afterEach(() => vi.unstubAllGlobals());
+  const view = () => load(renderToStaticMarkup(React.createElement(StandingsView, { slug: 'teste' })));
+
+  it('hides the selector for a single group without losing its players or category filters', () => {
+    const $ = view();
+    expect($('select')).toHaveLength(0);
+    expect($('tbody a')).toHaveLength(2);
+    expect($('button').map((_, el) => $(el).text()).get()).toEqual(['Absoluto', 'Sub-10', 'Sub-12']);
+  });
+
+  it('also hides the selector when the standings have no pairing groups', () => {
+    mocks.standings = rows.map(row => ({ ...row, pairing_group_id: null, pairing_group_name: null }));
+    const $ = view();
+    expect($('select')).toHaveLength(0);
+    expect($('tbody a')).toHaveLength(2);
+  });
+
+  it('shows distinct pairing groups and preserves the selected group from the URL', () => {
+    mocks.standings = [rows[0], { ...rows[1], pairing_group_id: 'second', pairing_group_name: 'Outro grupo' }];
+    mocks.search = 'group=second';
+    const $ = view();
+    expect($('select')).toHaveLength(1);
+    expect($('select option')).toHaveLength(2);
+    expect($('option[selected]').attr('value')).toBe('second');
+    expect($('tbody a').map((_, el) => $(el).text()).get()).toEqual(['Beatriz Souza']);
   });
 });
