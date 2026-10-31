@@ -502,9 +502,9 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
             <option value="rpd">Rápido</option>
             <option value="blz">Blitz</option>
           </Select>
-          <Select label="Bye solicitado vale" {...register('requested_bye_score')}>
-            <option value="0.5">½ ponto</option>
-            <option value="0">0 pontos</option>
+          <Select label="Bye solicitado" {...register('requested_bye_score')}>
+            <option value="0.5">½ ponto só na 1ª rodada</option>
+            <option value="0">0 pontos em todas as rodadas</option>
           </Select>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400">

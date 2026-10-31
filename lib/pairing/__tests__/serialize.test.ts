@@ -48,6 +48,46 @@ function c5State(): TrfState {
 }
 
 describe('serializeForPairing', () => {
+  it.each([[1, 0.5, 'H', 0.5], [1, 0, 'Z', 0], [3, 0.5, 'Z', 0]] as const)(
+    'round %s with configuration %s emits %s and consistent points', async (round, score, code, points) => {
+      const s = c5State();
+      s.targetRound = round;
+      s.requestedByeScore = score;
+      if (round === 1) s.games = [];
+      const trf = serializeForPairing(s);
+      const player = trf.split('\n').find((line) => line.startsWith('001') && Number(line.slice(4, 8)) === 4)!;
+      expect(player[98 + 10 * (round - 1)]).toBe(code);
+      expect(Number(player.slice(80, 84))).toBe(points);
+      const res = await runDutchPairing(trf);
+      expect(res.ok, res.ok ? '' : res.detail).toBe(true);
+    },
+  );
+
+  it('preserves already recorded half-point byes in later rounds and in the export', async () => {
+    const s = c5State();
+    s.requestedByeScore = 0.5;
+    s.games = s.games.filter((game) => !(game.roundNumber === 2 && game.whiteTpId === 'tp-6'));
+    s.games.push(
+      { roundNumber: 2, whiteTpId: 'tp-6', blackTpId: null, result: 'bye', isBye: true,
+        byeKind: 'requested_half', whitePoints: 0.5, blackPoints: null },
+      { roundNumber: 2, whiteTpId: 'tp-5', blackTpId: null, result: 'bye', isBye: true,
+        byeKind: 'requested_zero', whitePoints: 0, blackPoints: null },
+    );
+    const trf = serializeForPairing(s);
+    const exported = serializeForExport({
+      ...s, lastRound: 2, city: null, federation: 'BRA', startDate: '2026-10-30',
+      endDate: null, chiefArbiter: null, timeControl: '15+10',
+      players: s.players.map((player) => ({ ...player, rank: null })),
+    });
+    for (const text of [trf, exported]) {
+      const legacyPlayer = text.split('\n').find((line) => line.startsWith('001') && Number(line.slice(4, 8)) === 6)!;
+      expect(legacyPlayer[108]).toBe('H');
+      expect(Number(legacyPlayer.slice(80, 84))).toBe(0.5);
+    }
+    const res = await runDutchPairing(trf);
+    expect(res.ok, res.ok ? '' : res.detail).toBe(true);
+  });
+
   it('gera TRF aceito pela engine com o pareamento esperado do C5', async () => {
     const trf = serializeForPairing(c5State());
     const res = await runDutchPairing(trf);

@@ -8,6 +8,7 @@ import {
 import { parseEngineOutput } from './trf/parse-output';
 import { runDutchPairing } from './engine';
 import { bergerRoundPairs, roundRobinTotalRounds } from './berger';
+import { requestedByeScoreForRound } from './requested-bye';
 
 export interface GenerateResult {
   roundId: string;
@@ -207,7 +208,7 @@ async function swissBoards(
     const p = players.find((x) => x.tpId === tpId);
     if (p?.status === 'active' && p.joinedAtRound <= target) {
       boards.push({ board: null, whiteTp: tpId, blackTp: null,
-        byeKind: state.requestedByeScore === 0.5 ? 'requested_half' : 'requested_zero' });
+        byeKind: requestedByeScoreForRound(state.requestedByeScore, target) === 0.5 ? 'requested_half' : 'requested_zero' });
     }
   }
   return boards;

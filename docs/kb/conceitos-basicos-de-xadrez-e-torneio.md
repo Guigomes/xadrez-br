@@ -45,11 +45,13 @@ uma vitória), sem jogar.
 jogar uma rodada específica (viagem, compromisso, etc.). O organizador
 marca isso na aba Rodadas, na seção "Ausências na rodada", **antes** de
 gerar o pareamento daquela rodada — o jogador marcado não entra no sorteio
-de mesas e recebe meio ponto (0,5) ou zero ponto, dependendo da
-configuração do torneio (`requested_bye_score`). A diferença central pro
+de mesas. Se o organizador habilitou meio ponto (`requested_bye_score = 0.5`),
+recebe 0,5 ponto somente na primeira rodada. Da segunda rodada em diante,
+recebe sempre zero; com a opção de zero pontos, recebe zero em todas as rodadas.
+Byes e resultados já registrados não são alterados automaticamente por essa regra.
+A diferença central pro
 bye de pareamento: este é um pedido do jogador, feito antes da rodada
-existir, e vale menos que 1 ponto cheio (a não ser que o torneio esteja
-configurado para dar meio ponto).
+existir, e não concede o ponto inteiro do bye de pareamento.
 
 ## Rating
 

@@ -1,6 +1,7 @@
 // Serializa o estado de um grupo em TRF(bx) para o bbpPairings (modo pairing).
 // A engine valida estritamente pontos × resultados — erros aqui viram exit 3.
 import { COL, ROUND_WIDTH, BYE_CODE } from './constants';
+import { requestedByeScoreForRound } from '../requested-bye';
 import type { GameResult, ByeKind, InitialColor, PlayerSex } from '@/types/database';
 
 export interface TrfPlayer {
@@ -31,7 +32,7 @@ export interface TrfState {
   tournamentName: string;
   roundsTotal: number;
   initialColor: InitialColor;
-  requestedByeScore: number; // 0.5 | 0
+  requestedByeScore: number; // Configured allowance: 0.5 only in round 1, otherwise 0.
   targetRound: number;       // rodada a parear
   players: TrfPlayer[];
   games: TrfGame[];          // histórico das rodadas < targetRound
@@ -95,7 +96,7 @@ function cellsForPlayer(p: TrfPlayer, state: TrfState, startnoByTp: Map<string, 
     state.requestedByeTpIds.has(p.tpId);
   if (excluded) {
     const code = state.requestedByeTpIds.has(p.tpId) && p.status === 'active'
-      ? (state.requestedByeScore === 0.5 ? 'H' : 'Z')
+      ? (requestedByeScoreForRound(state.requestedByeScore, state.targetRound) === 0.5 ? 'H' : 'Z')
       : 'Z';
     cells.push({ opp: '0000', color: '-', result: code });
   }
@@ -111,7 +112,7 @@ function pointsForPlayer(p: TrfPlayer, state: TrfState): number {
   }
   // bye solicitado da rodada-alvo entra nos pontos (a engine exige)
   if (p.status === 'active' && state.requestedByeTpIds.has(p.tpId)) {
-    pts += state.requestedByeScore;
+    pts += requestedByeScoreForRound(state.requestedByeScore, state.targetRound);
   }
   return pts;
 }

@@ -24,6 +24,7 @@ import { SearchField } from '@/components/ui/search-field';
 import { buildRoundMessage } from '@/lib/utils/whatsapp';
 import { matchesPlayerSearch, normalizeSearchText } from '@/lib/utils/text';
 import { canEditPairings, canReturnRoundToDraft, countEnteredResults } from '@/lib/utils/rounds';
+import { requestedByeScoreForRound } from '@/lib/pairing/requested-bye';
 import type { Tournament, Round } from '@/types/database';
 
 /**
@@ -359,6 +360,7 @@ function ByeSelector({
 
   const nameOf = (p: any) => p.player?.full_name ?? p.player_id;
   const marked = players.filter((p) => requestedIds?.has(p.id));
+  const roundByeScore = requestedByeScoreForRound(byeScore, roundNumber);
 
   const q = normalizeSearchText(query.trim());
   const listed = q ? players.filter((p) => normalizeSearchText(String(nameOf(p))).includes(q)) : players;
@@ -383,7 +385,8 @@ function ByeSelector({
             )}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Quem não vai jogar recebe bye ({byeScore === 0.5 ? '½ ponto' : '0 pontos'}) e fica fora do pareamento.
+            Quem não vai jogar recebe bye ({roundByeScore === 0.5 ? '½ ponto' : '0 pontos'}) e fica fora do pareamento.
+            {byeScore === 0.5 && ' O ½ ponto vale apenas na 1ª rodada.'}
             {onRegenerate && ' O pareamento atual só muda ao regerar.'}
           </p>
         </div>
