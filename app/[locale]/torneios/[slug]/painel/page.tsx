@@ -2,10 +2,12 @@ import { notFound } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import QRCode from 'qrcode';
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/database';
+import type { Database, StandingRow } from '@/types/database';
 import { siteUrl } from '@/lib/seo';
 import { TvControls } from '@/components/tournament/tv-controls';
 import { TvPairingCard } from '@/components/tournament/tv-pairing-card';
+import { TvDisplay } from '@/components/tournament/tv-display';
+import { TvStandings } from '@/components/tournament/tv-standings';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,16 +26,18 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
   if (tournamentError) throw new Error('Não foi possível carregar o torneio do painel.');
   if (!tournament || tournament.status === 'draft') notFound();
 
-  const [roundsResult, groupsResult] = await Promise.all([
+  const [roundsResult, groupsResult, standingsResult] = await Promise.all([
     publicClient.from('rounds')
-      .select('id, round_number, status, pairing_groups(name)')
+      .select('id, round_number, status, pairing_group_id, pairing_groups(name)')
       .eq('tournament_id', tournament.id)
       .in('status', ['ongoing', 'finished'])
       .order('round_number', { ascending: false }).order('id'),
-    publicClient.from('pairing_groups').select('id', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
+    publicClient.from('pairing_groups').select('id, name').eq('tournament_id', tournament.id).order('sort_order').order('id'),
+    publicClient.rpc('get_tournament_standings', { p_tournament_id: tournament.id }),
   ]);
   if (roundsResult.error) throw new Error('Não foi possível carregar as rodadas do painel.');
   if (groupsResult.error) throw new Error('Não foi possível carregar os grupos do painel.');
+  if (standingsResult.error) throw new Error('Não foi possível carregar a classificação do painel.');
   const rounds = roundsResult.data ?? [];
   // Prefer the current round; retain the last published results between rounds.
   const round = rounds.find((item) => item.status === 'ongoing') ?? rounds[0] ?? null;
@@ -50,26 +54,30 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
   });
 
   // Torneio com um grupo só (o "Absoluto" de todo nativo) não precisa citar o grupo.
-  const groupCount = groupsResult.count;
-  const groupName = (groupCount ?? 0) > 1
-    ? (round?.pairing_groups as unknown as { name: string } | null)?.name
+  const groups = groupsResult.data ?? [];
+  const selectedGroupId = round?.pairing_group_id ?? groups[0]?.id ?? null;
+  const groupName = groups.length > 1
+    ? (round?.pairing_groups as unknown as { name: string } | null)?.name ?? groups[0]?.name
     : null;
+  // Keep the RPC's published positions/order. Never mix ranks from different groups.
+  const standings = ((standingsResult.data ?? []) as StandingRow[])
+    .filter((row) => row.pairing_group_id === selectedGroupId);
 
   return (
-    <main className="chess-pattern fixed inset-0 z-50 overflow-auto bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 px-4 py-6 text-white sm:px-10">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-5">
+    <TvDisplay header={
+      <header className="flex flex-wrap items-start justify-between gap-3 sm:gap-5">
         <div className="min-w-0">
           <p className="flex items-center gap-3 text-sm font-bold uppercase tracking-[0.2em] text-brand-200">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-xl leading-none text-brand-700 shadow">♞</span>
-            Gambito Torneios · Painel de chamada
+            Gambito Torneios · Painel para TV
           </p>
-          <h1 className="mt-3 text-3xl font-black leading-tight sm:text-5xl">{tournament.name}</h1>
-          <p className="mt-2 text-lg text-brand-200">{tournament.city}, {tournament.state}</p>
+          <h1 className="mt-2 text-2xl font-black leading-tight sm:text-4xl">{tournament.name}</h1>
+          <p className="mt-1 text-base text-brand-200">{tournament.city}, {tournament.state}</p>
         </div>
 
         <div className="flex flex-col items-end gap-3">
           <div className="flex items-center gap-4 rounded-2xl bg-white p-3 text-brand-900 shadow-lg">
-            <div className="h-28 w-28 shrink-0 sm:h-32 sm:w-32 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+            <div className="h-16 w-16 shrink-0 sm:h-24 sm:w-24 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
             <p className="max-w-[9rem] text-sm font-bold leading-snug sm:text-base">
               Aponte a câmera e acompanhe pelo celular
             </p>
@@ -77,8 +85,8 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
           <TvControls tournamentId={tournament.id} />
         </div>
       </header>
-
-      {!round ? (
+    } rounds={
+      !round ? (
         <div className="grid min-h-96 place-items-center rounded-3xl bg-white/10 text-center ring-1 ring-white/15">
           <div>
             <p className="text-5xl">♟</p>
@@ -102,7 +110,7 @@ export default async function TournamentTvPage({ params }: { params: Promise<{ s
             ))}
           </div>
         </>
-      )}
-    </main>
+      )
+    } standings={<TvStandings rows={standings} locale={locale} groupName={groupName} />} />
   );
 }
