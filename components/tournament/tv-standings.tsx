@@ -32,7 +32,7 @@ export function TvStandings({ rows, locale, groupName }: {
                   {playerDisplayName(row.full_name, row.fide_name, locale)}
                   <span className="mt-1 block text-sm font-medium text-gray-500 sm:text-base">{row.rating_tempo == null ? 'Sem rating' : `Rating ${row.rating_tempo}`}</span>
                 </th>
-                <td className="rounded-r-2xl px-3 py-4 text-right text-3xl font-black text-brand-800 sm:text-4xl">{formatScore(row.points)}</td>
+                <td className="rounded-r-2xl px-3 py-4 text-right text-3xl font-black text-brand-800 sm:text-4xl">{row.points === 0.5 ? '½' : formatScore(row.points)}</td>
               </tr>
             ))}
           </tbody>

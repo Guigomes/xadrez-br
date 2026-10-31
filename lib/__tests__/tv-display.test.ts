@@ -52,6 +52,9 @@ describe('TV standings', () => {
     expect($('tbody td').last().text()).toBe('0');
     expect($('tbody th').text()).toContain('Sem rating');
   });
+  it('shows half a point without a leading zero', () => {
+    expect(render([row({ points: 0.5 })])('tbody td').last().text()).toBe('½');
+  });
   it('keeps source order/ties and identifies the group only in the heading', () => {
     const $ = render([row({ tp_id: 'second', full_name: 'Segundo', fide_name: null }), row({ tp_id: 'first', rank: 1, full_name: 'Primeiro', fide_name: null })], 'Sub-10');
     expect($('tbody th').first().text()).toContain('Segundo');
