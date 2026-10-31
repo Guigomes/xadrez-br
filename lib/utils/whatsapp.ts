@@ -74,7 +74,8 @@ export function buildRoundMessage(opts: {
   // Byes num torneio grande são vários — juntar numa linha só no fim é mais
   // limpo que espalhar "Mesa —: Fulano (bye)" no meio dos confrontos.
   const jogos = opts.pairings.filter((p) => !p.is_bye);
-  const byes = opts.pairings.filter((p) => p.is_bye);
+  const byes = opts.pairings.filter((p) => p.is_bye && p.result !== 'not_paired');
+  const naoEmparceirados = opts.pairings.filter((p) => p.is_bye && p.result === 'not_paired');
 
   const lines = jogos.map((p) => {
     const mesa = p.board_number != null ? `Mesa ${p.board_number}: ` : '';
@@ -85,6 +86,9 @@ export function buildRoundMessage(opts: {
   const body = truncateLines(lines);
   if (byes.length > 0) {
     body.push(`Bye: ${byes.map((p) => p.white_name).join(', ')}`);
+  }
+  if (naoEmparceirados.length > 0) {
+    body.push(`Não emparceirados: ${naoEmparceirados.map((p) => p.white_name).join(', ')}`);
   }
 
   const parts = [head.join('\n'), body.join('\n')];

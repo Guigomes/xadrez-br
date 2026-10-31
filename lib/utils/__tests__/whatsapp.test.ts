@@ -86,6 +86,19 @@ describe('buildRoundMessage', () => {
     expect(msg).not.toContain('Eva ×');
   });
 
+  it('separa o ausente de 0 ponto (não emparceirado) do bye', () => {
+    const msg = buildRoundMessage({
+      tournamentName: 'X', roundNumber: 2, statusLabel: 'Em andamento', resultLabels: RESULT_LABELS,
+      pairings: [
+        { board_number: null, white_name: 'Eva', black_name: '', result: 'bye', is_bye: true },
+        { board_number: null, white_name: 'Gil', black_name: '', result: 'not_paired', is_bye: true },
+      ],
+    });
+    expect(msg).toContain('Bye: Eva');
+    expect(msg).toContain('Não emparceirados: Gil');
+    expect(msg).not.toContain('Bye: Eva, Gil');
+  });
+
   it('inclui o nome do grupo quando informado', () => {
     const msg = buildRoundMessage({
       tournamentName: 'X', roundNumber: 3, groupName: 'Sub-10', statusLabel: 'Finalizada', resultLabels: RESULT_LABELS,

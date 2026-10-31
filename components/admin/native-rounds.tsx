@@ -429,7 +429,9 @@ function ByeSelector({
             )}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Quem não vai jogar recebe bye ({roundByeScore === 0.5 ? '½ ponto' : '0 pontos'}) e fica fora do pareamento.
+            {roundByeScore === 0.5
+              ? 'Quem não vai jogar recebe bye (½ ponto) e fica fora do pareamento.'
+              : 'Quem não vai jogar fica como não emparceirado (0 pontos) e fora do pareamento.'}
             {byeScore === 0.5 && ' O ½ ponto vale apenas na 1ª rodada.'}
           </p>
         </div>
@@ -783,7 +785,7 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
   const Seat = ({ p, side, name }: { p: any; side: 'w' | 'b'; name: string | null }) => {
     if (!canSwap || !name || p.is_bye) {
       const won = !p.is_bye && winnerSide(p.result, side === 'w' ? 'white' : 'black') === 'winner';
-      return <span className={`min-w-0 break-words text-gray-900 dark:text-gray-100 ${won ? 'font-bold' : ''}`}>{name ?? 'BYE'}</span>;
+      return <span className={`min-w-0 break-words text-gray-900 dark:text-gray-100 ${won ? 'font-bold' : ''}`}>{name ?? (p.result === 'not_paired' ? 'Não emparceirado' : 'BYE')}</span>;
     }
     const isSel = selected?.pairingId === p.pairing_id && selected?.side === side;
     return (
@@ -880,7 +882,7 @@ function RoundBoards({ tournament, groupId, round }: { tournament: Tournament; g
               <div className="shrink-0 pt-0.5">
                 {p.is_bye ? (
                   <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                    Bye ({p.white_points ?? 0})
+                    {p.result === 'not_paired' ? 'Não emparceirado' : 'Bye'} ({p.white_points ?? 0})
                   </Badge>
                 ) : (
                   <span className={`text-xs font-medium tabular-nums ${
