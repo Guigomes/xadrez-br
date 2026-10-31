@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory, useRelinkTournamentPlayer, useSetPlayerCheckin, useCheckinEnabled } from '@/lib/hooks/use-tournament';
+import { useTournament, useTournamentPlayers, useAddTournamentPlayer, useDeleteTournamentPlayer, useAssignPlayerGroup, useSetPlayerCategory, useRelinkTournamentPlayer, useSetPlayerCheckin, useCheckinEnabled } from '@/lib/hooks/use-tournament';
 import { useCreatePlayer, useUpdatePlayer, useSyncCbxRating, findPlayerIdByCbx } from '@/lib/hooks/use-player';
 import { useGroups, useCreateDefaultGroup } from '@/lib/hooks/use-native-rounds';
 import { useCategories } from '@/lib/hooks/use-classifications';
@@ -330,8 +330,8 @@ export default function AdminPlayersPage({ params }: Props) {
 /**
  * Modal de cadastro/edição de participante — mesmo formulário nos dois casos.
  * `editing` null = cadastra jogador novo e já adiciona ao torneio;
- * `editing` preenchido = atualiza os dados do jogador (e a classificação,
- * se foi trocada) sem mexer no vínculo com o torneio.
+ * `editing` preenchido = salvar atualiza jogador/classificação sem trocar o vínculo;
+ * excluir exige uma confirmação separada e remove somente a participação.
  */
 function PlayerFormModal({
   tournamentId, isNative, groups, categories, hasClassifications, tournamentStartYear, editing, onClose,
@@ -348,6 +348,7 @@ function PlayerFormModal({
   const createPlayer = useCreatePlayer();
   const updatePlayer = useUpdatePlayer(tournamentId);
   const addPlayer = useAddTournamentPlayer(tournamentId);
+  const deletePlayer = useDeleteTournamentPlayer(tournamentId);
   const setCategory = useSetPlayerCategory(tournamentId);
   const relinkPlayer = useRelinkTournamentPlayer(tournamentId);
   const syncCbxRating = useSyncCbxRating(tournamentId);
@@ -359,6 +360,8 @@ function PlayerFormModal({
   // idade não deveria mudar a seleção sem o organizador pedir.
   const [categoryTouched, setCategoryTouched] = useState(!!editing);
   const [error, setError] = useState('');
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Cadastro novo: digitar o ID CBX busca o jogador (nosso cadastro primeiro, depois a CBX)
   // e preenche o resto — e, se ele já existe aqui, useCreatePlayer reaproveita o mesmo
@@ -411,6 +414,7 @@ function PlayerFormModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (confirmDelete || saving || deletePlayer.isPending) return;
     setError('');
     try {
       if (editing) {
@@ -455,9 +459,47 @@ function PlayerFormModal({
   }
 
   const saving = createPlayer.isPending || addPlayer.isPending || updatePlayer.isPending || setCategory.isPending || relinkPlayer.isPending;
+  const busy = saving || deletePlayer.isPending;
+  const close = () => { if (!busy) onClose(); };
+
+  async function handleDelete() {
+    if (!editing || !isNative || !confirmDelete || busy) return;
+    setError('');
+    try {
+      await deletePlayer.mutateAsync(editing.tpId);
+      onClose();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Não foi possível excluir o participante.');
+    }
+  }
+
+  if (confirmDelete && editing) {
+    return (
+      <Modal title="Excluir participante?" onClose={close}>
+        <div className="space-y-4">
+          <p className="break-words text-sm text-gray-700 dark:text-gray-200">
+            Excluir <strong>{editing.values.full_name}</strong> deste torneio?
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            O cadastro do jogador e sua participação em outros torneios serão mantidos.
+            Registros de inscrição e pagamentos não serão apagados; não há reembolso automático.
+          </p>
+          <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            Se houver partidas vinculadas, inclusive em rascunho, a exclusão será bloqueada para preservar o histórico.
+            Alterações não salvas neste formulário serão descartadas ao excluir.
+          </p>
+          {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">{error}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => { setConfirmDelete(false); setError(''); }}>Voltar à edição</Button>
+            <Button type="button" variant="danger" loading={deletePlayer.isPending} disabled={saving} onClick={handleDelete}>Confirmar exclusão</Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
-    <Modal title={editing ? 'Editar participante' : 'Cadastrar participante'} onClose={onClose}>
+    <Modal title={editing ? 'Editar participante' : 'Cadastrar participante'} onClose={close}>
       <form onSubmit={handleSubmit} className="space-y-3">
         {error && (
           <p className="rounded-lg bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs text-red-600 dark:text-red-400">{error}</p>
@@ -529,8 +571,15 @@ function PlayerFormModal({
           <Button type="submit" loading={saving} disabled={isNative && !editing && !groups?.length}>
             {editing ? 'Salvar' : 'Adicionar'}
           </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button type="button" variant="secondary" disabled={busy} onClick={close}>Cancelar</Button>
         </div>
+        {editing && isNative && (
+          <div className="border-t border-gray-200 pt-3 dark:border-gray-700">
+            <Button type="button" variant="danger" disabled={busy} onClick={() => { setError(''); setConfirmDelete(true); }}>
+              Excluir participante
+            </Button>
+          </div>
+        )}
       </form>
     </Modal>
   );

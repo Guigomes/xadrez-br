@@ -347,6 +347,37 @@ export function useAddTournamentPlayer(tournamentId: string) {
   });
 }
 
+/** Remove only this event's participant. FK restrictions preserve all linked games. */
+export function useDeleteTournamentPlayer(tournamentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    retry: false,
+    mutationFn: async (tpId: string) => {
+      if (!tournamentId || !tpId) throw new Error('Participante inválido.');
+      const { data, error } = await supabase.from('tournament_players')
+        .delete().eq('id', tpId).eq('tournament_id', tournamentId)
+        .select('id').maybeSingle();
+      if (error?.code === '23503') {
+        throw new Error('Este participante tem partidas vinculadas, inclusive em rascunho, e não pode ser excluído. Marque ausência nas próximas rodadas para preservar o histórico.');
+      }
+      if (error?.code === '42501' || (!error && !data)) {
+        throw new Error('Participante não encontrado neste torneio ou você não tem permissão para excluí-lo.');
+      }
+      if (error) throw new Error('Não foi possível excluir o participante. Tente novamente.');
+      return data!.id;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) }),
+        qc.invalidateQueries({ queryKey: tournamentKeys.standings(tournamentId) }),
+        qc.invalidateQueries({ queryKey: tournamentKeys.lists() }),
+        qc.invalidateQueries({ queryKey: ['registrations', tournamentId] }),
+        qc.invalidateQueries({ queryKey: ['requested-byes', tournamentId] }),
+      ]);
+    },
+  });
+}
+
 /** Corrige um tournament_player sem grupo (ex.: adicionado antes de o torneio virar nativo). */
 export function useAssignPlayerGroup(tournamentId: string) {
   const qc = useQueryClient();
