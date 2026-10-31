@@ -28,3 +28,12 @@ export function previewRoundResults(pairings: RoundPairingRow[], pending: Result
     return result === undefined ? pairing : applyPairingResult(pairing, result);
   });
 }
+
+/** Keep a saving board visible until confirmation, including during cache updates. */
+export function ongoingResultPairingIds(pairings: RoundPairingRow[], pending: ResultSubmission[]) {
+  const savingIds = new Set(pending.map((entry) => entry.pairingId));
+  return new Set(pairings
+    .filter((pairing) => !pairing.is_bye
+      && (pairing.result === '*' || savingIds.has(pairing.pairing_id)))
+    .map((pairing) => pairing.pairing_id));
+}

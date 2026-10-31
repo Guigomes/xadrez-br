@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { winnerSide } from '@/lib/utils/chess';
 import { WhitePawn, BlackPawn } from '@/components/tournament/piece-icons';
-import { previewRoundResults, resultMutationKey, type EnteredResult, type ResultSubmission } from '@/lib/utils/round-results';
+import { ongoingResultPairingIds, previewRoundResults, resultMutationKey, type EnteredResult, type ResultSubmission } from '@/lib/utils/round-results';
 import type { Round, RoundPairingRow } from '@/types/database';
 
 const MAIN: { value: EnteredResult; label: string }[] = [
@@ -70,6 +70,7 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
     ?? (userId === tournament?.created_by ? 'Organizador' : 'Árbitro');
   const [error, setError] = useState('');
   const [boardErrors, setBoardErrors] = useState<Record<string, string>>({});
+  const [onlyOngoing, setOnlyOngoing] = useState(false);
   const submitting = useRef(new Set<string>());
   const boardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -78,6 +79,8 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
     [pairings, pendingResults],
   );
   const savingIds = new Set(pendingResults.map((entry) => entry.pairingId));
+  const ongoingIds = ongoingResultPairingIds(pairings ?? [], pendingResults);
+  const visibleGames = onlyOngoing ? games.filter((game) => ongoingIds.has(game.pairing_id)) : games;
   const done = games.filter((p) => p.result !== '*').length;
   const allDone = games.length > 0 && done === games.length;
 
@@ -133,6 +136,28 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
             style={{ width: games.length ? `${(done / games.length) * 100}%` : 0 }}
           />
         </div>
+        {round.status !== 'draft' && (
+          <div role="group" aria-label="Filtrar mesas" className="mt-3 grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={onlyOngoing ? 'secondary' : 'primary'}
+              aria-pressed={!onlyOngoing}
+              className="h-11 min-w-0 px-2 tabular-nums"
+              onClick={() => setOnlyOngoing(false)}
+            >
+              Todas <span className="text-xs opacity-75">({games.length})</span>
+            </Button>
+            <Button
+              type="button"
+              variant={onlyOngoing ? 'primary' : 'secondary'}
+              aria-pressed={onlyOngoing}
+              className="h-11 min-w-0 px-2 tabular-nums"
+              onClick={() => setOnlyOngoing(true)}
+            >
+              Em andamento <span className="text-xs opacity-75">({ongoingIds.size})</span>
+            </Button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -148,7 +173,20 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
       )}
 
       <div className="space-y-3">
-        {games.map((p) => {
+        {onlyOngoing && visibleGames.length === 0 && (
+          <div role="status" className="card p-6 text-center">
+            <p className="font-medium text-gray-900 dark:text-gray-100">Nenhuma mesa em andamento.</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {games.length > 0 ? 'Todos os resultados já foram confirmados.' : 'Não há mesas nesta rodada.'}
+            </p>
+            {games.length > 0 && (
+              <Button type="button" variant="secondary" className="mt-4" onClick={() => setOnlyOngoing(false)}>
+                Ver todas as mesas
+              </Button>
+            )}
+          </div>
+        )}
+        {visibleGames.map((p) => {
           const pending = p.result === '*';
           const saving = savingIds.has(p.pairing_id);
           const boardNumber = p.board_number;
@@ -160,10 +198,10 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
             <div
               key={p.pairing_id}
               ref={(el) => { boardRefs.current[p.pairing_id] = el; }}
-              className={`card p-4 ${!pending ? 'border-l-4 border-green-500 dark:border-green-600' : ''}`}
+              className="card p-4"
             >
               <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-gray-400">MESA {boardNumber}</span>
+                <h2 className="text-base font-semibold tabular-nums text-gray-700 dark:text-gray-300">Mesa {boardNumber}</h2>
                 {saving && <span role="status" className="text-xs text-gray-500 dark:text-gray-400">Salvando…</span>}
                 <span className="flex items-center gap-1.5">
                   {assignedTo ? (
@@ -213,16 +251,15 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                   Mesa atendida por {staffName(assignedTo!)} — só ele(a) ou um organizador lança o resultado.
                 </p>
               )}
-              <div className="grid gap-2 mb-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-start">
-                <span className="flex min-w-0 items-start gap-1.5 font-medium text-gray-900 dark:text-gray-100">
-                  <WhitePawn className="mt-0.5 h-4 w-3 shrink-0" />
-                  <span className="min-w-0 break-words">{p.white_name}</span>
+              <div className="mb-4 grid gap-3">
+                <span className="flex min-w-0 items-start gap-2.5 text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                  <span aria-hidden="true" className="mt-0.5 shrink-0"><WhitePawn className="h-5 w-4" /></span>
+                  <span className="min-w-0 break-words"><span className="sr-only">Brancas: </span>{p.white_name}</span>
                   {winnerSide(p.result, 'white') === 'winner' && <span className="shrink-0 text-xs">🏆</span>}
                 </span>
-                <span aria-hidden="true" className="hidden text-gray-400 text-xs sm:block">×</span>
-                <span className="flex min-w-0 items-start gap-1.5 font-medium text-gray-900 dark:text-gray-100">
-                  <BlackPawn className="mt-0.5 h-4 w-3 shrink-0" />
-                  <span className="min-w-0 break-words">{p.black_name}</span>
+                <span className="flex min-w-0 items-start gap-2.5 text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                  <span aria-hidden="true" className="mt-0.5 shrink-0"><BlackPawn className="h-5 w-4" /></span>
+                  <span className="min-w-0 break-words"><span className="sr-only">Pretas: </span>{p.black_name}</span>
                   {winnerSide(p.result, 'black') === 'winner' && <span className="shrink-0 text-xs">🏆</span>}
                 </span>
               </div>
@@ -234,19 +271,20 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                   parte pra reabrir os botões). */}
               {canEnter ? (
                 <>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div role="group" aria-label={`Resultado da mesa ${boardNumber}`} className="grid grid-cols-3 gap-2">
                     {MAIN.map((r) => {
                       const active = p.result === r.value;
                       return (
                         <button
                           key={r.value}
+                          type="button"
                           disabled={saving || transition.isPending}
                           aria-pressed={active}
                           onClick={() => submit(p, r.value)}
-                          className={`h-12 rounded-xl font-bold text-lg transition-colors ${
+                          className={`h-11 rounded-lg border text-base font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-wait disabled:opacity-60 ${
                             active
-                              ? 'bg-green-600 text-white'
-                              : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-brand-100 dark:hover:bg-brand-900/40'
+                              ? 'border-green-600 bg-green-600 text-white'
+                              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-800'
                           }`}
                         >
                           {r.label}
@@ -254,19 +292,20 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                       );
                     })}
                   </div>
-                  <div className="grid grid-cols-4 gap-2 mt-2">
+                  <div role="group" aria-label={`WO e correções da mesa ${boardNumber}`} className="mt-1 grid grid-cols-4 gap-1">
                     {WO.map((r) => {
                       const active = r.value !== '*' && p.result === r.value;
                       return (
                         <button
                           key={r.value}
+                          type="button"
                           disabled={saving || transition.isPending}
                           aria-pressed={active}
                           onClick={() => submit(p, r.value)}
-                          className={`h-9 rounded-lg border text-xs transition-colors ${
+                          className={`min-h-11 rounded-md px-1 text-xs leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-wait disabled:opacity-60 ${
                             active
-                              ? 'bg-green-600 border-green-600 text-white'
-                              : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                              ? 'bg-green-600 text-white'
+                              : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'
                           }`}
                         >
                           {r.label}
@@ -276,7 +315,7 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
                   </div>
                 </>
               ) : !pending ? (
-                <p className="text-center text-xl font-bold text-gray-900 dark:text-gray-100">
+                <p className="border-t border-gray-100 pt-3 text-center text-base font-medium text-gray-600 dark:border-gray-800 dark:text-gray-300">
                   {p.result === 'forfeit_white' ? 'WO (0–1)'
                     : p.result === 'forfeit_black' ? 'WO (1–0)'
                     : p.result === 'double_forfeit' ? 'WO duplo'
