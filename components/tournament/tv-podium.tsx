@@ -1,21 +1,25 @@
 'use client';
 
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import Image from 'next/image';
 import { playerDisplayName } from '@/lib/utils/player-name';
 import { localizedTitle } from '@/lib/utils/player-title';
 import { formatScore } from '@/lib/utils/chess';
 import { podiumPhotoUrl, startPodiumCeremony, type PodiumOption, type PodiumPlayer } from '@/lib/tournament/podium';
 import { TournamentLogo } from './tournament-logo';
+import { PodiumMusic, type PodiumMusicControls } from './podium-music';
 import styles from './tv-podium.module.css';
 
 export function TvPodium({ options, tournamentId, tournamentName, slug, locale }: {
   options: PodiumOption[]; tournamentId: string; tournamentName: string; slug: string; locale: string;
 }) {
   const [selectedId, setSelectedId] = useState(options[0]?.id ?? '');
+  const music = useRef<PodiumMusicControls>(null);
   const option = options.find((item) => item.id === selectedId) ?? options[0];
   // Winner changes reset the ceremony; identical live refreshes keep it intact.
   const identity = option ? `${option.id}:${option.players.map((p) => `${p.position}/${p.playerId}/${p.points}`).join(',')}` : '';
+  // Keep selection/volume on a category change, but don't play during the next setup.
+  useEffect(() => { music.current?.pause(); }, [identity]);
   return (
     <div className={styles.scene}>
       <div className="relative z-10 mx-auto mb-4 flex max-w-4xl items-center justify-center gap-4 text-center">
@@ -33,14 +37,15 @@ export function TvPodium({ options, tournamentId, tournamentName, slug, locale }
               {options.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
           </div>
-          <PodiumCeremony key={identity} option={option} slug={slug} locale={locale} />
+          <PodiumMusic ref={music} />
+          <PodiumCeremony key={identity} option={option} slug={slug} locale={locale} onStart={() => music.current?.restart()} />
         </>
       )}
     </div>
   );
 }
 
-function PodiumCeremony({ option, slug, locale }: { option: PodiumOption; slug: string; locale: string }) {
+function PodiumCeremony({ option, slug, locale, onStart }: { option: PodiumOption; slug: string; locale: string; onStart: () => void }) {
   const [run, setRun] = useState(0);
   const [stage, setStage] = useState(0);
   const [animated, setAnimated] = useState(false);
@@ -61,7 +66,7 @@ function PodiumCeremony({ option, slug, locale }: { option: PodiumOption; slug: 
   return (
     <>
       <div className="relative z-10 mb-3 flex flex-wrap justify-center gap-3">
-        <button type="button" disabled={!option.players.length} className="min-h-11 rounded-xl bg-amber-300 px-5 py-2 font-bold text-amber-950 shadow-lg hover:bg-amber-200 disabled:opacity-50" onClick={() => { setStage(0); setRun((value) => value + 1); }}>
+        <button type="button" disabled={!option.players.length} className="min-h-11 rounded-xl bg-amber-300 px-5 py-2 font-bold text-amber-950 shadow-lg hover:bg-amber-200 disabled:opacity-50" onClick={() => { onStart(); setStage(0); setRun((value) => value + 1); }}>
           {run || stage ? 'Repetir apresentação' : 'Iniciar apresentação'}
         </button>
         <button type="button" disabled={!option.players.length} className="min-h-11 rounded-xl border border-white/30 px-4 py-2 font-semibold hover:bg-white/10 disabled:opacity-50" onClick={() => { setRun(0); setAnimated(false); setStage(3); }}>Mostrar pódio completo</button>

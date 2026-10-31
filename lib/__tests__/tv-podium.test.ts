@@ -9,6 +9,7 @@ vi.mock('@/lib/utils/player-name', async () => import('../utils/player-name'));
 vi.mock('@/lib/utils/player-title', async () => import('../utils/player-title'));
 vi.mock('@/lib/utils/chess', async () => import('../utils/chess'));
 vi.mock('@/lib/tournament/podium', async () => import('../tournament/podium'));
+vi.mock('@/lib/tournament/podium-music', async () => import('../tournament/podium-music'));
 vi.mock('../../components/tournament/tournament-logo', () => ({ TournamentLogo: () => null }));
 import { TvPodium } from '../../components/tournament/tv-podium';
 
@@ -28,7 +29,7 @@ describe('podium presentation UI', () => {
   it('offers absolute/category selection and manual start/replay without autoplay on mount', () => {
     const $ = render();
     expect($('label[for="podium-category"]').text()).toBe('Pódio de');
-    expect($('select option').map((_, option) => $(option).text()).get()).toEqual(['Absoluto', 'Sub-10']);
+    expect($('#podium-category option').map((_, option) => $(option).text()).get()).toEqual(['Absoluto', 'Sub-10']);
     expect($('button').map((_, button) => $(button).text()).get()).toEqual(['Iniciar apresentação', 'Mostrar pódio completo']);
     expect($('div[aria-hidden="true"]').filter((_, el) => $(el).text().includes('Jogador Nome Completo'))).toHaveLength(3);
     expect($('[role="status"]').text()).toContain('3º lugar');
@@ -72,5 +73,18 @@ describe('podium presentation UI', () => {
     expect(css).toContain('prefers-reduced-motion: reduce');
     expect(css).not.toContain('infinite');
     expect(css).toContain('overflow-wrap: anywhere');
+  });
+  it('offers both local music tracks without video, downloads or autoplay on initial render', () => {
+    const $ = render();
+    const music = $('[aria-label="Música do pódio"]');
+    expect(music).toHaveLength(1);
+    expect(music.is('details')).toBe(true);
+    expect(music.attr('open')).toBeUndefined();
+    expect($('#podium-music option[selected]').attr('value')).toBe('');
+    expect($('#podium-music option').map((_, option) => $(option).text()).get()).toEqual([
+      'Sem música', 'Take On Me · Brooklyn Duo', 'Trilha para apresentação · jv808tp',
+    ]);
+    expect(music.text()).toContain('Só este painel será afetado');
+    expect($('audio, video, iframe, script[src*="youtube"]')).toHaveLength(0);
   });
 });
