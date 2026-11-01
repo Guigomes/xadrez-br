@@ -26,7 +26,11 @@ export default function EditTournamentPage({ params }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [statusSaving, setStatusSaving] = useState<TournamentStatus | null>(null);
 
-  if (isLoading) return <PageSpinner />;
+  // Depois de excluir, o cache do torneio some antes da navegação terminar: sem isto a tela piscava
+  // "Torneio não encontrado." e o layout do servidor, relido, caía no 404 do slug apagado.
+  const [deleted, setDeleted] = useState(false);
+
+  if (isLoading || deleted) return <PageSpinner />;
   if (!tournament) return <p className="text-red-500">Torneio não encontrado.</p>;
 
   async function handleSubmit(values: TournamentFormValues) {
@@ -49,8 +53,11 @@ export default function EditTournamentPage({ params }: Props) {
     try {
       const deletedName = tournament?.name ?? '';
       await deleteTournament.mutateAsync();
-      router.push(`/admin?excluido=${encodeURIComponent(deletedName)}`);
-      router.refresh();
+      setDeleted(true);
+      // replace (a página do torneio apagado não pode ficar no "voltar") e sem router.refresh():
+      // o refresh relia a rota atual, ainda a do slug excluído, e o layout respondia 404. A
+      // página /admin é dinâmica e já busca a lista atualizada ao ser aberta.
+      router.replace(`/admin?excluido=${encodeURIComponent(deletedName)}`);
     } catch (err: any) {
       setError(err.message ?? 'Erro ao excluir.');
       setConfirmDelete(false);
