@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import type { DeviceType } from '@/lib/analytics/device';
 
 export const runtime = 'nodejs';
@@ -104,10 +104,15 @@ export async function POST(request: NextRequest) {
   }
 
   if (recordAccess) {
+    // Identity comes exclusively from the verified server session, never the
+    // device ID or request body (both are controlled by the browser).
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const userId = !authError && user && !user.is_anonymous ? user.id : null;
     const { error: eventError } = await admin.from('site_access_events').insert({
       device_id: deviceId,
       path,
-      user_id: null,
+      user_id: userId,
       visited_at: now,
       city,
       region,

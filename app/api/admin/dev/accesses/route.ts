@@ -27,11 +27,11 @@ const EVENTS_PAGE = 1000;
 const EVENTS_MAX = 10_000;
 
 async function fetchRecentEvents(admin: ReturnType<typeof createAdminClient>, since: string) {
-  const all: Array<{ id: number; device_id: string; path: string; visited_at: string; city: string | null; region: string | null }> = [];
+  const all: Array<{ id: number; device_id: string; user_id: string | null; path: string; visited_at: string; city: string | null; region: string | null }> = [];
   for (let from = 0; from < EVENTS_MAX; from += EVENTS_PAGE) {
     const { data, error } = await admin
       .from('site_access_events')
-      .select('id, device_id, path, visited_at, city, region')
+      .select('id, device_id, user_id, path, visited_at, city, region')
       .gte('visited_at', since)
       .order('visited_at', { ascending: false })
       .order('id', { ascending: false })
@@ -81,6 +81,19 @@ export async function GET() {
   );
 
   const events = eventsResult.data ?? [];
+  const recentEvents = events.slice(0, 100);
+  const userIds = [...new Set(recentEvents.flatMap((event) => event.user_id ? [event.user_id] : []))];
+  // Only this Dev-authorized response includes account names/emails. Do not
+  // backfill anonymous/old events using another visit from the same device.
+  const profilesResult = userIds.length
+    ? await admin.from('user_profiles').select('id, full_name, email').in('id', userIds)
+    : { data: [], error: null };
+  if (profilesResult.error) {
+    return NextResponse.json({ error: 'Não foi possível carregar as contas dos acessos.' }, { status: 500 });
+  }
+  const userById = new Map((profilesResult.data ?? []).map((profile) => [profile.id, {
+    id: profile.id, name: profile.full_name, email: profile.email,
+  }]));
   const viewsByDevice = new Map<string, number>();
   for (const event of events) {
     viewsByDevice.set(event.device_id, (viewsByDevice.get(event.device_id) ?? 0) + 1);
@@ -132,13 +145,15 @@ export async function GET() {
     devices,
     tabStats,
     tabTournaments,
-    recent: events.slice(0, 100).map((event) => {
+    recent: recentEvents.map((event) => {
       const device = deviceById.get(event.device_id);
       return {
         id: event.id,
         deviceId: event.device_id,
         path: event.path,
         visitedAt: event.visited_at,
+        userId: event.user_id,
+        user: event.user_id ? userById.get(event.user_id) ?? null : null,
         city: event.city,
         region: event.region,
         isOwner: device?.isOwner ?? false,

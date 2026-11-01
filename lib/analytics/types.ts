@@ -34,6 +34,9 @@ export interface RecentAccess {
   deviceId: string;
   path: string;
   visitedAt: string;
+  /** Verified identity at the time of this visit; never inferred from a device. */
+  userId: string | null;
+  user: { id: string; name: string | null; email: string | null } | null;
   city: string | null;
   region: string | null;
   isOwner: boolean;

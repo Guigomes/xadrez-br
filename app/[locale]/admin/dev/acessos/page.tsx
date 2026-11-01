@@ -184,7 +184,9 @@ function AccessesPanel() {
           <section className="space-y-3">
             <div>
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">Acessos recentes</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Últimas 100 visualizações.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Últimas 100 visualizações. A conta é registrada somente em novas visitas autenticadas; o histórico antigo continua sem identificação.
+              </p>
             </div>
             <div className="card divide-y divide-gray-100 overflow-hidden p-0 dark:divide-gray-800">
               {!data.recent.length ? (
@@ -194,6 +196,11 @@ function AccessesPanel() {
                   <span aria-hidden>{DEVICE_ICON[access.deviceType]}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{access.path}</p>
+                    <p className="break-words text-xs text-gray-700 dark:text-gray-300">
+                      {access.user
+                        ? `Conta: ${access.user.name || access.user.email || 'Conta identificada'}${access.user.name && access.user.email ? ` · ${access.user.email}` : ''}`
+                        : access.userId ? 'Conta identificada · perfil indisponível' : 'Sem identificação · visita anônima ou registro antigo'}
+                    </p>
                     <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                       {access.isOwner ? `Meu · ${access.ownerLabel}` : `${access.browser} · ${access.os} · ${access.deviceId.slice(-8)}`}
                       {cityLabel(access.city, access.region) ? ` · 📍 ${cityLabel(access.city, access.region)}` : ''}
