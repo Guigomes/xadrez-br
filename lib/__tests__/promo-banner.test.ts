@@ -4,7 +4,9 @@ import {
   isAppleMobile,
   isExcludedPromoPath,
   isPromoDismissed,
+  isPromoSuppressed,
   parsePromoSetting,
+  promoCooldownUntil,
   promoHiddenUntil,
 } from '../promo/banner';
 
@@ -33,6 +35,18 @@ describe('banner do jogo', () => {
     expect(isPromoDismissed(stored, now + 7 * 86_400_000 + 1)).toBe(false);
     expect(isPromoDismissed(null, now)).toBe(false);
     expect(isPromoDismissed('lixo', now)).toBe(false);
+  });
+
+  it('compartilha a pausa de 48 horas e mantém o fechamento de sete dias', () => {
+    const now = Date.UTC(2026, 10, 5);
+    const seen = promoCooldownUntil(now);
+    const twoDays = 48 * 60 * 60 * 1000;
+    expect(isPromoSuppressed(null, null, now)).toBe(false);
+    expect(isPromoSuppressed(null, seen, now + twoDays - 1)).toBe(true);
+    expect(isPromoSuppressed(null, seen, now + twoDays)).toBe(false);
+    expect(isPromoSuppressed(promoHiddenUntil(now), seen, now + twoDays)).toBe(true);
+    expect(isPromoSuppressed(promoHiddenUntil(now), seen, now + 7 * 86_400_000)).toBe(false);
+    expect(isPromoSuppressed('lixo', 'lixo', now)).toBe(false);
   });
 
   it('interruptor só liga com true', () => {

@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { TournamentCard } from '@/components/tournament/tournament-card';
 import { NewsCard } from '@/components/news/news-card';
 import { WhatsappFeedback } from '@/components/feedback/whatsapp-feedback';
+import { PromoBanner } from '@/components/promo/promo-banner';
+import { isPromoBannerEnabled } from '@/lib/data/promo';
 import type { TournamentListItem } from '@/types/database';
 import type { NewsCardData } from '@/components/news/news-card';
 
@@ -94,9 +96,10 @@ interface MarketingHomeProps {
 export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) {
   const supabase = await createClient();
 
-  const { data: ongoing } = await supabase.rpc('search_tournaments', {
-    p_status: 'ongoing', p_limit: 3,
-  });
+  const [{ data: ongoing }, promoEnabled] = await Promise.all([
+    supabase.rpc('search_tournaments', { p_status: 'ongoing', p_limit: 3 }),
+    isPromoBannerEnabled(),
+  ]);
   const { data: upcoming } = await supabase.rpc('search_tournaments', {
     p_status: 'registration', p_limit: 3,
   });
@@ -239,6 +242,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
                 </div>
               </div>
             )}
+            {promoEnabled && <PromoBanner />}
           </div>
         </section>
       )}

@@ -12,6 +12,8 @@ export const PROMO_PLAY_URL =
 /** Chave do localStorage com o instante (ms) até quando o banner fica escondido. */
 export const PROMO_DISMISS_KEY = 'gambito_promo_reino_hidden_until';
 export const PROMO_DISMISS_DAYS = 7;
+export const PROMO_COOLDOWN_KEY = 'gambito_promo_reino_seen_until';
+export const PROMO_COOLDOWN_HOURS = 48;
 
 /** Abas do torneio onde o banner nunca aparece: TV (tela cheia) e formulário de inscrição. */
 const EXCLUDED_SEGMENTS = ['/painel', '/inscricao'];
@@ -36,6 +38,14 @@ export function isPromoDismissed(storedValue: string | null | undefined, now: nu
 
 export function promoHiddenUntil(now: number): string {
   return String(now + PROMO_DISMISS_DAYS * 24 * 60 * 60 * 1000);
+}
+
+export function promoCooldownUntil(now: number): string {
+  return String(now + PROMO_COOLDOWN_HOURS * 60 * 60 * 1000);
+}
+
+export function isPromoSuppressed(dismissedUntil: string | null, seenUntil: string | null, now: number): boolean {
+  return isPromoDismissed(dismissedUntil, now) || isPromoDismissed(seenUntil, now);
 }
 
 /** Valor jsonb de `app_settings`: só `true` liga. Ausente, inválido ou erro = desligado. */
