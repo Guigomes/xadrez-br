@@ -16,6 +16,8 @@ import { getTournamentStartLabel } from '@/lib/utils/date';
 import { RelativeTime } from '@/components/ui/relative-time';
 import { DevHomologatedBadge } from '@/components/tournament/dev-homologated-badge';
 import { isInternationalTournament } from '@/lib/utils/federation';
+import { isPromoBannerEnabled } from '@/lib/data/promo';
+import { PromoBanner } from '@/components/promo/promo-banner';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -54,7 +56,7 @@ export default async function TournamentLayout({ children, params }: Props) {
   // e status efetivo (considerando pendências de resultado), e último sync de
   // import — tudo antes calculado aqui em Node com até 4 queries sequenciais.
   // Ver lib/data/tournament-page-data.ts.
-  const data = await getTournamentPageData(slug);
+  const [data, promoEnabled] = await Promise.all([getTournamentPageData(slug), isPromoBannerEnabled()]);
 
   if (!data) notFound();
 
@@ -215,7 +217,10 @@ export default async function TournamentLayout({ children, params }: Props) {
         </div>
       </div>
 
-      <div className="container-app pb-20 pt-6 sm:pb-6">{children}</div>
+      <div className="container-app pb-20 pt-6 sm:pb-6">
+        {children}
+        {promoEnabled && <PromoBanner />}
+      </div>
     </div>
   );
 }
