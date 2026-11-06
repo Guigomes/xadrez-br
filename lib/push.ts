@@ -3,6 +3,7 @@ import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 import { createAdminClient } from '@/lib/supabase/server';
 import { subscriptionTracksPlayers } from '@/lib/tournament-notifications';
+import { isAllowedPushEndpoint } from '@/lib/api/validation';
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 type PushPayload = { title: string; body: string; url?: string };
@@ -23,6 +24,9 @@ async function sendToSubscriptions(
   subs: WebPushSubscription[],
   payload: object
 ) {
+  // Segunda barreira (a primeira é /api/push/subscribe): nunca fazer POST em
+  // endereço que não seja serviço de push conhecido.
+  subs = subs.filter((sub) => isAllowedPushEndpoint(sub.endpoint));
   if (!subs.length) return;
   const message = JSON.stringify(payload);
   const results = await Promise.allSettled(

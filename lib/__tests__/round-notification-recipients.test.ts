@@ -8,6 +8,9 @@ vi.mock('firebase-admin/app', () => ({ cert: vi.fn(), getApps: () => [{}], initi
 vi.mock('firebase-admin/messaging', () => ({ getMessaging: () => ({ sendEachForMulticast: mocks.fcm }) }));
 import { sendPlayerFollowersNotification, sendTournamentNotification } from '../push';
 
+// Endpoints reais de push: lib/push.ts só envia para serviço de push conhecido.
+const FCM = 'https://fcm.googleapis.com/fcm/send/';
+
 describe('round notification device audiences', () => {
   const devices = [
     { id: 'tournament-only', user_id: null, followed_player_ids: [] },
@@ -29,7 +32,7 @@ describe('round notification device audiences', () => {
     });
     const tables: Record<string, Record<string, unknown>[]> = {
       push_subscriptions: devices.map((device) => ({
-        ...scoped(device), endpoint: device.id, p256dh: 'key', auth: 'auth',
+        ...scoped(device), endpoint: FCM + device.id, p256dh: 'key', auth: 'auth',
       })),
       app_push_follows: devices.map((device) => ({
         ...scoped(device), token: device.id, app_push_tokens: { user_id: device.user_id },
@@ -54,7 +57,7 @@ describe('round notification device audiences', () => {
 
   it('publication and closure reach all opted-in devices of this tournament, including no-player followers', async () => {
     await sendTournamentNotification('tournament', payload);
-    expect(mocks.web.mock.calls.map(([sub]) => sub.endpoint).sort()).toEqual(
+    expect(mocks.web.mock.calls.map(([sub]) => sub.endpoint.slice(FCM.length)).sort()).toEqual(
       ['tournament-only', 'white', 'both', 'account-black', 'other-player'].sort(),
     );
     expect(mocks.fcm).toHaveBeenCalledTimes(1);
@@ -65,7 +68,7 @@ describe('round notification device audiences', () => {
 
   it('individual results reach only either-player followers, once even following both, on web and app', async () => {
     await sendPlayerFollowersNotification('tournament', ['a', 'b', 'a'], payload);
-    expect(mocks.web.mock.calls.map(([sub]) => sub.endpoint).sort()).toEqual(['account-black', 'both', 'white']);
+    expect(mocks.web.mock.calls.map(([sub]) => sub.endpoint.slice(FCM.length)).sort()).toEqual(['account-black', 'both', 'white']);
     expect(mocks.fcm).toHaveBeenCalledTimes(1);
     expect(mocks.fcm.mock.calls[0][0].tokens.sort()).toEqual(['account-black', 'both', 'white']);
   });
