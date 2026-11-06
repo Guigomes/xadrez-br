@@ -2520,6 +2520,7 @@ export type Database = {
           enabled: boolean
           force_requested_at: string | null
           id: string
+          import_source_categories: boolean
           last_message: string | null
           last_run_at: string | null
           last_status: string | null
@@ -2537,6 +2538,7 @@ export type Database = {
           enabled?: boolean
           force_requested_at?: string | null
           id?: string
+          import_source_categories?: boolean
           last_message?: string | null
           last_run_at?: string | null
           last_status?: string | null
@@ -2553,6 +2555,7 @@ export type Database = {
           enabled?: boolean
           force_requested_at?: string | null
           id?: string
+          import_source_categories?: boolean
           last_message?: string | null
           last_run_at?: string | null
           last_status?: string | null
