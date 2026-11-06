@@ -23,8 +23,6 @@ interface Props {
   mode: TournamentMode;
   status: TournamentStatus;
   registrationEndDate: string | null;
-  /** Override do organizador (migration 045): false = "Reabrir Inscrições" com prazo vencido, o badge não deve mostrar "encerrada" só pela data. */
-  registrationClosesByDate: boolean;
   /** false só quando status='draft' e pairing_mode='custom' sem grupo criado ou com classificação sem grupo — ver layout.tsx. */
   pairingReady: boolean;
 }
@@ -68,7 +66,7 @@ const STATUS_ACTIONS: Partial<Record<TournamentStatus, { label: string; to: Tour
  * resultados do árbitro (rounds/[roundId]/results) — aquela tela é
  * mobile-first e não deve competir com a navegação por abas.
  */
-export function AdminTournamentChrome({ id, slug, name, mode, status, registrationEndDate, registrationClosesByDate, pairingReady }: Props) {
+export function AdminTournamentChrome({ id, slug, name, mode, status, registrationEndDate, pairingReady }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const qc = useQueryClient();
@@ -113,7 +111,7 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
 
       // Ranking inicial não tem mais botão manual — gera sozinho aqui (clique
       // em "Iniciar Torneio") e também quando o torneio vira 'ongoing' sozinho
-      // por data (migration 058, get_tournament_by_slug/search_tournaments).
+      // por data (refresh_tournament_statuses: agendamento a cada 5 min e abertura da página).
       // Rede de segurança pra quem pula os dois: generateRoundDraft (lib/
       // pairing/service.ts) semeia na hora se "Gerar rodada 1" ainda achar o
       // grupo sem seed. Melhor esforço: falha aqui não desfaz a transição de
@@ -193,11 +191,11 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
         {/* min-h reserva a altura da variante de 2 botões, pra a linha não
             mudar de altura quando a situação passa de 1 pra 2 ações e volta. */}
         <div className="flex min-h-[2.25rem] flex-wrap items-center gap-2">
-          <Badge className={`${getTournamentStatusColor(status, registrationEndDate, registrationClosesByDate)} animate-fade-in`}>
+          <Badge className={`${getTournamentStatusColor(status)} animate-fade-in`}>
             {status === 'ongoing' && (
               <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
             )}
-            {getTournamentStatusLabel(status, registrationEndDate, registrationClosesByDate)}
+            {getTournamentStatusLabel(status)}
           </Badge>
           {isCancelled ? (
             <button

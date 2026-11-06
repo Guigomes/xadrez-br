@@ -165,8 +165,8 @@ export function PlayerProfileView({ id }: { id: string }) {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <Badge className={getTournamentStatusColor(t.status, t.registration_end_date, t.registration_closes_by_date)}>
-                    {getTournamentStatusLabel(t.status, t.registration_end_date, t.registration_closes_by_date)}
+                  <Badge className={getTournamentStatusColor(t.status)}>
+                    {getTournamentStatusLabel(t.status)}
                   </Badge>
                   {tp.current_rank && (
                     <span className="text-xs text-gray-500">{tp.current_rank}º · {formatScore(tp.current_score)} pts</span>

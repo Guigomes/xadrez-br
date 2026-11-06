@@ -228,7 +228,7 @@ async function toolListarTorneios(args: Record<string, unknown>, ctx: ToolContex
         estado: t.state,
         status: t.status,
         inicio: t.start_date,
-        inscricoes_abertas: !isRegistrationClosed(t.status, t.registration_end_date, t.registration_closes_by_date),
+        inscricoes_abertas: !isRegistrationClosed(t.status),
       })),
     };
   }
@@ -251,7 +251,7 @@ async function toolListarTorneios(args: Record<string, unknown>, ctx: ToolContex
       status: t.status,
       inicio: t.start_date,
       participantes: t.player_count,
-      inscricoes_abertas: !isRegistrationClosed(t.status, t.registration_end_date, t.registration_closes_by_date),
+      inscricoes_abertas: !isRegistrationClosed(t.status),
     })),
   };
 }

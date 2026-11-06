@@ -76,8 +76,8 @@ export default async function SeriesOverview({ params }: { params: Promise<{ slu
                 {s.archive ? (
                   <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Arquivo</Badge>
                 ) : (
-                  <Badge className={getTournamentStatusColor(s.status!, null, true)}>
-                    {getTournamentStatusLabel(s.status!, null, true)}
+                  <Badge className={getTournamentStatusColor(s.status!)}>
+                    {getTournamentStatusLabel(s.status!)}
                   </Badge>
                 )}
               </li>

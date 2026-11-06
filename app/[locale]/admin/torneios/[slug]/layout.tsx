@@ -50,7 +50,6 @@ export default async function AdminTournamentLayout({ children, params }: Props)
       <AdminTournamentChrome
         id={tournament.id} slug={slug} name={tournament.name} mode={tournament.mode} status={tournament.status}
         registrationEndDate={tournament.registration_end_date}
-        registrationClosesByDate={tournament.registration_closes_by_date}
         pairingReady={pairingReady}
       />
       {children}

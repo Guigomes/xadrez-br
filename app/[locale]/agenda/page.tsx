@@ -72,11 +72,11 @@ function AgendaItem({ t, today }: { t: TournamentListItem; today: string }) {
           <h3 className="min-w-0 break-words text-sm font-semibold text-gray-900 transition-colors group-hover:text-brand-600 dark:text-gray-100 dark:group-hover:text-brand-400 sm:text-base">
             {t.name}
           </h3>
-          <Badge className={getTournamentStatusColor(t.status, t.registration_end_date, t.registration_closes_by_date)}>
+          <Badge className={getTournamentStatusColor(t.status)}>
             {t.status === 'ongoing' && (
               <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
             )}
-            {getTournamentStatusLabel(t.status, t.registration_end_date, t.registration_closes_by_date)}
+            {getTournamentStatusLabel(t.status)}
           </Badge>
         </div>
         <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">

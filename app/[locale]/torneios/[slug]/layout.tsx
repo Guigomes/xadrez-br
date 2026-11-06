@@ -170,11 +170,11 @@ export default async function TournamentLayout({ children, params }: Props) {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <Badge className={startLabel ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : getTournamentStatusColor(effectiveStatus, tournament.registration_end_date, tournament.registration_closes_by_date)}>
+              <Badge className={startLabel ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : getTournamentStatusColor(effectiveStatus)}>
                 {effectiveStatus === 'ongoing' && !startLabel && (
                   <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                 )}
-                {startLabel ?? getTournamentStatusLabel(effectiveStatus, tournament.registration_end_date, tournament.registration_closes_by_date)}
+                {startLabel ?? getTournamentStatusLabel(effectiveStatus)}
               </Badge>
               {tournament.tournament_type === 'swiss' && (
                 <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">

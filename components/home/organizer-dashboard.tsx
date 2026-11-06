@@ -143,8 +143,8 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
                   className="card group flex min-h-40 flex-col gap-1 p-4 transition-colors hover:border-gray-300 dark:hover:border-gray-600"
                 >
                   <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <Badge className={getTournamentStatusColor(t.status, t.registration_end_date, t.registration_closes_by_date)}>
-                      {getTournamentStatusLabel(t.status, t.registration_end_date, t.registration_closes_by_date)}
+                    <Badge className={getTournamentStatusColor(t.status)}>
+                      {getTournamentStatusLabel(t.status)}
                     </Badge>
                     {!t.is_public && t.status !== 'draft' && (
                       <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Privado</Badge>

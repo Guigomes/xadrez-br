@@ -170,8 +170,8 @@ export default function SeriesStagesPage({ params }: { params: Promise<{ slug: s
                 >
                   {s.label || s.tournament.name}
                 </Link>
-                <Badge className={getTournamentStatusColor(s.tournament.status, null, true)}>
-                  {getTournamentStatusLabel(s.tournament.status, null, true)}
+                <Badge className={getTournamentStatusColor(s.tournament.status)}>
+                  {getTournamentStatusLabel(s.tournament.status)}
                 </Badge>
                 {s.tournament.status !== 'finished' && (
                   <span className="text-xs text-gray-400 dark:text-gray-500">não pontua ainda</span>

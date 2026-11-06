@@ -1,5 +1,4 @@
 import type { GameResult, TournamentStatus, RoundStatus, TournamentType, RatingKind } from '@/types/database';
-import { todayInBrazil } from './date';
 
 // ============================================================
 // Game result helpers
@@ -97,45 +96,21 @@ export const RATING_KIND_LABELS: Record<RatingKind, string> = {
 
 
 /**
- * 'registration_closed' já é status real no banco (migration 038), mas isso
- * sozinho depende do organizador clicar "Avançar" depois do prazo. Enquanto
- * isso não acontece, o selo continua mostrando "encerrada" só de olhar a
- * data — a RLS de inscrição já bloqueia o envio por data de qualquer forma,
- * então isso aqui é cosmético/defensivo, não duplica segurança.
- *
- * `registrationClosesByDate` (migration 045) é o override do organizador: ao
- * clicar "Reabrir Inscrições" com o prazo já vencido, o campo vai a false e o
- * backend para de refechar por data. Este selo tem que respeitar o mesmo
- * interruptor — senão o status real fica 'registration' (aberto) mas o badge
- * segue mostrando "encerrada" só porque a data passou. Default true = default
- * do banco (comportamento de "Abrir Inscrições", prazo por data valendo).
+ * O status que chega aqui já vem decidido pelo banco: a lista e a página usam
+ * tournament_display_status (regra por data + importado encerrado) e o
+ * agendamento refresh_tournament_statuses grava a transição a cada 5 min
+ * (migration 20261106210000). Por isso o selo só TRADUZ o status — não recalcula
+ * pela data. Antes recalculava, e já divergiu do banco (ver migration 063).
  */
-export function isRegistrationClosed(
-  status: TournamentStatus,
-  registrationEndDate: string | null | undefined,
-  registrationClosesByDate: boolean = true,
-): boolean {
-  if (status === 'registration_closed') return true;
-  if (status !== 'registration' || !registrationEndDate) return false;
-  if (!registrationClosesByDate) return false;
-  return registrationEndDate < todayInBrazil();
+export function isRegistrationClosed(status: TournamentStatus): boolean {
+  return status === 'registration_closed';
 }
 
-export function getTournamentStatusLabel(
-  status: TournamentStatus,
-  registrationEndDate: string | null | undefined,
-  registrationClosesByDate: boolean = true,
-): string {
-  if (isRegistrationClosed(status, registrationEndDate, registrationClosesByDate)) return TOURNAMENT_STATUS_LABELS.registration_closed;
+export function getTournamentStatusLabel(status: TournamentStatus): string {
   return TOURNAMENT_STATUS_LABELS[status];
 }
 
-export function getTournamentStatusColor(
-  status: TournamentStatus,
-  registrationEndDate: string | null | undefined,
-  registrationClosesByDate: boolean = true,
-): string {
-  if (isRegistrationClosed(status, registrationEndDate, registrationClosesByDate)) return TOURNAMENT_STATUS_COLORS.registration_closed;
+export function getTournamentStatusColor(status: TournamentStatus): string {
   return TOURNAMENT_STATUS_COLORS[status];
 }
 

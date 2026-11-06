@@ -97,8 +97,8 @@ export default async function AdminSeriesOverview({
                 >
                   {s.label || s.tournament?.name}
                 </Link>
-                <Badge className={getTournamentStatusColor(s.tournament?.status, null, true)}>
-                  {getTournamentStatusLabel(s.tournament?.status, null, true)}
+                <Badge className={getTournamentStatusColor(s.tournament?.status)}>
+                  {getTournamentStatusLabel(s.tournament?.status)}
                 </Badge>
               </li>
             ))}
