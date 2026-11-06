@@ -4,7 +4,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import type { TournamentRegistration } from '@/types/database';
 
-export type RegistrationRow = TournamentRegistration & {
+/**
+ * Colunas que o painel de inscrições do organizador usa. Lista explícita de
+ * propósito: com `select('*')`, CPF/CNPJ e os dados de cobrança da Asaas de
+ * cada inscrito (muitos menores) chegavam ao navegador do organizador sem
+ * aparecer em tela nenhuma. Coluna nova só entra aqui se a tela precisar.
+ */
+// Uma string literal só (sem concatenação): o cliente Supabase tipa o retorno a partir dela.
+const ORGANIZER_REGISTRATION_SELECT = 'id, tournament_id, status, created_at, full_name, birth_year, sex, city, state, federation, club_or_school, fide_id, cbx_id, rating_std, email, phone, pairing_group_id, payment_status, payment_receipt_path, is_waitlisted, rejected_reason, pairing_groups(name), category:tournament_categories(id, name)';
+
+export type RegistrationRow = Pick<TournamentRegistration,
+  | 'id' | 'tournament_id' | 'status' | 'created_at' | 'full_name' | 'birth_year' | 'sex' | 'city'
+  | 'state' | 'federation' | 'club_or_school' | 'fide_id' | 'cbx_id' | 'rating_std' | 'email'
+  | 'phone' | 'pairing_group_id' | 'payment_status' | 'payment_receipt_path' | 'is_waitlisted'
+  | 'rejected_reason'> & {
   pairing_groups: { name: string } | null;
   /** Classificação declarada no formulário (034) — comparada com a derivada no admin. */
   category: { id: string; name: string } | null;
@@ -43,7 +56,7 @@ export function useRegistrations(tournamentId: string) {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('tournament_registrations')
-        .select('*, pairing_groups(name), category:tournament_categories(id, name)')
+        .select(ORGANIZER_REGISTRATION_SELECT)
         .eq('tournament_id', tournamentId)
         .order('created_at', { ascending: false });
       if (error) throw error;
