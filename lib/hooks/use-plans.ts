@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { resolveBillingAvailability, subscriptionSalesAllowed } from '@/lib/billing/organizer';
 
 const supabase = createClient();
 
@@ -36,6 +37,31 @@ export function usePlanCatalog() {
         .order('sort_order');
       if (error) throw error;
       return data ?? [];
+    },
+  });
+}
+
+/** Public storefront exposes only the independently launched paid plans. */
+export function useAvailablePlans() {
+  return useQuery({
+    queryKey: ['plans', 'available'],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const [catalog, settings] = await Promise.all([
+        supabase.from('plans')
+          .select('id, code, name, sort_order, description, price_cents, currency, billing_interval')
+          .eq('is_public', true).order('sort_order'),
+        supabase.from('app_settings').select('key, value').in('key', ['billing_enabled', 'organizer_billing_enabled', 'player_history_billing_enabled']),
+      ]);
+      if (catalog.error) throw catalog.error;
+      if (settings.error) throw settings.error;
+      const { globalBilling, organizerBilling, playerHistoryBilling } = resolveBillingAvailability(settings.data ?? []);
+      return {
+        globalBilling,
+        plans: (catalog.data ?? []).filter((plan) =>
+          (plan.code === 'free' && (globalBilling || organizerBilling || playerHistoryBilling))
+          || subscriptionSalesAllowed(plan.code, globalBilling, organizerBilling, playerHistoryBilling)),
+      };
     },
   });
 }
@@ -120,7 +146,9 @@ export const ENTITLEMENT_LABELS: Record<string, string> = {
   'account.multiuser':    'Conta multiusuário',
   'alerts.rules':         'Alertas de torneios ativos',
   'player.stats':         'Estatísticas avançadas do jogador',
+  'player.full_history':  'Histórico completo dos jogadores',
   'groups.players':       'Jogadores acompanhados em grupos (clube/escola/alunos)',
+  'organizer.large_tournaments': 'Organizar torneios com mais de 20 jogadores',
 };
 
 /** Ordem de exibição — mesma ordem das chaves acima (capacidade primeiro). */

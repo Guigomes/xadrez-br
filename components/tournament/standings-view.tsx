@@ -6,7 +6,7 @@ import { localizedTitle } from '@/lib/utils/player-title';
 import { useSearchParams } from 'next/navigation';
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { useGroupHasResults, useTournament, useTournamentStandings, useTournamentRounds } from '@/lib/hooks/use-tournament';
-import { useFollowedInTournament } from '@/lib/hooks/use-auth';
+import { useFollowedInTournament, useProfile } from '@/lib/hooks/use-auth';
 import { StandingsTable } from '@/components/tournament/standings-table';
 import { isInternationalTournament } from '@/lib/utils/federation';
 import { TiebreakLegendButton } from '@/components/tournament/tiebreak-legend-button';
@@ -50,6 +50,8 @@ export function StandingsView({
   const { data: standings, isLoading: loadingStandings } = useTournamentStandings(id);
   const { data: rounds } = useTournamentRounds(id);
   const { data: followed } = useFollowedInTournament(id);
+  const { data: profile } = useProfile();
+  const isDev = profile?.role === 'admin';
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -206,13 +208,13 @@ export function StandingsView({
         return (
           <div className="card p-4 mb-4 border-2 border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-center">
             <p className="font-semibold text-gray-900 dark:text-gray-100">🏆 Classificação final</p>
-            <Link href={`/torneios/${slug}/painel?exibir=podio`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600">
+            {isDev && <Link href={`/torneios/${slug}/painel?exibir=podio`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600">
               Apresentar pódio na TV
-            </Link>
+            </Link>}
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
               Todas as rodadas foram encerradas — este é o resultado definitivo.
             </p>
-            {podium.length > 0 && (
+            {isDev && podium.length > 0 && (
               <div className="mt-1.5 space-y-0.5">
                 {podium.map(({ medal, row }) => (
                   <p key={row!.rank} className="text-sm text-gray-700 dark:text-gray-300">

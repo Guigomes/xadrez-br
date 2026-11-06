@@ -1,7 +1,10 @@
 import { notFound } from 'next/navigation';
-import { isBillingEnabled } from '@/lib/data/billing';
+import { getSubscriptionBillingAvailability } from '@/lib/data/billing';
+import { asaasMockAllowed } from '@/lib/asaas/client';
 
 export default async function MockCheckoutLayout({ children }: { children: React.ReactNode }) {
-  if (!(await isBillingEnabled())) notFound();
+  if (!asaasMockAllowed()) notFound();
+  const { globalBilling, organizerBilling, playerHistoryBilling } = await getSubscriptionBillingAvailability();
+  if (!globalBilling && !organizerBilling && !playerHistoryBilling) notFound();
   return children;
 }

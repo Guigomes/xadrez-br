@@ -4,7 +4,7 @@ import { load } from 'cheerio';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StandingRow } from '../../types/database';
 
-const mocks = vi.hoisted(() => ({ standings: [] as StandingRow[], search: '' }));
+const mocks = vi.hoisted(() => ({ standings: [] as StandingRow[], search: '', status: 'ongoing', role: null as string | null }));
 vi.mock('@/i18n/navigation', () => ({
   Link: ({ children, ...props }: PropsWithChildren<{ href: string; className?: string }>) => React.createElement('a', props, children),
   usePathname: () => '/torneios/teste/classificacao',
@@ -13,12 +13,15 @@ vi.mock('@/i18n/navigation', () => ({
 vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(mocks.search) }));
 vi.mock('next-intl', () => ({ useLocale: () => 'pt-BR' }));
 vi.mock('@/lib/hooks/use-tournament', () => ({
-  useTournament: () => ({ data: { id: 'tournament', status: 'ongoing' }, isLoading: false }),
+  useTournament: () => ({ data: { id: 'tournament', status: mocks.status }, isLoading: false }),
   useTournamentStandings: () => ({ data: mocks.standings, isLoading: false }),
   useTournamentRounds: () => ({ data: [] }),
   useGroupHasResults: () => ({ data: true }),
 }));
-vi.mock('@/lib/hooks/use-auth', () => ({ useFollowedInTournament: () => ({ data: undefined }) }));
+vi.mock('@/lib/hooks/use-auth', () => ({
+  useFollowedInTournament: () => ({ data: undefined }),
+  useProfile: () => ({ data: mocks.role ? { role: mocks.role } : undefined }),
+}));
 vi.mock('@/lib/hooks/use-tournament-group-preference', async () => import('../hooks/use-tournament-group-preference'));
 vi.mock('@/components/tournament/standings-table', async () => import('../../components/tournament/standings-table'));
 vi.mock('@/components/ui/spinner', () => ({ PageSpinner: () => null }));
@@ -95,9 +98,26 @@ describe('pairing group selector in standings', () => {
     vi.stubGlobal('React', React);
     mocks.standings = rows;
     mocks.search = '';
+    mocks.status = 'ongoing'; mocks.role = null;
   });
   afterEach(() => vi.unstubAllGlobals());
   const view = () => load(renderToStaticMarkup(React.createElement(StandingsView, { slug: 'teste' })));
+
+  it.each([null, 'organizer', 'arbiter', 'public_user'])('hides the podium for %s while keeping final standings', (role) => {
+    mocks.status = 'finished'; mocks.role = role;
+    const $ = view();
+    expect($('a[href*="exibir=podio"]')).toHaveLength(0);
+    expect($.text()).not.toContain('🥇');
+    expect($.text()).toContain('Classificação final');
+    expect($('tbody a')).toHaveLength(2);
+  });
+
+  it('offers the final podium to the Dev only', () => {
+    mocks.status = 'finished'; mocks.role = 'admin';
+    const $ = view();
+    expect($('a[href*="exibir=podio"]').attr('href')).toBe('/torneios/teste/painel?exibir=podio');
+    expect($.text()).toContain('🥇');
+  });
 
   it('hides the selector for a single group without losing its players or category filters', () => {
     const $ = view();

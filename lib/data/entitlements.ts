@@ -22,7 +22,9 @@ export type EntitlementKey =
   | 'account.multiuser'
   | 'alerts.rules'
   | 'player.stats'
-  | 'groups.players';
+  | 'player.full_history'
+  | 'groups.players'
+  | 'organizer.large_tournaments';
 
 export interface Entitlement {
   key: EntitlementKey;

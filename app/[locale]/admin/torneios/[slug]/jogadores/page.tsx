@@ -14,6 +14,8 @@ import { Modal } from '@/components/ui/modal';
 import { ExternalIdLinks } from '@/components/player/external-id-links';
 import { CbxLookupHint } from '@/components/player/cbx-lookup-hint';
 import { useCbxLookup } from '@/lib/hooks/use-cbx-lookup';
+import { useOrganizerSubscription } from '@/lib/hooks/use-organizer-subscription';
+import { OrganizerSubscriptionNotice } from '@/components/admin/organizer-subscription-notice';
 import { formatScore, BR_STATES, compareGroupNames, tournamentRating } from '@/lib/utils/chess';
 import { normalizeSearchText } from '@/lib/utils/text';
 import type { PlayerFormValues, PairingGroup, TournamentCategory } from '@/types/database';
@@ -34,6 +36,7 @@ export default function AdminPlayersPage({ params }: Props) {
   const { slug } = use(params);
   const { data: tournament, isLoading } = useTournament(slug);
   const { data: tPlayers, isLoading: loadingPlayers } = useTournamentPlayers(tournament?.id ?? '');
+  const organizerSubscription = useOrganizerSubscription(slug, tournament?.mode === 'native' ? tournament.id : '');
   const assignGroup = useAssignPlayerGroup(tournament?.id ?? '');
   const { data: categories } = useCategories(tournament?.id ?? '');
   const isNative = tournament?.mode === 'native';
@@ -208,6 +211,7 @@ export default function AdminPlayersPage({ params }: Props) {
 
   return (
     <div className="max-w-4xl">
+      {isNative && <OrganizerSubscriptionNotice status={organizerSubscription.data} error={organizerSubscription.error} refresh={() => { void organizerSubscription.refetch(); }} />}
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
@@ -236,7 +240,7 @@ export default function AdminPlayersPage({ params }: Props) {
         <div className="mb-4" data-tour="cadastrar-participante">
           <Button
             type="button"
-            disabled={loadingGroups || !groups?.length}
+            disabled={loadingGroups || !groups?.length || !organizerSubscription.data?.canAddPlayer || !!organizerSubscription.error}
             onClick={() => setShowCreateModal(true)}
           >
             + Cadastrar participante

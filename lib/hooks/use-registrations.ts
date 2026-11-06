@@ -88,6 +88,7 @@ export function useApproveRegistration(tournamentId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registrations', tournamentId] });
       queryClient.invalidateQueries({ queryKey: ['tournament-players', tournamentId] });
+      queryClient.invalidateQueries({ queryKey: ['organizer-subscription', tournamentId] });
     },
   });
 }

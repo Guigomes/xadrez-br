@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { applyAsaasPaymentEvent, type AsaasPaymentEvent } from '@/lib/asaas/webhook-handler';
+import { applyAsaasPaymentEvent, applyAsaasSubscriptionEvent, type AsaasPaymentEvent, type AsaasSubscriptionEvent } from '@/lib/asaas/webhook-handler';
 
 // Recebe eventos de cobrança da Asaas e sincroniza `subscriptions` +
 // `user_profiles.plan_id` (via lib/asaas/webhook-handler.ts). Autenticado
@@ -19,14 +19,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
   }
 
-  const body: Partial<AsaasPaymentEvent> | null = await request.json().catch(() => null);
-  if (!body?.event || !body.payment?.id) {
+  const body: (Partial<AsaasPaymentEvent> & Partial<AsaasSubscriptionEvent>) | null = await request.json().catch(() => null);
+  const lifecycle = typeof body?.event === 'string' && body.event.startsWith('SUBSCRIPTION_');
+  if (typeof body?.event !== 'string' || (lifecycle ? typeof body.subscription?.id !== 'string' : typeof body.payment?.id !== 'string')) {
     return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
   }
 
   const admin = createAdminClient();
   try {
-    const result = await applyAsaasPaymentEvent(admin, body as AsaasPaymentEvent);
+    const result = lifecycle
+      ? await applyAsaasSubscriptionEvent(admin, body as AsaasSubscriptionEvent)
+      : await applyAsaasPaymentEvent(admin, body as AsaasPaymentEvent);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     console.error('[webhooks/asaas]', err);

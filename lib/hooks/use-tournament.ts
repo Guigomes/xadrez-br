@@ -343,7 +343,12 @@ export function useAddTournamentPlayer(tournamentId: string) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) }),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: tournamentKeys.players(tournamentId) }),
+        qc.invalidateQueries({ queryKey: ['organizer-subscription', tournamentId] }),
+      ]);
+    },
   });
 }
 
@@ -373,6 +378,7 @@ export function useDeleteTournamentPlayer(tournamentId: string) {
         qc.invalidateQueries({ queryKey: tournamentKeys.lists() }),
         qc.invalidateQueries({ queryKey: ['registrations', tournamentId] }),
         qc.invalidateQueries({ queryKey: ['requested-byes', tournamentId] }),
+        qc.invalidateQueries({ queryKey: ['organizer-subscription', tournamentId] }),
       ]);
     },
   });

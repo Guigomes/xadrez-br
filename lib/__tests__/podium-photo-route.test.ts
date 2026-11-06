@@ -6,6 +6,8 @@ const playerId = '11111111-2222-4333-8444-555555555555';
 const mocks = vi.hoisted(() => ({
   tournament: { id: 'event', status: 'finished', has_absolute_classification: true, has_female_classification: false } as { id: string; status: string; has_absolute_classification: boolean; has_female_classification: boolean } | null,
   rows: [] as StandingRow[], rpc: vi.fn(), admin: vi.fn(), download: vi.fn(), queryError: false,
+  user: { id: 'dev', is_anonymous: false } as { id: string; is_anonymous: boolean } | null,
+  role: 'admin' as string | null, authError: false, profileError: false,
 }));
 vi.mock('@/lib/tournament/podium', async () => import('../tournament/podium'));
 vi.mock('@/lib/player-photos/config', async () => import('../player-photos/config'));
@@ -13,7 +15,13 @@ vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({
   from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: mocks.tournament, error: mocks.queryError ? new Error('private error') : null }) }) }) }),
   rpc: mocks.rpc,
 }) }));
-vi.mock('@/lib/supabase/server', () => ({ createAdminClient: mocks.admin }));
+vi.mock('@/lib/supabase/server', () => ({
+  createAdminClient: mocks.admin,
+  createClient: async () => ({
+    auth: { getUser: async () => ({ data: { user: mocks.user }, error: mocks.authError ? new Error('auth failed') : null }) },
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: mocks.role ? { role: mocks.role } : null, error: mocks.profileError ? new Error('profile failed') : null }) }) }) }),
+  }),
+}));
 import { GET } from '../../app/api/tournaments/[slug]/podium-photo/route';
 
 const row = (patch: Partial<StandingRow> = {}): StandingRow => ({
@@ -28,14 +36,39 @@ const get = (player = playerId, category = 'group:all') => GET(
   { params: Promise.resolve({ slug: 'test' }) },
 );
 
-describe('scoped public podium photo read', () => {
+describe('Dev-only scoped podium photo read', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.tournament = { id: 'event', status: 'finished', has_absolute_classification: true, has_female_classification: false };
     mocks.rows = [row()]; mocks.queryError = false;
+    mocks.user = { id: 'dev', is_anonymous: false }; mocks.role = 'admin';
+    mocks.authError = false; mocks.profileError = false;
     mocks.rpc.mockImplementation(async () => ({ data: mocks.rows, error: null }));
     mocks.download.mockResolvedValue({ data: new Blob(['normalized-photo'], { type: 'image/webp' }), error: null });
     mocks.admin.mockReturnValue({ storage: { from: (bucket: string) => { expect(bucket).toBe('player-photos'); return { download: mocks.download }; } } });
+  });
+  it('requires a verified, non-anonymous session before reading podium data or storage', async () => {
+    mocks.user = null;
+    expect((await get()).status).toBe(401);
+    mocks.user = { id: 'anonymous', is_anonymous: true };
+    expect((await get()).status).toBe(401);
+    mocks.user = { id: 'dev', is_anonymous: false }; mocks.authError = true;
+    expect((await get()).status).toBe(401);
+    expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.admin).not.toHaveBeenCalled();
+  });
+  it.each(['organizer', 'arbiter', 'public_user', null])('denies the %s role even for a real winner', async (role) => {
+    mocks.role = role;
+    const response = await get();
+    expect(response.status).toBe(403);
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.admin).not.toHaveBeenCalled();
+  });
+  it('fails closed when the trusted role cannot be verified', async () => {
+    mocks.profileError = true;
+    const response = await get();
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain('profile failed');
+    expect(mocks.admin).not.toHaveBeenCalled();
   });
   it.each(['draft', 'published', 'registration', 'registration_closed', 'ongoing', 'cancelled'])('never exposes photos of a %s tournament', async (status) => {
     mocks.tournament!.status = status;

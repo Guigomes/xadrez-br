@@ -21,6 +21,46 @@ export interface AsaasPaymentEvent {
   };
 }
 
+export interface AsaasSubscriptionEvent {
+  event: string;
+  subscription: { id: string };
+}
+
+/** Provider lifecycle events can revoke access, never grant it without payment.
+ * Repeated deliveries are safe: these are terminal, idempotent assignments. */
+export async function applyAsaasSubscriptionEvent(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: SupabaseClient<any>,
+  { event, subscription }: AsaasSubscriptionEvent,
+): Promise<ApplyEventResult> {
+  if (!['SUBSCRIPTION_DELETED', 'SUBSCRIPTION_INACTIVATED'].includes(event)) {
+    return { outcome: 'applied', status: 'ignored' };
+  }
+  const { data: local, error } = await admin.from('subscriptions')
+    .select('id, user_id, plan_id').eq('asaas_subscription_id', subscription.id).maybeSingle();
+  if (error) throw error;
+  if (!local) return { outcome: 'unknown_subscription' };
+  const { error: updateError } = await admin.from('subscriptions').update({ status: 'canceled' }).eq('id', local.id);
+  if (updateError) throw updateError;
+  await resetSubscriptionProfile(admin, local);
+  return { outcome: 'applied', status: 'canceled' };
+}
+
+async function resetSubscriptionProfile(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: SupabaseClient<any>,
+  subscription: { user_id: string; plan_id: string },
+) {
+  const { data: freePlan, error } = await admin.from('plans').select('id').eq('code', 'free').maybeSingle();
+  if (error) throw error;
+  if (freePlan) {
+    // An old cancellation must not overwrite a different, newer plan.
+    const { error: updateError } = await admin.from('user_profiles').update({ plan_id: freePlan.id })
+      .eq('id', subscription.user_id).eq('plan_id', subscription.plan_id);
+    if (updateError) throw updateError;
+  }
+}
+
 const ACTIVATE_EVENTS = new Set(['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED']);
 const OVERDUE_EVENTS = new Set(['PAYMENT_OVERDUE']);
 const CANCEL_EVENTS = new Set(['PAYMENT_REFUNDED', 'PAYMENT_DELETED', 'PAYMENT_CHARGEBACK_REQUESTED']);
@@ -52,41 +92,49 @@ export async function applyAsaasPaymentEvent(
   }
 
   if (payment.subscription) {
-    const { data: subscription } = await admin
-      .from('subscriptions')
-      .select('id, user_id, plan_id')
-      .eq('asaas_subscription_id', payment.subscription)
-      .maybeSingle();
-    if (!subscription) {
-      return { outcome: 'unknown_subscription' };
-    }
-
-    if (ACTIVATE_EVENTS.has(event)) {
-      await admin
+    try {
+      const { data: subscription, error: lookupError } = await admin
         .from('subscriptions')
-        .update({ status: 'active', next_due_date: payment.dueDate ?? null })
-        .eq('id', subscription.id);
-      // UPDATE direto, não via RPC set_user_plan: aquele RPC exige
-      // auth_user_role() = 'admin', e o client service_role usado aqui não
-      // autentica como usuário nenhum (auth.uid() nulo) — é o contexto que
-      // trg_prevent_plan_self_upgrade (migration 073) já deixa passar sem
-      // checar admin, pensado exatamente pra webhook de cobrança.
-      await admin.from('user_profiles').update({ plan_id: subscription.plan_id }).eq('id', subscription.user_id);
-      return { outcome: 'applied', status: 'active' };
-    }
-    if (OVERDUE_EVENTS.has(event)) {
-      await admin.from('subscriptions').update({ status: 'overdue' }).eq('id', subscription.id);
-      return { outcome: 'applied', status: 'overdue' };
-    }
-    if (CANCEL_EVENTS.has(event)) {
-      await admin.from('subscriptions').update({ status: 'canceled' }).eq('id', subscription.id);
-      const { data: freePlan } = await admin.from('plans').select('id').eq('code', 'free').maybeSingle();
-      if (freePlan) {
-        await admin.from('user_profiles').update({ plan_id: freePlan.id }).eq('id', subscription.user_id);
+        .select('id, user_id, plan_id, status')
+        .eq('asaas_subscription_id', payment.subscription)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      if (!subscription) {
+        return { outcome: 'unknown_subscription' };
       }
-      return { outcome: 'applied', status: 'canceled' };
+
+      if (ACTIVATE_EVENTS.has(event)) {
+        if (subscription.status === 'canceled') return { outcome: 'applied', status: 'ignored' };
+        const { error: updateError } = await admin
+          .from('subscriptions')
+          .update({ status: 'active', next_due_date: payment.dueDate ?? null })
+          .eq('id', subscription.id);
+        if (updateError) throw updateError;
+        // Service role performs the paid plan update; the browser cannot do it.
+        const { error: profileError } = await admin.from('user_profiles').update({ plan_id: subscription.plan_id }).eq('id', subscription.user_id);
+        if (profileError) throw profileError;
+        return { outcome: 'applied', status: 'active' };
+      }
+      if (OVERDUE_EVENTS.has(event)) {
+        if (subscription.status === 'canceled') return { outcome: 'applied', status: 'ignored' };
+        const { error: updateError } = await admin.from('subscriptions').update({ status: 'overdue' }).eq('id', subscription.id);
+        if (updateError) throw updateError;
+        return { outcome: 'applied', status: 'overdue' };
+      }
+      if (CANCEL_EVENTS.has(event)) {
+        const { error: updateError } = await admin.from('subscriptions').update({ status: 'canceled' }).eq('id', subscription.id);
+        if (updateError) throw updateError;
+        await resetSubscriptionProfile(admin, subscription);
+        return { outcome: 'applied', status: 'canceled' };
+      }
+      return { outcome: 'applied', status: 'ignored' };
+    } catch (error) {
+      // A failed subscription write must be retriable, not permanently deduped.
+      const { error: cleanupError } = await admin.from('asaas_webhook_events').delete()
+        .eq('payment_id', payment.id).eq('event', event);
+      if (cleanupError) console.error('[asaas/subscription] dedup cleanup failed', cleanupError);
+      throw error;
     }
-    return { outcome: 'applied', status: 'ignored' };
   }
 
   // Sem `subscription`: pode ser cobrança avulsa de taxa de inscrição

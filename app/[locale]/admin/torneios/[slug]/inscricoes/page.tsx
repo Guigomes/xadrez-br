@@ -3,6 +3,8 @@
 import { use, useState } from 'react';
 import { useTournament } from '@/lib/hooks/use-tournament';
 import { useUser } from '@/lib/hooks/use-auth';
+import { useOrganizerSubscription } from '@/lib/hooks/use-organizer-subscription';
+import { OrganizerSubscriptionNotice } from '@/components/admin/organizer-subscription-notice';
 import { useCategories } from '@/lib/hooks/use-classifications';
 import {
   useRegistrations,
@@ -50,6 +52,7 @@ export default function AdminRegistrationsPage({ params }: Props) {
   const { slug } = use(params);
   const { user } = useUser();
   const { data: tournament, isLoading } = useTournament(slug);
+  const organizerSubscription = useOrganizerSubscription(slug, tournament?.id ?? '');
   const { data: registrations, isLoading: loadingRegs } = useRegistrations(tournament?.id ?? '');
   const { data: nextRoundByGroup } = useNextRoundByGroup(tournament?.id ?? '');
   const { data: categories } = useCategories(tournament?.id ?? '');
@@ -147,6 +150,7 @@ export default function AdminRegistrationsPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl">
+      <OrganizerSubscriptionNotice status={organizerSubscription.data} error={organizerSubscription.error} refresh={() => { void organizerSubscription.refetch(); }} />
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         Inscrições {pendingCount > 0 && `· ${pendingCount} pendente${pendingCount > 1 ? 's' : ''}`}
       </p>
@@ -319,6 +323,7 @@ export default function AdminRegistrationsPage({ params }: Props) {
                       {!r.is_waitlisted && (
                         <Button
                           size="sm"
+                          disabled={!organizerSubscription.data?.canAddPlayer || !!organizerSubscription.error}
                           loading={actingId === r.id && approve.isPending}
                           onClick={() => handleApprove(r)}
                         >

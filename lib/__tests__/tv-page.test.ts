@@ -11,8 +11,13 @@ const mocks = vi.hoisted(() => ({
   standingsError: false,
   rpc: vi.fn(), client: vi.fn(), filters: [] as string[][], error: false,
   display: vi.fn(),
+  role: null as string | null, authError: false, profileError: false,
 }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: mocks.client }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({
+  auth: { getUser: async () => ({ data: { user: mocks.role ? { id: 'viewer', is_anonymous: false } : null }, error: mocks.authError ? new Error('auth failed') : null }) },
+  from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: mocks.role }, error: mocks.profileError ? new Error('profile failed') : null }) }) }) }),
+}) }));
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('NOT_FOUND'); } }));
 vi.mock('next-intl/server', () => ({ getLocale: async () => 'pt-BR' }));
 vi.mock('qrcode', () => ({ default: { toString: async () => '<svg></svg>' } }));
@@ -32,6 +37,7 @@ describe('public TV page', () => {
     vi.stubGlobal('React', React);
     mocks.tournament.id = 'tv-test';
     mocks.display.mockClear();
+    mocks.role = null; mocks.authError = false; mocks.profileError = false;
     mocks.tournament.status = 'ongoing'; mocks.tournament.is_public = true;
     mocks.rounds = []; mocks.filters = []; mocks.groupCount = 1; mocks.error = false;
     mocks.standings = []; mocks.standingsError = false;
@@ -179,12 +185,14 @@ describe('public TV page', () => {
   });
 
   it('makes podium mode available only for a truly finished tournament', async () => {
+    mocks.role = 'admin';
     await render(); expect(mocks.display.mock.calls[0][0].podium).toBeUndefined();
     mocks.tournament.status = 'finished';
     const html = await render(); expect(html).toContain('data-podium');
     expect(mocks.display.mock.calls.at(-1)?.[0].initialMode).toBe('round');
   });
   it('opens the final-standings podium link directly, but does not bypass the ongoing gate', async () => {
+    mocks.role = 'admin';
     const params = Promise.resolve({ slug: 'test' });
     const searchParams = Promise.resolve({ exibir: 'podio' });
     mocks.tournament.status = 'finished';
@@ -193,5 +201,20 @@ describe('public TV page', () => {
     mocks.tournament.status = 'ongoing';
     renderToStaticMarkup(await TvPage({ params, searchParams }));
     expect(mocks.display.mock.calls.at(-1)?.[0].initialMode).toBe('round');
+  });
+  it.each([null, 'organizer', 'arbiter', 'public_user'])('does not send the podium to a %s viewer, even by direct link', async (role) => {
+    mocks.role = role; mocks.tournament.status = 'finished';
+    const html = renderToStaticMarkup(await TvPage({
+      params: Promise.resolve({ slug: 'test' }), searchParams: Promise.resolve({ exibir: 'podio' }),
+    }));
+    expect(html).not.toContain('data-podium');
+    expect(html).toContain('data-standings');
+    expect(mocks.display.mock.calls.at(-1)?.[0].podium).toBeUndefined();
+    expect(mocks.display.mock.calls.at(-1)?.[0].initialMode).toBe('round');
+  });
+  it.each(['authError', 'profileError'] as const)('withholds the podium on %s without hiding the public TV', async (error) => {
+    mocks.role = 'admin'; mocks.tournament.status = 'finished'; mocks[error] = true;
+    expect(await render()).not.toContain('data-podium');
+    expect(mocks.display.mock.calls.at(-1)?.[0].podium).toBeUndefined();
   });
 });

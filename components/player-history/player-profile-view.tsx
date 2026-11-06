@@ -5,6 +5,9 @@ import { Link } from '@/i18n/navigation';
 import { usePlayer, usePlayerTournaments } from '@/lib/hooks/use-player';
 import { usePlayerFollow, useUser } from '@/lib/hooks/use-auth';
 import { usePlayerHistory } from '@/lib/hooks/use-player-history';
+import { usePlayerHistoryAccess } from '@/lib/hooks/use-player-history-access';
+import { isHistorySubscriptionRequired } from '@/lib/billing/player-history';
+import { formatPlanPrice } from '@/lib/billing/organizer';
 import { PlayerHistoryView } from '@/components/player-history/player-history-view';
 import { PlayerInsights } from '@/components/player-history/player-insights';
 import { toGames } from '@/lib/player-history/types';
@@ -20,11 +23,14 @@ export function PlayerProfileView({ id }: { id: string }) {
   const { data: player, isLoading } = usePlayer(id);
   const { data: tournaments, isLoading: loadingTournaments } = usePlayerTournaments(id);
   const { isFollowing, toggleFollow, user } = usePlayerFollow(id);
-  // histórico completo e PGN: só para quem está logado (o banco também recusa sem login)
   const { user: sessionUser, loading: loadingSession } = useUser();
-  const { data: historyRows, isLoading: loadingHistory, isError: historyError } = usePlayerHistory(id, !!sessionUser);
+  const viewerId = sessionUser && !sessionUser.is_anonymous ? sessionUser.id : undefined;
+  const access = usePlayerHistoryAccess(viewerId);
+  const history = usePlayerHistory(id, !!viewerId && access.data?.allowed === true && !access.isError, viewerId);
+  const { data: historyRows, isLoading: loadingHistory, error: historyError } = history;
   const games = useMemo(() => toGames(historyRows ?? [], player?.full_name ?? ''), [historyRows, player?.full_name]);
-  const showHistory = !!sessionUser && !historyError;
+  const subscriptionRequired = access.data?.allowed === false || isHistorySubscriptionRequired(historyError);
+  const showHistory = !!viewerId && access.data?.allowed === true && !access.isError && !historyError;
 
   if (isLoading) return <PageSpinner />;
   if (!player) return (
@@ -81,7 +87,7 @@ export function PlayerProfileView({ id }: { id: string }) {
         )}
       </div>
 
-      {/* Histórico completo: só logado */}
+      {/* Never render even cached history while this account lacks access. */}
       {showHistory && (
         <div className="mb-8">
           {loadingHistory ? (
@@ -96,20 +102,45 @@ export function PlayerProfileView({ id }: { id: string }) {
           )}
         </div>
       )}
-      {!loadingSession && !sessionUser && (
+      {!loadingSession && !viewerId && (
         <div className="card p-5 mb-6 text-center border-brand-200 dark:border-brand-900">
           <p className="text-2xl mb-1">🔒</p>
-          <p className="font-medium text-gray-900 dark:text-gray-100">Histórico completo e lances das partidas</p>
+          <p className="font-medium text-gray-900 dark:text-gray-100">Histórico completo dos jogadores</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Entre na sua conta para ver todos os torneios, os adversários e os lances deste jogador.
+            Entre na sua conta para conhecer o Jogador+ e consultar o histórico completo. O perfil básico e os resultados por torneio continuam gratuitos.
           </p>
           <Link href="/entrar" className="inline-block mt-3">
             <Button size="sm">Entrar</Button>
           </Link>
         </div>
       )}
+      {!!viewerId && access.isLoading && <PageSpinner />}
+      {!!viewerId && subscriptionRequired && !access.isError && (
+        <div className="card p-5 mb-6 text-center border-brand-200 dark:border-brand-900">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Histórico completo com o Jogador+</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            Consulte partidas, adversários e desempenho dos jogadores em todos os torneios com uma assinatura ativa na sua conta.
+            {' '}O perfil básico e os resultados de cada torneio continuam gratuitos.
+          </p>
+          {access.data?.offer && <p className="font-bold mt-3">{formatPlanPrice(access.data.offer)}</p>}
+          <div className="mt-3 flex flex-wrap justify-center gap-4">
+            <Link href="/planos" className="font-semibold underline">Ver planos e assinar</Link>
+            <button type="button" className="text-sm underline" onClick={() => {
+              void Promise.all([access.refetch(), history.refetch()]);
+            }}>Já paguei · atualizar</button>
+          </div>
+        </div>
+      )}
+      {!!viewerId && (access.isError || (!!historyError && !isHistorySubscriptionRequired(historyError))) && (
+        <div role="alert" className="card p-5 mb-6 text-sm">
+          Não foi possível carregar o histórico. Tente novamente.
+          {' '}<button type="button" className="underline" onClick={() => {
+            void Promise.all([access.refetch(), access.data?.allowed ? history.refetch() : Promise.resolve()]);
+          }}>Tentar novamente</button>
+        </div>
+      )}
 
-      {/* Torneios com estrutura completa (a lista pública de sempre; quem está logado já vê tudo acima) */}
+      {/* Lista pública por torneio continua disponível sem assinatura. */}
       {!showHistory && (<>
       <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-3">Torneios disputados</h2>
       {loadingTournaments ? (

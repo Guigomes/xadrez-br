@@ -111,6 +111,12 @@ export async function createAsaasSubscription(input: {
   });
 }
 
+/** Compensate only a subscription just created by a failed local checkout. */
+export async function cancelAsaasSubscription(subscriptionId: string): Promise<void> {
+  if (isMockMode()) return;
+  await asaasFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}`, { method: 'DELETE' });
+}
+
 export interface AsaasPayment {
   id: string;
   status: string;

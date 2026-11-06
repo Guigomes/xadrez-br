@@ -39,7 +39,7 @@ describe('removing a participant from one tournament', () => {
     expect(mocks.select).toHaveBeenCalledWith('id'); expect(mocks.maybeSingle).toHaveBeenCalledOnce();
     expect(invalidate.mock.calls.map(([filter]) => filter?.queryKey)).toEqual([
       tournamentKeys.players('tournament'), tournamentKeys.standings('tournament'), tournamentKeys.lists(),
-      ['registrations', 'tournament'], ['requested-byes', 'tournament'],
+      ['registrations', 'tournament'], ['requested-byes', 'tournament'], ['organizer-subscription', 'tournament'],
     ]);
   });
   it('reports linked pairings as a blocked removal, without deleting games or retrying', async () => {

@@ -11,7 +11,7 @@ const supabase = createClient() as unknown as SupabaseClient;
 
 export const historyKeys = {
   all: ['history'] as const,
-  player: (id: string) => [...historyKeys.all, 'player', id] as const,
+  player: (id: string, viewerId?: string) => [...historyKeys.all, 'player', id, viewerId ?? null] as const,
   pgn: (source: string, id: string) => [...historyKeys.all, 'pgn', source, id] as const,
   tournaments: () => [...historyKeys.all, 'tournaments'] as const,
   tournament: (slug: string) => [...historyKeys.all, 'tournament', slug] as const,
@@ -22,13 +22,15 @@ export const historyKeys = {
 
 /**
  * Histórico completo do jogador (todos os torneios, adversários, PGN disponível).
- * A função do banco recusa chamada sem login; por isso só roda com `enabled`.
+ * O banco exige sessão e assinatura ativa quando a cobrança está ligada.
+ * Cache por conta: trocar de usuário não reutiliza o histórico de outro assinante.
  */
-export function usePlayerHistory(playerId: string, enabled: boolean) {
+export function usePlayerHistory(playerId: string, enabled: boolean, viewerId?: string) {
   return useQuery({
-    queryKey: historyKeys.player(playerId),
+    queryKey: historyKeys.player(playerId, viewerId),
     enabled,
-    staleTime: 300_000,
+    staleTime: 0,
+    retry: (failures, error) => (error as { code?: string }).code !== '42501' && failures < 2,
     queryFn: async (): Promise<HistoryRow[]> => {
       const { data, error } = await supabase.rpc('get_player_history', { p_player_id: playerId });
       if (error) throw error;

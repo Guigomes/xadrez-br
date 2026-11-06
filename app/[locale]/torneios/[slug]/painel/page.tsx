@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import QRCode from 'qrcode';
 import { createClient } from '@supabase/supabase-js';
+import { createClient as createSessionClient } from '@/lib/supabase/server';
 import type { Database, StandingRow } from '@/types/database';
 import { siteUrl } from '@/lib/seo';
 import { TvControls } from '@/components/tournament/tv-controls';
@@ -67,13 +68,24 @@ export default async function TournamentTvPage({ params, searchParams }: {
   // Keep the RPC's published positions/order. Never mix ranks from different groups.
   const standings = ((standingsResult.data ?? []) as StandingRow[])
     .filter((row) => row.pairing_group_id === selectedGroupId);
-  const podiumOptions = buildPodiumOptions((standingsResult.data ?? []) as StandingRow[], tournament);
-  const initialMode = tournament.status === 'finished' && (await searchParams)?.exibir === 'podio' ? 'podium' : 'round';
+  // The ceremony is Dev-only. Public rounds/standings still use the anonymous client.
+  let canViewPodium = false;
+  if (tournament.status === 'finished') {
+    const session = await createSessionClient();
+    const { data: { user }, error: authError } = await session.auth.getUser();
+    if (!authError && user && !user.is_anonymous) {
+      const { data: profile, error: profileError } = await session.from('user_profiles')
+        .select('role').eq('id', user.id).maybeSingle();
+      canViewPodium = !profileError && profile?.role === 'admin';
+    }
+  }
+  const podiumOptions = canViewPodium ? buildPodiumOptions((standingsResult.data ?? []) as StandingRow[], tournament) : [];
+  const initialMode = canViewPodium && (await searchParams)?.exibir === 'podio' ? 'podium' : 'round';
 
   return (
     <TvDisplay initialMode={initialMode} tournamentEnded={tournament.status === 'finished'}
       roundState={round ? { id: round.id, number: round.round_number, status: round.status as 'ongoing' | 'finished', publishedAt: round.published_at } : undefined}
-      podium={tournament.status === 'finished'
+      podium={canViewPodium
       ? <TvPodium options={podiumOptions} tournamentId={tournament.id} tournamentName={tournament.name} slug={slug} locale={locale} />
       : undefined} header={
       <header className="flex flex-wrap items-center justify-between gap-3">
