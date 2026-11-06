@@ -2634,12 +2634,10 @@ export type Database = {
           created_at: string
           current_rank: number | null
           current_score: number
-          direct_encounter: number | null
           id: string
           initial_ranking: number | null
           joined_at_round: number
           pairing_group_id: string | null
-          performance_rating: number | null
           player_id: string
           progressive: number | null
           sonneborn_berger: number | null
@@ -2658,12 +2656,10 @@ export type Database = {
           created_at?: string
           current_rank?: number | null
           current_score?: number
-          direct_encounter?: number | null
           id?: string
           initial_ranking?: number | null
           joined_at_round?: number
           pairing_group_id?: string | null
-          performance_rating?: number | null
           player_id: string
           progressive?: number | null
           sonneborn_berger?: number | null
@@ -2681,12 +2677,10 @@ export type Database = {
           created_at?: string
           current_rank?: number | null
           current_score?: number
-          direct_encounter?: number | null
           id?: string
           initial_ranking?: number | null
           joined_at_round?: number
           pairing_group_id?: string | null
-          performance_rating?: number | null
           player_id?: string
           progressive?: number | null
           sonneborn_berger?: number | null

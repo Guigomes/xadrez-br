@@ -45,6 +45,13 @@ Indício nas estatísticas: `user_profiles` (26 linhas) tem 755 mil seq scans, `
 → Migration que só reescreve as expressões para `(select auth.uid())` e `(select public.auth_user_role())`. A semântica não muda;
 o Postgres passa a calcular uma vez por consulta (aviso `auth_rls_initplan` do Supabase Advisor).
 
+> **Correção (mesmo dia, após medir):** os seq scans citados são contadores acumulados de meses — em
+> algumas horas `rounds` ganhou só +113. As leituras públicas quentes (rodada, classificação, cabeçalho,
+> TV) passam por RPCs `security definer` e não pagam RLS. Onde a RLS pesa, o custo é de milissegundos
+> (pareamentos de uma rodada 0,5 ms; os 4.132 de um torneio inteiro, 7,8 ms contra 1,4 ms sem RLS).
+> A migration de InitPlan foi aplicada (`20261106120100`); reescrever as policies de `pairings`/`rounds`
+> foi **descartado**: ganho de 3–6 ms em poucas consultas não justifica o risco de mudar quem vê o quê.
+
 **A3. `tournament_players` inchado ~14×.**
 São 7.601 linhas de ~178 bytes (~1,3 MB de dado) ocupando 19 MB de heap.
 Causa: `sync_player_scores_from_standings` faz UPDATE em **todas** as linhas do torneio a cada ciclo do robô (agora a cada 10 min),
