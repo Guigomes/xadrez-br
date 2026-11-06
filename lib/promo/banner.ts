@@ -9,6 +9,9 @@
 export const PROMO_PLAY_URL =
   'https://play.google.com/store/apps/details?id=app.miguelxadrez.game&referrer=utm_source%3Dgambito_torneios%26utm_medium%3Dbanner%26utm_campaign%3Dreino_xadrez%26utm_content%3Dhome_v1';
 
+/** Identificação da campanha nos cliques gravados (promo_clicks.campaign) — mesma do link acima. */
+export const PROMO_CAMPAIGN = 'reino_xadrez:home_v1';
+
 /** Chave do localStorage com o instante (ms) até quando o banner fica escondido. */
 export const PROMO_DISMISS_KEY = 'gambito_promo_reino_hidden_until';
 export const PROMO_DISMISS_DAYS = 7;

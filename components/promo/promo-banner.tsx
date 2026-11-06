@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
+  PROMO_CAMPAIGN,
   PROMO_COOLDOWN_KEY,
   PROMO_DISMISS_KEY,
   PROMO_PLAY_URL,
@@ -92,6 +93,19 @@ export function PromoBanner() {
 
   if (!showBanner) return null;
 
+  // sendBeacon sobrevive à abertura da loja em outra aba e leva o cookie de
+  // sessão (a rota grava quem clicou quando há conta). Falha nunca bloqueia o link.
+  function recordClick() {
+    try {
+      const body = new Blob([JSON.stringify({ campaign: PROMO_CAMPAIGN, path: pathname })], { type: 'application/json' });
+      if (!navigator.sendBeacon?.('/api/promo/click', body)) {
+        void fetch('/api/promo/click', { method: 'POST', body, keepalive: true, headers: { 'Content-Type': 'application/json' } }).catch(() => {});
+      }
+    } catch {
+      // Contagem é melhor esforço.
+    }
+  }
+
   function dismiss() {
     setEligiblePath(null);
     try {
@@ -110,6 +124,8 @@ export function PromoBanner() {
         <a
           ref={cardRef}
           href={PROMO_PLAY_URL}
+          onClick={recordClick}
+          onAuxClick={(event) => { if (event.button === 1) recordClick(); }}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Conhecer Miguel no Reino do Xadrez, disponível para Android"

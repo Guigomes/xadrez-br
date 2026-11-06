@@ -1431,6 +1431,34 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_clicks: {
+        Row: {
+          campaign: string
+          created_at: string
+          device_type: string | null
+          id: number
+          path: string | null
+          user_id: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          campaign: string
+          created_at?: string
+          device_type?: string | null
+          id?: never
+          path?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          campaign?: string
+          created_at?: string
+          device_type?: string | null
+          id?: never
+          path?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       push_notification_events: {
         Row: {
           created_at: string
@@ -3032,8 +3060,11 @@ export type Database = {
           updated_at: string
           venue: string | null
           waitlist_enabled: boolean
+          tournament_display_status:
+            | Database["public"]["Enums"]["tournament_status"]
+            | null
         }
-        ComputedFields: never
+        ComputedFields: "tournament_display_status"
         Insert: {
           accept_online_payment?: boolean
           banner_url?: string | null
@@ -3850,6 +3881,10 @@ export type Database = {
         Args: { p_tournament_id: string }
         Returns: number
       }
+      refresh_tournament_statuses: {
+        Args: { p_tournament_id?: string }
+        Returns: number
+      }
       registration_payment_enabled: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -3999,6 +4034,15 @@ export type Database = {
         Returns: number
       }
       today_brt: { Args: Record<PropertyKey, never>; Returns: string }
+      tournament_display_status: {
+        Args: {
+          t: Omit<
+            Database["public"]["Tables"]["tournaments"]["Row"],
+            Database["public"]["Tables"]["tournaments"]["ComputedFields"]
+          >
+        }
+        Returns: Database["public"]["Enums"]["tournament_status"]
+      }
       truncate_broadcast_moves: {
         Args: { p_broadcast_id: string; p_to_ply: number }
         Returns: number
