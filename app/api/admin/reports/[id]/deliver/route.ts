@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/api/guards';
 import { canDeliver, type ReportOrderStatus, type ReportPaymentStatus } from '@/lib/reports/orders';
 
 // Admin: anexa o PDF pronto ao pedido e marca como entregue. Recusa pedido
@@ -9,13 +10,10 @@ const MAX_BYTES = 15 * 1024 * 1024;
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const admin = createAdminClient();
-  const { data: profile } = await admin.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
-  if (profile?.role !== 'admin') return NextResponse.json({ error: 'Acesso restrito.' }, { status: 403 });
 
   const { data: order } = await admin
     .from('report_orders').select('id, status, price_cents, payment_status').eq('id', id).maybeSingle();

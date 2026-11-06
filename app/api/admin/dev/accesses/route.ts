@@ -1,25 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/api/guards';
 import type { AccessDashboardData } from '@/lib/analytics/types';
 import type { DeviceType } from '@/lib/analytics/device';
 import { aggregateTabStats, ALL_TOURNAMENTS } from '@/lib/analytics/tournament-tabs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-async function isAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  return profile?.role === 'admin';
-}
 
 // O PostgREST do Supabase devolve no máximo 1000 linhas por chamada, então o .limit(10_000)
 // antigo parava em 1000 sem aviso — com mais tráfego, o painel contava só o último dia ou dois.
@@ -44,9 +31,8 @@ async function fetchRecentEvents(admin: ReturnType<typeof createAdminClient>, si
 }
 
 export async function GET() {
-  if (!await isAdmin()) {
-    return NextResponse.json({ error: 'Restrito a administradores.' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const admin = createAdminClient();
   const now = Date.now();
@@ -170,9 +156,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!await isAdmin()) {
-    return NextResponse.json({ error: 'Restrito a administradores.' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const body = await request.json().catch(() => null);
   const deviceId = typeof body?.deviceId === 'string' ? body.deviceId : '';

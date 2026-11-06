@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireAdmin as requireAdminSession } from '@/lib/api/guards';
 import { NEWS_COVERS_BUCKET } from '@/lib/utils/news';
 import type { NewsScope, TablesUpdate } from '@/types/database';
 
@@ -9,14 +10,8 @@ const SCOPES: NewsScope[] = ['state', 'national', 'international'];
 
 /** Gate compartilhado: logado + role='admin'. Devolve o client admin ou a resposta de erro. */
 async function requireAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: NextResponse.json({ error: 'Não autenticado.' }, { status: 401 }) };
-
-  const { data: profile } = await supabase.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
-  if (profile?.role !== 'admin') {
-    return { error: NextResponse.json({ error: 'Restrito a administradores.' }, { status: 403 }) };
-  }
+  const gate = await requireAdminSession();
+  if (!gate.ok) return { error: gate.response };
   return { admin: createAdminClient() };
 }
 

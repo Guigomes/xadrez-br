@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/api/guards';
 import { PLAYER_PHOTOS_BUCKET, PLAYER_PHOTO_MAX_BYTES, playerPhotoFileError, playerPhotoPath } from '@/lib/player-photos/config';
 import { preparePlayerPhoto } from '@/lib/player-photos/image';
 
@@ -9,12 +10,8 @@ type Context = { params: Promise<{ playerId: string }> };
 const json = (body: object, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
 async function requireDev(playerId: string) {
-  const client = await createClient();
-  const { data: { user } } = await client.auth.getUser();
-  if (!user) return { error: json({ error: 'Não autenticado.' }, 401) };
-  const { data: profile, error: profileError } = await client.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
-  if (profileError) return { error: json({ error: 'Não foi possível verificar sua permissão.' }, 503) };
-  if (profile?.role !== 'admin') return { error: json({ error: 'Somente o Dev pode gerenciar fotos de jogadores.' }, 403) };
+  const gate = await requireAdmin();
+  if (!gate.ok) return { error: gate.response };
   const path = playerPhotoPath(playerId);
   if (!path) return { error: json({ error: 'Jogador inválido.' }, 400) };
   const admin = createAdminClient();

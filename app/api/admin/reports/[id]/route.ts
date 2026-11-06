@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/api/guards';
 import { ADMIN_SETTABLE_STATUSES, type ReportOrderStatus } from '@/lib/reports/orders';
 
 // Admin: muda o andamento de um pedido (em produção / cancelado) e as
@@ -7,13 +8,10 @@ import { ADMIN_SETTABLE_STATUSES, type ReportOrderStatus } from '@/lib/reports/o
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const admin = createAdminClient();
-  const { data: profile } = await admin.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
-  if (profile?.role !== 'admin') return NextResponse.json({ error: 'Acesso restrito.' }, { status: 403 });
 
   const { status, notes } = (await request.json().catch(() => ({}))) as { status?: ReportOrderStatus; notes?: string };
   const patch: { status?: ReportOrderStatus; notes?: string } = {};

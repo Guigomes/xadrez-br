@@ -50,7 +50,8 @@ describe('Dev-only access dashboard account attribution', () => {
 
   it('does not expose account details to an anonymous caller', async () => {
     mocks.user = null;
-    expect((await GET()).status).toBe(403);
+    // Sem sessão é 401 (requireAdmin); com sessão sem papel de admin, 403.
+    expect((await GET()).status).toBe(401);
     expect(mocks.admin).not.toHaveBeenCalled();
   });
 

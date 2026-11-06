@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireCronSecret } from '@/lib/api/guards';
 import {
   sendPlayerFollowersNotification,
   sendTournamentNotification,
@@ -231,13 +232,8 @@ async function sendTournamentSummaryEvents(
 }
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.CRON_PUSH_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: 'CRON_PUSH_SECRET não configurado no servidor.' }, { status: 500 });
-  }
-  if (request.headers.get('x-cron-secret') !== secret) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
-  }
+  const denied = requireCronSecret(request);
+  if (denied) return denied;
 
   const { roundId, tournamentId: summaryTournamentId, event, pairingId } = await request.json().catch(() => ({})) ?? {};
   if ((event !== undefined && !isRoundNotificationEvent(event))

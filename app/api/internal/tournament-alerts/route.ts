@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireCronSecret } from '@/lib/api/guards';
 import { fetchCbxMonth } from '@/lib/alerts/cbx-calendar';
 import { loadUpcomingItems, type FeedItem } from '@/lib/alerts/feed';
 import { alertMessage, matchesRule } from '@/lib/alerts/match';
@@ -21,9 +22,8 @@ const MIN_HOURS = 20;
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.CRON_PUSH_SECRET;
-  if (!secret) return NextResponse.json({ error: 'CRON_PUSH_SECRET não configurado no servidor.' }, { status: 500 });
-  if (request.headers.get('x-cron-secret') !== secret) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+  const denied = requireCronSecret(request);
+  if (denied) return denied;
 
   const admin = createAdminClient();
   const force = request.nextUrl.searchParams.get('force') === '1';

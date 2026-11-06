@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireCronSecret } from '@/lib/api/guards';
 import { sendOperatorNotification } from '@/lib/push';
 
 export const runtime = 'nodejs';
@@ -15,13 +16,8 @@ export const dynamic = 'force-dynamic';
  * Autenticação: mesmo segredo da notificação de rodada (x-cron-secret = CRON_PUSH_SECRET).
  */
 export async function POST(request: NextRequest) {
-  const secret = process.env.CRON_PUSH_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: 'CRON_PUSH_SECRET não configurado no servidor.' }, { status: 500 });
-  }
-  if (request.headers.get('x-cron-secret') !== secret) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
-  }
+  const denied = requireCronSecret(request);
+  if (denied) return denied;
 
   const body = await request.json().catch(() => null);
   const tournamentId = typeof body?.tournamentId === 'string' ? body.tournamentId : '';

@@ -1,35 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getSessionProfile } from '@/lib/data/session';
+import { requireTournamentOwner } from '@/lib/api/guards';
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-
-  const { data: tournament } = await supabase
-    .from('tournaments')
-    .select('id, created_by')
-    .eq('slug', slug)
-    .single();
-
-  if (!tournament) return NextResponse.json({ error: 'Torneio não encontrado.' }, { status: 404 });
   // Dono ou admin do sistema — o mesmo critério do RLS de tournaments (admin gerencia qualquer torneio).
-  if (tournament.created_by !== user.id && (await getSessionProfile())?.role !== 'admin') {
-    return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 });
-  }
+  const gate = await requireTournamentOwner(slug);
+  if (!gate.ok) return gate.response;
 
-  const { error } = await supabase
+  const { error } = await gate.supabase
     .from('tournaments')
     .delete()
-    .eq('id', tournament.id);
+    .eq('id', gate.tournament.id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    // Trava do banco (migration 20261106120000): torneio com cobrança, pagamento ou
+    // repasse não pode ser excluído — a mensagem já vem pronta para o organizador.
+    if (error.hint === 'FINANCIAL_HISTORY') {
+      return NextResponse.json({ error: error.message, code: 'FINANCIAL_HISTORY' }, { status: 409 });
+    }
+    console.error('[tournaments/delete]', error);
+    return NextResponse.json({ error: 'Não foi possível excluir o torneio.' }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
