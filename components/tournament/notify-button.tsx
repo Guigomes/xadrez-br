@@ -2,68 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import { getLocalFollowedPlayerIds } from '@/lib/utils/local-follows';
+import { ensurePushSubscription, pushSupported } from '@/lib/push-client';
 
+/**
+ * Avisos de UM torneio neste aparelho (rodada publicada, resultado de quem
+ * a pessoa segue, encerramento). Os avisos da CONTA (convite de equipe,
+ * alertas, suporte) são outro botão: AccountPushToggle, em Minha conta.
+ * O aparelho segue um torneio por vez; ativar em outro substitui o anterior.
+ */
 const PUSH_SCOPE_KEY = 'xbr_push_scope';
 
 interface Props {
-  tournamentId?: string;
+  tournamentId: string;
   tournamentSlug?: string;
-  /** Rótulo do botão quando inscrito/ativo — default cobre o caso de torneio. */
   activeLabel?: string;
-  /** Rótulo do botão quando ainda não inscrito — default cobre o caso de torneio. */
   idleLabel?: string;
 }
 
 type Status = 'idle' | 'loading' | 'subscribed' | 'denied' | 'unsupported' | 'error';
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const output = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
-  return output;
-}
-
-// Registers /push-sw.js (minimal, no workbox) and waits for it to activate.
-async function getPushRegistration(): Promise<ServiceWorkerRegistration> {
-  const reg = await navigator.serviceWorker.register('/push-sw.js');
-
-  // If already active (e.g. returning visit), return immediately
-  if (reg.active) return reg;
-
-  // Wait for activation with proper statechange handling
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error('Service worker não ativou. Recarregue a página e tente novamente.')),
-      15000
-    );
-    const done = (ok: boolean, msg?: string) => {
-      clearTimeout(timer);
-      if (ok) resolve(reg);
-      else reject(new Error(msg ?? 'Service worker falhou ao instalar.'));
-    };
-    const watch = (sw: ServiceWorker) => {
-      // Check current state before adding listener (handles fast activation)
-      if (sw.state === 'activated') return done(true);
-      if (sw.state === 'redundant') return done(false);
-      sw.addEventListener('statechange', function h() {
-        if (sw.state === 'activated') { sw.removeEventListener('statechange', h); done(true); }
-        else if (sw.state === 'redundant') { sw.removeEventListener('statechange', h); done(false); }
-      });
-    };
-    if (reg.installing) watch(reg.installing);
-    else if (reg.waiting) watch(reg.waiting);
-    else done(false, 'Service worker não encontrado.');
-  });
-}
 
 export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (!pushSupported()) {
       setStatus('unsupported');
       return;
     }
@@ -74,8 +37,7 @@ export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
     navigator.serviceWorker.getRegistration('/push-sw.js').then((reg) => {
       if (!reg) return;
       reg.pushManager.getSubscription().then((sub) => {
-        const currentScope = tournamentId ?? '__global__';
-        if (sub && localStorage.getItem(PUSH_SCOPE_KEY) === currentScope) {
+        if (sub && localStorage.getItem(PUSH_SCOPE_KEY) === tournamentId) {
           setStatus('subscribed');
         }
       });
@@ -83,7 +45,7 @@ export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
   }, [tournamentId]);
 
   useEffect(() => {
-    if (status !== 'subscribed' || !tournamentId) return;
+    if (status !== 'subscribed') return;
 
     const syncLocalFollows = async () => {
       try {
@@ -119,13 +81,16 @@ export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
         if (reg) {
           const sub = await reg.pushManager.getSubscription();
           if (sub) {
-            await sub.unsubscribe();
-            await fetch('/api/push/subscribe', {
+            // Servidor decide: aparelho ligado a uma conta só deixa de seguir
+            // o torneio e continua inscrito para os avisos da conta (kept).
+            const res = await fetch('/api/push/subscribe', {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ endpoint: sub.endpoint }),
             });
-            if (localStorage.getItem(PUSH_SCOPE_KEY) === (tournamentId ?? '__global__')) {
+            const { kept } = await res.json().catch(() => ({ kept: false }));
+            if (!kept) await sub.unsubscribe();
+            if (localStorage.getItem(PUSH_SCOPE_KEY) === tournamentId) {
               localStorage.removeItem(PUSH_SCOPE_KEY);
             }
           }
@@ -134,36 +99,26 @@ export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
         return;
       }
 
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') { setStatus('denied'); return; }
-
-      const reg = await getPushRegistration();
-
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidKey) throw new Error('VAPID key não configurada');
-
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        // lib.dom tornou TypedArray genérico sobre o buffer (TS 5.7+):
-        // Uint8Array<ArrayBufferLike> não satisfaz BufferSource
-        // (ArrayBufferView<ArrayBuffer>) mesmo sendo o mesmo dado em runtime.
-        applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
-      });
+      let sub: PushSubscription;
+      try {
+        sub = await ensurePushSubscription();
+      } catch (err) {
+        if (err instanceof Error && err.message === 'DENIED') { setStatus('denied'); return; }
+        throw err;
+      }
 
       const res = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subscription: sub.toJSON(),
-          tournamentId: tournamentId ?? null,
-          followedPlayerIds: tournamentId
-            ? [...getLocalFollowedPlayerIds(tournamentId)]
-            : [],
+          tournamentId,
+          followedPlayerIds: [...getLocalFollowedPlayerIds(tournamentId)],
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Erro ao salvar subscrição');
 
-      localStorage.setItem(PUSH_SCOPE_KEY, tournamentId ?? '__global__');
+      localStorage.setItem(PUSH_SCOPE_KEY, tournamentId);
       setStatus('subscribed');
     } catch (err: any) {
       console.error('[NotifyButton]', err);
@@ -175,11 +130,11 @@ export function NotifyButton({ tournamentId, activeLabel, idleLabel }: Props) {
   if (status === 'unsupported') return null;
 
   const label =
-    status === 'subscribed' ? (activeLabel ?? 'Notificações ativas') :
+    status === 'subscribed' ? (activeLabel ?? 'Avisos deste torneio ativos') :
     status === 'denied'     ? 'Bloqueado pelo navegador' :
     status === 'loading'    ? 'Aguarde...' :
     status === 'error'      ? 'Erro – tentar novamente' :
-    (idleLabel ?? 'Ativar notificações');
+    (idleLabel ?? 'Avisar sobre este torneio');
 
   return (
     <div className="flex flex-col items-end gap-1">

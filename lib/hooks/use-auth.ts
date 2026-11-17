@@ -107,20 +107,16 @@ export function useSignInWithGoogleIdToken() {
 
 export function useSignUp() {
   return useMutation({
-    mutationFn: async ({ email, password, fullName, isOrganizer, isArbiter, isParticipant }: {
+    mutationFn: async ({ email, password, fullName }: {
       email: string; password: string; fullName: string;
-      isOrganizer: boolean; isArbiter: boolean; isParticipant: boolean;
     }) => {
       const { data, error } = await getClient().auth.signUp({
         email,
         password,
         options: {
-          data: {
-            full_name: fullName,
-            is_organizer: isOrganizer,
-            is_arbiter: isArbiter,
-            is_participant: isParticipant,
-          },
+          // Organizar e arbitrar valem para toda conta (o trigger handle_new_user
+          // grava as duas como true); só o nome vai no metadata.
+          data: { full_name: fullName },
         },
       });
       if (error) throw error;
@@ -129,17 +125,15 @@ export function useSignUp() {
   });
 }
 
-/** Autoatendimento: usuário ajusta suas próprias capacidades (organizador/
- * árbitro/participante) a qualquer momento — elas coexistem, não são
- * mutuamente exclusivas, mas pelo menos uma precisa ficar ativa. */
-export function useUpdateMyCapabilities() {
+/** Liga/desliga o preenchimento automático da inscrição com os dados do
+ * perfil (is_participant). Organizar e arbitrar não são mais escolha da conta
+ * (migration 20261116120000): a RPC grava as duas como true de qualquer jeito. */
+export function useUpdateMyAutofill() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ isOrganizer, isArbiter, isParticipant }: {
-      isOrganizer: boolean; isArbiter: boolean; isParticipant: boolean;
-    }) => {
+    mutationFn: async (isParticipant: boolean) => {
       const { error } = await getClient().rpc('set_my_capabilities', {
-        p_is_organizer: isOrganizer, p_is_arbiter: isArbiter, p_is_participant: isParticipant,
+        p_is_organizer: true, p_is_arbiter: true, p_is_participant: isParticipant,
       });
       if (error) throw error;
     },

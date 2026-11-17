@@ -10,6 +10,8 @@ export interface StaffRow {
   id: string;
   user_id: string;
   role: StaffRole;
+  /** pending = convidado, ainda sem acesso; accepted = na equipe; declined = recusou. */
+  status: 'pending' | 'accepted' | 'declined';
   full_name: string | null;
   email: string | null;
 }
@@ -45,7 +47,7 @@ export function useStaff(tournamentId: string) {
         p_tournament_id: tournamentId,
       });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as StaffRow[];
     },
   });
 }
@@ -77,16 +79,28 @@ export function useStaffCandidates(tournamentId: string, query: string) {
   });
 }
 
-export function useAddStaff(tournamentId: string) {
+/**
+ * Convida para a equipe (migration 20261116120000). Vai pela rota do servidor
+ * e não direto na RPC porque o push do convite precisa das chaves VAPID.
+ * O membro entra como pendente e só ganha acesso quando aceitar.
+ */
+export function useInviteStaff(tournamentId: string, slug: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ email, role }: { email: string; role: StaffRole }) => {
-      const { error } = await supabase.rpc('add_staff_by_email', {
-        p_tournament_id: tournamentId, p_email: email, p_role: role,
+      const res = await fetch(`/api/admin/tournaments/${encodeURIComponent(slug)}/staff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, role }),
       });
-      if (error) throw error;
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'Não foi possível enviar o convite.');
+      return json as { ok: true; invited: boolean };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff', tournamentId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['staff', tournamentId] });
+      qc.invalidateQueries({ queryKey: ['staff-candidates', tournamentId] });
+    },
   });
 }
 
@@ -142,5 +156,46 @@ export function useUnassignBoard(groupId: string) {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['board-arbiters', groupId] }),
+  });
+}
+
+export interface StaffInvite {
+  id: string;
+  tournament_id: string;
+  tournament_name: string;
+  tournament_slug: string;
+  role: StaffRole;
+  invited_by_name: string | null;
+  created_at: string;
+}
+
+/** Convites de equipe pendentes da conta logada. */
+export function useMyStaffInvites(enabled = true) {
+  return useQuery({
+    queryKey: ['my-staff-invites'],
+    enabled,
+    // Roda em toda página (selo do header): sem refetch a cada navegação.
+    staleTime: 60_000,
+    queryFn: async (): Promise<StaffInvite[]> => {
+      const { data, error } = await supabase.rpc('get_my_staff_invites');
+      if (error) throw error;
+      return (data ?? []) as StaffInvite[];
+    },
+  });
+}
+
+export function useRespondStaffInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ staffId, accept }: { staffId: string; accept: boolean }) => {
+      const { error } = await supabase.rpc('respond_staff_invite', {
+        p_staff_id: staffId, p_accept: accept,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my-staff-invites'] });
+      qc.invalidateQueries({ queryKey: ['my-role'] });
+    },
   });
 }

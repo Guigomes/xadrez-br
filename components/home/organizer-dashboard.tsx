@@ -6,7 +6,7 @@ import { formatDateRange } from '@/lib/utils/date';
 import { Gambito } from '@/components/mascot/gambito';
 
 /**
- * Dashboard do organizador (role=admin ou is_organizer) — os próprios torneios,
+ * Dashboard da conta logada (toda conta pode organizar) — os próprios torneios,
  * inscrições pendentes e o atalho de criar. Nasceu como a home INTEIRA dessa
  * pessoa (substituía a landing), e virou um BLOCO embutido no topo da home:
  * `app/page.tsx` passa este componente pro `MarketingHome`, que o renderiza no

@@ -5,7 +5,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getSessionUser } from '@/lib/data/session';
 import { getEntitlements } from '@/lib/data/entitlements';
 import { Badge } from '@/components/ui/badge';
-import { NotifyButton } from '@/components/tournament/notify-button';
+import { AccountPushToggle } from '@/components/notifications/account-push-toggle';
 import { AlertRuleActions, AlertRuleForm } from '@/components/alerts/rule-form';
 import { loadUpcomingItems } from '@/lib/alerts/feed';
 import { TIME_CONTROL_LABEL, matchesRule, type TimeControl } from '@/lib/alerts/match';
@@ -64,7 +64,7 @@ export default async function AlertasPage() {
           Avisamos uma vez por dia quando aparece um torneio novo que combina com seus alertas — do site e do calendário oficial da CBX.
         </p>
         <div className="mt-3">
-          <NotifyButton idleLabel="Receber os avisos neste aparelho" activeLabel="Avisos ativos neste aparelho" />
+          <AccountPushToggle variant="button" />
         </div>
       </header>
 

@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { FlashMessage } from '@/components/ui/flash-message';
 import { TourLauncher } from '@/components/admin/tour-launcher';
 import { TourTriggerButton } from '@/components/admin/tour-trigger-button';
+import { StaffInvites } from '@/components/admin/staff-invites';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
+import type { TournamentStatus } from '@/types/database';
 
 export default async function AdminDashboard({
   searchParams,
@@ -23,12 +25,11 @@ export default async function AdminDashboard({
     getSessionUser(), getSessionProfile(), getEntitlements(),
   ]);
   const isAdmin = profile?.role === 'admin';
-  const canCreateTournament = isAdmin || !!profile?.is_organizer;
-  // Papel (is_organizer) diz SE pode criar torneio; plano diz QUANTOS ao
-  // mesmo tempo — dois eixos independentes, mesma tela junta os dois. O
-  // banco (trg_tournament_plan_limit, migration 073) barra de qualquer
-  // jeito; aqui é só pra não deixar o organizador bater num erro cru do
-  // Postgres achando que o botão simplesmente não funciona.
+  // Toda conta pode criar torneio (migration 20261116120000); o plano diz
+  // QUANTOS ao mesmo tempo. O banco (trg_tournament_plan_limit, migration
+  // 073) barra de qualquer jeito; aqui é só pra não deixar o organizador
+  // bater num erro cru do Postgres achando que o botão não funciona.
+  const canCreateTournament = true;
   const atTournamentLimit = canCreateTournament && entitlements.atLimit('tournaments.active');
   const tournamentLimit = entitlements.limitOf('tournaments.active');
 
@@ -40,6 +41,21 @@ export default async function AdminDashboard({
     // ir pro topo.
     .order('start_date', { ascending: false })
     .order('created_at', { ascending: false });
+
+  // Torneios de outros donos em que a conta está na equipe (convite aceito).
+  // Convite pendente não entra: fica no card de convites (StaffInvites).
+  const { data: staffRows } = await supabase
+    .from('tournament_staff')
+    .select('role, tournaments(id, slug, name, status, start_date, end_date, rounds_count, is_public, city, state)')
+    .eq('user_id', user!.id)
+    .eq('status', 'accepted');
+  const staffOf = (staffRows ?? [])
+    .map((r) => ({ role: r.role, t: r.tournaments as unknown as {
+      id: string; slug: string; name: string; status: TournamentStatus; start_date: string; end_date: string | null;
+      rounds_count: number; is_public: boolean; city: string; state: string;
+    } | null }))
+    .filter((r): r is { role: typeof r.role; t: NonNullable<typeof r.t> } => !!r.t)
+    .sort((a, b) => b.t.start_date.localeCompare(a.t.start_date));
 
   // Admin gerencia qualquer torneio (o banco já libera); sem esta lista ele só chegava no
   // torneio de outro organizador digitando a URL. Os 50 mais recentes por data de realização.
@@ -62,6 +78,7 @@ export default async function AdminDashboard({
       {excluido && (
         <FlashMessage message={`Torneio "${excluido}" excluído com sucesso.`} />
       )}
+      <StaffInvites />
       <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Meus torneios</h1>
         <div className="flex flex-wrap items-center gap-2">
@@ -125,9 +142,7 @@ export default async function AdminDashboard({
           <p className="text-4xl mb-3">♟</p>
           <p className="font-semibold text-gray-700 dark:text-gray-300 mb-1">Nenhum torneio criado</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            {canCreateTournament
-              ? 'Crie seu primeiro torneio para começar.'
-              : 'Você aparece aqui quando for adicionado à equipe de um torneio, ou ative "Organizador" em Minha conta para criar o seu.'}
+            Crie seu primeiro torneio para começar.
           </p>
           {canCreateTournament && !atTournamentLimit && (
             <Link
@@ -159,6 +174,35 @@ export default async function AdminDashboard({
             </Link>
           ))}
         </div>
+      )}
+
+      {staffOf.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Torneios em que você é da equipe</h2>
+          <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
+            Convites que você aceitou.
+          </p>
+          <div className="space-y-3">
+            {staffOf.map(({ role, t }) => (
+              <Link
+                key={t.id}
+                href={`/admin/torneios/${t.slug}`}
+                className="card p-4 flex flex-col gap-1 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <Badge className={getTournamentStatusColor(t.status)}>{getTournamentStatusLabel(t.status)}</Badge>
+                  <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                    {role === 'organizer' ? 'Organizador' : 'Árbitro'}
+                  </Badge>
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t.city}, {t.state} · {formatDateRange(t.start_date, t.end_date)} · {t.rounds_count} rodadas
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {isAdmin && (others?.length ?? 0) > 0 && (

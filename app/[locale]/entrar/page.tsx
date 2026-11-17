@@ -49,9 +49,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [wantsOrganizer, setWantsOrganizer] = useState(true);
-  const [wantsArbiter, setWantsArbiter] = useState(false);
-  const [wantsParticipant, setWantsParticipant] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   // Botão do Google (GIS) indisponível — sem client id, script bloqueado — e o
@@ -71,20 +68,11 @@ export default function LoginPage() {
         goAfterLogin(router);
       } else {
         // Beta fechado: só a allowlist cria conta nova (lib/auth/beta.ts).
-        // Checado antes da validação de capacidade pra não pedir que a pessoa
-        // corrija um formulário que não vai ser aceito de qualquer jeito.
         if (!canSignUp(email)) {
           setError(BETA_SIGNUP_MESSAGE);
           return;
         }
-        if (!wantsOrganizer && !wantsArbiter && !wantsParticipant) {
-          setError('Marque pelo menos uma opção: organizar, arbitrar ou participar.');
-          return;
-        }
-        await signUp.mutateAsync({
-          email, password, fullName: name,
-          isOrganizer: wantsOrganizer, isArbiter: wantsArbiter, isParticipant: wantsParticipant,
-        });
+        await signUp.mutateAsync({ email, password, fullName: name });
         setError('');
         setSuccess('Conta criada! Verifique seu email para confirmar o cadastro.');
         setMode('signin');
@@ -207,44 +195,6 @@ export default function LoginPage() {
                   required
                   autoComplete="name"
                 />
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    O que você quer fazer aqui? (marque pelo menos uma)
-                  </p>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={wantsOrganizer}
-                      onChange={(e) => setWantsOrganizer(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Organizar torneios</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={wantsArbiter}
-                      onChange={(e) => setWantsArbiter(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Arbitrar torneios</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={wantsParticipant}
-                      onChange={(e) => setWantsParticipant(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Participar de torneios</span>
-                  </label>
-                  <p className="text-xs text-gray-400">
-                    Não é preciso estar cadastrado para jogar — a inscrição em torneios é aberta a
-                    qualquer pessoa. Marcar &quot;participar&quot; só serve para ter seus dados
-                    reaproveitados e a inscrição preenchida automaticamente num próximo torneio.
-                    Dá pra ajustar tudo isso depois em &quot;Minha conta&quot;.
-                  </p>
-                </div>
               </>
             )}
             <Input

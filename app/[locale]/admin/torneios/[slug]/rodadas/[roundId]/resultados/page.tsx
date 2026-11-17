@@ -56,7 +56,9 @@ export default function ArbiterResultsPage({ params }: { params: Promise<{ slug:
   const transition = useRoundTransition(tournament?.id ?? '', round?.pairing_group_id ?? '');
   const { user } = useUser();
   const { data: myRole } = useMyTournamentRole(tournament?.id ?? '');
-  const { data: staff } = useStaff(tournament?.id ?? '');
+  // Mesa só vai para quem aceitou o convite (pendente ainda não arbitra).
+  const { data: allStaff } = useStaff(tournament?.id ?? '');
+  const staff = allStaff?.filter((s) => s.status === 'accepted');
   const groupId = round?.pairing_group_id ?? '';
   const { data: boardArbiters } = useBoardArbiters(groupId);
   const assignBoard = useAssignBoard(groupId);

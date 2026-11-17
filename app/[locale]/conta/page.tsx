@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from '@/i18n/navigation';
 import {
-  useUser, useProfile, useUpdateMyCapabilities, useUpdateMyParticipantData, useUpdateMyName,
+  useUser, useProfile, useUpdateMyAutofill, useUpdateMyParticipantData, useUpdateMyName,
 } from '@/lib/hooks/use-auth';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
@@ -11,18 +11,17 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { BR_STATES } from '@/lib/utils/chess';
 import { Gambito } from '@/components/mascot/gambito';
+import { AccountPushToggle } from '@/components/notifications/account-push-toggle';
 
 export default function AccountPage() {
   const router = useRouter();
   const { user, loading: loadingUser } = useUser();
   const { data: profile, isLoading: loadingProfile } = useProfile();
-  const updateCapabilities = useUpdateMyCapabilities();
+  const updateAutofill = useUpdateMyAutofill();
   const updateParticipantData = useUpdateMyParticipantData();
   const updateName = useUpdateMyName();
 
   const [fullName, setFullName] = useState('');
-  const [isOrganizer, setIsOrganizer] = useState(false);
-  const [isArbiter, setIsArbiter] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -39,8 +38,6 @@ export default function AccountPage() {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name ?? '');
-      setIsOrganizer(profile.is_organizer);
-      setIsArbiter(profile.is_arbiter);
       setIsParticipant(profile.is_participant);
       setBirthYear(profile.birth_year ? String(profile.birth_year) : '');
       setCity(profile.city ?? '');
@@ -59,8 +56,6 @@ export default function AccountPage() {
 
   const hasChanges = useMemo(() => !!profile && (
     fullName !== (profile.full_name ?? '') ||
-    isOrganizer !== profile.is_organizer ||
-    isArbiter !== profile.is_arbiter ||
     isParticipant !== profile.is_participant ||
     birthYear !== (profile.birth_year ? String(profile.birth_year) : '') ||
     city !== (profile.city ?? '') ||
@@ -70,9 +65,9 @@ export default function AccountPage() {
     fideId !== (profile.fide_id ?? '') ||
     cbxId !== (profile.cbx_id ?? '') ||
     phone !== (profile.phone ?? '')
-  ), [birthYear, cbxId, city, clubOrSchool, federation, fideId, fullName, isArbiter, isOrganizer, isParticipant, phone, profile, state]);
+  ), [birthYear, cbxId, city, clubOrSchool, federation, fideId, fullName, isParticipant, phone, profile, state]);
 
-  const saving = updateName.isPending || updateCapabilities.isPending || updateParticipantData.isPending;
+  const saving = updateName.isPending || updateAutofill.isPending || updateParticipantData.isPending;
 
   if (loadingUser || loadingProfile || !profile) return <PageSpinner />;
 
@@ -83,13 +78,9 @@ export default function AccountPage() {
       setError('Informe seu nome completo.');
       return;
     }
-    if (!isOrganizer && !isArbiter && !isParticipant) {
-      setError('Mantenha pelo menos uma opção marcada: organizador, árbitro ou participante.');
-      return;
-    }
     try {
       await updateName.mutateAsync(fullName);
-      await updateCapabilities.mutateAsync({ isOrganizer, isArbiter, isParticipant });
+      if (isParticipant !== profile!.is_participant) await updateAutofill.mutateAsync(isParticipant);
       if (isParticipant) {
         await updateParticipantData.mutateAsync({
           birthYear: birthYear ? Number(birthYear) : null,
@@ -126,53 +117,18 @@ export default function AccountPage() {
           hint="Usado nos torneios em que você se inscrever e pelo Gambito pra saber quem está falando com ele."
         />
 
-        <div>
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">O que você faz aqui</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            As três podem estar ativas ao mesmo tempo, mas é preciso manter pelo menos uma marcada.
-            Inscrever-se para jogar um torneio não exige nenhuma delas.
-          </p>
-        </div>
-
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isOrganizer}
-            onChange={(e) => setIsOrganizer(e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-          />
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Organizador</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Pode criar e gerenciar torneios.</p>
-          </div>
-        </label>
-
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isArbiter}
-            onChange={(e) => setIsArbiter(e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-          />
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Árbitro</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Pode cadastrar jogadores e ser adicionado à equipe de torneios de outros organizadores.
-            </p>
-          </div>
-        </label>
-
-        <label className="flex items-center gap-3 cursor-pointer">
+        <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
             checked={isParticipant}
             onChange={(e) => setIsParticipant(e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            className="mt-0.5 h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
           />
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Participante</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Eu jogo torneios</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Não é preciso estar cadastrado para se inscrever em um torneio
+              Guarda seus dados de jogador para preencher sozinho as próximas inscrições.
+              Toda conta pode criar torneios e ser convidada para arbitrar.
             </p>
           </div>
         </label>
@@ -197,6 +153,10 @@ export default function AccountPage() {
             </span>
           )}
         </div>
+      </div>
+
+      <div className="mt-4">
+        <AccountPushToggle />
       </div>
 
       {isParticipant && (

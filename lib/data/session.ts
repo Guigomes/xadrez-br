@@ -12,8 +12,6 @@ export interface SessionUser {
 export interface SessionProfile {
   role: UserRole;
   full_name: string | null;
-  is_organizer: boolean;
-  is_arbiter: boolean;
   is_participant: boolean;
 }
 
@@ -41,7 +39,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
  * Perfil (`user_profiles`) do usuário autenticado, ou null se não há sessão.
  *
  * Mesmo motivo do `getSessionUser`: `user_profiles` era consultada de novo em
- * cada camada que precisava saber `role`/`is_organizer`. Depende de
+ * cada camada que precisava saber `role`. Depende de
  * `getSessionUser`, então as duas juntas custam no máximo 2 round-trips por
  * request em vez de crescerem com o número de camadas.
  */
@@ -52,7 +50,7 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from('user_profiles')
-    .select('role, full_name, is_organizer, is_arbiter, is_participant')
+    .select('role, full_name, is_participant')
     .eq('id', user.id)
     .single();
 

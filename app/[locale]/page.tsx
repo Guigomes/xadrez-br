@@ -11,8 +11,8 @@ import { OrganizerDashboard } from '@/components/home/organizer-dashboard';
  *
  * Agora todos recebem `MarketingHome`; o organizador recebe também o slot
  * `dashboard`, que entra no lugar do hero (o hero é o discurso de venda, sem
- * função pra quem já usa o produto). O CTA muda de destino conforme o que a
- * pessoa pode fazer: criar direto, ativar organizador no painel, ou logar.
+ * função pra quem já usa o produto). Toda conta logada pode criar torneio
+ * (migration 20261116120000): logado vai direto criar, anônimo vai logar.
  *
  * Middleware garante que logado nunca é sequestrado pro último torneio, então
  * essa home sempre aparece pra ele.
@@ -24,19 +24,12 @@ export default async function HomePage() {
 
   if (user) {
     const profile = await getSessionProfile();
-    const canCreate = profile?.role === 'admin' || !!profile?.is_organizer;
-    if (canCreate) {
-      return (
-        <MarketingHome
-          ctaHref="/admin/torneios/novo"
-          dashboard={<OrganizerDashboard userId={user.id} userName={profile?.full_name ?? null} />}
-        />
-      );
-    }
-    // Logado mas ainda não organizador: marketing com CTA pro painel (onde a
-    // ativação de organizador acontece). Sem dashboard — não há torneio dele
-    // pra mostrar.
-    return <MarketingHome ctaHref="/admin" />;
+    return (
+      <MarketingHome
+        ctaHref="/admin/torneios/novo"
+        dashboard={<OrganizerDashboard userId={user.id} userName={profile?.full_name ?? null} />}
+      />
+    );
   }
 
   return <MarketingHome ctaHref="/entrar" />;

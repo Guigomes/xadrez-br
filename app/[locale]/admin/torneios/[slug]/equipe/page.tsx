@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useTournament } from '@/lib/hooks/use-tournament';
-import { useStaff, useAddStaff, useRemoveStaff, useMyTournamentRole, useStaffCandidates } from '@/lib/hooks/use-staff';
+import { useStaff, useInviteStaff, useRemoveStaff, useMyTournamentRole, useStaffCandidates } from '@/lib/hooks/use-staff';
 import { PageSpinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,12 +16,13 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
   const { data: tournament, isLoading } = useTournament(slug);
   const { data: staff, isLoading: loadingStaff } = useStaff(tournament?.id ?? '');
   const { data: myRole } = useMyTournamentRole(tournament?.id ?? '');
-  const addStaff = useAddStaff(tournament?.id ?? '');
+  const inviteStaff = useInviteStaff(tournament?.id ?? '', slug);
   const removeStaff = useRemoveStaff(tournament?.id ?? '');
 
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<StaffRole>('arbiter');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   // Busca de candidato por nome/e-mail. `picked` trava a lista depois de
   // escolher, pra ela não reabrir enquanto o e-mail selecionado fica no campo.
   const [picked, setPicked] = useState(false);
@@ -36,14 +37,16 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setNotice('');
     try {
-      await addStaff.mutateAsync({ email: email.trim(), role });
+      const result = await inviteStaff.mutateAsync({ email: email.trim(), role });
+      setNotice(result.invited
+        ? 'Convite enviado. A pessoa recebe um aviso no celular (se ativou as notificações) e vê o convite no Painel. Ela só entra na equipe depois de aceitar.'
+        : 'Papel atualizado.');
       setEmail('');
       setPicked(false);
-    } catch (err: any) {
-      setError(err.message?.includes('USER_NOT_FOUND')
-        ? 'Nenhuma conta encontrada — peça para a pessoa se cadastrar primeiro.'
-        : err.message ?? 'Erro ao adicionar');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao enviar convite');
     }
   }
 
@@ -53,7 +56,7 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
 
       {isOrganizer && (
         <form onSubmit={handleAdd} className="card p-4 mb-6 space-y-3">
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Adicionar membro</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Convidar para a equipe</p>
           <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
             <div className="relative">
               <Input
@@ -85,11 +88,13 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
               <option value="arbiter">Árbitro</option>
               <option value="organizer">Organizador</option>
             </Select>
-            <Button type="submit" loading={addStaff.isPending}>Adicionar</Button>
+            <Button type="submit" loading={inviteStaff.isPending}>Convidar</Button>
           </div>
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+          {notice && <p className="text-xs text-green-700 dark:text-green-400" aria-live="polite">{notice}</p>}
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Digite nome ou e-mail (a partir de 3 letras) para buscar contas já cadastradas.
+            A pessoa recebe um convite e só ganha acesso ao torneio quando aceitar.
             Organizadores gerenciam tudo; árbitros pareiam rodadas e lançam resultados
             (nas mesas atribuídas a eles, quando houver atribuição).
           </p>
@@ -100,7 +105,7 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
         <PageSpinner />
       ) : !staff?.length ? (
         <EmptyState icon="👥" title="Nenhum membro além do dono"
-          description={isOrganizer ? 'Adicione organizadores e árbitros acima.' : undefined} />
+          description={isOrganizer ? 'Convide organizadores e árbitros acima.' : undefined} />
       ) : (
         <div className="space-y-2">
           {staff.map((s) => (
@@ -117,10 +122,17 @@ export default function AdminStaffPage({ params }: { params: Promise<{ slug: str
                   : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}>
                   {s.role === 'organizer' ? 'Organizador' : 'Árbitro'}
                 </Badge>
+                {s.status !== 'accepted' && (
+                  <Badge className={s.status === 'pending'
+                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                    : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'}>
+                    {s.status === 'pending' ? 'Convite pendente' : 'Recusou'}
+                  </Badge>
+                )}
                 {isOrganizer && (
                   <Button variant="ghost" size="sm" loading={removeStaff.isPending}
                     onClick={() => removeStaff.mutate(s.id)}>
-                    Remover
+                    {s.status === 'pending' ? 'Cancelar convite' : 'Remover'}
                   </Button>
                 )}
               </div>

@@ -2977,7 +2977,9 @@ export type Database = {
           created_at: string
           id: string
           invited_by: string | null
+          responded_at: string | null
           role: Database["public"]["Enums"]["staff_role"]
+          status: string
           tournament_id: string
           user_id: string
         }
@@ -2986,7 +2988,9 @@ export type Database = {
           created_at?: string
           id?: string
           invited_by?: string | null
+          responded_at?: string | null
           role: Database["public"]["Enums"]["staff_role"]
+          status?: string
           tournament_id: string
           user_id: string
         }
@@ -2994,7 +2998,9 @@ export type Database = {
           created_at?: string
           id?: string
           invited_by?: string | null
+          responded_at?: string | null
           role?: Database["public"]["Enums"]["staff_role"]
+          status?: string
           tournament_id?: string
           user_id?: string
         }
@@ -3535,6 +3541,18 @@ export type Database = {
           used: number
         }[]
       }
+      get_my_staff_invites: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          id: string
+          invited_by_name: string
+          role: Database["public"]["Enums"]["staff_role"]
+          tournament_id: string
+          tournament_name: string
+          tournament_slug: string
+        }[]
+      }
       get_my_tournament_role: {
         Args: { p_tournament_id: string }
         Returns: string
@@ -3770,6 +3788,7 @@ export type Database = {
           full_name: string
           id: string
           role: Database["public"]["Enums"]["staff_role"]
+          status: string
           user_id: string
         }[]
       }
@@ -3806,6 +3825,18 @@ export type Database = {
         }[]
       }
       has_entitlement: { Args: { p_key: string }; Returns: boolean }
+      invite_staff: {
+        Args: {
+          p_email: string
+          p_role: Database["public"]["Enums"]["staff_role"]
+          p_tournament_id: string
+        }
+        Returns: {
+          notify: boolean
+          staff_id: string
+          user_id: string
+        }[]
+      }
       is_arbiter_or_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -3895,6 +3926,10 @@ export type Database = {
         Returns: undefined
       }
       reopen_round: { Args: { p_round_id: string }; Returns: undefined }
+      respond_staff_invite: {
+        Args: { p_accept: boolean; p_staff_id: string }
+        Returns: undefined
+      }
       return_round_to_draft: {
         Args: { p_discard_results?: boolean; p_round_id: string }
         Returns: number

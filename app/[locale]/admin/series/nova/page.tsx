@@ -28,7 +28,8 @@ export default function NewSeriesPage() {
     'events', 'best_place', 'chess_points',
   ]);
 
-  const canCreate = profile?.role === 'admin' || !!profile?.is_organizer;
+  // Toda conta logada pode criar (migration 20261116120000); o plano diz quantos.
+  const canCreate = !!profile;
 
   useEffect(() => {
     if (!loadingProfile && profile && !canCreate) router.replace('/admin');

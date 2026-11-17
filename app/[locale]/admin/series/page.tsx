@@ -11,7 +11,8 @@ export default async function AdminSeriesIndex() {
 
   // Memoizados pelo layout do admin (lib/data/session.ts) — sem round-trip aqui.
   const [user, profile] = await Promise.all([getSessionUser(), getSessionProfile()]);
-  const canCreate = profile?.role === 'admin' || !!profile?.is_organizer;
+  // Toda conta logada pode criar (migration 20261116120000); o plano diz quantos.
+  const canCreate = !!profile;
 
   const { data: series } = await supabase
     .from('tournament_series')
@@ -46,9 +47,7 @@ export default async function AdminSeriesIndex() {
           <p className="text-4xl mb-3">🏅</p>
           <p className="font-semibold text-gray-700 dark:text-gray-300 mb-1">Nenhuma série criada</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            {canCreate
-              ? 'Crie uma série para agrupar torneios e somar a pontuação entre eles.'
-              : 'Ative "Organizador" em Minha conta para criar uma série.'}
+            Crie uma série para agrupar torneios e somar a pontuação entre eles.
           </p>
           {canCreate && (
             <Link

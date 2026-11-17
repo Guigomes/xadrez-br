@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import { useUser, useProfile, useSignOut, type InitialUser } from '@/lib/hooks/use-auth';
 import { useUnreadChatCount } from '@/lib/hooks/use-chat';
+import { useMyStaffInvites } from '@/lib/hooks/use-staff';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { LocaleSwitcher } from '@/components/ui/locale-switcher';
 
@@ -21,9 +22,14 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
   const user = loading ? (initialUser ?? null) : liveUser;
   const signOut = useSignOut();
   const { data: profile } = useProfile();
-  const canManage = profile?.role === 'admin' || profile?.is_organizer || profile?.is_arbiter;
+  // Toda conta pode organizar e ser convidada para arbitrar: o Painel vale para qualquer logado.
+  const canManage = !!profile;
   // Selo de mensagens da equipe não lidas (caixa em /minha-area/mensagens).
   const { data: unread = 0 } = useUnreadChatCount(!!user);
+  // Convites de equipe pendentes (card no topo do /admin). Número no Painel
+  // para quem não ativou as notificações também perceber o convite.
+  const { data: inviteList } = useMyStaffInvites(!!user);
+  const invites = inviteList?.length ?? 0;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -92,6 +98,11 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
               className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
             >
               {tNav('panel')}
+              {invites > 0 && (
+                <span className="rounded-full bg-white px-1.5 text-[11px] font-bold leading-5 text-brand-700" aria-label={`${invites} convite(s) para equipe`}>
+                  {invites}
+                </span>
+              )}
             </Link>
           )}
 
@@ -107,7 +118,7 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
               >
                 <span className="relative inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-xs font-bold">
                   {user.email?.[0]?.toUpperCase()}
-                  {unread > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white dark:ring-gray-950" aria-label="Mensagens não lidas" />}
+                  {(unread > 0 || invites > 0) && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white dark:ring-gray-950" aria-label="Avisos pendentes" />}
                 </span>
                 <span className="hidden sm:inline">{tAccount('myAccount')}</span>
               </button>
@@ -116,10 +127,11 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
                   {canManage && (
                     <Link
                       href="/admin"
-                      className="block min-h-11 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                      className="flex min-h-11 items-center justify-between gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                       onClick={() => setDropdownOpen(false)}
                     >
                       Gerenciar torneios
+                      {invites > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white" aria-label={`${invites} convite(s) para equipe`}>{invites}</span>}
                     </Link>
                   )}
                   <Link
@@ -165,10 +177,14 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
 
           {/* Mobile menu button */}
           <button
-            className="lg:hidden min-h-11 min-w-11 p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="relative lg:hidden min-h-11 min-w-11 p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={tNav('menu')}
           >
+            {/* Abaixo de sm o botão Painel some: o ponto avisa que há convite no menu. */}
+            {invites > 0 && !mobileOpen && (
+              <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white sm:hidden dark:ring-gray-950" aria-hidden="true" />
+            )}
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {mobileOpen
                 ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -205,10 +221,11 @@ export function Header({ initialUser }: { initialUser?: InitialUser }) {
               {canManage && (
                 <Link
                   href="/admin"
-                  className="block min-h-11 py-3 text-sm font-medium text-brand-600 dark:text-brand-400"
+                  className="flex min-h-11 items-center gap-2 py-3 text-sm font-medium text-brand-600 dark:text-brand-400"
                   onClick={() => setMobileOpen(false)}
                 >
                   Gerenciar torneios
+                  {invites > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white" aria-label={`${invites} convite(s) para equipe`}>{invites}</span>}
                 </Link>
               )}
               <Link

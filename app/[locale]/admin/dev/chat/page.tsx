@@ -7,7 +7,7 @@ import { useAllChatSessions, useChatSessionMessages, useReplyToChatSession, useC
 import { PageSpinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
-import { NotifyButton } from '@/components/tournament/notify-button';
+import { AccountPushToggle } from '@/components/notifications/account-push-toggle';
 import type { ChatSessionStatus } from '@/types/database';
 
 const STATUS_LABEL: Record<ChatSessionStatus, string> = {
@@ -85,10 +85,8 @@ function ChatHistoryPanel() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => setComposing((v) => !v)}>{composing ? 'Fechar' : '✉ Nova mensagem'}</Button>
-          <NotifyButton
-            activeLabel="Notificações de atendimento ativas"
-            idleLabel="Ativar notificações de atendimento"
-          />
+          {/* Escalonamento do chat avisa as contas admin (sendOperatorNotification). */}
+          <AccountPushToggle variant="button" />
         </div>
       </div>
 

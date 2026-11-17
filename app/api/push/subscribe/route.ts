@@ -61,7 +61,9 @@ export async function POST(request: NextRequest) {
     p256dh: subscription.keys.p256dh,
     auth: subscription.keys.auth,
     tournament_id: tournamentId,
-    user_id: user?.id ?? null,
+    // Anônimo não solta a conta já ligada ao aparelho (AccountPushToggle):
+    // seguir um torneio deslogado não pode desligar convites e alertas.
+    ...(user ? { user_id: user.id } : {}),
     followed_player_ids: validPlayerIds,
   }, { onConflict: 'endpoint' });
 
@@ -73,9 +75,20 @@ export async function DELETE(request: NextRequest) {
   const parsed = await readJson(request, UnsubscribeSchema, 'Inválido.');
   if (!parsed.ok) return parsed.response;
 
+  // Parar de seguir o torneio. Se o aparelho também recebe os avisos de uma
+  // conta (user_id), só larga o torneio e responde kept=true: o navegador
+  // mantém a inscrição. Sem conta, apaga a linha como antes.
   const admin = createAdminClient();
+  const { data: row } = await admin
+    .from('push_subscriptions').select('user_id').eq('endpoint', parsed.data.endpoint).maybeSingle();
+  if (row?.user_id) {
+    await admin.from('push_subscriptions')
+      .update({ tournament_id: null, followed_player_ids: [] })
+      .eq('endpoint', parsed.data.endpoint);
+    return NextResponse.json({ ok: true, kept: true });
+  }
   await admin.from('push_subscriptions').delete().eq('endpoint', parsed.data.endpoint);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, kept: false });
 }
 
 function failure(error: unknown) {

@@ -57,7 +57,8 @@ export default function NewTournamentPage() {
   const customAgeBands = ageBands.filter((b) => !AGE_PRESETS.some((p) => p.name === b.name));
   const customRatingBands = ratingBands.filter((b) => !RATING_PRESETS.some((p) => p.name === b.name));
 
-  const canCreate = profile?.role === 'admin' || !!profile?.is_organizer;
+  // Toda conta logada pode criar (migration 20261116120000); o plano diz quantos.
+  const canCreate = !!profile;
   // Admin não tem teto (mesmo critério do trigger enforce_tournament_plan_limit).
   const blockedByPlan = profile?.role !== 'admin' && atLimit('tournaments.active');
   const ready = !loadingProfile && !loadingEntitlements;
