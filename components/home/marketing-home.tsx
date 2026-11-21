@@ -1,4 +1,5 @@
 import { Link } from '@/i18n/navigation';
+import { cookies } from 'next/headers';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 import { TournamentCard } from '@/components/tournament/tournament-card';
@@ -6,6 +7,8 @@ import { NewsCard } from '@/components/news/news-card';
 import { WhatsappFeedback } from '@/components/feedback/whatsapp-feedback';
 import { PromoBanner } from '@/components/promo/promo-banner';
 import { isPromoBannerEnabled } from '@/lib/data/promo';
+import { HomeStateFilter } from '@/components/home/home-state-filter';
+import { PREFERRED_STATE_COOKIE, parsePreferredState } from '@/lib/utils/preferred-state';
 import type { TournamentListItem } from '@/types/database';
 import type { NewsCardData } from '@/components/news/news-card';
 
@@ -96,16 +99,18 @@ interface MarketingHomeProps {
 export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) {
   const supabase = await createClient();
 
-  const [{ data: ongoing }, promoEnabled] = await Promise.all([
-    supabase.rpc('search_tournaments', { p_status: 'ongoing', p_limit: 3 }),
+  // Último estado escolhido no filtro (cookie, ver preferred-state.ts).
+  const uf = parsePreferredState((await cookies()).get(PREFERRED_STATE_COOKIE)?.value);
+  const pState = uf ?? undefined;
+  const ufQuery = uf ? `&uf=${uf}` : '';
+
+  const [{ data: ongoing }, { data: upcoming }, { data: finished }, promoEnabled] = await Promise.all([
+    supabase.rpc('search_tournaments', { p_status: 'ongoing', p_state: pState, p_limit: 3 }),
+    supabase.rpc('search_tournaments', { p_status: 'registration', p_state: pState, p_limit: 3 }),
+    supabase.rpc('search_tournaments', { p_status: 'finished', p_state: pState, p_limit: 3 }),
     isPromoBannerEnabled(),
   ]);
-  const { data: upcoming } = await supabase.rpc('search_tournaments', {
-    p_status: 'registration', p_limit: 3,
-  });
-  const { data: finished } = await supabase.rpc('search_tournaments', {
-    p_status: 'finished', p_limit: 3,
-  });
+  const hasTournaments = (upcoming?.length ?? 0) > 0 || (ongoing?.length ?? 0) > 0 || (finished?.length ?? 0) > 0;
 
   // RLS (news_select_public, migration 059) já esconde rascunho — não precisa
   // filtrar status aqui.
@@ -189,14 +194,26 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
           último os finalizados, pra fechar a prova sem ser o primeiro
           destaque. Cada bloco mostra até 3 e manda pra aba (/torneios?
           status=...) pra ver todos — não é lista completa aqui. */}
-      {((upcoming?.length ?? 0) > 0 || (ongoing?.length ?? 0) > 0 || (finished?.length ?? 0) > 0) && (
+      {/* Com estado escolhido a seção fica mesmo vazia: some com ela e o
+          filtro iria junto, sem jeito de voltar para "Todos os estados". */}
+      {(hasTournaments || uf) && (
         <section className="border-b border-gray-200 dark:border-gray-800">
           <div className="container-app space-y-10 py-12 sm:py-16">
+            <HomeStateFilter value={uf} />
+
+            {!hasTournaments && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Nenhum torneio publicado em {uf} no momento.{' '}
+                <Link href="/torneios" className="text-brand-600 hover:underline dark:text-brand-400">
+                  Ver torneios de todos os estados
+                </Link>
+              </p>
+            )}
             {(upcoming?.length ?? 0) > 0 && (
               <div>
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Inscrições abertas</h2>
-                  <Link href="/torneios?status=registration" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                  <Link href={`/torneios?status=registration${ufQuery}`} className="text-sm text-brand-600 hover:underline dark:text-brand-400">
                     Ver todos
                   </Link>
                 </div>
@@ -215,7 +232,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
                     <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-green-500" />
                     <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Acontecendo agora</h2>
                   </div>
-                  <Link href="/torneios?status=ongoing" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                  <Link href={`/torneios?status=ongoing${ufQuery}`} className="text-sm text-brand-600 hover:underline dark:text-brand-400">
                     Ver todos
                   </Link>
                 </div>
@@ -231,7 +248,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
               <div>
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Finalizados</h2>
-                  <Link href="/torneios?status=finished" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                  <Link href={`/torneios?status=finished${ufQuery}`} className="text-sm text-brand-600 hover:underline dark:text-brand-400">
                     Ver todos
                   </Link>
                 </div>

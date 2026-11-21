@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { BR_STATES } from '@/lib/utils/chess';
 import type { TournamentStatus } from '@/types/database';
+import { savePreferredState } from '@/lib/utils/preferred-state';
 
 /**
  * Só os controles são client — a lista em si passou a ser renderizada no
@@ -54,7 +55,15 @@ export function TournamentFilters() {
           className="sm:col-span-1"
           aria-label="Buscar torneios"
         />
-        <Select value={state} onChange={(e) => setParam('uf', e.target.value)} aria-label="Filtrar por estado">
+        <Select
+          value={state}
+          onChange={(e) => {
+            // Mesmo estado vale para a tela inicial na próxima visita.
+            savePreferredState(e.target.value);
+            setParam('uf', e.target.value);
+          }}
+          aria-label="Filtrar por estado"
+        >
           <option value="">Todos os estados</option>
           {BR_STATES.map((s) => (
             <option key={s.uf} value={s.uf}>{s.uf} – {s.name}</option>
