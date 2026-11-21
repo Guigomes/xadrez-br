@@ -1,5 +1,4 @@
 import { Link } from '@/i18n/navigation';
-import { cookies } from 'next/headers';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 import { TournamentCard } from '@/components/tournament/tournament-card';
@@ -7,8 +6,7 @@ import { NewsCard } from '@/components/news/news-card';
 import { WhatsappFeedback } from '@/components/feedback/whatsapp-feedback';
 import { PromoBanner } from '@/components/promo/promo-banner';
 import { isPromoBannerEnabled } from '@/lib/data/promo';
-import { HomeStateFilter } from '@/components/home/home-state-filter';
-import { PREFERRED_STATE_COOKIE, parsePreferredState } from '@/lib/utils/preferred-state';
+import { StateFilter } from '@/components/tournament/state-filter';
 import type { TournamentListItem } from '@/types/database';
 import type { NewsCardData } from '@/components/news/news-card';
 
@@ -84,6 +82,8 @@ const FEATURES = [
 
 interface MarketingHomeProps {
   ctaHref: string;
+  /** Estado escolhido no filtro (cookie pref_uf), lido por app/page.tsx. */
+  uf: string | null;
   /**
    * Bloco que substitui o hero. Passado só pra organizador logado
    * (`OrganizerDashboard`, em app/page.tsx): pra quem já usa o produto, o hero
@@ -96,11 +96,9 @@ interface MarketingHomeProps {
   dashboard?: React.ReactNode;
 }
 
-export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) {
+export async function MarketingHome({ ctaHref, uf, dashboard }: MarketingHomeProps) {
   const supabase = await createClient();
 
-  // Último estado escolhido no filtro (cookie, ver preferred-state.ts).
-  const uf = parsePreferredState((await cookies()).get(PREFERRED_STATE_COOKIE)?.value);
   const pState = uf ?? undefined;
   const ufQuery = uf ? `&uf=${uf}` : '';
 
@@ -126,6 +124,13 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
 
   return (
     <div>
+      {/* Com o dashboard, o filtro sobe para o topo: vale para "Meus
+          torneios" e para os torneios públicos abaixo, um seletor só. */}
+      {dashboard && (
+        <div className="container-app pt-6">
+          <StateFilter value={uf} label="Mostrando torneios de:" />
+        </div>
+      )}
       {dashboard}
 
       {/* Hero — só pra quem ainda não é organizador; com `dashboard` presente,
@@ -199,7 +204,7 @@ export async function MarketingHome({ ctaHref, dashboard }: MarketingHomeProps) 
       {(hasTournaments || uf) && (
         <section className="border-b border-gray-200 dark:border-gray-800">
           <div className="container-app space-y-10 py-12 sm:py-16">
-            <HomeStateFilter value={uf} />
+            {!dashboard && <StateFilter value={uf} />}
 
             {!hasTournaments && (
               <p className="text-sm text-gray-500 dark:text-gray-400">

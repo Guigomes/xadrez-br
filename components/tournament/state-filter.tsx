@@ -7,16 +7,18 @@ import { BR_STATES } from '@/lib/utils/chess';
 import { savePreferredState } from '@/lib/utils/preferred-state';
 
 /**
- * Filtro de estado da tela inicial. A escolha fica no cookie (ver
- * preferred-state.ts) e a home relê no servidor com router.refresh(), então a
- * próxima visita já abre no mesmo estado.
+ * Filtro de estado da tela inicial e de "Meus torneios". A escolha fica no
+ * cookie (ver preferred-state.ts), compartilhado pelas telas, e a página relê
+ * no servidor com router.refresh(), então a próxima visita já abre no mesmo
+ * estado.
  */
-export function HomeStateFilter({ value }: { value: string | null }) {
+export function StateFilter({ value, label }: { value: string | null; label?: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {label && <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>}
       <div className="w-full sm:w-64">
         <Select
           value={value ?? ''}

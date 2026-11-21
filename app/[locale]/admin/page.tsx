@@ -10,6 +10,9 @@ import { StaffInvites } from '@/components/admin/staff-invites';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 import type { TournamentStatus } from '@/types/database';
+import { StateFilter } from '@/components/tournament/state-filter';
+import { getPreferredState } from '@/lib/data/preferred-state';
+import { filterByState } from '@/lib/utils/preferred-state';
 
 export default async function AdminDashboard({
   searchParams,
@@ -21,8 +24,8 @@ export default async function AdminDashboard({
 
   // Usuário e perfil vêm memoizados do layout do admin (lib/data/session.ts) —
   // aqui não custa round-trip nenhum. Sobra só a lista de torneios.
-  const [user, profile, entitlements] = await Promise.all([
-    getSessionUser(), getSessionProfile(), getEntitlements(),
+  const [user, profile, entitlements, uf] = await Promise.all([
+    getSessionUser(), getSessionProfile(), getEntitlements(), getPreferredState(),
   ]);
   const isAdmin = profile?.role === 'admin';
   // Toda conta pode criar torneio (migration 20261116120000); o plano diz
@@ -55,7 +58,8 @@ export default async function AdminDashboard({
       rounds_count: number; is_public: boolean; city: string; state: string;
     } | null }))
     .filter((r): r is { role: typeof r.role; t: NonNullable<typeof r.t> } => !!r.t)
-    .sort((a, b) => b.t.start_date.localeCompare(a.t.start_date));
+    .sort((a, b) => b.t.start_date.localeCompare(a.t.start_date))
+    .filter((r) => !uf || (r.t.state ?? '').toUpperCase() === uf);
 
   // Admin gerencia qualquer torneio (o banco já libera); sem esta lista ele só chegava no
   // torneio de outro organizador digitando a URL. Os 50 mais recentes por data de realização.
@@ -64,9 +68,13 @@ export default async function AdminDashboard({
         .from('tournaments')
         .select('id, slug, name, status, start_date, end_date, registration_end_date, registration_closes_by_date, rounds_count, is_public, city, state, mode, organizer_name, created_by')
         .neq('created_by', user!.id)
+        .match(uf ? { state: uf } : {})
         .order('start_date', { ascending: false })
         .limit(50)
     : { data: null };
+  // Filtro de estado (mesmo cookie da tela inicial). "Nenhum torneio criado" e
+  // o tour de primeira vez continuam olhando a lista inteira.
+  const mine = filterByState(tournaments ?? [], uf);
   const creatorIds = [...new Set((others ?? []).map((t) => t.created_by))];
   const { data: creators } = creatorIds.length
     ? await supabase.from('user_profiles').select('id, full_name').in('id', creatorIds)
@@ -137,6 +145,10 @@ export default async function AdminDashboard({
         </div>
       </div>
 
+      <div className="mb-5">
+        <StateFilter value={uf} label="Estado:" />
+      </div>
+
       {(!tournaments?.length) ? (
         <div className="card p-10 text-center">
           <p className="text-4xl mb-3">♟</p>
@@ -153,9 +165,13 @@ export default async function AdminDashboard({
             </Link>
           )}
         </div>
+      ) : mine.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Nenhum torneio seu em {uf}. Escolha &quot;Todos os estados&quot; para ver os outros.
+        </p>
       ) : (
         <div className="space-y-3">
-          {tournaments.map((t) => (
+          {mine.map((t) => (
             <Link
               key={t.id}
               href={`/admin/torneios/${t.slug}`}

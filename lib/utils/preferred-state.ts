@@ -16,6 +16,11 @@ export function parsePreferredState(value: string | null | undefined): string | 
   return BR_STATES.some((s) => s.uf === uf) ? uf : null;
 }
 
+/** Filtra uma lista pelo estado escolhido (null = todos). */
+export function filterByState<T extends { state: string | null }>(items: T[], uf: string | null): T[] {
+  return uf ? items.filter((t) => (t.state ?? '').toUpperCase() === uf) : items;
+}
+
 /** Grava (ou apaga, com vazio) a preferência. Só no navegador. */
 export function savePreferredState(uf: string): void {
   const valid = parsePreferredState(uf);

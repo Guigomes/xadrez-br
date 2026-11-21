@@ -1,6 +1,7 @@
 import { getSessionUser, getSessionProfile } from '@/lib/data/session';
 import { MarketingHome } from '@/components/home/marketing-home';
 import { OrganizerDashboard } from '@/components/home/organizer-dashboard';
+import { getPreferredState } from '@/lib/data/preferred-state';
 
 /**
  * Home única pra todo mundo. Antes ela ROTEAVA entre duas telas: organizador
@@ -20,17 +21,18 @@ import { OrganizerDashboard } from '@/components/home/organizer-dashboard';
 export default async function HomePage() {
   // getSessionUser já foi chamado pelo layout raiz neste mesmo request
   // (lib/data/session.ts) — aqui volta do cache, sem ida à rede.
-  const user = await getSessionUser();
+  const [user, uf] = await Promise.all([getSessionUser(), getPreferredState()]);
 
   if (user) {
     const profile = await getSessionProfile();
     return (
       <MarketingHome
         ctaHref="/admin/torneios/novo"
-        dashboard={<OrganizerDashboard userId={user.id} userName={profile?.full_name ?? null} />}
+        uf={uf}
+        dashboard={<OrganizerDashboard userId={user.id} userName={profile?.full_name ?? null} uf={uf} />}
       />
     );
   }
 
-  return <MarketingHome ctaHref="/entrar" />;
+  return <MarketingHome ctaHref="/entrar" uf={uf} />;
 }

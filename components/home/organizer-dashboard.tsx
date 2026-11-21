@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { getTournamentStatusColor, getTournamentStatusLabel } from '@/lib/utils/chess';
 import { formatDateRange } from '@/lib/utils/date';
 import { Gambito } from '@/components/mascot/gambito';
+import { filterByState } from '@/lib/utils/preferred-state';
 
 /**
  * Dashboard da conta logada (toda conta pode organizar) — os próprios torneios,
@@ -34,7 +35,7 @@ function nextAction(slug: string, status: string, pending: number, hasRounds: bo
   return { href: base, label: 'Abrir painel' };
 }
 
-export async function OrganizerDashboard({ userId, userName }: { userId: string; userName: string | null }) {
+export async function OrganizerDashboard({ userId, userName, uf }: { userId: string; userName: string | null; uf: string | null }) {
   const supabase = await createClient();
 
   const { data: tournaments } = await supabase
@@ -74,7 +75,10 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
     for (const r of rds ?? []) withRounds.add(r.tournament_id);
   }
 
-  const shown = all.slice(0, MAX_SHOWN);
+  // Filtro de estado da home (seletor no topo da página). Saudação, contagem
+  // de pendentes e "nenhum torneio ainda" seguem a lista inteira.
+  const inState = filterByState(all, uf);
+  const shown = inState.slice(0, MAX_SHOWN);
   const totalPending = [...pendingByTournament.values()].reduce((a, b) => a + b, 0);
 
   const firstName = userName?.trim().split(/\s+/)[0];
@@ -132,6 +136,11 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
         </div>
       ) : (
         <>
+          {inState.length === 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Nenhum torneio seu em {uf}. Escolha &quot;Todos os estados&quot; no filtro acima para ver os outros.
+            </p>
+          )}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {shown.map((t) => {
               const pending = pendingByTournament.get(t.id) ?? 0;
@@ -170,10 +179,10 @@ export async function OrganizerDashboard({ userId, userName }: { userId: string;
           {/* Só "ver todos os meus" — a antiga chamada pra /torneios saiu:
               embutido na home, as seções "Acontecendo agora"/"Inscrições
               abertas" logo abaixo já são essa porta. */}
-          {all.length > MAX_SHOWN && (
+          {inState.length > MAX_SHOWN && (
             <div className="mt-5 flex justify-end text-sm">
               <Link href="/admin" className="font-medium text-brand-600 hover:underline dark:text-brand-400">
-                Ver todos os meus torneios ({all.length})
+                Ver todos os meus torneios ({inState.length})
               </Link>
             </div>
           )}
