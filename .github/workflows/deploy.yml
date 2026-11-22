@@ -2,7 +2,9 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    # homologa: preview fixo em homologa.gambitotorneios.com.br (mesmo banco
+    # de produção, outra versão do site). Ver passo "Alias da homologação".
+    branches: [main, homologa]
   pull_request:
     branches: [main]
 
@@ -51,6 +53,15 @@ jobs:
         run: |
           URL=$(vercel ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }} --yes)
           echo "url=$URL" >> $GITHUB_OUTPUT
+
+      # O projeto não tem repositório Git conectado no Vercel, então domínio
+      # por branch não existe: o subdomínio é apontado à mão para o último
+      # deploy de preview da homologa. Não cadastrar o subdomínio como domínio
+      # do projeto (sem branch ele vira domínio de produção e o próximo deploy
+      # da main o tomaria).
+      - name: Alias da homologação
+        if: github.ref == 'refs/heads/homologa' && github.event_name == 'push'
+        run: vercel alias set "${{ steps.deploy.outputs.url }}" homologa.gambitotorneios.com.br --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
