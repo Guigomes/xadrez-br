@@ -10,18 +10,16 @@ function WhatsappIcon({ className }: { className?: string }) {
 }
 
 /**
- * Aviso + botão que abre conversa no WhatsApp com o dono do sistema.
- * `testPhase` acrescenta o "estamos em fase de teste" (tela de criação de
- * torneio); a home usa sem, só convidando a mandar sugestão.
+ * Aviso + botão que abre conversa no WhatsApp com o dono do sistema
+ * (home e tela de criação de torneio).
  */
-export function WhatsappFeedback({ testPhase = false, className = '' }: { testPhase?: boolean; className?: string }) {
+export function WhatsappFeedback({ className = '' }: { className?: string }) {
   const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(DEFAULT_MESSAGE)}`;
   return (
     <div
       className={`flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200 ${className}`}
     >
       <p>
-        {testPhase && <strong className="font-semibold">Estamos em fase de teste. </strong>}
         Quer que a gente acompanhe um torneio? Envie o link pelo WhatsApp ou pelo Gambito — não precisa ser o organizador. Para dúvidas e sugestões, fale conosco.
       </p>
       <a

@@ -140,7 +140,7 @@ export default function NewTournamentPage() {
         />
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Novo torneio</h1>
       </div>
-      <WhatsappFeedback testPhase className="mb-6" />
+      <WhatsappFeedback className="mb-6" />
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}
