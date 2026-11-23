@@ -4,6 +4,7 @@ import { routing, stripLocale, getLocalePrefix } from '@/i18n/routing';
 import { resolveLocale } from '@/i18n/detect';
 import { updateSession } from '@/lib/supabase/middleware';
 import { toPortuguesePath } from '@/lib/routing/legacy-paths';
+import { isLoginAllowed, loginAllowlist, LOGIN_BLOCKED_MESSAGE } from '@/lib/auth/login-allowlist';
 
 const intlMiddleware = createIntlMiddleware(routing);
 const LOCALE_COOKIE = 'NEXT_LOCALE';
@@ -11,6 +12,18 @@ const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // APIs só passam por aqui para a lista de acesso da homologação
+  // (LOGIN_ALLOWLIST). Sem a lista (produção, dev) saem na hora, sem custo.
+  // Sem sessão passa (rotas públicas, webhooks); sessão fora da lista = 403.
+  if (pathname.startsWith('/api/')) {
+    if (!loginAllowlist()) return NextResponse.next();
+    const { response, user } = await updateSession(request, NextResponse.next());
+    if (user && !isLoginAllowed(user.email)) {
+      return NextResponse.json({ error: LOGIN_BLOCKED_MESSAGE }, { status: 403 });
+    }
+    return response;
+  }
 
   // 0. URLs antigas em inglês (/torneios/x/rounds, /admin/tournaments/...) viraram
   // português — redireciona para a nova mantendo idioma e query, para link
@@ -77,6 +90,12 @@ export async function middleware(request: NextRequest) {
   // resposta), senão o rewrite/redirect de locale acima seria descartado.
   const { response, user } = await updateSession(request, intlResponse);
 
+  // 3b. Homologação: só as contas de LOGIN_ALLOWLIST usam o site logadas
+  // (lib/auth/login-allowlist.ts). A tela de entrar encerra a sessão e avisa.
+  if (user && !isLoginAllowed(user.email) && stripLocale(pathname) !== '/entrar') {
+    return NextResponse.redirect(new URL(`${getLocalePrefix(pathname)}/entrar?bloqueado=1`, request.url));
+  }
+
   // 4. Redirect "voltar pro último torneio" pra anônimo em '/' — comparado
   // sem o prefixo de locale, preservando o prefixo (se houver) no redirect.
   const bare = stripLocale(pathname);
@@ -110,9 +129,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // Roda em toda página navegável — o next-intl precisa ver todas pra
-  // decidir/rewritar o locale. Fora do matcher: api (rotas não têm locale de
-  // URL, docs/plano-i18n.md §1.2), auth (callback OAuth — alvo fixo
-  // cadastrado no Google/Supabase, não pode ganhar prefixo de locale), _next
-  // e qualquer arquivo estático (com extensão).
-  matcher: ['/((?!api|auth|_next|.*\\..*).*)'],
+  // decidir/rewritar o locale. As APIs entram só para a lista de acesso da
+  // homologação e saem no início da função, sem locale (docs/plano-i18n.md
+  // §1.2). Fora do matcher: auth (callback OAuth — alvo fixo cadastrado no
+  // Google/Supabase, não pode ganhar prefixo de locale), _next e qualquer
+  // arquivo estático (com extensão).
+  matcher: ['/((?!auth|_next|.*\\..*).*)'],
 };

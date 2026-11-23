@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
+import { isLoginAllowed, LOGIN_BLOCKED_MESSAGE } from '@/lib/auth/login-allowlist';
 
 /**
  * Checagens de acesso das rotas de API, num lugar só.
@@ -33,6 +34,8 @@ export async function requireUser(): Promise<GuardResult<{ user: User; supabase:
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user || user.is_anonymous) return deny(401, UNAUTHENTICATED_MESSAGE);
+  // Homologação: só contas da LOGIN_ALLOWLIST (sem a variável, todo mundo passa).
+  if (!isLoginAllowed(user.email)) return deny(403, LOGIN_BLOCKED_MESSAGE);
   return { ok: true, user, supabase };
 }
 

@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useRouter, Link } from '@/i18n/navigation';
-import { useSignIn, useSignUp, useSignInWithGoogle } from '@/lib/hooks/use-auth';
+import { useSignIn, useSignUp, useSignInWithGoogle, useSignOut } from '@/lib/hooks/use-auth';
+import { LOGIN_BLOCKED_MESSAGE } from '@/lib/auth/login-allowlist';
 import { canSignUp, BETA_SIGNUP_MESSAGE } from '@/lib/auth/beta';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -32,6 +34,28 @@ function goAfterLogin(router: ReturnType<typeof useRouter>) {
   }
   router.push('/admin');
   router.refresh();
+}
+
+/**
+ * Homologação: conta fora da LOGIN_ALLOWLIST chega aqui com ?bloqueado=1
+ * (middleware.ts). Encerra a sessão e explica. useSearchParams (e não um
+ * efeito de montagem) porque o redirecionamento vem de uma navegação do
+ * próprio app para esta mesma página, sem remontá-la.
+ */
+function BlockedNotice() {
+  const params = useSearchParams();
+  const signOut = useSignOut();
+  const blocked = params.get('bloqueado') === '1';
+  useEffect(() => {
+    if (blocked) signOut.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocked]);
+  if (!blocked) return null;
+  return (
+    <p role="alert" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+      {LOGIN_BLOCKED_MESSAGE}
+    </p>
+  );
 }
 
 export default function LoginPage() {
@@ -112,6 +136,7 @@ export default function LoginPage() {
           </p>
         </div>
 
+        <Suspense fallback={null}><BlockedNotice /></Suspense>
         <div className="card p-6">
           {gisUnavailable ? (
           <Button
