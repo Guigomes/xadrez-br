@@ -104,6 +104,8 @@ export interface HistoryTournament {
   pgn_count: number;
   series_label: string | null;
   series: { slug: string; name: string } | null;
+  /** Competição nacional de base (migration 20261123120000); nulo = outro torneio. */
+  competition?: 'categorias' | 'escolar' | 'jebs' | null;
 }
 
 export function useHistoryTournaments() {

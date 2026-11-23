@@ -17,6 +17,12 @@ const PAGE = 40;
 
 const KIND_LABEL: Record<string, string> = { classical: 'Clássico', rapid: 'Rápido', blitz: 'Blitz', bullet: 'Bullet' };
 
+const COMPETITION_LABEL: Record<string, string> = {
+  categorias: 'Brasileiro de Categorias (FENAC/FENAJ/Juvenil)',
+  escolar: 'Brasileiro Escolar',
+  jebs: 'JEBs',
+};
+
 const normalize = normalizeSearchText;
 
 export default function HistoryPage() {
@@ -24,6 +30,7 @@ export default function HistoryPage() {
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState('');
   const [year, setYear] = useState('');
+  const [competition, setCompetition] = useState('');
   const [onlyPgn, setOnlyPgn] = useState(false);
   const isDev = useIsDev();
   const [hom, setHom] = useState(''); // filtro de homologação: só o desenvolvedor
@@ -39,12 +46,13 @@ export default function HistoryPage() {
     return (tournaments ?? []).filter((t) => {
       if (kind && t.time_control_kind !== kind) return false;
       if (year && !t.start_date.startsWith(year)) return false;
+      if (competition && t.competition !== competition) return false;
       if (onlyPgn && t.pgn_count === 0) return false;
       if (isDev && hom && String(t.homologated ?? 'none') !== hom) return false;
       const name = normalize(t.name);
       return words.every((w) => name.includes(w));
     });
-  }, [tournaments, query, kind, year, onlyPgn, hom, isDev]);
+  }, [tournaments, query, kind, year, competition, onlyPgn, hom, isDev]);
 
   if (isLoading) return <PageSpinner />;
 
@@ -62,7 +70,7 @@ export default function HistoryPage() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
         <Input
           label="Buscar"
           placeholder="ex.: Floripa Chess Open"
@@ -78,6 +86,10 @@ export default function HistoryPage() {
         <Select label="Ano" value={year} onChange={(e) => { setYear(e.target.value); setLimit(PAGE); }}>
           <option value="">Todos</option>
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
+        </Select>
+        <Select label="Competição" value={competition} onChange={(e) => { setCompetition(e.target.value); setLimit(PAGE); }}>
+          <option value="">Todas</option>
+          {Object.entries(COMPETITION_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </Select>
       </div>
       {isDev && (

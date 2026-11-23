@@ -660,6 +660,7 @@ export type Database = {
       history_tournaments: {
         Row: {
           city: string | null
+          competition: string | null
           created_at: string
           date_approx: boolean
           end_date: string | null
@@ -684,6 +685,7 @@ export type Database = {
         ComputedFields: never
         Insert: {
           city?: string | null
+          competition?: string | null
           created_at?: string
           date_approx?: boolean
           end_date?: string | null
@@ -707,6 +709,7 @@ export type Database = {
         }
         Update: {
           city?: string | null
+          competition?: string | null
           created_at?: string
           date_approx?: boolean
           end_date?: string | null
