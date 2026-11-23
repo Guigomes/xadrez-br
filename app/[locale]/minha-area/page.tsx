@@ -9,6 +9,7 @@ import { CheckinButton } from '@/components/player-hub/checkin-button';
 import { PayRegistrationButton } from '@/components/player-hub/pay-registration-button';
 import { ShareResultButton } from '@/components/player-hub/share-result-button';
 import { PlayerAreaTabs } from '@/components/player-hub/player-area-tabs';
+import { MyPlayerPhoto } from '@/components/player-hub/my-player-photo';
 
 type HubEntry = {
   id: string;
@@ -50,7 +51,7 @@ export default async function PlayerHubPage() {
     .from('user_player_links').select('player_id').eq('user_id', user.id).eq('status', 'verified');
   const playerIds = (links ?? []).map((link) => link.player_id);
 
-  const [{ data: entriesRaw }, { data: registrations }] = await Promise.all([
+  const [{ data: entriesRaw }, { data: registrations }, { data: linkedPlayers }] = await Promise.all([
     playerIds.length
       ? admin.from('tournament_players')
           .select('id, player_id, current_score, current_rank, checkin_status, checked_in_at, players(full_name), tournaments(id, slug, name, status, start_date, checkin_enabled, checkin_opens_at, checkin_closes_at)')
@@ -59,6 +60,9 @@ export default async function PlayerHubPage() {
     admin.from('tournament_registrations')
       .select('id, status, is_waitlisted, payment_status, created_at, tournaments(slug, name, start_date)')
       .eq('user_id', user.id).order('created_at', { ascending: false }),
+    playerIds.length
+      ? admin.from('players').select('id, full_name').in('id', playerIds).order('full_name')
+      : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
   ]);
   const entries = (entriesRaw ?? []) as unknown as HubEntry[];
 
@@ -123,6 +127,16 @@ export default async function PlayerHubPage() {
       </section>
 
       {(registrations ?? []).length > 0 && <section className="mb-8"><h2 className="mb-3 text-lg font-bold">Minhas inscrições</h2><div className="space-y-2">{(registrations as unknown as HubRegistration[]).map((r) => <div key={r.id} className="card flex items-center justify-between gap-3 p-4"><Link href={`/torneios/${r.tournaments.slug}`} className="min-w-0 font-medium hover:text-brand-600">{r.tournaments.name}</Link><div className="flex shrink-0 items-center gap-2"><Badge className={r.is_waitlisted ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}>{r.is_waitlisted ? 'Lista de espera' : r.status === 'approved' ? 'Aprovada' : r.status === 'rejected' ? 'Rejeitada' : r.payment_status === 'pending' ? 'Vaga liberada' : 'Em análise'}</Badge>{paymentOn && !r.is_waitlisted && r.payment_status === 'pending' && <PayRegistrationButton registrationId={r.id} />}</div></div>)}</div></section>}
+
+      {(linkedPlayers ?? []).length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-1 text-lg font-bold">Foto do jogador</h2>
+          <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">Só esta conta, vinculada ao jogador, pode enviar ou trocar a foto dele.</p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {(linkedPlayers ?? []).map((p) => <MyPlayerPhoto key={p.id} playerId={p.id} playerName={p.full_name} />)}
+          </div>
+        </section>
+      )}
 
       {past.length > 0 && <section><h2 className="mb-3 text-lg font-bold">Histórico</h2><div className="grid gap-3 sm:grid-cols-2">{past.map((entry) => <div key={entry.id} className="card p-4"><p className="font-semibold">{entry.tournaments?.name}</p><p className="mt-1 text-sm text-gray-500">{entry.current_score} pontos · {entry.current_rank ? `${entry.current_rank}º lugar` : 'sem posição'}</p><div className="mt-3 flex flex-wrap items-center gap-3"><Link href={`/torneios/${entry.tournaments?.slug}/jogadores/${entry.id}`} className="text-sm text-brand-600 hover:underline">Desempenho</Link><a href={`/api/certificates/${entry.id}`} className="text-sm text-brand-600 hover:underline">Certificado</a><ShareResultButton tournamentPlayerId={entry.id} playerName={entry.players?.full_name ?? 'Jogador'} /></div></div>)}</div></section>}
     </div>

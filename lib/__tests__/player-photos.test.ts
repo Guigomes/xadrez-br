@@ -5,7 +5,7 @@ import { PLAYER_PHOTO_MAX_BYTES, playerPhotoFileError, playerPhotoPath } from '.
 
 const mocks = vi.hoisted(() => ({
   user: { id: 'dev' } as { id: string } | null,
-  role: 'admin', playerExists: true, profileError: false,
+  role: 'admin', linked: true, linkError: false, profileError: false,
   admin: vi.fn(), upload: vi.fn(), list: vi.fn(), prepare: vi.fn(),
 }));
 vi.mock('@/lib/player-photos/config', async () => import('../player-photos/config'));
@@ -16,15 +16,30 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
   createAdminClient: mocks.admin,
 }));
-import { GET, PUT } from '../../app/api/admin/players/[playerId]/photo/route';
+import * as devRoute from '../../app/api/admin/players/[playerId]/photo/route';
+import { GET, PUT } from '../../app/api/me/players/[playerId]/photo/route';
 
 const id = '11111111-2222-4333-8444-555555555555';
 const context = (playerId = id) => ({ params: Promise.resolve({ playerId }) });
-const request = (photo?: File, headers: Record<string, string> = {}) => {
-  const form = new FormData(); if (photo) form.set('photo', photo);
-  return new NextRequest(`https://example.test/api/admin/players/${id}/photo`, { method: 'PUT', body: form, headers });
+const request = (photo?: File, headers: Record<string, string> = {}, consent = true) => {
+  const form = new FormData();
+  if (photo) form.set('photo', photo);
+  if (consent) form.set('consent', '1');
+  return new NextRequest(`https://example.test/api/me/players/${id}/photo`, { method: 'PUT', body: form, headers });
 };
 const image = () => new File(['image'], 'photo.jpg', { type: 'image/jpeg' });
+
+/** players (Dev) e user_player_links (jogador) usam a mesma cadeia: select().eq()...maybeSingle(). */
+function adminClient() {
+  const chain: { eq: () => typeof chain; maybeSingle: () => Promise<{ data: { id: string } | null; error: Error | null }> } = {
+    eq: () => chain,
+    maybeSingle: async () => ({ data: !mocks.linkError && mocks.linked ? { id } : null, error: mocks.linkError ? new Error('private') : null }),
+  };
+  return {
+    from: () => ({ select: () => chain }),
+    storage: { from: (bucket: string) => { expect(bucket).toBe('player-photos'); return { upload: mocks.upload, list: mocks.list }; } },
+  };
+}
 
 describe('player photo input', () => {
   it('uses an exact global UUID, never a player name, external URL or arbitrary path', () => {
@@ -40,15 +55,13 @@ describe('player photo input', () => {
   });
 });
 
-describe('Dev-only photo API', () => {
+describe('photo API of the linked player', () => {
   beforeEach(() => {
-    vi.clearAllMocks(); mocks.user = { id: 'dev' }; mocks.role = 'admin'; mocks.playerExists = true; mocks.profileError = false;
+    vi.clearAllMocks();
+    mocks.user = { id: 'parent' }; mocks.role = 'public_user'; mocks.linked = true; mocks.linkError = false; mocks.profileError = false;
     mocks.upload.mockResolvedValue({ data: {}, error: null }); mocks.list.mockResolvedValue({ data: [], error: null });
     mocks.prepare.mockResolvedValue(Buffer.from('normalized-webp'));
-    mocks.admin.mockReturnValue({
-      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: mocks.playerExists ? { id } : null, error: null }) }) }) }),
-      storage: { from: (bucket: string) => { expect(bucket).toBe('player-photos'); return { upload: mocks.upload, list: mocks.list }; } },
-    });
+    mocks.admin.mockImplementation(adminClient);
   });
   it('denies anonymous callers before constructing a privileged client or reading a file', async () => {
     mocks.user = null;
@@ -56,21 +69,22 @@ describe('Dev-only photo API', () => {
     expect((await GET(request(), context())).status).toBe(401);
     expect(mocks.admin).not.toHaveBeenCalled(); expect(mocks.prepare).not.toHaveBeenCalled();
   });
-  it.each(['organizer', 'arbiter', 'public_user'])('denies a signed-in %s for both status and upload', async (role) => {
-    mocks.role = role;
-    expect((await PUT(request(image()), context())).status).toBe(403);
-    expect((await GET(request(), context())).status).toBe(403);
-    expect(mocks.admin).not.toHaveBeenCalled(); expect(mocks.upload).not.toHaveBeenCalled();
+  it('denies any account without a verified link to the player, even an admin', async () => {
+    mocks.linked = false;
+    for (const role of ['public_user', 'admin']) {
+      mocks.role = role;
+      expect((await PUT(request(image()), context())).status).toBe(403);
+      expect((await GET(request(), context())).status).toBe(403);
+    }
+    expect(mocks.upload).not.toHaveBeenCalled(); expect(mocks.prepare).not.toHaveBeenCalled();
   });
-  it('fails closed when the trusted profile cannot be read', async () => {
-    mocks.profileError = true;
+  it('fails closed when the link cannot be read', async () => {
+    mocks.linkError = true;
     expect((await PUT(request(image()), context())).status).toBe(503);
-    expect(mocks.admin).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
   });
-  it('does not accept arbitrary player paths or nonexistent players', async () => {
+  it('does not accept arbitrary player paths', async () => {
     expect((await PUT(request(image()), context('../other'))).status).toBe(400);
-    mocks.playerExists = false;
-    expect((await PUT(request(image()), context())).status).toBe(404);
     expect(mocks.upload).not.toHaveBeenCalled();
   });
   it('reports only association metadata, with no public/signed URL or image content', async () => {
@@ -86,7 +100,8 @@ describe('Dev-only photo API', () => {
     const failed = await GET(request(), context());
     expect(failed.status).toBe(503); expect(await failed.text()).not.toContain('internal secret');
   });
-  it('rejects cross-origin, missing, oversized or invalid photos before upload', async () => {
+  it('requires consent and rejects cross-origin, missing, oversized or invalid photos before upload', async () => {
+    expect((await PUT(request(image(), {}, false), context())).status).toBe(400);
     expect((await PUT(request(image(), { origin: 'https://evil.test' }), context())).status).toBe(403);
     expect((await PUT(request(), context())).status).toBe(400);
     expect((await PUT(request(image(), { 'content-length': String(PLAYER_PHOTO_MAX_BYTES + 100_000) }), context())).status).toBe(413);
@@ -95,7 +110,7 @@ describe('Dev-only photo API', () => {
     expect((await PUT(request(image()), context())).status).toBe(400);
     expect(mocks.upload).not.toHaveBeenCalled();
   });
-  it('replaces only the selected player photo after successful validation', async () => {
+  it('replaces only the linked player photo after successful validation', async () => {
     const response = await PUT(request(image()), context());
     expect(response.status).toBe(200); expect(await response.json()).toMatchObject({ hasPhoto: true });
     expect(mocks.upload).toHaveBeenCalledWith(`${id}/photo.webp`, Buffer.from('normalized-webp'), { contentType: 'image/webp', cacheControl: '0', upsert: true });
@@ -108,6 +123,30 @@ describe('Dev-only photo API', () => {
   });
 });
 
+describe('Dev photo API is status-only', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.user = { id: 'dev' }; mocks.role = 'admin'; mocks.linked = true; mocks.linkError = false; mocks.profileError = false;
+    mocks.list.mockResolvedValue({ data: [], error: null }); mocks.admin.mockImplementation(adminClient);
+  });
+  it('has no upload handler', () => {
+    expect('PUT' in devRoute).toBe(false);
+  });
+  it.each(['organizer', 'arbiter', 'public_user'])('denies a signed-in %s', async (role) => {
+    mocks.role = role;
+    expect((await devRoute.GET(request(), context())).status).toBe(403);
+    expect(mocks.admin).not.toHaveBeenCalled();
+  });
+  it('fails closed when the trusted profile cannot be read', async () => {
+    mocks.profileError = true;
+    expect((await devRoute.GET(request(), context())).status).toBe(503);
+    expect(mocks.admin).not.toHaveBeenCalled();
+  });
+  it('lets the Dev check whether a player has a photo', async () => {
+    expect(await (await devRoute.GET(request(), context())).json()).toEqual({ hasPhoto: false, updatedAt: null });
+  });
+});
+
 describe('private photo storage contract', () => {
   it('leaves public player fields unchanged and blocks direct client access to the private bucket', () => {
     const migration = readFileSync(new URL('../../supabase/migrations/20261031144822_player_photos_private_storage.sql', import.meta.url), 'utf8');
@@ -117,9 +156,12 @@ describe('private photo storage contract', () => {
     expect(migration).toContain("with check (bucket_id <> 'player-photos')");
     expect(migration).not.toMatch(/alter\s+table\s+(public\.)?players/i);
   });
-  it('does not render an image, preview or download URL in the Dev screen', () => {
+  it('does not render an image, preview or download URL in the Dev screen or in Minha área', () => {
     const page = readFileSync(new URL('../../app/[locale]/admin/dev/fotos-jogadores/page.tsx', import.meta.url), 'utf8');
     expect(page).not.toMatch(/<img|<Image|createObjectURL|getPublicUrl|createSignedUrl/);
+    expect(page).not.toMatch(/method: 'PUT'/);
     expect(page).toContain("profile?.role !== 'admin'");
+    const mine = readFileSync(new URL('../../components/player-hub/my-player-photo.tsx', import.meta.url), 'utf8');
+    expect(mine).not.toMatch(/<img|<Image|createObjectURL|getPublicUrl|createSignedUrl/);
   });
 });
