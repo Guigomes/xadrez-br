@@ -9,8 +9,9 @@ import type { Page } from '@playwright/test';
  * "Ritmo de jogo" é um select de presets (lib/utils/time-control.ts) desde a
  * migration 061 — escolher o preset grava o texto exibido e o time_control_kind.
  */
-export async function createTournament(page: Page, name: string, opts: { timeControl?: string; startDate?: string } = {}) {
+export async function createTournament(page: Page, name: string, opts: { timeControl?: string; startDate?: string; rounds?: number } = {}) {
   await page.getByLabel('Nome do torneio *').fill(name);
+  if (opts.rounds) await page.getByLabel('Número de rodadas *').fill(String(opts.rounds));
   await page.getByLabel('Cidade *').fill('São Paulo');
   await page.getByLabel('Estado *').selectOption('SP');
   await page.getByLabel('Organizador *').fill('E2E Test Organizer');
