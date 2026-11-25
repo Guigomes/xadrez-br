@@ -4,7 +4,7 @@ import { playerDisplayName } from '@/lib/utils/player-name';
 import { localizedTitle } from '@/lib/utils/player-title';
 import type { StandingRow } from '@/types/database';
 
-export type TvStandingRow = Pick<StandingRow, 'tp_id' | 'rank' | 'title' | 'full_name' | 'fide_name' | 'rating_tempo' | 'points'>
+export type TvStandingRow = Pick<StandingRow, 'tp_id' | 'rank' | 'title' | 'full_name' | 'fide_name' | 'rating_tempo' | 'fide_rating' | 'points'>
   & Partial<Pick<StandingRow, 'wins' | 'buchholz' | 'buchholz_cut1' | 'sonneborn_berger' | 'progressive' | 'performance_rating'>>;
 
 // Critérios que a classificação guarda por jogador. Confronto direto não tem coluna: depende
@@ -72,7 +72,7 @@ export function TvStandings({ rows, locale, groupName, tiebreakOrder = [] }: {
                 <th scope="row" role="rowheader" className="break-words px-3 py-4 text-xl font-bold sm:text-3xl">
                   {localizedTitle(row.title, locale) && <span className="mr-2 text-base font-semibold text-amber-600">{localizedTitle(row.title, locale)}</span>}
                   {playerDisplayName(row.full_name, row.fide_name, locale)}
-                  <span className="mt-1 block text-sm font-medium text-gray-500 sm:text-base">{row.rating_tempo == null ? 'Sem rating' : `Rating ${row.rating_tempo}`}</span>
+                  <span className="mt-1 block text-sm font-medium text-gray-500 sm:text-base">{row.rating_tempo == null ? 'Sem rating' : `Rating ${row.rating_tempo}`}{row.fide_rating ? ` · FIDE ${row.fide_rating}` : ''}</span>
                 </th>
                 {columns.map((key) => (
                   <td

@@ -393,6 +393,8 @@ export interface StandingRow {
   fide_name: string | null;
   /** Rating do ritmo do torneio (std/rpd/blz conforme rating_kind) — migration 20261028180000. */
   rating_tempo: number | null;
+  /** Rating FIDE publicado pela fonte do importado (tournament_players.fide_rating), migration 20261125170000. */
+  fide_rating?: number | null;
 }
 
 export interface PlayerHistoryRow {

@@ -24,6 +24,9 @@ interface StandingsTableProps {
 export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, isInitialRanking = false, international = false, showCategory = true }: StandingsTableProps) {
   const locale = useLocale();
   const hasFollowed = !!followedPlayerIds?.size;
+  // Coluna FIDE só quando a fonte do importado publica para alguém desta tabela.
+  const showFide = standings.some((r) => r.fide_rating);
+  const fideText = (r: StandingRow) => (showFide && r.fide_rating ? ` · FIDE ${r.fide_rating}` : '');
 
   const followed = hasFollowed ? standings.filter((r) => followedPlayerIds!.has(r.player_id)) : [];
   const rest     = hasFollowed ? standings.filter((r) => !followedPlayerIds!.has(r.player_id)) : standings;
@@ -70,8 +73,8 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, i
           </div>
           <p className="mt-0.5 text-xs text-gray-400 sm:hidden">
             {isInitialRanking
-              ? (row.rating_tempo ? `Rating ${row.rating_tempo}` : 'Sem rating informado')
-              : `BH: ${formatTiebreak(row.buchholz)} · BH-1: ${formatTiebreak(row.buchholz_cut1)} · SB: ${formatTiebreak(row.sonneborn_berger)}${row.rating_tempo ? ` · Rating ${row.rating_tempo}` : ''}`}
+              ? `${row.rating_tempo ? `Rating ${row.rating_tempo}` : 'Sem rating informado'}${fideText(row)}`
+              : `BH: ${formatTiebreak(row.buchholz)} · BH-1: ${formatTiebreak(row.buchholz_cut1)} · SB: ${formatTiebreak(row.sonneborn_berger)}${row.rating_tempo ? ` · Rating ${row.rating_tempo}` : ''}${fideText(row)}`}
           </p>
         </td>
         {!isInitialRanking && <td className="py-3 px-3 text-center font-bold text-gray-900 dark:text-gray-100">{formatScore(row.points)}</td>}
@@ -79,6 +82,7 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, i
         {!isInitialRanking && <td className="hidden py-3 px-3 text-center text-gray-600 dark:text-gray-400 tabular-nums sm:table-cell">{formatTiebreak(row.buchholz_cut1)}</td>}
         {!isInitialRanking && <td className="hidden py-3 px-3 text-center text-gray-600 dark:text-gray-400 tabular-nums sm:table-cell">{formatTiebreak(row.sonneborn_berger)}</td>}
         <td className="hidden py-3 px-3 text-center text-gray-500 dark:text-gray-400 sm:table-cell">{row.rating_tempo ?? '–'}</td>
+        {showFide && <td className="hidden py-3 px-3 text-center text-gray-500 dark:text-gray-400 sm:table-cell">{row.fide_rating ?? '–'}</td>}
       </tr>
     );
   }
@@ -96,7 +100,8 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, i
             <span className="inline-flex items-center gap-1">SB <TiebreakLegendButton /></span>
           </th>
         )}
-        <th className="hidden py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 sm:table-cell">Rating</th>
+        <th className="hidden py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 sm:table-cell">{showFide ? 'Rating nacional' : 'Rating'}</th>
+        {showFide && <th className="hidden py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 sm:table-cell" title="Rating FIDE no ritmo deste torneio, como publicado na fonte">FIDE</th>}
       </tr>
     </thead>
   );
@@ -108,7 +113,7 @@ export function StandingsTable({ standings, tournamentSlug, followedPlayerIds, i
         <tbody>
           {followed.map((row) => <Row key={row.tp_id} row={row} highlighted />)}
           {hasFollowed && followed.length > 0 && rest.length > 0 && (
-            <tr><td colSpan={isInitialRanking ? 3 : 7} className="py-3 bg-gray-50 dark:bg-gray-900/50">
+            <tr><td colSpan={(isInitialRanking ? 3 : 7) + (showFide ? 1 : 0)} className="py-3 bg-gray-50 dark:bg-gray-900/50">
               <div className="border-t-2 border-dashed border-gray-300 dark:border-gray-700 mx-2" />
             </td></tr>
           )}
