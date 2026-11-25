@@ -102,12 +102,20 @@ export async function MarketingHome({ ctaHref, uf, dashboard }: MarketingHomePro
   const pState = uf ?? undefined;
   const ufQuery = uf ? `&uf=${uf}` : '';
 
-  const [{ data: ongoing }, { data: upcoming }, { data: finished }, promoEnabled] = await Promise.all([
+  // "Próximos" = tudo que ainda vai começar: inscrições abertas, encerradas ou só
+  // publicado. Antes só entrava 'registration', e torneio com inscrições encerradas
+  // sumia da home enquanto os encerrados continuavam aparecendo.
+  const [{ data: ongoing }, { data: openReg }, { data: closedReg }, { data: published }, { data: finished }, promoEnabled] = await Promise.all([
     supabase.rpc('search_tournaments', { p_status: 'ongoing', p_state: pState, p_limit: 3 }),
     supabase.rpc('search_tournaments', { p_status: 'registration', p_state: pState, p_limit: 3 }),
+    supabase.rpc('search_tournaments', { p_status: 'registration_closed', p_state: pState, p_limit: 3 }),
+    supabase.rpc('search_tournaments', { p_status: 'published', p_state: pState, p_limit: 3 }),
     supabase.rpc('search_tournaments', { p_status: 'finished', p_state: pState, p_limit: 3 }),
     isPromoBannerEnabled(),
   ]);
+  const upcoming = [...(openReg ?? []), ...(closedReg ?? []), ...(published ?? [])]
+    .sort((a, b) => a.start_date.localeCompare(b.start_date) || a.name.localeCompare(b.name, 'pt-BR'))
+    .slice(0, 3);
   const hasTournaments = (upcoming?.length ?? 0) > 0 || (ongoing?.length ?? 0) > 0 || (finished?.length ?? 0) > 0;
 
   // RLS (news_select_public, migration 059) já esconde rascunho — não precisa
@@ -217,8 +225,8 @@ export async function MarketingHome({ ctaHref, uf, dashboard }: MarketingHomePro
             {(upcoming?.length ?? 0) > 0 && (
               <div>
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Inscrições abertas</h2>
-                  <Link href={`/torneios?status=registration${ufQuery}`} className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Próximos torneios</h2>
+                  <Link href={`/agenda${uf ? `?uf=${uf}` : ''}`} className="text-sm text-brand-600 hover:underline dark:text-brand-400">
                     Ver todos
                   </Link>
                 </div>
