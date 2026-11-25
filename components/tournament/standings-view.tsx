@@ -35,9 +35,13 @@ export function StandingsView({
   slug,
   showExport = false,
   tournamentId,
+  finished = false,
 }: {
   slug: string;
   showExport?: boolean;
+  /** Torneio encerrado (status exibido, vindo do servidor): classificação sai do
+   *  cache e não repola. Só a página pública passa; o organizador vê ao vivo. */
+  finished?: boolean;
   /** Id vindo do servidor (a página já o tinha em mãos). Sem ele, as queries
    *  de classificação/rodadas ficavam ESPERANDO o useTournament resolver pra
    *  só então disparar — waterfall de dois round-trips no cliente. Com o id
@@ -47,7 +51,7 @@ export function StandingsView({
   const locale = useLocale();
   const { data: tournament, isLoading: loadingTournament } = useTournament(slug);
   const id = tournamentId ?? tournament?.id ?? '';
-  const { data: standings, isLoading: loadingStandings } = useTournamentStandings(id);
+  const { data: standings, isLoading: loadingStandings } = useTournamentStandings(id, { finished });
   const { data: rounds } = useTournamentRounds(id);
   const { data: followed } = useFollowedInTournament(id);
   const { data: profile } = useProfile();

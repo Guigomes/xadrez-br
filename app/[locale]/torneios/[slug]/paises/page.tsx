@@ -5,6 +5,7 @@ import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
+import { getFinishedPairingResults, getFinishedStandings } from '@/lib/data/finished-cache';
 import { isInternationalTournament, federationName, federationFlagUrl } from '@/lib/utils/federation';
 import { playerDisplayName } from '@/lib/utils/player-name';
 import { FederationBadge } from '@/components/player/origin-badge';
@@ -85,7 +86,12 @@ export default async function CountriesPage({ params, searchParams }: Props) {
   const locale = await getLocale();
 
   const supabase = await createClient();
-  const { data: raw } = await supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id });
+  // Encerrado: classificação e resultados saem do cache do servidor (lib/data/finished-cache.ts);
+  // esta aba lia as ~4 mil partidas do Mundial a cada visita.
+  const finished = data.effectiveStatus === 'finished';
+  const cachedStandings = finished ? await getFinishedStandings(tournament.id) : null;
+  const raw = cachedStandings
+    ?? (await supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id })).data;
   const rows = ((raw ?? []) as StandingRow[]).filter((r) => r.federation);
 
   const groupSize = new Map<string, number>();
@@ -96,8 +102,9 @@ export default async function CountriesPage({ params, searchParams }: Props) {
   const groupOrder = [...new Set(rows.map((r) => r.pairing_group_name ?? '—'))];
 
   // Estatísticas gerais: resultados de todas as partidas do torneio (todas as seções).
-  const results: { result: string; is_bye: boolean }[] = [];
-  for (let from = 0; ; from += 1000) {
+  const cachedResults = finished ? await getFinishedPairingResults(tournament.id) : null;
+  const results: { result: string; is_bye: boolean }[] = cachedResults ?? [];
+  for (let from = 0; !cachedResults; from += 1000) {
     const { data: page } = await supabase
       .from('pairings')
       .select('id, result, is_bye')
