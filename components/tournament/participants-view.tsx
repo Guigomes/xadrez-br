@@ -2,6 +2,7 @@ import { Link } from '@/i18n/navigation';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getTournamentPageData } from '@/lib/data/tournament-page-data';
+import { getFinishedStandings } from '@/lib/data/finished-cache';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { OriginBadge } from '@/components/player/origin-badge';
@@ -106,6 +107,11 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
     }
   }
 
+  const loadStandings = async () => {
+    const cached = data.effectiveStatus === 'finished' ? await getFinishedStandings(tournament.id) : null;
+    return cached ? { data: cached } : supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id });
+  };
+
   const [{ data: pairingGroups }, { data: playersData, count }, { data: standingsData }] = await Promise.all([
     supabase
       .from('pairing_groups')
@@ -115,7 +121,8 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
     playersQuery
       .order('initial_ranking', { ascending: true, nullsFirst: false })
       .range(countrySort ? 0 : from, countrySort ? 999 : from + PAGE_SIZE - 1),
-    supabase.rpc('get_tournament_standings', { p_tournament_id: tournament.id }),
+    // Encerrado: classificação do cache do servidor (lib/data/finished-cache.ts).
+    loadStandings(),
   ]);
 
   const groups = [...(pairingGroups ?? [])].sort((a, b) => compareGroupNames(a.name, b.name));

@@ -29,7 +29,7 @@ export default function PlayerTournamentPage({ params }: Props) {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const { data: tournament } = useTournament(slug);
-  const { data: standings, isLoading: loadingStandings } = useTournamentStandings(tournament?.id ?? '');
+  const { data: standings, isLoading: loadingStandings } = useTournamentStandings(tournament?.id ?? '', { finished: tournament?.status === 'finished' });
   const playerRow = standings?.find((s) => s.tp_id === tpId);
 
   // A ficha precisa de cidade, UF, escola e grupo mesmo quando a classificação

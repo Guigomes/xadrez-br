@@ -20,5 +20,5 @@ export default async function StandingsPage({ params }: Props) {
   const data = await getTournamentPageData(slug);
   if (!data) notFound();
 
-  return <StandingsView slug={slug} tournamentId={data.tournament.id} />;
+  return <StandingsView slug={slug} tournamentId={data.tournament.id} finished={data.effectiveStatus === 'finished'} />;
 }

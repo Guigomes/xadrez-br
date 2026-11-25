@@ -136,11 +136,26 @@ export function useTournamentRounds(tournamentId: string) {
   });
 }
 
-export function useTournamentStandings(tournamentId: string) {
+/**
+ * `finished`: torneio encerrado não muda mais. Lê da rota com cache
+ * (`/api/public/tournaments/[id]/standings`) em vez de baixar a classificação inteira
+ * direto do Supabase, e para de repolar a cada 30 s. Se a rota recusar (404/503),
+ * cai na leitura normal.
+ */
+export function useTournamentStandings(tournamentId: string, options?: { finished?: boolean }) {
+  const finished = options?.finished === true;
   return useQuery({
     queryKey: tournamentKeys.standings(tournamentId),
     enabled: !!tournamentId,
     queryFn: async (): Promise<StandingRow[]> => {
+      if (finished) {
+        try {
+          const res = await fetch(`/api/public/tournaments/${tournamentId}/standings`);
+          if (res.ok) return (await res.json()) as StandingRow[];
+        } catch {
+          // Sem a rota, lê direto abaixo.
+        }
+      }
       const { data, error } = await supabase.rpc('get_tournament_standings', {
         p_tournament_id: tournamentId,
       });
@@ -148,8 +163,8 @@ export function useTournamentStandings(tournamentId: string) {
       // O RPC devolve `sex` como text; o domínio só admite 'm' | 'w' | null.
       return (data ?? []) as StandingRow[];
     },
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: finished ? Infinity : 30_000,
+    refetchInterval: finished ? false : 30_000,
   });
 }
 
