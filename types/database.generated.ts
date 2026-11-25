@@ -2662,6 +2662,7 @@ export type Database = {
           created_at: string
           current_rank: number | null
           current_score: number
+          fide_rating: number | null
           id: string
           initial_ranking: number | null
           joined_at_round: number
@@ -2684,6 +2685,7 @@ export type Database = {
           created_at?: string
           current_rank?: number | null
           current_score?: number
+          fide_rating?: number | null
           id?: string
           initial_ranking?: number | null
           joined_at_round?: number
@@ -2705,6 +2707,7 @@ export type Database = {
           created_at?: string
           current_rank?: number | null
           current_score?: number
+          fide_rating?: number | null
           id?: string
           initial_ranking?: number | null
           joined_at_round?: number
