@@ -69,7 +69,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
     .from('tournament_players')
     .select(
       `
-        id, player_id, initial_ranking, current_score, current_rank, status, pairing_group_id,
+        id, player_id, initial_ranking, current_score, current_rank, status, pairing_group_id, fide_rating,
         player:players!inner(id, full_name, fide_name, title, rating_std, rating_rpd, rating_blz, state, city, federation, cbx_id, fide_id, club_or_school),
         category:tournament_categories(id, name, pairing_group_id)
       `,
@@ -136,6 +136,10 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
   // inicial). Importado e app gravam o rating da fonte em rating_std, qualquer que seja o ritmo.
   const ratingKind = tournament.mode === 'native' ? tournament.rating_kind : 'std';
   const ratingLabel = tournament.mode === 'native' ? ({ std: 'clássico', rpd: 'rápido', blz: 'blitz' } as const)[ratingKind] : null;
+  // Rating FIDE publicado pela fonte do importado (chess-results "EloI"), por participante.
+  // A coluna só aparece quando alguém do torneio tem; aí o rating da fonte é o nacional.
+  const showFide = (playersData ?? []).some((tp) => tp.fide_rating);
+  const ratingHeader = ratingLabel ? `Rating ${ratingLabel}` : showFide ? 'Rating nacional' : 'Rating';
   const ratingOf = (p: { rating_std: number | null; rating_rpd: number | null; rating_blz: number | null } | null | undefined) =>
     tournamentRating(tournament, p);
 
@@ -359,8 +363,13 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                     <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Desempenho</th>
                   )}
                   <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400" title={ratingLabel ? `Rating ${ratingLabel}, o ritmo deste torneio` : undefined}>
-                    {ratingLabel ? `Rating ${ratingLabel}` : 'Rating'}
+                    {ratingHeader}
                   </th>
+                  {showFide && (
+                    <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400" title="Rating FIDE no ritmo deste torneio, como publicado na fonte">
+                      Rating FIDE
+                    </th>
+                  )}
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Cidade</th>
                   <th className="py-3 px-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">{international ? 'País' : 'UF'}</th>
                   <th className="py-3 px-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Escola/Clube</th>
@@ -429,7 +438,8 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                           )}
                           {displayCity && <span>{displayCity}</span>}
                           {displayClub && <span>{displayClub}</span>}
-                          {ratingOf(player) && <span>Rating {ratingLabel ? `${ratingLabel} ` : ''}{ratingOf(player)}</span>}
+                          {ratingOf(player) && <span>Rating {ratingLabel ? `${ratingLabel} ` : showFide ? 'nacional ' : ''}{ratingOf(player)}</span>}
+                          {tp.fide_rating && <span>Rating FIDE {tp.fide_rating}</span>}
                           <ExternalIdLinks cbxId={player?.cbx_id} fideId={player?.fide_id} />
                         </span>
                       </td>
@@ -464,6 +474,11 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                       <td className="hidden py-3 px-3 text-center tabular-nums text-gray-700 dark:text-gray-300 sm:table-cell">
                         {ratingOf(player) ?? '–'}
                       </td>
+                      {showFide && (
+                        <td className="hidden py-3 px-3 text-center tabular-nums text-gray-700 dark:text-gray-300 sm:table-cell">
+                          {tp.fide_rating ?? '–'}
+                        </td>
+                      )}
                       <td className="hidden py-3 px-3 text-gray-500 dark:text-gray-400 sm:table-cell">
                         {displayCity || '–'}
                       </td>

@@ -41,7 +41,7 @@ export default function PlayerTournamentPage({ params }: Props) {
       const supabase = createClient();
       const { data } = await supabase
         .from('tournament_players')
-        .select('player_id, initial_ranking, pairing_group_id, player:players(full_name, fide_name, title, rating_std, state, federation, city, club_or_school, fide_id, cbx_id), category:tournament_categories(name), pairing_group:pairing_groups(name)')
+        .select('player_id, initial_ranking, pairing_group_id, fide_rating, player:players(full_name, fide_name, title, rating_std, state, federation, city, club_or_school, fide_id, cbx_id), category:tournament_categories(name), pairing_group:pairing_groups(name)')
         .eq('id', tpId)
         .single();
       return data;
@@ -61,6 +61,7 @@ export default function PlayerTournamentPage({ params }: Props) {
     player_id: string;
     initial_ranking: number | null;
     pairing_group_id: string | null;
+    fide_rating: number | null;
     player: { full_name: string; fide_name: string | null; title: string | null; rating_std: number | null; state: string | null; federation: string | null; city: string | null; club_or_school: string | null; fide_id: string | null; cbx_id: string | null } | null;
     category: { name: string } | null;
     pairing_group: { name: string } | null;
@@ -130,7 +131,10 @@ export default function PlayerTournamentPage({ params }: Props) {
               <OriginBadge state={displayState} federation={displayFederation} international={isInternationalTournament(tournament.is_international)} className="text-xs" />
               {displayCity && <span className="text-xs text-gray-500 dark:text-gray-400">{displayCity}</span>}
               {displayRating && (
-                <span className="text-xs text-gray-500">Rating {displayRating}</span>
+                <span className="text-xs text-gray-500">{tp?.fide_rating ? 'Rating nacional' : 'Rating'} {displayRating}</span>
+              )}
+              {tp?.fide_rating && (
+                <span className="text-xs text-gray-500">Rating FIDE {tp.fide_rating}</span>
               )}
               {displayGroupName && <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 text-xs">{displayGroupName}</Badge>}
               {displayCategory && (
