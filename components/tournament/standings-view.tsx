@@ -136,7 +136,11 @@ export function StandingsView({
   // transversal — só as faixas. Exceção: grupo sem faixa nenhuma sempre mostra
   // o absoluto, senão não sobraria classificação pra ver (o organizador pode
   // ter desligado a chave e depois apagado as faixas).
-  const showAbsolute = tournament?.has_absolute_classification !== false || !hasCategories;
+  // Grupo com uma faixa só que cobre todo mundo (festival: grupo "U15 Masc" = faixa U15):
+  // o absoluto do grupo é a mesma lista da faixa, então ele não aparece (pedido do dono, 2026-11-25).
+  const groupIsSingleCategory = categories.length === 1
+    && rowsInGroup.every((r) => r.category_id === categories[0].id);
+  const showAbsolute = (tournament?.has_absolute_classification !== false || !hasCategories) && !groupIsSingleCategory;
 
   // Recorte "Feminino": transversal como o Absoluto (uma jogadora U14 aparece na U14 e aqui),
   // ligado por torneio. Só aparece se houver ao menos uma jogadora identificada no grupo.
@@ -170,7 +174,12 @@ export function StandingsView({
       : (categories.find((c) => c.id === effectiveCategory)?.name ?? 'Absoluto');
   const isInitialRanking = isInitialStandings(rowsInGroup, hasRecordedResult);
   const rankingLabel = isInitialRanking ? 'Ranking inicial' : categoryLabel;
-  const heading = groupLabel ? `${groupLabel} · ${rankingLabel}` : rankingLabel;
+  // Faixa única do grupo: o nome do grupo já diz tudo ("U15 Masc", não "U15 Masc · U15").
+  const heading = groupLabel
+    ? (groupIsSingleCategory && !isInitialRanking && effectiveCategory !== FEMALE ? groupLabel : `${groupLabel} · ${rankingLabel}`)
+    : rankingLabel;
+  // Seletor de recorte só quando há escolha (uma faixa sozinha não vira botão).
+  const chipCount = categories.length + (showAbsolute ? 1 : 0) + (showFemale ? 1 : 0);
 
   const isOngoing = tournament?.status === 'ongoing' && !isInitialRanking;
 
@@ -288,7 +297,7 @@ export function StandingsView({
                   </select>
                 </label>
               )}
-              {(hasCategories || showFemale) && (
+              {(hasCategories || showFemale) && chipCount > 1 && (
                 <div className="flex flex-wrap gap-1.5">
                   {showAbsolute && (
                     <button
