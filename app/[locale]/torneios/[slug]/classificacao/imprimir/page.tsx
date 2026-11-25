@@ -66,13 +66,14 @@ export default async function StandingsPrintPage({ params }: Props) {
 }
 
 function StandingsPrintTable({ title, rows }: { title?: string; rows: any[] }) {
+  const showFide = rows.some((r: any) => r.fide_rating);
   return (
     <>
       {title && <h3>{title}</h3>}
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Nome</th><th>Rating</th><th>Pts</th>
+            <th>#</th><th>Nome</th><th>Rating</th>{showFide && <th>FIDE</th>}<th>Pts</th>
             <th>BH</th><th>BH-1</th><th>SB</th>
           </tr>
         </thead>
@@ -82,6 +83,7 @@ function StandingsPrintTable({ title, rows }: { title?: string; rows: any[] }) {
               <td>{r.rank}</td>
               <td className="name">{r.full_name}</td>
               <td>{r.rating_tempo ?? '—'}</td>
+              {showFide && <td>{r.fide_rating ?? '—'}</td>}
               <td className="pts">{formatScore(r.points)}</td>
               <td>{r.buchholz ?? '—'}</td>
               <td>{r.buchholz_cut1 ?? '—'}</td>

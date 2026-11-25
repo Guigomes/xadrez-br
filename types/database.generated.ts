@@ -3810,6 +3810,7 @@ export type Database = {
           draws: number
           federation: string
           fide_name: string
+          fide_rating: number
           full_name: string
           games_played: number
           initial_ranking: number
