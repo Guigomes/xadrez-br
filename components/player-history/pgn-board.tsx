@@ -103,7 +103,8 @@ export function PgnBoard({ pgn, orientation = 'white' }: { pgn: string; orientat
             const fileCol = file.charCodeAt(0) - 97;
             const piece = board[rankRow][fileCol];
             const square = `${file}${rank}`;
-            const isLight = (rank + fileCol) % 2 === 1;
+            // a1 é casa escura e h1 é clara: com a coluna a partir de 0, soma par = clara.
+            const isLight = (rank + fileCol) % 2 === 0;
             const isMoveSquare = current.from === square || current.to === square;
 
             return (
