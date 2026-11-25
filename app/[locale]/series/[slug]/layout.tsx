@@ -7,6 +7,7 @@ import { ShareButton } from '@/components/ui/share-button';
 import {
   SERIES_STATUS_COLOR, SERIES_STATUS_LABEL, describeDimensions, formatSeriesPeriod,
 } from '@/lib/utils/series';
+import { parseOfficialRankingConfig } from '@/lib/series/official-ranking';
 
 interface Props {
   children: React.ReactNode;
@@ -31,6 +32,7 @@ export default async function SeriesLayout({ children, params }: Props) {
   const series = await getSeriesHeader(slug);
 
   if (!series) notFound();
+  const official = parseOfficialRankingConfig(series.official_ranking);
 
   return (
     <div>
@@ -54,7 +56,9 @@ export default async function SeriesLayout({ children, params }: Props) {
               {SERIES_STATUS_LABEL[series.status]}
             </Badge>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              classifica por {describeDimensions(series.classification_dimensions)}
+              {official
+                ? `classificação geral oficial da ${official.source}`
+                : `classifica por ${describeDimensions(series.classification_dimensions)}`}
             </span>
           </div>
           <div className="mt-4">

@@ -12,6 +12,8 @@ export interface SeriesHeader {
   state: string | null;
   organizer_name: string | null;
   classification_dimensions: ClassificationDimension[];
+  /** Classificação geral oficial do organizador (migration 20261125210000); validar com parseOfficialRankingConfig. */
+  official_ranking: unknown;
 }
 
 /**
@@ -28,7 +30,7 @@ export const getSeriesHeader = cache(async (slug: string): Promise<SeriesHeader 
   const supabase = await createClient();
   const { data } = await supabase
     .from('tournament_series')
-    .select('name, description, status, start_date, end_date, city, state, organizer_name, classification_dimensions')
+    .select('name, description, status, start_date, end_date, city, state, organizer_name, classification_dimensions, official_ranking')
     .eq('slug', slug)
     .single();
 

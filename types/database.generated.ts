@@ -2926,6 +2926,7 @@ export type Database = {
           has_absolute_classification: boolean
           id: string
           name: string
+          official_ranking: Json | null
           organizer_name: string | null
           points_outside_table: number
           slug: string
@@ -2947,6 +2948,7 @@ export type Database = {
           has_absolute_classification?: boolean
           id?: string
           name: string
+          official_ranking?: Json | null
           organizer_name?: string | null
           points_outside_table?: number
           slug: string
@@ -2967,6 +2969,7 @@ export type Database = {
           has_absolute_classification?: boolean
           id?: string
           name?: string
+          official_ranking?: Json | null
           organizer_name?: string | null
           points_outside_table?: number
           slug?: string
