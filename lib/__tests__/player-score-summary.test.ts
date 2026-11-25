@@ -22,6 +22,15 @@ describe('shared player rating and points', () => {
     expect($('[data-player-score]').attr('aria-label')).toBe('Rating e pontuação acumulada');
   });
 
+  it.each([
+    [1909, 1726, 3, 'Rating 1909 · FIDE 1726 · 3 pts'],
+    [1909, null, 3, 'Rating 1909 · 3 pts'],
+    [null, 1650, 1, 'Sem rating · FIDE 1650 · 1 pt'],
+  ] as const)('shows FIDE rating %s/%s only when present', (rating, fideRating, score, expected) => {
+    const $ = load(renderToStaticMarkup(React.createElement(PlayerScoreSummary, { rating, fideRating, score })));
+    expect($('[data-player-score]').text()).toBe(expected);
+  });
+
   it.each([['white', WhitePawn], ['black', BlackPawn]] as const)('uses the matching %s transparent asset with optimized thumbnail sizes', (side, component) => {
     const $ = load(renderToStaticMarkup(React.createElement(component, { className: 'h-10 w-8' })));
     const img = $('img');

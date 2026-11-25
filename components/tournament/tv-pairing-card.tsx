@@ -38,7 +38,7 @@ export function TvPairingCard({ pairing, locale }: { pairing: RoundPairingRow; l
         <p className="text-2xl font-black leading-none tabular-nums text-brand-700">{pairing.board_number ?? '—'}</p>
       </div>
       <div className={`relative grid min-w-0 items-center gap-x-3 gap-y-1 ${bye ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-[minmax(0,1fr)_5rem] sm:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)]'}`}>
-        <PlayerName side="white" title={localizedTitle(pairing.white_title ?? null, locale)} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} rating={pairing.white_rating} score={pairing.white_score} winner={!bye && winnerSide(pairing.result, 'white') === 'winner'} />
+        <PlayerName side="white" title={localizedTitle(pairing.white_title ?? null, locale)} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} rating={pairing.white_rating} fideRating={pairing.white_fide_rating} score={pairing.white_score} winner={!bye && winnerSide(pairing.result, 'white') === 'winner'} />
         {bye ? (
           <p className="max-w-40 text-right text-sm font-semibold text-gray-500 sm:text-base">
             {pairing.result === 'not_paired' ? 'Não emparceirado' : 'Bye'}
@@ -52,7 +52,7 @@ export function TvPairingCard({ pairing, locale }: { pairing: RoundPairingRow; l
               </p>
               <p className="text-xs font-semibold text-gray-500">{pending ? 'Em andamento' : wo ? 'W.O.' : 'Finalizada'}</p>
             </div>
-            <PlayerName side="black" title={localizedTitle(pairing.black_title ?? null, locale)} name={playerDisplayName(pairing.black_name, pairing.black_fide_name, locale)} rating={pairing.black_rating} score={pairing.black_score} winner={winnerSide(pairing.result, 'black') === 'winner'} />
+            <PlayerName side="black" title={localizedTitle(pairing.black_title ?? null, locale)} name={playerDisplayName(pairing.black_name, pairing.black_fide_name, locale)} rating={pairing.black_rating} fideRating={pairing.black_fide_rating} score={pairing.black_score} winner={winnerSide(pairing.result, 'black') === 'winner'} />
           </>
         )}
       </div>
@@ -60,8 +60,8 @@ export function TvPairingCard({ pairing, locale }: { pairing: RoundPairingRow; l
   );
 }
 
-function PlayerName({ side, title, name, rating, score, winner }: {
-  side: 'white' | 'black'; title: string | null; name: string; rating: number | null; score: number | null; winner: boolean;
+function PlayerName({ side, title, name, rating, fideRating, score, winner }: {
+  side: 'white' | 'black'; title: string | null; name: string; rating: number | null; fideRating?: number | null; score: number | null; winner: boolean;
 }) {
   const Pawn = side === 'white' ? WhitePawn : BlackPawn;
   return (
@@ -73,7 +73,7 @@ function PlayerName({ side, title, name, rating, score, winner }: {
           {name || 'Jogador não informado'}
           {winner && <span data-tv-trophy aria-label="Vencedor" className="ml-2 inline-block origin-bottom text-[1.2em] leading-none text-amber-600">🏆</span>}
         </p>
-        <PlayerScoreSummary rating={rating} score={score} className="text-xs leading-4 font-medium text-gray-500 sm:text-sm sm:leading-4" />
+        <PlayerScoreSummary rating={rating} fideRating={fideRating} score={score} className="text-xs leading-4 font-medium text-gray-500 sm:text-sm sm:leading-4" />
       </div>
     </div>
   );

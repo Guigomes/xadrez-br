@@ -3629,6 +3629,7 @@ export type Database = {
         Returns: {
           black_federation: string
           black_fide_name: string
+          black_fide_rating: number
           black_name: string
           black_points: number
           black_rank: number
@@ -3643,6 +3644,7 @@ export type Database = {
           result: Database["public"]["Enums"]["game_result"]
           white_federation: string
           white_fide_name: string
+          white_fide_rating: number
           white_name: string
           white_points: number
           white_rank: number
