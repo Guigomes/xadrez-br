@@ -58,7 +58,7 @@ Se já existir uma linha pra essa URL, pare e avise o usuário — não duplique
 
 ## Passo 3 — Criar tournament + tournament_imports
 
-**Regra fixa:** preencha `tournaments.description` com `Resultados oficiais:` e uma linha por URL importada (`Grupo: url` quando houver grupos). Torneio importado sem o link da fonte na descrição é erro.
+**Regra fixa:** preencha `tournaments.description` com `Resultados oficiais:` e **um link só**, mesmo com vários grupos (a página de uma categoria no chess-results leva às outras; desde 2026-11-25). Torneio importado sem o link da fonte na descrição é erro.
 
 Via `execute_sql`, numa transação (`begin; ... commit;`), inserindo em `tournaments`
 (`mode='imported'`, `slug = slugify(nome) + '-' + data sem hífen`, `created_by` = uid do
