@@ -9,6 +9,8 @@ import { isPromoBannerEnabled } from '@/lib/data/promo';
 import { StateFilter } from '@/components/tournament/state-filter';
 import type { TournamentListItem } from '@/types/database';
 import type { NewsCardData } from '@/components/news/news-card';
+import { SeriesHighlight, type HighlightSeries } from '@/components/home/series-highlight';
+import { todayInBrazil } from '@/lib/utils/date';
 
 /**
  * Home pública de marketing. O produto nasceu como "acompanhe torneios ao vivo"
@@ -113,6 +115,28 @@ export async function MarketingHome({ ctaHref, uf, dashboard }: MarketingHomePro
     supabase.rpc('search_tournaments', { p_status: 'finished', p_state: pState, p_limit: 3 }),
     isPromoBannerEnabled(),
   ]);
+  // Circuito/festival em andamento (série publicada cujo período não acabou há mais de 7 dias)
+  // ganha um destaque antes da lista de torneios. Filtra pelo estado escolhido, como o resto.
+  const today = todayInBrazil();
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+  let seriesQuery = supabase
+    .from('tournament_series')
+    .select('slug, name, organizer_name, state, start_date, end_date, series_tournaments(label, tournament:tournaments(slug, name, start_date))')
+    .eq('status', 'published')
+    .lte('start_date', today)
+    .gte('end_date', weekAgo)
+    .order('end_date')
+    .limit(2);
+  if (pState) seriesQuery = seriesQuery.eq('state', pState);
+  const { data: seriesRaw } = await seriesQuery;
+  const highlights: HighlightSeries[] = (seriesRaw ?? []).map((s) => ({
+    slug: s.slug, name: s.name, organizer_name: s.organizer_name, state: s.state,
+    start_date: s.start_date, end_date: s.end_date,
+    stages: (s.series_tournaments ?? []).flatMap((st) => (st.tournament
+      ? [{ label: st.label, name: st.tournament.name, slug: st.tournament.slug, start_date: st.tournament.start_date }]
+      : [])),
+  }));
+
   const upcoming = [...(openReg ?? []), ...(closedReg ?? []), ...(published ?? [])]
     .sort((a, b) => a.start_date.localeCompare(b.start_date) || a.name.localeCompare(b.name, 'pt-BR'))
     .slice(0, 3);
@@ -199,6 +223,12 @@ export async function MarketingHome({ ctaHref, uf, dashboard }: MarketingHomePro
       <div className="container-app pt-6">
         <WhatsappFeedback />
       </div>
+
+      {highlights.length > 0 && (
+        <div className="container-app space-y-4 pt-6">
+          {highlights.map((s) => <SeriesHighlight key={s.slug} series={s} today={today} />)}
+        </div>
+      )}
 
       {/* Torneios reais — prova de que tem torneio rodando, logo depois do
           hero: pedido do usuário pra quem chega aqui ver isso antes das
