@@ -433,6 +433,9 @@ export interface RoundPairingRow {
   black_fide_name?: string | null;
   white_federation?: string | null;
   black_federation?: string | null;
+  /** Rating FIDE publicado pela fonte do importado (tournament_players.fide_rating). */
+  white_fide_rating?: number | null;
+  black_fide_rating?: number | null;
   result: GameResult;
   white_points: number | null;
   black_points: number | null;

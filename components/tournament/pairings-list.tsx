@@ -63,7 +63,7 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
         {pairing.is_bye ? (
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} federation={shownFederation(pairing.white_federation)} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state="winner" followed={!!followedWhite} />
+              <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} federation={shownFederation(pairing.white_federation)} title={pairing.white_title} rating={pairing.white_rating} fideRating={pairing.white_fide_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state="winner" followed={!!followedWhite} />
             </div>
             {/* 'bye' (sobra do suíço) e 'not_paired' (fora por decisão/
                 ausência) usam o mesmo is_bye pra não contar como jogo, mas
@@ -72,7 +72,7 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
           </div>
         ) : (
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} federation={shownFederation(pairing.white_federation)} title={pairing.white_title} rating={pairing.white_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state={whiteState} followed={!!followedWhite} />
+            <PlayerLink tpId={pairing.white_tp_id} name={playerDisplayName(pairing.white_name, pairing.white_fide_name, locale)} federation={shownFederation(pairing.white_federation)} title={pairing.white_title} rating={pairing.white_rating} fideRating={pairing.white_fide_rating} score={pairing.white_score} tournamentSlug={tournamentSlug} color="white" state={whiteState} followed={!!followedWhite} />
 
             <div className="flex flex-col items-center gap-0.5 min-w-[3rem]">
               {hasResult ? (
@@ -90,7 +90,7 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
               )}
             </div>
 
-            <PlayerLink tpId={pairing.black_tp_id} name={playerDisplayName(pairing.black_name, pairing.black_fide_name, locale)} federation={shownFederation(pairing.black_federation)} title={pairing.black_title} rating={pairing.black_rating} score={pairing.black_score} tournamentSlug={tournamentSlug} color="black" state={blackState} alignRight followed={!!followedBlack} />
+            <PlayerLink tpId={pairing.black_tp_id} name={playerDisplayName(pairing.black_name, pairing.black_fide_name, locale)} federation={shownFederation(pairing.black_federation)} title={pairing.black_title} rating={pairing.black_rating} fideRating={pairing.black_fide_rating} score={pairing.black_score} tournamentSlug={tournamentSlug} color="black" state={blackState} alignRight followed={!!followedBlack} />
           </div>
         )}
         {!pairing.is_bye && pgnIds?.has(pairing.pairing_id) && (
@@ -118,9 +118,9 @@ export function PairingsList({ pairings, tournamentSlug, followedTpIds, pgnIds, 
 }
 
 function PlayerLink({
-  tpId, name, title, rating, score, tournamentSlug, color, state, alignRight, followed, federation,
+  tpId, name, title, rating, fideRating, score, tournamentSlug, color, state, alignRight, followed, federation,
 }: {
-  tpId: string | null; name: string; title?: string | null; rating: number | null;
+  tpId: string | null; name: string; title?: string | null; rating: number | null; fideRating?: number | null;
   score: number | null; tournamentSlug: string;
   color: 'white' | 'black';
   state: 'winner' | 'loser' | 'draw' | 'pending';
@@ -155,7 +155,7 @@ function PlayerLink({
         {isWinner && <span className="shrink-0 text-lg">🏆</span>}
         {followed && alignRight && <span className="text-brand-500 text-xs">★</span>}
       </div>
-      <PlayerScoreSummary rating={rating} score={score} className={`text-center text-xs ${isLoser ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400'}`} />
+      <PlayerScoreSummary rating={rating} fideRating={fideRating} score={score} className={`text-center text-xs ${isLoser ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400'}`} />
     </>
   );
 
