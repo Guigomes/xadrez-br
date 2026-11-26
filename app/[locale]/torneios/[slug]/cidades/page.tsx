@@ -133,9 +133,10 @@ export default async function CitiesPage({ params, searchParams }: Props) {
   };
   const selPlayers = sel
     ? rows.filter((r) => cityByTp.get(r.tp_id)?.key === sel.city.key)
-      .sort((a, b) => groupOrder.indexOf(a.pairing_group_name ?? '—') - groupOrder.indexOf(b.pairing_group_name ?? '—')
-        || (placeByTp.get(a.tp_id)?.section ?? '').localeCompare(placeByTp.get(b.tp_id)?.section ?? '', 'pt-BR')
-        || (placeByTp.get(a.tp_id)?.rank ?? 999) - (placeByTp.get(b.tp_id)?.rank ?? 999))
+      // Pela colocação na própria classificação (todos os 1º primeiro); empate: classificação, depois pontos.
+      .sort((a, b) => (placeByTp.get(a.tp_id)?.rank ?? 999) - (placeByTp.get(b.tp_id)?.rank ?? 999)
+        || (placeByTp.get(a.tp_id)?.section ?? '').localeCompare(placeByTp.get(b.tp_id)?.section ?? '', 'pt-BR', { numeric: true })
+        || (Number(b.points) || 0) - (Number(a.points) || 0))
     : [];
   const selRated = selPlayers.filter((r) => (r.rating_tempo ?? 0) > 0);
   const selAvgRating = selRated.length ? Math.round(selRated.reduce((a, r) => a + (r.rating_tempo ?? 0), 0) / selRated.length) : null;
