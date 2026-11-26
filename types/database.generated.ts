@@ -1379,6 +1379,7 @@ export type Database = {
           rating_blz: number | null
           rating_rpd: number | null
           rating_std: number | null
+          rating_std_as_of: string | null
           sex: string | null
           state: string | null
           title: string | null
@@ -1402,6 +1403,7 @@ export type Database = {
           rating_blz?: number | null
           rating_rpd?: number | null
           rating_std?: number | null
+          rating_std_as_of?: string | null
           sex?: string | null
           state?: string | null
           title?: string | null
@@ -1424,6 +1426,7 @@ export type Database = {
           rating_blz?: number | null
           rating_rpd?: number | null
           rating_std?: number | null
+          rating_std_as_of?: string | null
           sex?: string | null
           state?: string | null
           title?: string | null
