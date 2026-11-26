@@ -54,34 +54,58 @@ export interface CityStats {
   losses: number;
   podiums: number;
   top10: number;
-  /** Melhor colocação na própria seção (posição absoluta; empate: seção maior). */
+  /** Melhor colocação na própria classificação (posição absoluta; empate: classificação maior). */
   best: { rank: number; size: number; group: string; player: StandingRow } | null;
 }
 
 export interface CityRanking {
   ranking: CityStats[];
+  /** tp_id -> posição na própria classificação (categoria; sem categoria, o grupo) e o nome dela. */
+  placeByTp: Map<string, { rank: number; size: number; section: string }>;
   /** tp_id -> cidade (só quem tem cidade reconhecida). */
   cityByTp: Map<string, CityRef>;
   withoutCity: number;
 }
 
 /**
- * Ordem oficial: jogadores no pódio da seção, depois no top 10, depois pontos por
- * jogador — a mesma régua da aba "Por país".
+ * Posição de cada jogador na PRÓPRIA classificação, como na aba Classificação: dentro do
+ * grupo, quem tem categoria é renumerado só entre os da mesma categoria (1, 2, 3...), na
+ * ordem que a RPC devolve (grupo, posição). Sem categoria, vale a posição no grupo.
+ * Pedido do dono: o pódio do festival é por classificação (Sub-07 Masc etc.), não do
+ * grupo inteiro (que na 1ª etapa juntava Sub-07/09/11).
+ */
+export function classificationPlaces(rows: StandingRow[]): Map<string, { rank: number; size: number; section: string }> {
+  const keyOf = (r: StandingRow) => `${r.pairing_group_id ?? r.pairing_group_name ?? '—'}:${r.category_id ?? ''}`;
+  const size = new Map<string, number>();
+  for (const r of rows) if (r.rank != null) size.set(keyOf(r), (size.get(keyOf(r)) ?? 0) + 1);
+  const counter = new Map<string, number>();
+  const out = new Map<string, { rank: number; size: number; section: string }>();
+  for (const r of rows) {
+    if (r.rank == null) continue;
+    const k = keyOf(r);
+    const rank = r.category_id ? (counter.get(k) ?? 0) + 1 : r.rank;
+    if (r.category_id) counter.set(k, rank);
+    out.set(r.tp_id, { rank, size: size.get(k) ?? 1, section: r.category_name ?? r.pairing_group_name ?? '—' });
+  }
+  return out;
+}
+
+/**
+ * Ordem oficial: jogadores no pódio da própria classificação, depois no top 10, depois
+ * pontos por jogador — a régua da aba "Por país", com a posição por classificação.
  */
 export function buildCityRanking(
   rows: StandingRow[],
   places: Map<string, { city: string | null; state: string | null }>,
   tournamentUf?: string | null,
 ): CityRanking {
-  const groupSize = new Map<string, number>();
-  for (const r of rows) groupSize.set(r.pairing_group_name ?? '—', (groupSize.get(r.pairing_group_name ?? '—') ?? 0) + 1);
+  const placeByTp = classificationPlaces(rows);
   const cityByTp = new Map<string, CityRef>();
   const stats = new Map<string, CityStats>();
   let withoutCity = 0;
   for (const r of rows) {
-    const place = places.get(r.tp_id);
-    const city = resolveCity(place?.city, place?.state ?? r.state, tournamentUf);
+    const home = places.get(r.tp_id);
+    const city = resolveCity(home?.city, home?.state ?? r.state, tournamentUf);
     if (!city) { withoutCity++; continue; }
     cityByTp.set(r.tp_id, city);
     const c = stats.get(city.key) ?? { city, players: 0, points: 0, wins: 0, draws: 0, losses: 0, podiums: 0, top10: 0, best: null };
@@ -90,19 +114,20 @@ export function buildCityRanking(
     c.wins += r.wins ?? 0;
     c.draws += r.draws ?? 0;
     c.losses += r.losses ?? 0;
-    if (r.rank != null) {
-      if (r.rank <= 3) c.podiums++;
-      if (r.rank <= 10) c.top10++;
-      const group = r.pairing_group_name ?? '—';
-      const size = groupSize.get(group) ?? 1;
-      if (!c.best || r.rank < c.best.rank || (r.rank === c.best.rank && size > c.best.size)) c.best = { rank: r.rank, size, group, player: r };
+    const place = placeByTp.get(r.tp_id);
+    if (place) {
+      if (place.rank <= 3) c.podiums++;
+      if (place.rank <= 10) c.top10++;
+      if (!c.best || place.rank < c.best.rank || (place.rank === c.best.rank && place.size > c.best.size)) {
+        c.best = { rank: place.rank, size: place.size, group: place.section, player: r };
+      }
     }
     stats.set(city.key, c);
   }
   const ranking = [...stats.values()].sort((a, b) =>
     b.podiums - a.podiums || b.top10 - a.top10 || b.points / b.players - a.points / a.players || a.city.name.localeCompare(b.city.name, 'pt-BR'),
   );
-  return { ranking, cityByTp, withoutCity };
+  return { ranking, placeByTp, cityByTp, withoutCity };
 }
 
 export const cityWinRate = (c: Pick<CityStats, 'wins' | 'draws' | 'losses'>) => {

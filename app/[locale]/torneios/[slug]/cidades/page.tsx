@@ -86,8 +86,8 @@ export default async function CitiesPage({ params, searchParams }: Props) {
   ]);
 
   const rows = standings;
-  const placeByTp = new Map(places.map((p) => [p.tp_id, p]));
-  const { ranking, cityByTp, withoutCity } = buildCityRanking(rows, placeByTp, tournament.state);
+  const homeByTp = new Map(places.map((p) => [p.tp_id, p]));
+  const { ranking, placeByTp, cityByTp, withoutCity } = buildCityRanking(rows, homeByTp, tournament.state);
   const groupOrder = [...new Set(rows.map((r) => r.pairing_group_name ?? '—'))];
   const playedOnBoard = results.filter((p) => !p.is_bye && ['1-0', '0-1', '1/2-1/2'].includes(p.result)).length;
   const rated = rows.filter((r) => (r.rating_tempo ?? 0) > 0);
@@ -133,7 +133,9 @@ export default async function CitiesPage({ params, searchParams }: Props) {
   };
   const selPlayers = sel
     ? rows.filter((r) => cityByTp.get(r.tp_id)?.key === sel.city.key)
-      .sort((a, b) => groupOrder.indexOf(a.pairing_group_name ?? '—') - groupOrder.indexOf(b.pairing_group_name ?? '—') || (a.rank ?? 999) - (b.rank ?? 999))
+      .sort((a, b) => groupOrder.indexOf(a.pairing_group_name ?? '—') - groupOrder.indexOf(b.pairing_group_name ?? '—')
+        || (placeByTp.get(a.tp_id)?.section ?? '').localeCompare(placeByTp.get(b.tp_id)?.section ?? '', 'pt-BR')
+        || (placeByTp.get(a.tp_id)?.rank ?? 999) - (placeByTp.get(b.tp_id)?.rank ?? 999))
     : [];
   const selRated = selPlayers.filter((r) => (r.rating_tempo ?? 0) > 0);
   const selAvgRating = selRated.length ? Math.round(selRated.reduce((a, r) => a + (r.rating_tempo ?? 0), 0) / selRated.length) : null;
@@ -152,7 +154,7 @@ export default async function CitiesPage({ params, searchParams }: Props) {
           {[
             ['Jogadores', String(rows.length)],
             ['Cidades', String(ranking.length)],
-            ['Seções', String(groupOrder.length)],
+            ['Classificações', String(new Set([...placeByTp.values()].map((p) => p.section)).size || groupOrder.length)],
             ['Rodada', `${currentRoundNumber ?? (finished ? tournament.rounds_count : '–')} de ${tournament.rounds_count}`],
             ['Partidas jogadas', String(playedOnBoard)],
             ['Rating médio', avgRating ? String(avgRating) : '–'],
@@ -232,10 +234,10 @@ export default async function CitiesPage({ params, searchParams }: Props) {
                   <Link href={`/torneios/${slug}/jogadores/${r.tp_id}`} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 sm:px-5 dark:hover:bg-gray-800/60">
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-gray-900 dark:text-gray-100">{playerDisplayName(r.full_name, r.fide_name, locale)}</span>
-                      <span className="block text-xs text-gray-500 dark:text-gray-400">{r.pairing_group_name ?? '—'}</span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">{placeByTp.get(r.tp_id)?.section ?? r.pairing_group_name ?? '—'}</span>
                     </span>
                     <span className="shrink-0 text-right tabular-nums">
-                      <span className="block font-semibold text-gray-800 dark:text-gray-200">{r.rank ? `${r.rank}º` : '–'}</span>
+                      <span className="block font-semibold text-gray-800 dark:text-gray-200">{placeByTp.get(r.tp_id) ? `${placeByTp.get(r.tp_id)!.rank}º` : '–'}</span>
                       <span className="block text-xs text-gray-500">{formatScore(Number(r.points) || 0)} pts</span>
                     </span>
                   </Link>
@@ -255,7 +257,7 @@ export default async function CitiesPage({ params, searchParams }: Props) {
           <div className="mb-3">
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Desempenho por cidade</h2>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Posição (#): jogadores no pódio da seção, depois no top 10, depois pontos por jogador. Toque numa cidade para ver os números e os jogadores dela.
+              Posição (#): jogadores no pódio da própria classificação (categoria), depois no top 10, depois pontos por jogador. Toque numa cidade para ver os números e os jogadores dela.
             </p>
           </div>
           <form action={`${tab}#ranking`} className="mb-3 flex flex-col gap-2 sm:flex-row">
@@ -338,7 +340,7 @@ export default async function CitiesPage({ params, searchParams }: Props) {
           </div>
           <p className="mt-2 text-xs text-gray-400">
             Cidade do cadastro de cada jogador. {withoutCity > 0 && `${withoutCity} ${withoutCity === 1 ? 'jogador sem cidade informada não entra' : 'jogadores sem cidade informada não entram'} na tabela. `}
-            Aproveitamento: pontos nas partidas disputadas (vitória 1, empate ½), sem contar byes. Pódio e top 10 são a posição de cada jogador na classificação da própria seção.
+            Aproveitamento: pontos nas partidas disputadas (vitória 1, empate ½), sem contar byes. Pódio, top 10 e melhor colocação contam a posição de cada jogador na própria classificação (categoria), como na aba Classificação.
           </p>
         </section>
       )}
