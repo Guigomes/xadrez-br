@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCityRanking, cityKey, resolveCity } from '@/lib/tournament/city-ranking';
+import { buildCityRanking, cityKey, classificationPlaces, resolveCity } from '@/lib/tournament/city-ranking';
 import type { StandingRow } from '@/types/database';
 
 const row = (tp: string, rank: number, points: number, group = 'Sub-11', state: string | null = 'MS') =>
@@ -35,5 +35,20 @@ describe('buildCityRanking', () => {
     const tl = ranking[0];
     expect([tl.players, tl.podiums, tl.top10, tl.points]).toEqual([2, 1, 2, 9]);
     expect(ranking[1].best?.rank).toBe(1);
+  });
+});
+
+describe('classificationPlaces', () => {
+  it('pódio por classificação: renumera dentro da categoria do grupo', () => {
+    const r = (tp: string, rank: number, cat: string | null, catName: string | null) =>
+      ({ tp_id: tp, rank, points: 0, pairing_group_id: 'g1', pairing_group_name: 'Sub-07/09/11 Masc', category_id: cat, category_name: catName }) as unknown as StandingRow;
+    // Grupo misto: posições 1..4 no grupo, duas categorias.
+    const rows = [r('a', 1, 'c11', 'Sub-11 Masc'), r('b', 2, 'c09', 'Sub-09 Masc'), r('c', 3, 'c11', 'Sub-11 Masc'), r('d', 4, 'c09', 'Sub-09 Masc')];
+    const p = classificationPlaces(rows);
+    expect(p.get('b')).toEqual({ rank: 1, size: 2, section: 'Sub-09 Masc' });
+    expect(p.get('d')).toEqual({ rank: 2, size: 2, section: 'Sub-09 Masc' });
+    expect(p.get('c')?.rank).toBe(2);
+    const { ranking } = buildCityRanking(rows, new Map(rows.map((x) => [x.tp_id, { city: 'Dourados', state: 'MS' }])), 'MS');
+    expect(ranking[0].podiums).toBe(4); // no grupo seriam 3
   });
 });
