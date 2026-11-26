@@ -194,7 +194,10 @@ export const TIEBREAK_INFO = {
 export function tournamentRating(
   tournament: { mode: string; rating_kind: string },
   player: { rating_std?: number | null; rating_rpd?: number | null; rating_blz?: number | null } | null | undefined,
+  /** Rating da fonte na época do torneio (tournament_players.national_rating). Importado/app: tem precedência. */
+  nationalRating?: number | null,
 ): number | null {
+  if (tournament.mode !== 'native' && nationalRating) return nationalRating;
   if (!player) return null;
   const kind = tournament.mode === 'native' ? tournament.rating_kind : 'std';
   return (kind === 'rpd' ? player.rating_rpd : kind === 'blz' ? player.rating_blz : player.rating_std) ?? null;

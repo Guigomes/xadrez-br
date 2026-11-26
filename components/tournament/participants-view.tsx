@@ -70,7 +70,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
     .from('tournament_players')
     .select(
       `
-        id, player_id, initial_ranking, current_score, current_rank, status, pairing_group_id, fide_rating,
+        id, player_id, initial_ranking, current_score, current_rank, status, pairing_group_id, fide_rating, national_rating,
         player:players!inner(id, full_name, fide_name, title, rating_std, rating_rpd, rating_blz, state, city, federation, cbx_id, fide_id, club_or_school),
         category:tournament_categories(id, name, pairing_group_id)
       `,
@@ -147,13 +147,14 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
   // A coluna só aparece quando alguém do torneio tem; aí o rating da fonte é o nacional.
   const showFide = (playersData ?? []).some((tp) => tp.fide_rating);
   const ratingHeader = ratingLabel ? `Rating ${ratingLabel}` : showFide ? 'Rating nacional' : 'Rating';
-  const ratingOf = (p: { rating_std: number | null; rating_rpd: number | null; rating_blz: number | null } | null | undefined) =>
-    tournamentRating(tournament, p);
+  // Rating da época do torneio (national_rating, gravado pelo robô) antes do cadastro atual.
+  const ratingOf = (tp: { national_rating?: number | null; player: { rating_std: number | null; rating_rpd: number | null; rating_blz: number | null } | null }) =>
+    tournamentRating(tournament, tp.player, tp.national_rating);
 
   // Sem seed, a ordem é por rating — o do ritmo do torneio, igual ao ranking inicial que vai sair.
   const byRating = (tp: NonNullable<typeof playersData>[number]) => ({
     initial_ranking: tp.initial_ranking,
-    player: { rating_std: ratingOf(tp.player), full_name: tp.player?.full_name },
+    player: { rating_std: ratingOf(tp), full_name: tp.player?.full_name },
   });
   const seeded = playersData ? [...playersData].sort((a, b) => compareParticipantOrder(byRating(a), byRating(b))) : playersData;
 
@@ -218,7 +219,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
       pontos: (a, b) => points(b) - points(a) || placement(a) - placement(b) || byName(a, b),
       grupo: (a, b) => (groupOrder.get(a.pairing_group_id ?? '') ?? 999) - (groupOrder.get(b.pairing_group_id ?? '') ?? 999)
         || (rankByTp.get(a.id) ?? 9999) - (rankByTp.get(b.id) ?? 9999) || byName(a, b),
-      rating: (a, b) => (ratingOf(b.player) ?? -1) - (ratingOf(a.player) ?? -1) || byName(a, b),
+      rating: (a, b) => (ratingOf(b) ?? -1) - (ratingOf(a) ?? -1) || byName(a, b),
       nome: byName,
     };
     players = [...seeded].sort(sorters[countrySort]).slice(from, from + PAGE_SIZE);
@@ -445,7 +446,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                           )}
                           {displayCity && <span>{displayCity}</span>}
                           {displayClub && <span>{displayClub}</span>}
-                          {ratingOf(player) && <span>Rating {ratingLabel ? `${ratingLabel} ` : showFide ? 'nacional ' : ''}{ratingOf(player)}</span>}
+                          {ratingOf(tp) && <span>Rating {ratingLabel ? `${ratingLabel} ` : showFide ? 'nacional ' : ''}{ratingOf(tp)}</span>}
                           {tp.fide_rating && <span>Rating FIDE {tp.fide_rating}</span>}
                           <ExternalIdLinks cbxId={player?.cbx_id} fideId={player?.fide_id} />
                         </span>
@@ -479,7 +480,7 @@ export async function ParticipantsView({ params, searchParams, countryCode }: Pr
                         </td>
                       )}
                       <td className="hidden py-3 px-3 text-center tabular-nums text-gray-700 dark:text-gray-300 sm:table-cell">
-                        {ratingOf(player) ?? '–'}
+                        {ratingOf(tp) ?? '–'}
                       </td>
                       {showFide && (
                         <td className="hidden py-3 px-3 text-center tabular-nums text-gray-700 dark:text-gray-300 sm:table-cell">
