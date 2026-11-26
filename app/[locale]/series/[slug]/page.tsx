@@ -62,24 +62,32 @@ export default async function SeriesOverview({ params }: { params: Promise<{ slu
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-800">
             {items.map((s, i) => (
-              <li key={s.key} className="flex flex-wrap items-center gap-2 py-3">
-                <span className="text-sm tabular-nums text-gray-400 dark:text-gray-500">{i + 1}.</span>
-                <Link
-                  href={s.href}
-                  className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 hover:underline dark:text-gray-100"
-                >
-                  {s.title}
-                </Link>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {s.date ? formatDate(s.date, 'dd/MM/yyyy') : ''}
-                </span>
-                {s.archive ? (
-                  <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Arquivo</Badge>
-                ) : (
-                  <Badge className={getTournamentStatusColor(s.status!)}>
-                    {getTournamentStatusLabel(s.status!)}
-                  </Badge>
-                )}
+              // Celular: nome inteiro na 1ª linha (quebra se preciso), data e status embaixo.
+              // Telas maiores: tudo numa linha, nome cortado só se não couber.
+              <li key={s.key} className="flex items-start gap-2 py-3">
+                <span className="text-sm leading-5 tabular-nums text-gray-400 dark:text-gray-500">{i + 1}.</span>
+                <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+                  <Link
+                    href={s.href}
+                    className="block break-words text-sm font-medium leading-5 text-gray-900 hover:underline dark:text-gray-100 sm:min-w-0 sm:flex-1 sm:truncate"
+                  >
+                    {s.title}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0">
+                    {s.date && (
+                      <span className="text-xs tabular-nums text-gray-500 dark:text-gray-400">
+                        {formatDate(s.date, 'dd/MM/yyyy')}
+                      </span>
+                    )}
+                    {s.archive ? (
+                      <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Arquivo</Badge>
+                    ) : (
+                      <Badge className={getTournamentStatusColor(s.status!)}>
+                        {getTournamentStatusLabel(s.status!)}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
