@@ -2,31 +2,40 @@
 
 import { useRouter } from '@/i18n/navigation';
 
-/** Troca o país do painel da aba "Por país" (vai para ?pais=XXX, mantendo a ordenação do ranking). */
+/**
+ * Troca o país do painel da aba "Por país" (vai para ?pais=XXX, mantendo a ordenação do ranking).
+ * A aba "Por cidade" usa o mesmo seletor com `tab="cidades"`, `param="cidade"`.
+ */
 export function CountryPicker({
   slug,
   current,
   countries,
   keepQuery,
+  tab = 'paises',
+  param = 'pais',
+  label = 'Ver país',
 }: {
   slug: string;
   current: string;
   countries: Array<{ code: string; name: string; players: number }>;
   /** Parâmetros de ordenação do ranking a preservar na troca. */
   keepQuery: Record<string, string>;
+  tab?: string;
+  param?: string;
+  label?: string;
 }) {
   const router = useRouter();
   return (
     <label className="block w-full text-sm text-gray-600 sm:w-auto dark:text-gray-300">
       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 sm:sr-only dark:text-gray-400">
-        Ver país
+        {label}
       </span>
       <span className="relative block">
         <select
           value={current}
           onChange={(e) => {
-            const q = new URLSearchParams({ ...keepQuery, pais: e.target.value });
-            router.push(`/torneios/${slug}/paises?${q.toString()}#selecao`, { scroll: false });
+            const q = new URLSearchParams({ ...keepQuery, [param]: e.target.value });
+            router.push(`/torneios/${slug}/${tab}?${q.toString()}#selecao`, { scroll: false });
           }}
           className="w-full appearance-none rounded-xl border border-gray-300 bg-white py-2.5 pl-3 pr-10 text-sm font-medium text-gray-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 sm:min-w-52 sm:py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         >
@@ -49,17 +58,19 @@ export function CountryRankingSort({
   direction,
   reverseHref,
   options,
+  label = 'Ordenar países por',
 }: {
   current: string;
   direction: 'asc' | 'desc';
   reverseHref: string;
   options: Array<{ key: string; label: string; href: string }>;
+  label?: string;
 }) {
   const router = useRouter();
   return (
     <label className="block md:hidden">
       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-        Ordenar países por
+        {label}
       </span>
       <span className="flex gap-2">
         <span className="relative min-w-0 flex-1">

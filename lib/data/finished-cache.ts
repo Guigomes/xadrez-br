@@ -83,6 +83,32 @@ export async function getFinishedPairingResults(
   }
 }
 
+export type PlayerPlace = { tp_id: string; city: string | null; state: string | null };
+
+/** Cidade e UF de cada participante (aba "Por cidade"). Sem cache: quem chama decide. */
+export async function loadPlayerPlaces(tournamentId: string): Promise<PlayerPlace[]> {
+  const { data, error } = await publicClient()
+    .from('tournament_players')
+    .select('id, player:players(city, state)')
+    .eq('tournament_id', tournamentId)
+    .limit(5000);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => {
+    const p = r.player as { city: string | null; state: string | null } | null;
+    return { tp_id: r.id, city: p?.city ?? null, state: p?.state ?? null };
+  });
+}
+
+/** Cidade e UF dos participantes de um torneio encerrado. `null` = falhou; quem chama lê sem cache. */
+export async function getFinishedPlayerPlaces(tournamentId: string): Promise<PlayerPlace[] | null> {
+  if (!UUID.test(tournamentId)) return null;
+  try {
+    return await cachedForTournament(tournamentId, 'player-places', () => loadPlayerPlaces(tournamentId));
+  } catch {
+    return null;
+  }
+}
+
 /** Status exibido do torneio (mesma regra de `get_tournament_page_data`), pela chave anônima. */
 export async function isTournamentFinished(tournamentId: string): Promise<boolean> {
   if (!UUID.test(tournamentId)) return false;

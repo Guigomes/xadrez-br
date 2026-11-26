@@ -14,9 +14,11 @@ interface TournamentTabsProps {
   hasLiveBroadcast?: boolean;
   /** Torneio marcado como internacional ganha a aba "Por país". */
   showCountries?: boolean;
+  /** Torneio com tournaments.show_city_ranking ganha a aba "Por cidade". */
+  showCities?: boolean;
 }
 
-export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStatistics = false, hasLiveBroadcast = false, showCountries = false }: TournamentTabsProps) {
+export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStatistics = false, hasLiveBroadcast = false, showCountries = false, showCities = false }: TournamentTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const base = `/torneios/${slug}`;
@@ -57,6 +59,13 @@ export function TournamentTabs({ slug, roundsCount, currentRoundNumber, showStat
       href: `${base}/paises`,
       activePath: `${base}/paises`,
       label: 'Por país',
+      icon: 'countries' as TournamentTabIconName,
+      carryContext: false,
+    }] : []),
+    ...(showCities ? [{
+      href: `${base}/cidades`,
+      activePath: `${base}/cidades`,
+      label: 'Por cidade',
       icon: 'countries' as TournamentTabIconName,
       carryContext: false,
     }] : []),

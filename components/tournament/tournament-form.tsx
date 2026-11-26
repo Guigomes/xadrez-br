@@ -57,6 +57,7 @@ const schema = z.object({
   rounds_count:    z.coerce.number().int().min(1).max(20),
   is_public:       z.boolean(),
   is_international: z.boolean(),
+  show_city_ranking: z.boolean(),
   mode:            z.enum(['native', 'imported', 'app']),
   initial_color:   z.enum(['white1', 'black1']),
   rating_kind:     z.enum(['std', 'rpd', 'blz']),
@@ -183,6 +184,7 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
       rounds_count: 6,
       is_public: true,
       is_international: false,
+      show_city_ranking: false,
       mode: 'native',
       rating_kind: 'std',
       time_control_kind: 'other',
@@ -652,6 +654,13 @@ export function TournamentForm({ defaultValues, onSubmit, loading, submitLabel =
           <span>
             <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Torneio internacional</span>
             <span className="block text-xs text-gray-500 dark:text-gray-400">Mostra o país dos jogadores, o filtro por país e a aba de desempenho por país.</span>
+          </span>
+        </label>
+        <label className="mt-4 flex cursor-pointer items-start gap-3">
+          <input type="checkbox" className="mt-0.5 h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-500" {...register('show_city_ranking')} />
+          <span>
+            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Desempenho por cidade</span>
+            <span className="block text-xs text-gray-500 dark:text-gray-400">Mostra a aba &quot;Por cidade&quot;, que soma os resultados pela cidade de cada jogador. Útil em festivais e circuitos regionais.</span>
           </span>
         </label>
       </div>

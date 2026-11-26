@@ -3069,6 +3069,7 @@ export type Database = {
           require_cbx_id: boolean
           require_payment_receipt: boolean
           rounds_count: number
+          show_city_ranking: boolean
           slug: string
           start_date: string
           start_time: string | null
@@ -3125,6 +3126,7 @@ export type Database = {
           require_cbx_id?: boolean
           require_payment_receipt?: boolean
           rounds_count?: number
+          show_city_ranking?: boolean
           slug: string
           start_date: string
           start_time?: string | null
@@ -3177,6 +3179,7 @@ export type Database = {
           require_cbx_id?: boolean
           require_payment_receipt?: boolean
           rounds_count?: number
+          show_city_ranking?: boolean
           slug?: string
           start_date?: string
           start_time?: string | null
@@ -3750,6 +3753,7 @@ export type Database = {
           require_cbx_id: boolean
           require_payment_receipt: boolean
           rounds_count: number
+          show_city_ranking: boolean
           slug: string
           start_date: string
           start_time: string | null
