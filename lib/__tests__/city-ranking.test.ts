@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCityRanking, cityKey, classificationPlaces, resolveCity } from '@/lib/tournament/city-ranking';
+import { buildCityRanking, cityKey, classificationLabel, classificationPlaces, resolveCity } from '@/lib/tournament/city-ranking';
 import type { StandingRow } from '@/types/database';
 
 const row = (tp: string, rank: number, points: number, group = 'Sub-11', state: string | null = 'MS') =>
@@ -46,6 +46,9 @@ describe('classificationPlaces', () => {
     const rows = [r('a', 1, 'c11', 'Sub-11 Masc'), r('b', 2, 'c09', 'Sub-09 Masc'), r('c', 3, 'c11', 'Sub-11 Masc'), r('d', 4, 'c09', 'Sub-09 Masc')];
     const p = classificationPlaces(rows);
     expect(p.get('b')).toEqual({ rank: 1, size: 2, section: 'Sub-09 Masc' });
+    expect(classificationLabel({ category_name: 'U15', pairing_group_name: 'Sub-13/15/17 Fem' })).toBe('U15 Fem');
+    expect(classificationLabel({ category_name: null, pairing_group_name: 'Sub-07 Misto' })).toBe('Sub-07 Misto');
+    expect(classificationLabel({ category_name: 'U07', pairing_group_name: 'SUB9MISTO' })).toBe('U07');
     expect(p.get('d')).toEqual({ rank: 2, size: 2, section: 'Sub-09 Masc' });
     expect(p.get('c')?.rank).toBe(2);
     const { ranking } = buildCityRanking(rows, new Map(rows.map((x) => [x.tp_id, { city: 'Dourados', state: 'MS' }])), 'MS');

@@ -74,6 +74,20 @@ export interface CityRanking {
  * Pedido do dono: o pódio do festival é por classificação (Sub-07 Masc etc.), não do
  * grupo inteiro (que na 1ª etapa juntava Sub-07/09/11).
  */
+/**
+ * Nome da classificação do jogador: a categoria; sem categoria, o grupo. Quando a
+ * categoria não traz o gênero e o grupo traz (1ª etapa do Festival: categoria "U15" no
+ * grupo "Sub-13/15/17 Fem"), junta os dois: "U15 Fem".
+ */
+export function classificationLabel(r: Pick<StandingRow, 'category_name' | 'pairing_group_name'>): string {
+  const cat = r.category_name?.trim();
+  const group = r.pairing_group_name?.trim() ?? '';
+  if (!cat) return group || '—';
+  if (/fem|masc/i.test(cat)) return cat;
+  const gender = /fem/i.test(group) ? 'Fem' : /masc/i.test(group) ? 'Masc' : '';
+  return gender ? `${cat} ${gender}` : cat;
+}
+
 export function classificationPlaces(rows: StandingRow[]): Map<string, { rank: number; size: number; section: string }> {
   const keyOf = (r: StandingRow) => `${r.pairing_group_id ?? r.pairing_group_name ?? '—'}:${r.category_id ?? ''}`;
   const size = new Map<string, number>();
@@ -85,7 +99,7 @@ export function classificationPlaces(rows: StandingRow[]): Map<string, { rank: n
     const k = keyOf(r);
     const rank = r.category_id ? (counter.get(k) ?? 0) + 1 : r.rank;
     if (r.category_id) counter.set(k, rank);
-    out.set(r.tp_id, { rank, size: size.get(k) ?? 1, section: r.category_name ?? r.pairing_group_name ?? '—' });
+    out.set(r.tp_id, { rank, size: size.get(k) ?? 1, section: classificationLabel(r) });
   }
   return out;
 }
