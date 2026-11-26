@@ -154,6 +154,12 @@ function PerformanceChart({ perf }: { perf: TournamentPerformance[] }) {
           </g>
         ))}
         {ratingPts && <polyline points={ratingPts} fill="none" className="stroke-gray-400" strokeWidth={2} strokeDasharray="4 3" />}
+        {/* Rating da época de cada torneio (tournament_players.national_rating nos importados). */}
+        {perf.map((p, i) => p.myRating !== null && (
+          <circle key={`r-${p.tournamentId}`} cx={x(i)} cy={y(p.myRating)} r={3} className="fill-gray-400">
+            <title>{`${p.name}: rating ${p.myRating}`}</title>
+          </circle>
+        ))}
         {perf.map((p, i) => (
           <circle key={p.tournamentId} cx={x(i)} cy={y(p.performance!)} r={4} fill="currentColor">
             <title>{`${p.name}: performance ${p.performance}`}</title>

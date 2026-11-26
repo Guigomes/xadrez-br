@@ -2669,6 +2669,7 @@ export type Database = {
           id: string
           initial_ranking: number | null
           joined_at_round: number
+          national_rating: number | null
           pairing_group_id: string | null
           player_id: string
           progressive: number | null
@@ -2692,6 +2693,7 @@ export type Database = {
           id?: string
           initial_ranking?: number | null
           joined_at_round?: number
+          national_rating?: number | null
           pairing_group_id?: string | null
           player_id: string
           progressive?: number | null
@@ -2714,6 +2716,7 @@ export type Database = {
           id?: string
           initial_ranking?: number | null
           joined_at_round?: number
+          national_rating?: number | null
           pairing_group_id?: string | null
           player_id?: string
           progressive?: number | null
