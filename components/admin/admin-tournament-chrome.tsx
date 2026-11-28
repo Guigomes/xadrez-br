@@ -1,5 +1,6 @@
 'use client';
 
+import { RelativeTime } from '@/components/ui/relative-time';
 import { useState, useTransition } from 'react';
 import { useRouter, usePathname } from '@/i18n/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -25,6 +26,8 @@ interface Props {
   registrationEndDate: string | null;
   /** false só quando status='draft' e pairing_mode='custom' sem grupo criado ou com classificação sem grupo — ver layout.tsx. */
   pairingReady: boolean;
+  /** Importado: última sincronização das importações ligadas (layout.tsx). */
+  lastSync?: { at: string | null; total: number; errors: number } | null;
 }
 
 /**
@@ -66,7 +69,7 @@ const STATUS_ACTIONS: Partial<Record<TournamentStatus, { label: string; to: Tour
  * resultados do árbitro (rounds/[roundId]/results) — aquela tela é
  * mobile-first e não deve competir com a navegação por abas.
  */
-export function AdminTournamentChrome({ id, slug, name, mode, status, registrationEndDate, pairingReady }: Props) {
+export function AdminTournamentChrome({ id, slug, name, mode, status, registrationEndDate, pairingReady, lastSync }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const qc = useQueryClient();
@@ -263,6 +266,17 @@ export function AdminTournamentChrome({ id, slug, name, mode, status, registrati
           </button>
         )}
       </div>
+      {mode === 'imported' && profile?.role === 'admin' && lastSync && (
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          {lastSync.at ? (
+            <>Última sincronização <RelativeTime iso={lastSync.at} /> ({new Date(lastSync.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Campo_Grande' })})</>
+          ) : 'Ainda não sincronizado'}
+          {' · '}{lastSync.total} importação(ões) ligada(s)
+          {lastSync.errors > 0 && (
+            <span className="text-red-500 dark:text-red-400"> · {lastSync.errors} com erro (ver aba Importações)</span>
+          )}
+        </p>
+      )}
       {syncResult && (
         <p className="mt-2 text-xs text-gray-600 dark:text-gray-400 animate-fade-in">{syncResult}</p>
       )}
