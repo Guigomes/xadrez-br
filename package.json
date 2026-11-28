@@ -25,6 +25,7 @@
     "@tanstack/react-query-devtools": "^5.62.16",
     "@vercel/analytics": "^2.0.1",
     "cheerio": "^1.1.0",
+    "chess-viewer-cron-import": "github:Guigomes/xadrez-br-cron#17fb438eebb9c8d78ec18d861e74b560bb64b508",
     "chess.js": "^1.4.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

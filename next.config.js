@@ -16,6 +16,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
+  // Importador do robô (repo cron-import, instalado do GitHub) usado pelo botão
+  // "Dev: sincronizar agora". Fica fora do bundle: roda como módulo Node normal
+  // (ESM com imports relativos .js e xlsx/cheerio próprios).
+  serverExternalPackages: ['chess-viewer-cron-import', 'xlsx'],
+
   // A rota de pareamento carrega o glue/wasm do bbpPairings do filesystem em
   // runtime (import dinâmico com webpackIgnore) — o tracing precisa incluí-los.
   outputFileTracingIncludes: {
