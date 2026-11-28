@@ -45,12 +45,30 @@ export default async function AdminTournamentLayout({ children, params }: Props)
     pairingReady = (groupCount ?? 0) > 0 && (unmappedCount ?? 0) === 0;
   }
 
+  // Importado: hora da última sincronização (e quantos grupos estão com erro),
+  // mostrada junto do botão "Sincronizar dados importados". Conta só as
+  // importações ligadas; sem nenhuma ligada, todas.
+  let lastSync: { at: string | null; total: number; errors: number } | null = null;
+  if (tournament.mode === 'imported') {
+    const { data: imports } = await supabase
+      .from('tournament_imports')
+      .select('enabled, last_run_at, last_status')
+      .eq('tournament_id', tournament.id);
+    if (imports?.length) {
+      const enabled = imports.filter((row) => row.enabled);
+      const rows = enabled.length ? enabled : imports;
+      const at = rows.map((row) => row.last_run_at).filter((v): v is string => !!v).sort().pop() ?? null;
+      lastSync = { at, total: rows.length, errors: rows.filter((row) => row.last_status === 'error').length };
+    }
+  }
+
   return (
     <div>
       <AdminTournamentChrome
         id={tournament.id} slug={slug} name={tournament.name} mode={tournament.mode} status={tournament.status}
         registrationEndDate={tournament.registration_end_date}
         pairingReady={pairingReady}
+        lastSync={lastSync}
       />
       {children}
     </div>
